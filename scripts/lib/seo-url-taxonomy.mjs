@@ -42,6 +42,7 @@ const VARIANT_HOSTS = Object.freeze([
   'commodity',
   'happy',
   'energy',
+  'nuclear',
   'api',
 ]);
 

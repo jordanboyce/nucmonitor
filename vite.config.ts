@@ -170,6 +170,8 @@ const PANEL_CLUSTER: Record<string, PanelChunkName> = {
   Displacement: 'panels-risk', GeoHubs: 'panels-risk',
   Giving: 'panels-risk', InternetDisruptions: 'panels-risk',
   PopulationExposure: 'panels-risk', RadiationWatch: 'panels-risk',
+  // NucMonitor nuclear hub
+  NuclearReactorStatus: 'panels-risk', NuclearFacilityHazards: 'panels-risk', NuclearFacilityDirectory: 'panels-risk',
   RuntimeConfig: 'panels-risk', SatelliteFires: 'panels-risk',
   SecurityAdvisories: 'panels-risk', ServiceStatus: 'panels-risk',
   SocialVelocity: 'panels-risk', SpeciesComeback: 'panels-risk',
@@ -268,8 +270,12 @@ function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDes
       // Desktop builds: inject build-time variant into the inline script so data-variant is set
       // before CSS loads. Web builds always use 'full' — runtime hostname detection handles variants.
       if (activeVariant !== 'full') {
+        // The inline bootstrap pairs the `if(v)` with an `else` that clears a
+        // stale data-variant; consume both so a dedicated variant build does
+        // not leave a dangling `else` (a SyntaxError that aborted the whole
+        // pre-paint script on every VITE_VARIANT build).
         result = result.replace(
-          /if\(v\)document\.documentElement\.dataset\.variant=v;/,
+          /if\(v\)document\.documentElement\.dataset\.variant=v;(?:else document\.documentElement\.removeAttribute\('data-variant'\);)?/,
           `v='${activeVariant}';document.documentElement.dataset.variant=v;`
         );
       }

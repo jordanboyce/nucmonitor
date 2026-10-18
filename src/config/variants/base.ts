@@ -56,6 +56,7 @@ export const REFRESH_INTERVALS = {
   gulfEconomies: 10 * 60 * 1000,
   groceryBasket: 6 * 60 * 60 * 1000,
   fuelPrices: 6 * 60 * 60 * 1000,
+  nrcReactorStatus: 30 * 60 * 1000, // NRC publishes one snapshot per day; 30 min catches the morning update without hammering nrc.gov
   fx: 6 * 60 * 60 * 1000, // all three FX keys are daily seeds; 6h picks up the new bar without polling a static payload
 
   faoFoodPriceIndex: 24 * 60 * 60 * 1000, // monthly data; refresh daily is sufficient

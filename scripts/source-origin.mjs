@@ -138,6 +138,18 @@ const HOST_ORIGINS = Object.freeze({
   'rusi.org': 'GB',
   'slidstvo.info': 'UA',
   'spglobal.com': 'US',
+  // NucMonitor nuclear hub publishers (US unless noted; IAEA is international
+  // and resolves to null via the .int / .org override below).
+  'ans.org': 'US',
+  'nei.org': 'US',
+  'neimagazine.com': 'GB',
+  'exchangemonitor.com': 'US',
+  'world-nuclear-news.org': 'GB',
+  'powermag.com': 'US',
+  'utilitydive.com': 'US',
+  'ucs.org': 'US',
+  'iaea.org': null,
+  'nuclear.worldmonitor.app': 'US',
   'suspilne.media': 'UA',
   'taipeitimes.com': 'TW',
   'tass.com': 'RU',

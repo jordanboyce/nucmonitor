@@ -39,6 +39,7 @@ import {
 import { STARTUP_HUBS, ACCELERATORS, TECH_HQS, CLOUD_REGIONS } from '@/config/tech-geo';
 import { AI_DATA_CENTERS } from '@/config/ai-datacenters';
 import { worldTopologyUrl, UNDERSEA_CABLES, NUCLEAR_FACILITIES, SANCTIONED_COUNTRIES, ECONOMIC_CENTERS, SPACEPORTS, CRITICAL_MINERALS } from '@/config/geo-map';
+import { US_NUCLEAR_FACILITIES } from '@/config/us-nuclear-facilities';
 import { pinWebcam, isPinned } from '@/services/webcams/pinned-store';
 import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
 import { tokenizeForMatch, matchKeyword, findMatchingKeywords } from '@/utils/keyword-match';
@@ -628,6 +629,16 @@ export class MapComponent {
     // later trim still discloses, instead of spending overlay fair-share with
     // no row (#7144). fires is unbounded (toMapFires caps nothing) and must
     // keep a row — it is the feed #7112 exists to bound.
+    // Nuclear variant — SVG/mobile fallback. Facilities registry plus the
+    // hazard layers this renderer can paint.
+    const nuclearLayers: (keyof MapLayers)[] = [
+      'usNuclearFacilities',                  // NucMonitor registry
+      'natural', 'weather', 'fires',          // all-hazards inputs
+      'outages',                              // grid status
+      'nuclear', 'irradiators',               // global strategic context
+      'pipelines', 'cables', 'datacenters',   // infrastructure
+      'economic',
+    ];
     const commodityLayers: (keyof MapLayers)[] = [
       'commodityHubs', 'minerals',                    // commodity identity
       'pipelines', 'waterways', 'ais',                // logistics
@@ -641,6 +652,7 @@ export class MapComponent {
                  : SITE_VARIANT === 'finance' ? financeLayers
                  : SITE_VARIANT === 'happy' ? happyLayers
                  : SITE_VARIANT === 'energy' ? energyLayers
+                 : SITE_VARIANT === 'nuclear' ? nuclearLayers
                  : SITE_VARIANT === 'commodity' ? commodityLayers
                  : fullLayers).filter((key) => !isSunsetLayer(key) && isLayerExecutable(key, 'svg'));
     const MAX_SVG_LAYERS = 9;
@@ -1930,6 +1942,7 @@ export class MapComponent {
     // is planned but not rendered would spend fair share it never uses, and
     // tighten the cap on the layers that do render.
     if (this.isLayerZoomVisible('nuclear')) add('nuclear', NUCLEAR_FACILITIES);
+    if (layers.usNuclearFacilities) add('usNuclearFacilities', US_NUCLEAR_FACILITIES);
     if (layers.irradiators) add('irradiators', GAMMA_IRRADIATORS);
     if (layers.conflicts) {
       add('conflicts', CONFLICT_ZONES);
@@ -2246,6 +2259,34 @@ export class MapComponent {
           const rect = this.container.getBoundingClientRect();
           this.popup.show({
             type: 'nuclear',
+            data: facility,
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+          });
+        });
+
+        this.appendOverlay(div);
+      });
+    }
+
+    // NucMonitor — US nuclear facility registry (HTML markers, category-colored)
+    if (this.state.layers.usNuclearFacilities) {
+      US_NUCLEAR_FACILITIES.forEach((facility) => {
+        if (this.isOverlayMarkerCut(facility)) return;
+        const pos = projection([facility.lon, facility.lat]);
+        if (!pos) return;
+
+        const div = document.createElement('div');
+        div.className = `us-nuclear-marker ${facility.category}`;
+        div.style.left = `${pos[0]}px`;
+        div.style.top = `${pos[1]}px`;
+        div.title = `${facility.name} (${facility.category})`;
+
+        div.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rect = this.container.getBoundingClientRect();
+          this.popup.show({
+            type: 'usNuclear',
             data: facility,
             x: e.clientX - rect.left,
             y: e.clientY - rect.top,

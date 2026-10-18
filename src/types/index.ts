@@ -762,6 +762,8 @@ export interface MapLayers {
   /** Live tanker positions (AIS ship type 80-89) inside chokepoint bboxes.
    *  Refreshed every 60s via getVesselSnapshot. Energy Atlas parity-push. */
   liveTankers?: boolean;
+  /** NucMonitor registry of US nuclear facilities (src/config/us-nuclear-facilities.ts). */
+  usNuclearFacilities?: boolean;
 }
 
 export interface AIDataCenter {

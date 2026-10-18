@@ -110,6 +110,20 @@ const SOURCE_DOMAIN_MATCHERS = [
 // Keep ambiguous structured providers explicit so a new unmatched provider
 // fails the build instead of silently becoming "geopolitics".
 const SOURCE_DOMAIN_OVERRIDES = new Map([
+  // NucMonitor nuclear hub: regulators, agencies, and nuclear trade press.
+  ['nrc.gov', 'energy'],
+  ['www.nrc.gov', 'energy'],
+  ['energy.gov', 'energy'],
+  ['epa.gov', 'environment'],
+  ['iaea.org', 'energy'],
+  ['ans.org', 'energy'],
+  ['nei.org', 'energy'],
+  ['neimagazine.com', 'energy'],
+  ['exchangemonitor.com', 'energy'],
+  ['world-nuclear-news.org', 'energy'],
+  ['powermag.com', 'energy'],
+  ['utilitydive.com', 'energy'],
+  ['ucs.org', 'energy'],
   ['Alberta Emergency Alert', 'environment'],
   ['B.C. Evacuation Orders and Alerts', 'environment'],
   ['SaskAlert', 'environment'],

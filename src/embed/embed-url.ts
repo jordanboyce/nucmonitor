@@ -29,7 +29,7 @@ export const EMBEDDABLE_LAYERS = [
 ] as const;
 
 export type EmbedTheme = 'dark' | 'light';
-export type EmbedVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'happy' | 'energy';
+export type EmbedVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'happy' | 'energy' | 'nuclear';
 
 export interface EmbedCenter {
   lat: number;
@@ -91,7 +91,7 @@ const EMBED_LAYER_ALIASES = new Map<string, EmbedLayerId>(([
 ] as const).map(([alias, id]) => [alias.toLowerCase(), id]));
 
 const VALID_THEMES = new Set<EmbedTheme>(['dark', 'light']);
-const VALID_VARIANTS = new Set<EmbedVariant>(['full', 'tech', 'finance', 'commodity', 'happy', 'energy']);
+const VALID_VARIANTS = new Set<EmbedVariant>(['full', 'tech', 'finance', 'commodity', 'happy', 'energy', 'nuclear']);
 
 export function createBlankMapLayers(): MapLayers {
   return {

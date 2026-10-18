@@ -30,6 +30,7 @@ export const SUPPORTED_VARIANTS = new Set([
   'finance',
   'commodity',
   'energy',
+  'nuclear',
   'happy',
 ]);
 

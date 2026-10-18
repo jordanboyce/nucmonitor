@@ -115,6 +115,7 @@ import {
 import { STARTUP_HUBS, ACCELERATORS, TECH_HQS, CLOUD_REGIONS } from '@/config/tech-geo';
 import { AI_DATA_CENTERS } from '@/config/ai-datacenters';
 import { UNDERSEA_CABLES, NUCLEAR_FACILITIES, ECONOMIC_CENTERS, SPACEPORTS, CRITICAL_MINERALS, SANCTIONED_COUNTRIES_ALPHA2 } from '@/config/geo-map';
+import { US_NUCLEAR_FACILITIES, US_NUCLEAR_CATEGORY_LABELS, type UsNuclearFacility, type UsNuclearFacilityCategory } from '@/config/us-nuclear-facilities';
 import type { GulfInvestment } from '@/types';
 import { resolveTradeRouteSegments, TRADE_ROUTES as TRADE_ROUTES_LIST, type TradeRouteSegment, type TradeRouteStatus } from '@/config/trade-routes';
 import type { ScenarioVisualState } from '@/config/scenario-templates';
@@ -378,6 +379,19 @@ const MARKER_ICONS = {
 
 const BASES_ICON_MAPPING = { triangleUp: { x: 0, y: 0, width: 32, height: 32, mask: true } };
 const NUCLEAR_ICON_MAPPING = { hexagon: { x: 0, y: 0, width: 32, height: 32, mask: true } };
+
+// NucMonitor registry layer palette, keyed by facility category.
+const US_NUCLEAR_LAYER_COLORS: Record<UsNuclearFacilityCategory, [number, number, number, number]> = {
+  'power-reactor': [245, 197, 24, 230],
+  restart: [46, 204, 113, 230],
+  'new-build': [52, 152, 219, 230],
+  decommissioning: [149, 165, 166, 200],
+  'fuel-cycle': [155, 89, 182, 230],
+  'doe-site': [231, 76, 60, 220],
+  'research-reactor': [26, 188, 156, 220],
+  'uranium-recovery': [230, 126, 34, 220],
+  waste: [127, 140, 141, 200],
+};
 const DATACENTER_ICON_MAPPING = { square: { x: 0, y: 0, width: 32, height: 32, mask: true } };
 const AIRCRAFT_ICON_MAPPING = { plane: { x: 0, y: 0, width: 32, height: 32, mask: true } };
 
@@ -2069,6 +2083,11 @@ export class DeckGLMap {
     }
     layers.push(this.createEmptyGhost('nuclear-layer'));
 
+    // NucMonitor — US nuclear facility registry (always visible; small dataset)
+    if (mapLayers.usNuclearFacilities) {
+      layers.push(this.createUsNuclearFacilitiesLayer());
+    }
+
     // Gamma irradiators layer — hidden at low zoom
     if (mapLayers.irradiators && this.isLayerVisible('irradiators')) {
       layers.push(this.createIrradiatorsLayer());
@@ -3157,6 +3176,28 @@ export class DeckGLMap {
       sizeMaxPixels: 15,
       pickable: true,
       updateTriggers: { getSize: highlightSignature, getColor: highlightSignature },
+    });
+  }
+
+  /**
+   * NucMonitor — US nuclear facility registry (src/config/us-nuclear-facilities.ts).
+   * Hexagon icons colored by category so an operating reactor, a DOE site, and
+   * a decommissioning ISFSI read differently at a glance.
+   */
+  private createUsNuclearFacilitiesLayer(): IconLayer {
+    return new IconLayer({
+      id: 'us-nuclear-facilities-layer',
+      data: US_NUCLEAR_FACILITIES,
+      getPosition: (d: UsNuclearFacility) => [d.lon, d.lat],
+      getIcon: () => 'hexagon',
+      iconAtlas: MARKER_ICONS.hexagon,
+      iconMapping: NUCLEAR_ICON_MAPPING,
+      getSize: (d: UsNuclearFacility) => (d.category === 'power-reactor' || d.category === 'restart' ? 14 : d.category === 'research-reactor' ? 8 : 11),
+      getColor: (d: UsNuclearFacility) => US_NUCLEAR_LAYER_COLORS[d.category],
+      sizeScale: 1,
+      sizeMinPixels: 6,
+      sizeMaxPixels: 16,
+      pickable: true,
     });
   }
 
@@ -5026,6 +5067,8 @@ export class DeckGLMap {
         return { html: `<div class="deckgl-tooltip"><strong>${numericLabel(obj.count)} bases</strong></div>` };
       case 'nuclear-layer':
         return { html: `<div class="deckgl-tooltip"><strong>${text(obj.name)}</strong><br/>${text(obj.type)}</div>` };
+      case 'us-nuclear-facilities-layer':
+        return { html: `<div class="deckgl-tooltip"><strong>${text(obj.name)}</strong><br/>${text(US_NUCLEAR_CATEGORY_LABELS[(obj as UsNuclearFacility).category])} · ${text(obj.state)}</div>` };
       case 'datacenters-layer':
         return { html: `<div class="deckgl-tooltip"><strong>${text(obj.name)}</strong><br/>${text(obj.owner)}</div>` };
       case 'cables-layer':
@@ -5532,6 +5575,7 @@ export class DeckGLMap {
 
       'bases-layer': 'base',
       'nuclear-layer': 'nuclear',
+      'us-nuclear-facilities-layer': 'usNuclear',
       'irradiators-layer': 'irradiator',
       'radiation-watch-layer': 'radiation',
       'datacenters-layer': 'datacenter',
@@ -6263,6 +6307,19 @@ export class DeckGLMap {
             { shape: shapes.circle('rgb(241, 196, 15)'), label: t('components.deckgl.legend.diseaseWatch'), layerKey: 'diseaseOutbreaks' },
             ...resilienceLegendItems,
           ]
+          : SITE_VARIANT === 'nuclear'
+            ? [
+              { shape: shapes.hexagon('rgb(245, 197, 24)'), label: 'Operating power reactor', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.hexagon('rgb(46, 204, 113)'), label: 'Restart program', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.hexagon('rgb(52, 152, 219)'), label: 'New build / advanced reactor', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.hexagon('rgb(231, 76, 60)'), label: 'DOE / NNSA site', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.hexagon('rgb(155, 89, 182)'), label: 'Fuel cycle', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.hexagon('rgb(26, 188, 156)'), label: 'Research reactor', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.hexagon('rgb(149, 165, 166)'), label: 'Decommissioning / waste', layerKey: 'usNuclearFacilities' },
+              { shape: shapes.circle('rgb(255, 68, 68)'), label: t('components.deckgl.layers.radiationSpike'), layerKey: 'radiationWatch' },
+              { shape: shapes.circle('rgb(255, 165, 0)'), label: t('components.deckgl.layers.radiationElevated'), layerKey: 'radiationWatch' },
+              ...resilienceLegendItems,
+            ]
           : SITE_VARIANT === 'commodity'
             ? [
               { shape: shapes.hexagon(isLight ? 'rgb(180, 120, 0)' : 'rgb(255, 200, 0)'), label: t('components.deckgl.legend.commodityHub'), layerKey: 'commodityHubs' },

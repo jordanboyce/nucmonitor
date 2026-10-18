@@ -1,0 +1,270 @@
+/* NucMonitor — nuclear variant panels (reactor status, facility hazards, directory) */
+
+:root {
+  --nuc-accent: #f5c518;
+  --nuc-accent-dim: rgba(245, 197, 24, 0.18);
+  --nuc-critical: #e74c3c;
+  --nuc-high: #f39c12;
+  --nuc-elevated: #f1c40f;
+  --nuc-watch: #7f8c8d;
+  --nuc-ok: #2ecc71;
+}
+
+[data-variant="nuclear"] .logo { color: var(--nuc-accent); }
+
+/* ── shared summary cards ─────────────────────────────────────────────── */
+.nrs-summary, .nfh-summary, .nfd-fleet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.nrs-card, .nfh-card, .nfd-card {
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nrs-card-label, .nfh-card-label, .nfd-card-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nrs-card-value, .nfh-card-value, .nfd-card-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.nfd-card-regions { font-size: 12px; }
+.nfd-card-sub { font-size: 10px; color: var(--text-dim, #888); }
+.nrs-card-full .nrs-card-value { color: var(--nuc-ok); }
+.nrs-card-reduced .nrs-card-value { color: var(--nuc-high); }
+.nrs-card-off .nrs-card-value { color: var(--nuc-critical); }
+.nfh-card-critical .nfh-card-value { color: var(--nuc-critical); }
+.nfh-card-high .nfh-card-value { color: var(--nuc-high); }
+.nfh-card-elevated .nfh-card-value { color: var(--nuc-elevated); }
+
+/* ── filter chips ─────────────────────────────────────────────────────── */
+.nrs-filters, .nfh-filters, .nfd-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.nrs-filter, .nfh-sev-filter, .nfd-cat {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--text-secondary, #bbb);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nrs-filter.active, .nfh-sev-filter.active, .nfd-cat.active {
+  background: var(--nuc-accent-dim);
+  border-color: var(--nuc-accent);
+  color: var(--text-primary, #fff);
+}
+.nrs-filter-count, .nfh-chip-count, .nfd-cat-count { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.nfh-sev-filter.nfh-sev-critical.active { border-color: var(--nuc-critical); }
+.nfh-sev-filter.nfh-sev-high.active { border-color: var(--nuc-high); }
+
+/* ── tables ───────────────────────────────────────────────────────────── */
+.nrs-table, .nfh-table, .nfd-table, .nfd-units {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.nrs-table th, .nfh-table th, .nfd-table th, .nfd-units th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #888);
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel, #141414);
+}
+.nrs-table td, .nfh-table td, .nfd-table td, .nfd-units td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.05));
+  vertical-align: top;
+}
+.nrs-row, .nfh-row, .nfd-row { cursor: pointer; }
+.nrs-row:hover, .nfh-row:hover, .nfd-row:hover,
+.nrs-row:focus-visible, .nfh-row:focus-visible, .nfd-row:focus-visible {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+  outline: none;
+}
+.nrs-row.expanded, .nfh-row.expanded, .nfd-row.expanded { background: var(--nuc-accent-dim); }
+.nrs-unit-name, .nfh-facility-name, .nfd-name-main { font-weight: 600; }
+.nrs-unit-meta, .nfh-facility-meta, .nfd-name-meta { font-size: 10px; color: var(--text-dim, #888); }
+.nrs-reason, .nfh-top { color: var(--text-secondary, #bbb); }
+
+.nrs-power-pill {
+  display: inline-block;
+  min-width: 42px;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #000;
+}
+.nrs-power-full { background: var(--nuc-ok); }
+.nrs-power-reduced { background: var(--nuc-elevated); }
+.nrs-power-low { background: var(--nuc-high); }
+.nrs-power-off { background: var(--nuc-critical); color: #fff; }
+.nrs-delta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nrs-delta.down { color: var(--nuc-critical); }
+.nrs-delta.up { color: var(--nuc-ok); }
+
+.nrs-detail td, .nfh-detail td, .nfd-detail td {
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  padding: 8px 10px;
+}
+.nrs-detail-grid, .nfd-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 12px;
+  margin-bottom: 6px;
+}
+.nrs-detail-grid > div, .nfd-detail-grid > div { display: flex; flex-direction: column; }
+.nrs-detail-label, .nfd-detail-label { font-size: 10px; text-transform: uppercase; color: var(--text-dim, #888); }
+.nrs-detail-spark { font-size: 11px; color: var(--text-dim, #888); display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.nrs-spark { color: var(--nuc-accent); }
+.nrs-locate, .nfh-locate, .nfd-locate {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--nuc-accent);
+  background: transparent;
+  color: var(--nuc-accent);
+  cursor: pointer;
+}
+.nrs-locate:hover, .nfh-locate:hover, .nfd-locate:hover { background: var(--nuc-accent-dim); }
+.nrs-footer, .nfh-footer, .nfd-footer {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-dim, #888);
+}
+.nrs-footer a, .nfh-footer a, .nfd-footer a, .nfd-detail a, .nfh-signal-meta a { color: var(--nuc-accent); }
+
+/* ── hazards ──────────────────────────────────────────────────────────── */
+.nfh-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; font-size: 11px; }
+.nfh-kind { padding: 2px 6px; border-radius: 4px; background: var(--bg-elevated, rgba(255, 255, 255, 0.04)); }
+.nfh-kind-none { color: var(--text-dim, #888); }
+.nfh-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #000;
+}
+.nfh-badge-critical { background: var(--nuc-critical); color: #fff; }
+.nfh-badge-high { background: var(--nuc-high); }
+.nfh-badge-elevated { background: var(--nuc-elevated); }
+.nfh-badge-watch { background: var(--nuc-watch); color: #fff; }
+.nfh-signal-count { display: block; font-size: 10px; color: var(--text-dim, #888); margin-top: 2px; }
+.nfh-row-critical .nfh-facility-name { color: var(--nuc-critical); }
+.nfh-row-high .nfh-facility-name { color: var(--nuc-high); }
+.nfh-signals { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.nfh-signal { display: grid; grid-template-columns: 20px 1fr; gap: 2px 6px; font-size: 11px; border-left: 2px solid var(--nuc-watch); padding-left: 6px; }
+.nfh-signal-critical { border-left-color: var(--nuc-critical); }
+.nfh-signal-high { border-left-color: var(--nuc-high); }
+.nfh-signal-elevated { border-left-color: var(--nuc-elevated); }
+.nfh-signal-meta { grid-column: 2; font-size: 10px; color: var(--text-dim, #888); }
+.nfh-detail-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary, #bbb); }
+
+/* ── directory ────────────────────────────────────────────────────────── */
+.nfd-toolbar { margin-bottom: 6px; }
+.nfd-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  color: var(--text-primary, #fff);
+}
+.nfd-cat-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--nuc-accent-dim);
+  color: var(--text-primary, #fff);
+  white-space: nowrap;
+}
+.nfd-cat-power-reactor { background: rgba(245, 197, 24, 0.25); }
+.nfd-cat-restart { background: rgba(46, 204, 113, 0.25); }
+.nfd-cat-new-build { background: rgba(52, 152, 219, 0.25); }
+.nfd-cat-decommissioning { background: rgba(127, 140, 141, 0.3); }
+.nfd-cat-fuel-cycle { background: rgba(155, 89, 182, 0.25); }
+.nfd-cat-doe-site { background: rgba(231, 76, 60, 0.22); }
+.nfd-cat-research-reactor { background: rgba(26, 188, 156, 0.25); }
+.nfd-cat-uranium-recovery { background: rgba(230, 126, 34, 0.25); }
+.nfd-cat-waste { background: rgba(149, 165, 166, 0.3); }
+.nfd-status { display: block; font-size: 10px; color: var(--text-dim, #888); margin-top: 2px; }
+.nfd-units-cell { font-size: 11px; color: var(--text-secondary, #bbb); }
+.nfd-notes { margin: 0 0 6px; font-size: 11px; color: var(--text-secondary, #bbb); }
+.nfd-units { margin: 6px 0; font-size: 11px; }
+.nfd-units th { position: static; }
+.nfd-unit-status { text-transform: capitalize; }
+.nfd-unit-operating { color: var(--nuc-ok); }
+.nfd-unit-restarting, .nfd-unit-construction, .nfd-unit-licensing { color: var(--nuc-elevated); }
+.nfd-unit-shutdown { color: var(--text-dim, #888); }
+.nfd-detail-footer { display: flex; justify-content: flex-end; align-items: center; gap: 10px; font-size: 11px; }
+
+@media (max-width: 600px) {
+  .nrs-table th:nth-child(4), .nrs-table td.nrs-reason,
+  .nfd-table th:nth-child(3), .nfd-table td.nfd-units-cell { display: none; }
+}
+
+/* ── SVG / mobile map markers for the US facility registry ───────────── */
+.us-nuclear-marker {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(var(--marker-scale, 1));
+  transform-origin: center;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  z-index: 52;
+  cursor: pointer;
+  background: var(--nuc-accent);
+  box-shadow: 0 0 6px rgba(245, 197, 24, 0.6);
+  clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
+}
+.us-nuclear-marker.restart { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.6); }
+.us-nuclear-marker.new-build { background: #3498db; box-shadow: 0 0 6px rgba(52, 152, 219, 0.6); }
+.us-nuclear-marker.decommissioning, .us-nuclear-marker.waste { background: #95a5a6; box-shadow: none; width: 9px; height: 9px; }
+.us-nuclear-marker.fuel-cycle { background: #9b59b6; box-shadow: 0 0 6px rgba(155, 89, 182, 0.6); }
+.us-nuclear-marker.doe-site { background: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, 0.6); }
+.us-nuclear-marker.research-reactor { background: #1abc9c; box-shadow: none; width: 8px; height: 8px; }
+.us-nuclear-marker.uranium-recovery { background: #e67e22; box-shadow: none; width: 9px; height: 9px; }
+
+.popup-table.us-nuclear-units { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+.popup-table.us-nuclear-units th { text-align: left; font-weight: 500; opacity: 0.7; padding: 2px 4px; }
+.popup-table.us-nuclear-units td { padding: 2px 4px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.popup-links { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; }
+.popup-links a { color: var(--nuc-accent); }
+.popup-tag { opacity: 0.75; }

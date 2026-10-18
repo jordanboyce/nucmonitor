@@ -2,6 +2,7 @@ export const MISSION_PRESET_IDS = [
   'crisis-desk',
   'supply-chain-risk',
   'energy-security',
+  'nuclear-hub',
   'osint-newsroom',
   'macro-market-watch',
   'tech-ai-watch',

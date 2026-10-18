@@ -32,7 +32,7 @@ import { maybeServeBootstrapFromKv } from './kv-serve.js';
 // echoed back and fail CORS at the browser.
 // App-serving hosts only; sibling vendor hosts do not inherit browser trust.
 // Keep aligned with convex/payments/returnUrlOrigin.ts and CORS parity tests.
-const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|tech|finance|commodity|happy|energy)\.)?worldmonitor\.app$/;
+const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|tech|finance|commodity|happy|energy|nuclear)\.)?worldmonitor\.app$/;
 const MAX_ORIGIN_BYTES = 300;
 const ORIGIN_ENCODER = new TextEncoder();
 

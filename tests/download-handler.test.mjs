@@ -77,7 +77,7 @@ test('does not treat inherited Object properties as known platforms', async () =
 // advertised `techmonitor`/`financemonitor` assets no pipeline has ever built,
 // so `variant=tech` and `variant=finance` could only ever 302 to the releases
 // page while the docs and the in-app switcher promised a download.
-for (const variant of ['full', 'world', 'tech', 'finance', 'commodity', 'energy', 'happy']) {
+for (const variant of ['full', 'world', 'tech', 'finance', 'commodity', 'energy', 'happy', 'nuclear']) {
   test(`resolves variant=${variant} to the single desktop binary`, async () => {
     const response = await download(`platform=linux-appimage&variant=${variant}`);
     assert.equal(response.status, 302);

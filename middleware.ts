@@ -98,6 +98,7 @@ const VARIANT_HOST_MAP: Record<string, string> = {
   'commodity.worldmonitor.app': 'commodity',
   'happy.worldmonitor.app': 'happy',
   'energy.worldmonitor.app': 'energy',
+  'nuclear.worldmonitor.app': 'nuclear',
 };
 
 function hasLegacyDashboardRootState(searchParams: URLSearchParams): boolean {

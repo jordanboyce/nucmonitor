@@ -1127,6 +1127,59 @@ const ENERGY_FEEDS: Record<string, Feed[]> = {
   ],
 };
 
+const NUCLEAR_FEEDS: Record<string, Feed[]> = {
+  'live-news': [
+    { name: 'World Nuclear News',    url: rss('https://news.google.com/rss/search?q=site:world-nuclear-news.org+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'ANS Nuclear Newswire',  url: rss('https://news.google.com/rss/search?q=site:ans.org+nuclear+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'NRC News',              url: rss('https://news.google.com/rss/search?q=site:nrc.gov+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Reuters Nuclear',       url: rss('https://news.google.com/rss/search?q=site:reuters.com+(nuclear+OR+reactor+OR+uranium+OR+NRC)+when:1d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'AP Nuclear',            url: rss('https://news.google.com/rss/search?q=site:apnews.com+(nuclear+plant+OR+reactor+OR+"nuclear+regulatory")+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'US Nuclear Plants',     url: rss('https://news.google.com/rss/search?q=("nuclear+plant"+OR+"nuclear+power+plant"+OR+"nuclear+station")+(outage+OR+refueling+OR+restart+OR+shutdown+OR+NRC+OR+license)+when:1d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Utility Dive Nuclear',  url: rss('https://news.google.com/rss/search?q=site:utilitydive.com+nuclear+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'POWER Magazine Nuclear', url: rss('https://news.google.com/rss/search?q=site:powermag.com+nuclear+when:3d&hl=en-US&gl=US&ceid=US:en') },
+  ],
+  'nuclear-regulatory': [
+    { name: 'NRC News',              url: rss('https://news.google.com/rss/search?q=site:nrc.gov+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'NRC Event Reports',     url: rss('https://news.google.com/rss/search?q=site:nrc.gov+("event+notification"+OR+"event+report"+OR+"inspection+report"+OR+"confirmatory+action")+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'DOE Nuclear Energy',    url: rss('https://news.google.com/rss/search?q=site:energy.gov+(nuclear+OR+reactor+OR+uranium+OR+HALEU)+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'NNSA',                  url: rss('https://news.google.com/rss/search?q=site:energy.gov/nnsa+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'DOE Environmental Management', url: rss('https://news.google.com/rss/search?q=site:energy.gov/em+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'EIA Nuclear',           url: rss('https://news.google.com/rss/search?q=site:eia.gov+nuclear+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'IAEA News',             url: rss('https://news.google.com/rss/search?q=site:iaea.org+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'EPA RadNet',            url: rss('https://news.google.com/rss/search?q=site:epa.gov+(radnet+OR+radiation+OR+radiological)+when:14d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'FEMA & Emergency Management', url: rss('https://news.google.com/rss/search?q=site:fema.gov+(nuclear+OR+radiological)+when:14d&hl=en-US&gl=US&ceid=US:en') },
+  ],
+  'nuclear-industry': [
+    { name: 'World Nuclear News',    url: rss('https://news.google.com/rss/search?q=site:world-nuclear-news.org+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'ANS Nuclear Newswire',  url: rss('https://news.google.com/rss/search?q=site:ans.org+nuclear+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'NEI',                   url: rss('https://news.google.com/rss/search?q=site:nei.org+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Exchange Monitor',      url: rss('https://news.google.com/rss/search?q=site:exchangemonitor.com+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Nuclear Engineering International', url: rss('https://news.google.com/rss/search?q=site:neimagazine.com+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'SMR & Advanced Reactors', url: rss('https://news.google.com/rss/search?q=("small+modular+reactor"+OR+SMR+OR+"advanced+reactor"+OR+microreactor+OR+TerraPower+OR+"X-energy"+OR+NuScale+OR+Kairos+OR+Oklo)+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Uranium & Fuel Cycle',  url: rss('https://news.google.com/rss/search?q=(uranium+OR+enrichment+OR+HALEU+OR+Centrus+OR+Urenco+OR+"fuel+fabrication"+OR+"spent+fuel")+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Nuclear & Data Centers', url: rss('https://news.google.com/rss/search?q=(nuclear+AND+("data+center"+OR+hyperscaler+OR+Microsoft+OR+Amazon+OR+Google+OR+Meta)+AND+(power+OR+reactor+OR+PPA))+when:3d&hl=en-US&gl=US&ceid=US:en') },
+  ],
+  'nuclear-policy': [
+    { name: 'Nuclear Policy',        url: rss('https://news.google.com/rss/search?q=("nuclear+energy"+OR+"nuclear+power")+(Congress+OR+Senate+OR+"White+House"+OR+"executive+order"+OR+legislation+OR+ADVANCE+Act)+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Spent Fuel & Waste',    url: rss('https://news.google.com/rss/search?q=("spent+nuclear+fuel"+OR+"nuclear+waste"+OR+"Yucca+Mountain"+OR+"interim+storage"+OR+WIPP+OR+ISFSI)+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Nuclear Security & Nonproliferation', url: rss('https://news.google.com/rss/search?q=(nonproliferation+OR+"nuclear+security"+OR+"nuclear+safeguards"+OR+"nuclear+material")+when:3d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Bulletin of the Atomic Scientists', url: rss('https://news.google.com/rss/search?q=site:thebulletin.org+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Union of Concerned Scientists', url: rss('https://news.google.com/rss/search?q=site:ucs.org+nuclear+when:14d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'State Radiation Programs', url: rss('https://news.google.com/rss/search?q=("radiation+control"+OR+"radiological+emergency"+OR+"emergency+planning+zone"+OR+"potassium+iodide")+nuclear+when:7d&hl=en-US&gl=US&ceid=US:en') },
+  ],
+  energy: [
+    { name: 'EIA Press Room',        url: rss('https://www.eia.gov/rss/press_room.xml') },
+    { name: 'Natural Gas & LNG',     url: rss('https://news.google.com/rss/search?q=("natural+gas"+OR+LNG+OR+"gas+price"+OR+"Henry+Hub")+when:1d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'US Grid & Reliability', url: rss('https://news.google.com/rss/search?q=(NERC+OR+PJM+OR+ERCOT+OR+MISO+OR+"grid+reliability"+OR+"capacity+auction")+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Energy Intel',          url: rss('https://news.google.com/rss/search?q=(energy+commodities+OR+"energy+market"+OR+"energy+prices"+OR+"energy+security")+when:2d&hl=en-US&gl=US&ceid=US:en') },
+  ],
+  'climate-news': [
+    { name: 'NWS & Severe Weather',  url: rss('https://news.google.com/rss/search?q=("National+Weather+Service"+OR+"hurricane+warning"+OR+"tornado+warning"+OR+"flash+flood")+when:1d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'USGS Earthquakes',      url: rss('https://news.google.com/rss/search?q=(earthquake+USGS+OR+"magnitude"+earthquake)+(US+OR+California+OR+Virginia+OR+Oklahoma)+when:2d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Wildfire & Heat',       url: rss('https://news.google.com/rss/search?q=(wildfire+OR+"red+flag+warning"+OR+"heat+dome"+OR+"extreme+heat")+(utility+OR+power+OR+plant)+when:2d&hl=en-US&gl=US&ceid=US:en') },
+  ],
+};
+
 // Variant-aware exports
 export const FEEDS = SITE_VARIANT === 'tech'
   ? TECH_FEEDS
@@ -1138,7 +1191,9 @@ export const FEEDS = SITE_VARIANT === 'tech'
         ? COMMODITY_FEEDS
         : SITE_VARIANT === 'energy'
           ? ENERGY_FEEDS
-          : FULL_FEEDS;
+          : SITE_VARIANT === 'nuclear'
+            ? NUCLEAR_FEEDS
+            : FULL_FEEDS;
 
 // Canonical category→feeds map: the union of every variant's feed set.
 // `FEEDS` (above) is just the active variant's PRESET; users freely customize
@@ -1165,6 +1220,7 @@ export const CANONICAL_FEEDS: Record<string, Feed[]> = mergeCanonicalFeeds([
   FINANCE_FEEDS,
   COMMODITY_FEEDS,
   ENERGY_FEEDS,
+  NUCLEAR_FEEDS,
   HAPPY_FEEDS,
   ON_DEMAND_FEEDS,
 ]);

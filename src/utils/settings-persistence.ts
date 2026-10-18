@@ -41,7 +41,7 @@ const SETTINGS_KEYS: readonly string[] = [
 // Dashboard tabs are stored per variant (`worldmonitor-tabs-v1:<variant>`,
 // src/services/tab-store.ts). Without this pattern an export/import cycle
 // restored the active layout and silently dropped every other workspace (#9372).
-const DASHBOARD_TABS_KEY_RE = /^worldmonitor-tabs-v1:(?:full|tech|finance|commodity|energy|happy)$/;
+const DASHBOARD_TABS_KEY_RE = /^worldmonitor-tabs-v1:(?:full|tech|finance|commodity|energy|happy|nuclear)$/;
 
 function isDashboardTabsKey(key: string): boolean {
   return DASHBOARD_TABS_KEY_RE.test(key);
@@ -49,7 +49,7 @@ function isDashboardTabsKey(key: string): boolean {
 
 function isSettingsKey(key: string): boolean {
   return SETTINGS_KEYS.includes(key)
-    || /^(?:worldmonitor-panels|worldmonitor-layers|worldmonitor-disabled-feeds)-(?:full|tech|finance|commodity|energy|happy)$/.test(key)
+    || /^(?:worldmonitor-panels|worldmonitor-layers|worldmonitor-disabled-feeds)-(?:full|tech|finance|commodity|energy|happy|nuclear)$/.test(key)
     || isDashboardTabsKey(key);
 }
 

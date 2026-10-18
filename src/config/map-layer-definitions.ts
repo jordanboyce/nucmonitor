@@ -10,7 +10,7 @@ import { isDesktopRuntime } from '@/services/runtime';
  * imports this type so the picker, dispatcher, and shell stay in lockstep.
  */
 export type RendererKind = 'svg' | 'deck' | 'globe';
-export type MapVariant = 'full' | 'tech' | 'finance' | 'happy' | 'commodity' | 'energy';
+export type MapVariant = 'full' | 'tech' | 'finance' | 'happy' | 'commodity' | 'energy' | 'nuclear';
 
 const _desktop = isDesktopRuntime();
 
@@ -65,6 +65,7 @@ export const LAYER_REGISTRY: Record<keyof MapLayers, LayerDefinition> = {
   bases:                    def('bases',                    '&#127963;', 'militaryBases',            'Military Bases'),
   nuclear:                  def('nuclear',                  '&#9762;',   'nuclearSites',             'Nuclear Sites'),
   irradiators:              def('irradiators',              '&#9888;',   'gammaIrradiators',         'Gamma Irradiators'),
+  usNuclearFacilities:      def('usNuclearFacilities',      '&#9762;',   'usNuclearFacilities',      'US Nuclear Facilities', ['svg', 'deck']),
   radiationWatch:           def('radiationWatch',           '&#9762;',   'radiationWatch',           'Radiation Watch'),
   spaceports:               def('spaceports',               '&#128640;', 'spaceports',               'Spaceports'),
   satellites:               def('satellites',               '&#128752;', 'satellites',               'Orbital Surveillance', ['svg', 'deck', 'globe']),
@@ -146,6 +147,7 @@ export const V1_LAYER_EXPLANATION_KEYS = [
   'tradeRoutes',
   'cyberThreats',
   'hotspots',
+  'usNuclearFacilities',
 ] as const satisfies readonly (keyof MapLayers)[];
 
 export const LAYER_EXPLANATIONS: Partial<Record<keyof MapLayers, LayerExplanation>> = {
@@ -356,6 +358,21 @@ export const LAYER_EXPLANATIONS: Partial<Record<keyof MapLayers, LayerExplanatio
     related: ['Live News panel', 'Strategic Risk panel', 'Country brief', 'Hotspot popups'],
     evidence: ['docs/data-sources.mdx', 'docs/architecture.mdx', 'src/config/geo.ts', 'src/services/hotspot-escalation.ts'],
   },
+  usNuclearFacilities: {
+    key: 'usNuclearFacilities',
+    coverage: 'curated',
+    category: 'Nuclear facilities',
+    purpose: 'Every US nuclear facility in the NucMonitor registry: operating power reactors, restart programs, advanced reactor builds, decommissioning and spent fuel sites, DOE/NNSA complex, fuel cycle plants, research reactors, uranium recovery, and waste sites, colored by category.',
+    source: 'Curated registry (src/config/us-nuclear-facilities.ts) compiled from the NRC facility locator and operating reactor list, DOE/NNSA site pages, and operator disclosures.',
+    freshness: 'Static registry reviewed periodically; the review date is printed in the directory panel footer.',
+    confidence: 'High for site identity and location; capacities and license dates may lag uprates and renewals.',
+    limitations: [
+      'Not a live operational status — pair with the NRC Reactor Power Status panel.',
+      'Coordinates are site centroids, not exclusion-area boundaries or emergency planning zones.',
+    ],
+    related: ['NRC Reactor Power Status panel', 'Facility All-Hazards Watch panel', 'US Nuclear Facility Directory panel', 'Radiation Watch layer'],
+    evidence: ['src/config/us-nuclear-facilities.ts', 'docs/nuclear-hub.mdx'],
+  },
 };
 
 const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
@@ -398,6 +415,12 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
     // Energy-adjacent context
     'sanctions', 'fires', 'climate', 'weather', 'canadaRoads', 'outages', 'natural', 'canadaAlerts',
     'resilienceScore', 'dayNight',
+  ],
+  nuclear: [
+    // NucMonitor — facilities first, then every hazard layer that can touch a site
+    'usNuclearFacilities', 'radiationWatch', 'natural', 'weather', 'fires', 'outages',
+    'nuclear', 'irradiators', 'climate', 'canadaAlerts', 'pipelines', 'datacenters',
+    'cables', 'bases', 'economic', 'resilienceScore', 'dayNight',
   ],
 };
 
@@ -639,8 +662,11 @@ export const LAYER_SYNONYMS: Record<string, Array<keyof MapLayers>> = {
   army: ['military', 'bases'],
   navy: ['military', 'ais'],
   missile: ['iranAttacks', 'military'],
-  nuke: ['nuclear'],
-  radiation: ['radiationWatch', 'nuclear', 'irradiators'],
+  nuke: ['nuclear', 'usNuclearFacilities'],
+  reactor: ['usNuclearFacilities', 'nuclear'],
+  reactors: ['usNuclearFacilities', 'nuclear'],
+  nrc: ['usNuclearFacilities'],
+  radiation: ['radiationWatch', 'nuclear', 'irradiators', 'usNuclearFacilities'],
   radnet: ['radiationWatch'],
   safecast: ['radiationWatch'],
   anomaly: ['radiationWatch', 'climate'],

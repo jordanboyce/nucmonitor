@@ -3182,6 +3182,7 @@ export class DataLoaderManager implements AppModule {
     if (earthquakeResult.status === 'fulfilled') {
       this.ctx.intelligenceCache.earthquakes = earthquakeResult.value;
       this.ctx.map?.setEarthquakes(earthquakeResult.value);
+      this.callPanel('nuclear-hazards', 'setEarthquakes', earthquakeResult.value);
       ingestEarthquakes(earthquakeResult.value);
       this.ctx.statusPanel?.updateApi('USGS', { status: 'ok' });
       dataFreshness.recordUpdate('usgs', earthquakeResult.value.length);
@@ -3196,6 +3197,7 @@ export class DataLoaderManager implements AppModule {
     const imdEvents = imdResult.status === 'fulfilled' ? imdResult.value.cycloneEvents : [];
     if (eonetResult.status === 'fulfilled') {
       this.ctx.map?.setNaturalEvents([...eonetResult.value, ...imdEvents]);
+      this.callPanel('nuclear-hazards', 'setNaturalEvents', [...eonetResult.value, ...imdEvents]);
       this.ctx.statusPanel?.updateFeed('EONET', {
         status: 'ok',
         itemCount: eonetResult.value.length,
@@ -3359,6 +3361,7 @@ export class DataLoaderManager implements AppModule {
       return;
     }
     this.ctx.map?.setWeatherAlerts(merged);
+    this.callPanel('nuclear-hazards', 'setWeatherAlerts', merged);
     this.ctx.map?.setLayerReady('weather', merged.length > 0);
     this.ctx.statusPanel?.updateFeed('Weather', { status: 'ok', itemCount: merged.length });
     dataFreshness.recordUpdate('weather', merged.length);
@@ -4726,7 +4729,9 @@ export class DataLoaderManager implements AppModule {
         this.ctx.intelligenceCache.satelliteFires = satelliteFires;
         await runSignalAggregator(this.ctx.statusPanel, 'satellite fires', (aggregator) => aggregator.ingestSatelliteFires(satelliteFires));
 
-        this.ctx.map?.setFires(toMapFires(flat));
+        const mapFires = toMapFires(flat);
+        this.ctx.map?.setFires(mapFires);
+        this.callPanel('nuclear-hazards', 'setFires', mapFires);
 
         (this.ctx.panels['satellite-fires'] as SatelliteFiresPanel)?.update(stats, totalCount);
 
@@ -5011,6 +5016,7 @@ export class DataLoaderManager implements AppModule {
       const result = await fetchRadiationWatch();
       const anomalies = result.observations.filter((observation) => observation.severity !== 'normal');
       this.callPanel('radiation-watch', 'setData', result);
+      this.callPanel('nuclear-hazards', 'setRadiation', result.observations);
       this.ctx.intelligenceCache.radiation = result;
       await runSignalAggregator(this.ctx.statusPanel, 'radiation observations', (aggregator) => aggregator.ingestRadiationObservations(result.observations));
       this.ctx.map?.setRadiationObservations(anomalies);

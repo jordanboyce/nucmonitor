@@ -1019,6 +1019,21 @@ const DYNAMIC_HOSTS = [
 ];
 
 const EXCLUDED_HOSTS = new Set([
+  // NucMonitor facility registry reference links (DOE / NNSA / lab site
+  // homepages shown in popups and the directory). Nothing fetches them; the
+  // fetched nuclear sources are nrc.gov, www.nrc.gov, energy.gov, and the
+  // site-scoped news searches catalogued as publishers.
+  'inl.gov',
+  'www.hanford.gov',
+  'pantex.energy.gov',
+  'wipp.energy.gov',
+  'www.ornl.gov',
+  'www.srs.gov',
+  'www.y12.doe.gov',
+  'www.lanl.gov',
+  'www.llnl.gov',
+  'www.sandia.gov',
+  'www.nnss.gov',
   'test',
   'test.dodopayments.com',
   'live.dodopayments.com',

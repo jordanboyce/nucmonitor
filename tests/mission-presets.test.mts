@@ -650,6 +650,7 @@ describe('mission preset definitions', () => {
         'crisis-desk',
         'supply-chain-risk',
         'energy-security',
+        'nuclear-hub',
         'osint-newsroom',
         'macro-market-watch',
         'tech-ai-watch',

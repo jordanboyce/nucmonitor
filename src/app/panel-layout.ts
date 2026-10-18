@@ -244,6 +244,7 @@ export const VARIANT_SWITCHER_DASHBOARD_URLS = {
   finance: 'https://finance.worldmonitor.app/dashboard',
   commodity: 'https://commodity.worldmonitor.app/dashboard',
   energy: 'https://energy.worldmonitor.app/dashboard',
+  nuclear: 'https://nuclear.worldmonitor.app/dashboard',
   happy: 'https://happy.worldmonitor.app/dashboard',
 } as const;
 
@@ -279,6 +280,9 @@ export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, Deferred
   'energy-crisis': { rowSpan: 2 },
   'energy-disruptions': { rowSpan: 2 },
   'fuel-shortages': { rowSpan: 2 },
+  'nuclear-reactor-status': { rowSpan: 2 },
+  'nuclear-hazards': { rowSpan: 2 },
+  'nuclear-facilities': { rowSpan: 2 },
   fx: { rowSpan: 2 },
   'gdelt-intel': { rowSpan: 2 },
   'internet-disruptions': { rowSpan: 2 },
@@ -1122,6 +1126,15 @@ export class PanelLayoutManager implements AppModule {
               <span class="variant-label">${t('header.energy')}</span>
             </a>
             <span class="variant-divider"></span>
+            <a href="${vHref('nuclear')}"
+               class="variant-option ${SITE_VARIANT === 'nuclear' ? 'active' : ''}"
+               data-variant="nuclear"
+               ${vTarget('nuclear')}
+               title="${t('header.nuclear')}${SITE_VARIANT === 'nuclear' ? ` ${t('common.currentVariant')}` : ''}">
+              <span class="variant-icon">☢️</span>
+              <span class="variant-label">${t('header.nuclear')}</span>
+            </a>
+            <span class="variant-divider"></span>
             <a href="${vHref('happy')}"
                class="variant-option ${SITE_VARIANT === 'happy' ? 'active' : ''}"
                data-variant="happy"
@@ -1195,6 +1208,7 @@ export class PanelLayoutManager implements AppModule {
           { key: 'finance', icon: '📈', label: t('header.finance') },
           { key: 'commodity', icon: '⛏️', label: t('header.commodity') },
           { key: 'energy', icon: '⚡', label: t('header.energy') },
+          { key: 'nuclear', icon: '☢️', label: t('header.nuclear') },
           { key: 'happy', icon: '☀️', label: 'Good News' },
         ];
         return variants.map(v =>
@@ -1264,7 +1278,7 @@ export class PanelLayoutManager implements AppModule {
         <div class="map-section${mapStartsCollapsed ? ' collapsed' : ''}" id="mapSection">
           <div class="panel-header">
             <div class="panel-header-left">
-              <span class="panel-title">${SITE_VARIANT === 'tech' ? t('panels.techMap') : SITE_VARIANT === 'happy' ? 'Good News Map' : t('panels.map')}</span>
+              <span class="panel-title">${SITE_VARIANT === 'tech' ? t('panels.techMap') : SITE_VARIANT === 'happy' ? 'Good News Map' : SITE_VARIANT === 'nuclear' ? 'US Nuclear Facilities Map' : t('panels.map')}</span>
             </div>
             <span class="header-clock" id="headerClock" translate="no"></span>
             <div class="map-header-actions">
@@ -2774,6 +2788,30 @@ export class PanelLayoutManager implements AppModule {
     this.lazyPanel('fuel-shortages', () =>
       this.importPanel('fuel-shortages', () => import('@/components/FuelShortagePanel'), 'FuelShortagePanel', (FuelShortagePanel) => new FuelShortagePanel()),
     );
+    // NucMonitor — nuclear hub panels. Reactor status self-fetches (primed and
+    // scheduled in App.ts); hazards receives feeds from data-loader; the
+    // directory is static registry data rendered at construction.
+    this.lazyPanel('nuclear-reactor-status', () =>
+      this.importPanel('nuclear-reactor-status', () => import('@/components/NuclearReactorStatusPanel'), 'NuclearReactorStatusPanel', (NuclearReactorStatusPanel) => {
+        const p = new NuclearReactorStatusPanel();
+        p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
+        return p;
+      }),
+    );
+    this.lazyPanel('nuclear-hazards', () =>
+      this.importPanel('nuclear-hazards', () => import('@/components/NuclearFacilityHazardsPanel'), 'NuclearFacilityHazardsPanel', (NuclearFacilityHazardsPanel) => {
+        const p = new NuclearFacilityHazardsPanel();
+        p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
+        return p;
+      }),
+    );
+    this.lazyPanel('nuclear-facilities', () =>
+      this.importPanel('nuclear-facilities', () => import('@/components/NuclearFacilityDirectoryPanel'), 'NuclearFacilityDirectoryPanel', (NuclearFacilityDirectoryPanel) => {
+        const p = new NuclearFacilityDirectoryPanel();
+        p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
+        return p;
+      }),
+    );
     this.lazyPanel('energy-disruptions', () =>
       this.importPanel('energy-disruptions', () => import('@/components/EnergyDisruptionsPanel'), 'EnergyDisruptionsPanel', (EnergyDisruptionsPanel) => new EnergyDisruptionsPanel()),
     );
@@ -2848,6 +2886,9 @@ export class PanelLayoutManager implements AppModule {
     this.createNewsPanel('latam', 'panels.latam');
     this.createNewsPanel('asia', 'panels.asia');
     this.createNewsPanel('energy', 'panels.energy');
+    this.createNewsPanel('nuclear-regulatory', 'panels.nuclearRegulatory');
+    this.createNewsPanel('nuclear-industry', 'panels.nuclearIndustry');
+    this.createNewsPanel('nuclear-policy', 'panels.nuclearPolicy');
 
     // Iterate CANONICAL_FEEDS (union of all variants), not just the active
     // variant's FEEDS preset — so a news panel the user customized in from
@@ -3502,7 +3543,9 @@ export class PanelLayoutManager implements AppModule {
     this.ctx.map = new MapContainer(mapContainer, {
       zoom: this.ctx.isMobile ? 2.5 : 1.0,
       pan: { x: 0, y: 0 },
-      view: this.ctx.isMobile ? this.ctx.resolvedLocation : 'global',
+      // NucMonitor opens on the continental US: every registry facility is
+      // domestic, so a global first view would show a cluster of dots.
+      view: SITE_VARIANT === 'nuclear' ? 'america' : this.ctx.isMobile ? this.ctx.resolvedLocation : 'global',
       layers: this.ctx.mapLayers,
       timeRange: '7d',
     }, preferGlobe, {

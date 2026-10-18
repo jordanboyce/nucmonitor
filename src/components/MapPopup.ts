@@ -1,3 +1,4 @@
+import { getNrcRegion, NRC_REGION_NAMES, nrcDocketUrl, US_NUCLEAR_CATEGORY_LABELS, US_NUCLEAR_STATUS_LABELS, type UsNuclearFacility } from '@/config/us-nuclear-facilities';
 import type { ConflictZone, Hotspot, NewsItem, NewsLocationMarker, MilitaryBase, StrategicWaterway, APTGroup, NuclearFacility, EconomicCenter, GammaIrradiator, Pipeline, UnderseaCable, CableAdvisory, RepairShip, InternetOutage, AIDataCenter, AisDisruptionEvent, SocialUnrestEvent, MilitaryFlight, MilitaryVessel, MilitaryFlightCluster, MilitaryVesselCluster, NaturalEvent, Port, Spaceport, CriticalMineralProject, CyberThreat } from '@/types';
 import type { TradeRouteSegment } from '@/config/trade-routes';
 import type { AirportDelayAlert, PositionSample } from '@/services/aviation';
@@ -108,7 +109,7 @@ function fmtDelayMin(min: number | undefined): string {
 /** A news marker's popup: its title and, when known, the cluster's corroboration (#9213). */
 type NewsPopupData = Pick<NewsLocationMarker, 'title' | 'corroboration'>;
 
-export type PopupType = 'conflict' | 'hotspot' | 'earthquake' | 'weather' | 'base' | 'waterway' | 'apt' | 'cyberThreat' | 'nuclear' | 'economic' | 'irradiator' | 'pipeline' | 'cable' | 'cable-advisory' | 'repair-ship' | 'outage' | 'datacenter' | 'datacenterCluster' | 'ais' | 'protest' | 'protestCluster' | 'flight' | 'aircraft' | 'militaryFlight' | 'militaryVessel' | 'militaryFlightCluster' | 'militaryVesselCluster' | 'natEvent' | 'port' | 'spaceport' | 'mineral' | 'startupHub' | 'cloudRegion' | 'techHQ' | 'accelerator' | 'techEvent' | 'techHQCluster' | 'techEventCluster' | 'techActivity' | 'geoActivity' | 'stockExchange' | 'financialCenter' | 'centralBank' | 'commodityHub' | 'iranEvent' | 'gpsJamming' | 'radiation' | 'news';
+export type PopupType = 'conflict' | 'hotspot' | 'earthquake' | 'weather' | 'base' | 'waterway' | 'apt' | 'cyberThreat' | 'nuclear' | 'usNuclear' | 'economic' | 'irradiator' | 'pipeline' | 'cable' | 'cable-advisory' | 'repair-ship' | 'outage' | 'datacenter' | 'datacenterCluster' | 'ais' | 'protest' | 'protestCluster' | 'flight' | 'aircraft' | 'militaryFlight' | 'militaryVessel' | 'militaryFlightCluster' | 'militaryVesselCluster' | 'natEvent' | 'port' | 'spaceport' | 'mineral' | 'startupHub' | 'cloudRegion' | 'techHQ' | 'accelerator' | 'techEvent' | 'techHQCluster' | 'techEventCluster' | 'techActivity' | 'geoActivity' | 'stockExchange' | 'financialCenter' | 'centralBank' | 'commodityHub' | 'iranEvent' | 'gpsJamming' | 'radiation' | 'news';
 
 interface TechEventPopupData {
   id: string;
@@ -237,7 +238,7 @@ interface DatacenterClusterData {
 
 interface PopupData {
   type: PopupType;
-  data: ConflictZone | Hotspot | Earthquake | WeatherAlert | MilitaryBase | StrategicWaterway | APTGroup | CyberThreat | NuclearFacility | EconomicCenter | GammaIrradiator | Pipeline | UnderseaCable | CableAdvisory | RepairShip | InternetOutage | AIDataCenter | AisDisruptionEvent | SocialUnrestEvent | AirportDelayAlert | PositionSample | MilitaryFlight | MilitaryVessel | MilitaryFlightCluster | MilitaryVesselCluster | NaturalEvent | Port | Spaceport | CriticalMineralProject | StartupHub | CloudRegion | TechHQ | Accelerator | TechEventPopupData | TechHQClusterData | TechEventClusterData | ProtestClusterData | DatacenterClusterData | TechHubActivity | GeoHubActivity | StockExchangePopupData | FinancialCenterPopupData | CentralBankPopupData | CommodityHubPopupData | IranEventPopupData | GpsJammingPopupData | RadiationObservation | NewsPopupData;
+  data: ConflictZone | Hotspot | Earthquake | WeatherAlert | MilitaryBase | StrategicWaterway | APTGroup | CyberThreat | NuclearFacility | UsNuclearFacility | EconomicCenter | GammaIrradiator | Pipeline | UnderseaCable | CableAdvisory | RepairShip | InternetOutage | AIDataCenter | AisDisruptionEvent | SocialUnrestEvent | AirportDelayAlert | PositionSample | MilitaryFlight | MilitaryVessel | MilitaryFlightCluster | MilitaryVesselCluster | NaturalEvent | Port | Spaceport | CriticalMineralProject | StartupHub | CloudRegion | TechHQ | Accelerator | TechEventPopupData | TechHQClusterData | TechEventClusterData | ProtestClusterData | DatacenterClusterData | TechHubActivity | GeoHubActivity | StockExchangePopupData | FinancialCenterPopupData | CentralBankPopupData | CommodityHubPopupData | IranEventPopupData | GpsJammingPopupData | RadiationObservation | NewsPopupData;
   relatedNews?: NewsItem[];
   x: number;
   y: number;
@@ -762,6 +763,8 @@ export class MapPopup {
         return this.renderCyberThreatPopup(data.data as CyberThreat);
       case 'nuclear':
         return this.renderNuclearPopup(data.data as NuclearFacility);
+      case 'usNuclear':
+        return this.renderUsNuclearPopup(data.data as UsNuclearFacility);
       case 'economic':
         return this.renderEconomicPopup(data.data as EconomicCenter);
       case 'irradiator':
@@ -1969,6 +1972,70 @@ ${isFeatureAvailable('wingbitsEnrichment') ? '<div class="wingbits-live-section"
         <div class="popup-tags">
           ${tags.map((tag) => `<span class="popup-tag">${escapeHtml(tag)}</span>`).join('')}
         </div>` : ''}
+      </div>
+    `;
+  }
+
+  private renderUsNuclearPopup(facility: UsNuclearFacility): string {
+    const region = getNrcRegion(facility.state);
+    const units = (facility.units ?? []).filter((u) => u.status === 'operating' || u.status === 'restarting' || u.status === 'construction' || u.status === 'licensing');
+    const netMwe = units.reduce((sum, u) => sum + (u.netMwe ?? 0), 0);
+    const statusBadge: Record<string, string> = {
+      operating: 'elevated',
+      restarting: 'elevated',
+      construction: 'elevated',
+      licensing: 'low',
+      decommissioning: 'low',
+      'isfsi-only': 'low',
+      decommissioned: 'low',
+      legacy: 'low',
+      dormant: 'low',
+      standby: 'low',
+    };
+    const unitRows = (facility.units ?? []).slice(0, 6).map((u) => `
+            <tr>
+              <td>${escapeHtml(u.name)}</td>
+              <td>${escapeHtml(u.type)}</td>
+              <td>${u.netMwe ?? (u.thermalMw !== undefined ? `${u.thermalMw} MWt` : '—')}</td>
+              <td>${escapeHtml(u.status)}${u.licenseExpires ? ` · lic. ${u.licenseExpires}` : ''}${u.shutdownYear ? ` · ${u.shutdownYear}` : ''}</td>
+            </tr>`).join('');
+
+    return `
+      <div class="popup-header nuclear">
+        <span class="popup-title">${escapeHtml(facility.name.toUpperCase())}</span>
+        <span class="popup-badge ${statusBadge[facility.status] || 'low'}">${escapeHtml(US_NUCLEAR_STATUS_LABELS[facility.status].toUpperCase())}</span>
+        <button class="popup-close" aria-label="Close">×</button>
+      </div>
+      <div class="popup-body">
+        <div class="popup-stats">
+          <div class="popup-stat">
+            <span class="stat-label">${t('popups.type')}</span>
+            <span class="stat-value">${escapeHtml(US_NUCLEAR_CATEGORY_LABELS[facility.category])}</span>
+          </div>
+          <div class="popup-stat">
+            <span class="stat-label">Operator</span>
+            <span class="stat-value">${escapeHtml(facility.operator)}</span>
+          </div>
+          <div class="popup-stat">
+            <span class="stat-label">Regulator</span>
+            <span class="stat-value">${escapeHtml(facility.regulator)}${region ? ` · ${escapeHtml(NRC_REGION_NAMES[region])}` : ''}</span>
+          </div>
+          ${units.length ? `<div class="popup-stat">
+            <span class="stat-label">Units</span>
+            <span class="stat-value">${units.length}${netMwe ? ` · ${netMwe.toLocaleString()} MWe` : ''}</span>
+          </div>` : ''}
+          <div class="popup-stat">
+            <span class="stat-label">${t('popups.coordinates')}</span>
+            <span class="stat-value">${escapeHtml(facility.city ? `${facility.city}, ${facility.state}` : facility.state)} · ${facility.lat.toFixed(2)}°, ${facility.lon.toFixed(2)}°</span>
+          </div>
+        </div>
+        ${facility.notes ? `<p class="popup-description">${escapeHtml(facility.notes)}</p>` : ''}
+        ${unitRows ? `<div class="popup-section"><table class="popup-table us-nuclear-units"><thead><tr><th>Unit</th><th>Type</th><th>MWe</th><th>Status</th></tr></thead><tbody>${unitRows}</tbody></table></div>` : ''}
+        <div class="popup-section popup-links">
+          ${facility.url ? `<a href="${escapeHtml(facility.url)}" target="_blank" rel="noopener">Reference page</a>` : ''}
+          ${facility.docket ? `<a href="${nrcDocketUrl(facility.docket)}" target="_blank" rel="noopener">NRC docket ${escapeHtml(facility.docket)}</a>` : ''}
+          ${facility.isfsi ? '<span class="popup-tag">Spent fuel stored on site (ISFSI)</span>' : ''}
+        </div>
       </div>
     `;
   }

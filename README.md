@@ -44,6 +44,18 @@
 
 ![World Monitor Dashboard](docs/images/worldmonitor-7-mar-2026.jpg)
 
+## NucMonitor: the nuclear variant
+
+This fork adds a seventh site variant, `nuclear`, that turns the dashboard into an all-hazards information hub for every nuclear facility in the United States. It is the default variant for `npm run dev` in this repository.
+
+- **Facility registry** (`src/config/us-nuclear-facilities.ts`): operating power reactors with units, NRC dockets, reactor types, net MWe, licensees and license expirations; restart programs; advanced reactor and SMR projects; decommissioning and spent fuel sites; DOE and NNSA sites; fuel cycle plants; research reactors; uranium recovery; and waste sites. Compiled from the NRC facility locator and operating reactor list, DOE and NNSA site pages, EIA, and IAEA PRIS.
+- **NRC Reactor Power Status**: the NRC's daily Power Reactor Status Report (every operating unit's power level with the NRC's reason and change notes), proxied by `api/nrc-reactor-status.js` and parsed in the browser.
+- **Facility All-Hazards Watch**: USGS earthquakes, NWS alerts, NASA FIRMS fire detections, NHC and EONET storm tracks, and EPA RadNet / Safecast radiation anomalies joined to each facility and ranked by severity.
+- **Map**: a category-colored facility layer over the hazard layers, opening on the continental US, with detailed popups and docket links.
+- **News**: NRC, DOE, NNSA, EIA, IAEA, EPA and FEMA official feeds beside World Nuclear News, ANS, NEI, Exchange Monitor, policy, spent fuel, and nonproliferation coverage.
+
+Run `npm run dev:nuclear`, build with `npm run build:nuclear`, and read [docs/nuclear-hub.mdx](docs/nuclear-hub.mdx) for the data sources, the hazard rules, and the registry conventions.
+
 ## Ways to Use It
 
 | Surface | Get it | Docs |

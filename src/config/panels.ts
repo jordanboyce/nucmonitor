@@ -1150,10 +1150,109 @@ const ENERGY_MOBILE_MAP_LAYERS: MapLayers = {
 };
 
 // ============================================
+// NUCLEAR variant — NucMonitor (nuclear.<host>)
+// US nuclear facility hub: NRC reactor status, all-hazards watch, directory,
+// radiation monitoring, official + industry feeds.
+// See src/config/variants/nuclear.ts for the canonical description.
+// ============================================
+const NUCLEAR_PANELS: Record<string, PanelConfig> = {
+  map: { name: 'US Nuclear Facilities Map', enabled: true, priority: 1 },
+  'nuclear-reactor-status': { name: 'NRC Reactor Power Status', enabled: true, priority: 1 },
+  'nuclear-hazards': { name: 'Facility All-Hazards Watch', enabled: true, priority: 1 },
+  'nuclear-facilities': { name: 'US Nuclear Facility Directory', enabled: true, priority: 1 },
+  'live-news': { name: 'Nuclear Headlines', enabled: true, priority: 1 },
+  'nuclear-regulatory': { name: 'NRC, DOE & IAEA Official', enabled: true, priority: 1 },
+  'nuclear-industry': { name: 'Nuclear Industry News', enabled: true, priority: 1 },
+  'nuclear-policy': { name: 'Nuclear Policy & Security', enabled: true, priority: 2 },
+  'radiation-watch': { name: 'Radiation Watch', enabled: true, priority: 1 },
+  'satellite-fires': { name: 'Satellite Fire Detections', enabled: true, priority: 2 },
+  climate: { name: 'Climate & Weather Impact', enabled: true, priority: 2 },
+  'climate-news': { name: 'Climate & Hazards News', enabled: true, priority: 2 },
+  insights: { name: 'AI Nuclear Insights', enabled: true, priority: 2 },
+  energy: { name: 'Energy Markets News', enabled: true, priority: 2 },
+  commodities: { name: 'Energy Commodities', enabled: true, priority: 2 },
+  monitors: { name: 'My Monitors', enabled: true, priority: 3 },
+  'world-clock': { name: 'World Clock', enabled: true, priority: 3 },
+};
+
+const NUCLEAR_MAP_LAYERS: MapLayers = {
+  gpsJamming: false,
+  satellites: false,
+  conflicts: false,
+  bases: false,
+  cables: false,
+  pipelines: false,
+  hotspots: false,
+  ais: false,
+  nuclear: false,         // Global nuclear sites layer stays available but off; the US registry layer replaces it
+  irradiators: false,
+  radiationWatch: true,   // EPA RadNet + Safecast anomalies
+  sanctions: false,
+  weather: true,          // NWS alerts — the primary all-hazards input
+  canadaRoads: false,
+  canadaAlerts: false,
+  economic: false,
+  waterways: false,
+  outages: true,          // Grid / internet outages near sites
+  cyberThreats: false,
+  datacenters: false,
+  protests: false,
+  flights: false,
+  military: false,
+  natural: true,          // USGS earthquakes + EONET / NHC storms
+  spaceports: false,
+  minerals: false,
+  fires: true,            // NASA FIRMS detections near sites
+  // Data source layers
+  ucdpEvents: false,
+  displacement: false,
+  climate: false,
+  // Tech layers (disabled)
+  startupHubs: false,
+  cloudRegions: false,
+  accelerators: false,
+  techHQs: false,
+  techEvents: false,
+  // Finance layers (disabled)
+  stockExchanges: false,
+  financialCenters: false,
+  centralBanks: false,
+  commodityHubs: false,
+  gulfInvestments: false,
+  // Happy variant layers (disabled)
+  positiveEvents: false,
+  kindness: false,
+  happiness: false,
+  speciesRecovery: false,
+  renewableInstallations: false,
+  tradeRoutes: false,
+  iranAttacks: false,
+  ciiChoropleth: false,
+  resilienceScore: false,
+  dayNight: false,
+  // Commodity layers (disabled)
+  miningSites: false,
+  processingPlants: false,
+  commodityPorts: false,
+  webcams: false,
+  diseaseOutbreaks: false,
+  // Nuclear hub registry layer
+  usNuclearFacilities: true,
+};
+
+const NUCLEAR_MOBILE_MAP_LAYERS: MapLayers = {
+  ...NUCLEAR_MAP_LAYERS,
+  canadaRoads: false,
+  fires: false,
+  outages: false,
+  radiationWatch: false,
+};
+
+// ============================================
 // UNIFIED PANEL REGISTRY
 // ============================================
 
-type PanelVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy';
+type PanelVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy' | 'nuclear';
 
 const VARIANT_PANEL_CONFIGS: Record<PanelVariant, Record<string, PanelConfig>> = {
   full: FULL_PANELS,
@@ -1162,6 +1261,7 @@ const VARIANT_PANEL_CONFIGS: Record<PanelVariant, Record<string, PanelConfig>> =
   commodity: COMMODITY_PANELS,
   energy: ENERGY_PANELS,
   happy: HAPPY_PANELS,
+  nuclear: NUCLEAR_PANELS,
 };
 
 function getVariantPanelConfigs(variant: string): Record<string, PanelConfig> | undefined {
@@ -1181,6 +1281,7 @@ export const ALL_PANELS: Record<string, PanelConfig> = {
   ...HAPPY_PANELS,
   ...COMMODITY_PANELS,
   ...ENERGY_PANELS,
+  ...NUCLEAR_PANELS,
   ...TECH_PANELS,
   ...FINANCE_PANELS,
   ...FULL_PANELS,
@@ -1194,6 +1295,7 @@ export const VARIANT_DEFAULTS: Record<string, string[]> = {
   commodity: Object.keys(VARIANT_PANEL_CONFIGS.commodity),
   energy:    Object.keys(VARIANT_PANEL_CONFIGS.energy),
   happy:     Object.keys(VARIANT_PANEL_CONFIGS.happy),
+  nuclear:   Object.keys(VARIANT_PANEL_CONFIGS.nuclear),
 };
 
 /**
@@ -1223,6 +1325,13 @@ export const VARIANT_PANEL_OVERRIDES: Partial<Record<string, Partial<Record<stri
   },
   happy: {
     map:         { name: 'World Map' },
+  },
+  nuclear: {
+    map:         { name: 'US Nuclear Facilities Map' },
+    'live-news': { name: 'Nuclear Headlines' },
+    insights:    { name: 'AI Nuclear Insights' },
+    energy:      { name: 'Energy Markets News' },
+    commodities: { name: 'Energy Commodities' },
   },
 };
 
@@ -1469,7 +1578,9 @@ export const DEFAULT_MAP_LAYERS = SITE_VARIANT === 'happy'
         ? COMMODITY_MAP_LAYERS
         : SITE_VARIANT === 'energy'
           ? ENERGY_MAP_LAYERS
-          : FULL_MAP_LAYERS;
+          : SITE_VARIANT === 'nuclear'
+            ? NUCLEAR_MAP_LAYERS
+            : FULL_MAP_LAYERS;
 
 export const MOBILE_DEFAULT_MAP_LAYERS = SITE_VARIANT === 'happy'
   ? HAPPY_MOBILE_MAP_LAYERS
@@ -1481,7 +1592,9 @@ export const MOBILE_DEFAULT_MAP_LAYERS = SITE_VARIANT === 'happy'
         ? COMMODITY_MOBILE_MAP_LAYERS
         : SITE_VARIANT === 'energy'
           ? ENERGY_MOBILE_MAP_LAYERS
-          : FULL_MOBILE_MAP_LAYERS;
+          : SITE_VARIANT === 'nuclear'
+            ? NUCLEAR_MOBILE_MAP_LAYERS
+            : FULL_MOBILE_MAP_LAYERS;
 
 /** Maps map-layer toggle keys to their data-freshness source IDs (single source of truth). */
 export const LAYER_TO_SOURCE: Partial<Record<keyof MapLayers, DataSourceId[]>> = {
@@ -1543,6 +1656,18 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
     labelKey: 'header.panelCatDataTracking',
     panelKeys: ['monitors', 'satellite-fires', 'ucdp-events', 'displacement', 'climate', 'climate-news', 'population-exposure', 'security-advisories', 'toronto-safety', 'radiation-watch', 'oref-sirens', 'world-clock', 'tech-readiness', 'disease-outbreaks', 'fao-food-price-index', 'grocery-basket', 'defense-patents'],
     variants: ['full', 'energy'],
+  },
+
+  // Nuclear variant — NucMonitor
+  nuclearHub: {
+    labelKey: 'header.panelCatNuclearHub',
+    panelKeys: ['nuclear-reactor-status', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
+    variants: ['nuclear'],
+  },
+  nuclearNews: {
+    labelKey: 'header.panelCatNuclearNews',
+    panelKeys: ['nuclear-regulatory', 'nuclear-industry', 'nuclear-policy', 'climate-news', 'energy', 'commodities', 'monitors', 'world-clock'],
+    variants: ['nuclear'],
   },
 
   // Tech variant

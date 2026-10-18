@@ -57,7 +57,7 @@ import type { WeatherAlert } from '../services/weather';
 import { CHINA_LOGISTICS_CORRIDORS } from '../../shared/china-logistics-corridors';
 
 type Scenario = 'alpha' | 'beta';
-type HarnessVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy';
+type HarnessVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy' | 'nuclear';
 type HarnessLayerKey = keyof MapLayers;
 type PulseProtestScenario =
   | 'none'
@@ -1341,6 +1341,8 @@ const currentHarnessVariant: HarnessVariant = SITE_VARIANT === 'tech'
   ? 'tech'
   : SITE_VARIANT === 'energy'
   ? 'energy'
+  : SITE_VARIANT === 'nuclear'
+  ? 'nuclear'
   : SITE_VARIANT === 'finance'
   ? 'finance'
   : SITE_VARIANT === 'commodity'

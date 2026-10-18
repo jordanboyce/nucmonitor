@@ -443,6 +443,20 @@
       ]
     },
     {
+      "host": "ans.org",
+      "provider": "ans.org",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit ans.org and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
       "host": "api.abuseipdb.com",
       "provider": "api.abuseipdb.com",
       "kind": "structured",
@@ -3657,6 +3671,9 @@
       "references": [
         {
           "path": "server/worldmonitor/news/v1/_feeds.ts"
+        },
+        {
+          "path": "src/config/feeds.ts"
         }
       ]
     },
@@ -3764,6 +3781,20 @@
         },
         {
           "path": "scripts/seed-fuel-prices.mjs"
+        }
+      ]
+    },
+    {
+      "host": "energy.gov",
+      "provider": "energy.gov",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit energy.gov and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
         }
       ]
     },
@@ -3912,6 +3943,20 @@
       ]
     },
     {
+      "host": "epa.gov",
+      "provider": "epa.gov",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit epa.gov and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
       "host": "ert-ucdn.broadpeak-aas.com",
       "provider": "ert-ucdn.broadpeak-aas.com",
       "kind": "feed",
@@ -4047,6 +4092,20 @@
         },
         {
           "path": "src/utils/sanitize.ts"
+        }
+      ]
+    },
+    {
+      "host": "exchangemonitor.com",
+      "provider": "exchangemonitor.com",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit exchangemonitor.com and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
         }
       ]
     },
@@ -5284,6 +5343,20 @@
       ]
     },
     {
+      "host": "iaea.org",
+      "provider": "iaea.org",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit iaea.org and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
       "host": "ici.radio-canada.ca",
       "provider": "ici.radio-canada.ca",
       "kind": "feed",
@@ -5410,6 +5483,20 @@
       "references": [
         {
           "path": "src/config/live-video-sources.ts"
+        }
+      ]
+    },
+    {
+      "host": "inl.gov",
+      "provider": "inl.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
         }
       ]
     },
@@ -6766,6 +6853,34 @@
       ]
     },
     {
+      "host": "nei.org",
+      "provider": "nei.org",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit nei.org and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "neimagazine.com",
+      "provider": "neimagazine.com",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit neimagazine.com and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
       "host": "news.cgtn.com",
       "provider": "news.cgtn.com",
       "kind": "feed",
@@ -7086,6 +7201,20 @@
       ]
     },
     {
+      "host": "nrc.gov",
+      "provider": "nrc.gov",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit nrc.gov and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
       "host": "nrk-nrk1.akamaized.net",
       "provider": "nrk-nrk1.akamaized.net",
       "kind": "feed",
@@ -7110,6 +7239,20 @@
       "references": [
         {
           "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "nuclear.worldmonitor.app",
+      "provider": "nuclear.worldmonitor.app",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/variant-meta.ts"
         }
       ]
     },
@@ -7533,6 +7676,20 @@
       ]
     },
     {
+      "host": "pantex.energy.gov",
+      "provider": "pantex.energy.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        }
+      ]
+    },
+    {
       "host": "pap.pl",
       "provider": "PAP",
       "kind": "feed",
@@ -7710,6 +7867,20 @@
       "references": [
         {
           "path": "scripts/build-chokepoint-transit-snapshot.mjs"
+        }
+      ]
+    },
+    {
+      "host": "powermag.com",
+      "provider": "powermag.com",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit powermag.com and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
         }
       ]
     },
@@ -10254,6 +10425,20 @@
       ]
     },
     {
+      "host": "ucs.org",
+      "provider": "ucs.org",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit ucs.org and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
       "host": "uis.unesco.org",
       "provider": "uis.unesco.org",
       "kind": "structured",
@@ -10409,6 +10594,20 @@
         {
           "path": "server/worldmonitor/news/v1/_feeds.ts"
         },
+        {
+          "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "utilitydive.com",
+      "provider": "utilitydive.com",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit utilitydive.com and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
         {
           "path": "src/config/feeds.ts"
         }
@@ -10701,6 +10900,20 @@
       ]
     },
     {
+      "host": "wipp.energy.gov",
+      "provider": "wipp.energy.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        }
+      ]
+    },
+    {
       "host": "wits.worldbank.org",
       "provider": "wits.worldbank.org",
       "kind": "structured",
@@ -10731,6 +10944,20 @@
       "references": [
         {
           "path": "api/oauth-authorization-server.ts"
+        }
+      ]
+    },
+    {
+      "host": "world-nuclear-news.org",
+      "provider": "world-nuclear-news.org",
+      "kind": "feed",
+      "observed": true,
+      "license": "Provider terms for this feed publisher; verify before redistribution",
+      "attribution": "Credit world-nuclear-news.org and link to the original feed publisher.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "src/config/feeds.ts"
         }
       ]
     },
@@ -12686,6 +12913,20 @@
       ]
     },
     {
+      "host": "www.hanford.gov",
+      "provider": "www.hanford.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        }
+      ]
+    },
+    {
       "host": "www.hotnews.ro",
       "provider": "www.hotnews.ro",
       "kind": "feed",
@@ -12969,6 +13210,20 @@
       ]
     },
     {
+      "host": "www.lanl.gov",
+      "provider": "www.lanl.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        }
+      ]
+    },
+    {
       "host": "www.lapresse.ca",
       "provider": "www.lapresse.ca",
       "kind": "feed",
@@ -13107,6 +13362,20 @@
       "references": [
         {
           "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.llnl.gov",
+      "provider": "www.llnl.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
         }
       ]
     },
@@ -13410,6 +13679,20 @@
       ]
     },
     {
+      "host": "www.nnss.gov",
+      "provider": "www.nnss.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        }
+      ]
+    },
+    {
       "host": "www.northernminer.com",
       "provider": "www.northernminer.com",
       "kind": "feed",
@@ -13434,6 +13717,26 @@
       "references": [
         {
           "path": "server/worldmonitor/infrastructure/v1/list-service-statuses.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.nrc.gov",
+      "provider": "www.nrc.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.nrc.gov and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "api/nrc-reactor-status.js"
+        },
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        },
+        {
+          "path": "src/services/nrc-reactor-status.ts"
         }
       ]
     },
@@ -13544,6 +13847,20 @@
       "references": [
         {
           "path": "scripts/ais-relay.cjs"
+        }
+      ]
+    },
+    {
+      "host": "www.ornl.gov",
+      "provider": "www.ornl.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
         }
       ]
     },
@@ -13964,6 +14281,20 @@
       ]
     },
     {
+      "host": "www.sandia.gov",
+      "provider": "www.sandia.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
+        }
+      ]
+    },
+    {
       "host": "www.schneier.com",
       "provider": "www.schneier.com",
       "kind": "feed+structured",
@@ -14178,6 +14509,20 @@
       "references": [
         {
           "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.srs.gov",
+      "provider": "www.srs.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
         }
       ]
     },
@@ -15151,6 +15496,20 @@
         },
         {
           "path": "src/services/country-brief-source.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.y12.doe.gov",
+      "provider": "www.y12.doe.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Excluded: first-party, control-plane, UI, or rendering transport",
+      "attribution": "Excluded from the external-provider count: not an ingested upstream dataset.",
+      "status": "excluded",
+      "references": [
+        {
+          "path": "src/config/us-nuclear-facilities.ts"
         }
       ]
     },

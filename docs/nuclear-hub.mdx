@@ -1,0 +1,80 @@
+---
+title: "NucMonitor: US Nuclear Facility Hub"
+description: "The nuclear variant of World Monitor: an all-hazards information hub for every US nuclear facility, built on NRC, DOE, EIA, EPA, USGS, NWS, and NASA open data."
+---
+
+NucMonitor is the `nuclear` site variant. It turns the World Monitor dashboard into a single place to answer "what is happening at, or near, a US nuclear site today": which reactors are running, what the NRC recorded, what hazards are nearby, what radiation monitors see, and what the agencies and the industry are saying.
+
+Run it locally with `npm run dev` (this fork defaults to the nuclear variant) or `npm run dev:nuclear`; build it with `npm run build:nuclear`. On the web it answers on `nuclear.<domain>` and on any host that contains `nucmonitor`.
+
+## What is on the dashboard
+
+| Panel | Key | What it shows | Source |
+|---|---|---|---|
+| US Nuclear Facilities Map | `map` | Every registry facility as a category-colored hexagon, with NWS alerts, USGS earthquakes, NASA FIRMS fires, grid outages, and RadNet / Safecast anomalies as overlays. Opens on the continental US. | Registry + existing hazard layers |
+| NRC Reactor Power Status | `nuclear-reactor-status` | Daily power level of every operating commercial reactor with the NRC's reason and change notes, fleet summary, day-over-day deltas, and a 30-day sparkline per unit. | NRC Power Reactor Status Report |
+| Facility All-Hazards Watch | `nuclear-hazards` | Facilities ranked by the strongest public hazard signal nearby: earthquakes, weather warnings, fire detections, storm tracks, radiation anomalies. | USGS, NWS, NASA FIRMS, NHC / EONET, EPA RadNet, Safecast |
+| US Nuclear Facility Directory | `nuclear-facilities` | Searchable registry with fleet statistics, NRC dockets, reactor types, net MWe, license expirations, operators, and spent fuel storage status. | Registry |
+| Nuclear Headlines | `live-news` | Wire and trade coverage of US nuclear plants and the NRC. | Google News site-scoped feeds |
+| NRC, DOE & IAEA Official | `nuclear-regulatory` | Agency releases: NRC news and event reports, DOE Office of Nuclear Energy, NNSA, Environmental Management, EIA, IAEA, EPA RadNet, FEMA. | Google News site-scoped feeds |
+| Nuclear Industry News | `nuclear-industry` | World Nuclear News, ANS, NEI, Exchange Monitor, NEI Magazine, SMR and fuel-cycle topics, nuclear-for-data-center deals. | Google News site-scoped feeds |
+| Nuclear Policy & Security | `nuclear-policy` | Legislation, spent fuel and waste, nonproliferation, state radiation programs, Bulletin of the Atomic Scientists, UCS. | Google News site-scoped feeds |
+| Radiation Watch | `radiation-watch` | EPA RadNet and Safecast anomaly detection (shared with the full dashboard). | EPA RadNet, Safecast |
+| Satellite Fire Detections, Climate, Climate & Hazards News, Energy Markets, Energy Commodities | existing | Shared panels kept on because they feed the hazard picture or explain demand. | NASA FIRMS, NOAA, EIA, markets |
+
+## The facility registry
+
+`src/config/us-nuclear-facilities.ts` is a pure data module with no imports, so the browser, node tests, seed scripts, and the MCP surface can all read it. Every entry carries an `id`, `name`, `category`, `status`, state, coordinates, operator, regulator, and optional NRC docket, unit list, ISFSI flag, reference URL, notes, and `statusAliases` (used to match the NRC status report's unit labels).
+
+Categories:
+
+- `power-reactor`: 55 sites with operating units, including Vogtle 3 and 4 and the Palisades restart.
+- `restart`: Crane Clean Energy Center (TMI-1) and Duane Arnold.
+- `new-build`: Natrium (Kemmerer), Kairos Hermes, X-energy Long Mott, ACU MSRR, TVA Clinch River BWRX-300, Holtec SMR-300, Oklo Aurora, Fermi America, and the abandoned V.C. Summer 2 and 3.
+- `decommissioning`: permanently shut sites, ISFSI-only sites, and entombed demonstration reactors.
+- `doe-site`: national laboratories, NNSA production sites, naval reactors laboratories, and Environmental Management and Legacy Management sites.
+- `fuel-cycle`: enrichment, conversion, fuel fabrication, and the TRISO and laser enrichment projects in licensing.
+- `research-reactor`: NRC-licensed university, government, and industrial research reactors.
+- `uranium-recovery`: the operating conventional mill and in-situ recovery projects.
+- `waste`: WIPP, Yucca Mountain, the two licensed consolidated interim storage facilities, commercial low-level waste sites, and GE Morris.
+
+`US_NUCLEAR_REGISTRY_AS_OF` records the review date. Capacities are net summer MWe; license years are current NRC operating license expirations (renewed or subsequent renewed where granted). Verify a value against the linked NRC or DOE page before citing it. `summarizeUsNuclearFleet()` derives fleet statistics and `matchNrcUnitName()` resolves an NRC status label such as `Saint Lucie 2` to a facility and unit.
+
+Sources used to compile the registry:
+
+- [NRC operating reactor list](https://www.nrc.gov/reactors/operating/list-power-reactor-units.html) and [facility locator](https://www.nrc.gov/info-finder/region-state/)
+- [NRC power reactor decommissioning](https://www.nrc.gov/info-finder/decommissioning/power-reactor/), [research and test reactors](https://www.nrc.gov/reactors/non-power/), [fuel cycle facilities](https://www.nrc.gov/materials/fuel-cycle-fac.html), [uranium recovery](https://www.nrc.gov/materials/uranium-recovery.html), [new reactors](https://www.nrc.gov/reactors/new-reactors.html)
+- [DOE Environmental Management sites](https://www.energy.gov/em/mission-and-sites) and [NNSA locations](https://www.energy.gov/nnsa/nnsa-locations)
+- [EIA nuclear](https://www.eia.gov/nuclear/) and [IAEA PRIS](https://pris.iaea.org/PRIS/CountryStatistics/CountryDetails.aspx?current=US)
+
+## NRC reactor status feed
+
+The NRC publishes a pipe-delimited bulk file, `PowerReactorStatusForLast365Days.txt`, with one row per unit per calendar day (`ReportDt|Unit|Power|Reason|Change|...`). nrc.gov sends no CORS headers, so `api/nrc-reactor-status.js` passes the file through as `text/plain` with a header check, an 8 MB cap, and a 30-minute shared cache. It is listed in `api/api-route-exceptions.json` as an `upstream-proxy`.
+
+`src/shared/nrc-reactor-status.ts` parses the rows by header name (column order can change upstream), builds the latest-day snapshot with previous-day lookups, and summarizes fleet power. `src/services/nrc-reactor-status.ts` fetches through the proxy with a circuit breaker and enriches each unit with the registry record. The panel refreshes every 30 minutes while near the viewport (`REFRESH_INTERVALS.nrcReactorStatus`).
+
+Live verification of the proxy against nrc.gov still needs to happen from a deployment that can reach nrc.gov; the parser is covered by fixtures in `tests/nrc-reactor-status.test.mts`.
+
+## All-hazards correlation
+
+`src/services/nuclear-facility-hazards.ts` is pure: `correlateFacilityHazards(inputs, options)` takes the feeds the dashboard already loads and returns one report per facility with every signal inside its watch radius, a severity, and a ranking score. Defaults:
+
+| Feed | Radius | Window | Severity rule |
+|---|---|---|---|
+| USGS earthquakes | 100 km | 72 h | M6+, or M5+ within 50 km, is critical; M5+, or M4+ within 50 km, is high |
+| NWS alerts | polygon containment, or 60 km from the centroid when no polygon | until `expires` | Extreme or hurricane / tornado / flash-flood-emergency warnings are critical; Severe or any warning is high |
+| NASA FIRMS fires | 25 km | current detections | collapsed to one signal per site; distance, peak FRP, and count set severity |
+| RadNet / Safecast | 80 km | current anomalies | corroborated spikes are critical |
+| NHC / EONET storms | 250 km, measured to the closest forecast-track point | open events | category 3+ within 150 km is critical |
+
+A listing is a prompt to read the linked source and the NRC event notification reports, not a claim that the site is affected. The panel re-correlates whenever `data-loader` pushes a new earthquake, weather, fire, radiation, or natural-event batch.
+
+## Map layer
+
+`usNuclearFacilities` is a new `MapLayers` key with DeckGL and SVG renderers, a curated layer explanation card, a command palette toggle, and a popup (`usNuclear`) showing category, operator, regulator and NRC region, units, notes, reference links, and docket links. The global `nuclear` layer (World Monitor's worldwide sites) stays available but off by default on this variant.
+
+## Where the variant is registered
+
+Adding a seventh variant touched the usual surfaces: `SITE_VARIANTS` and hostname detection, `VARIANT_META`, SEO paragraphs, `WEB_DASHBOARD_VARIANTS`, `NUCLEAR_PANELS` / `NUCLEAR_MAP_LAYERS` / `NUCLEAR_MOBILE_MAP_LAYERS`, `NUCLEAR_FEEDS`, `VARIANT_LAYER_ORDER.nuclear`, panel categories, commands, the mission preset `nuclear-hub`, the header switcher and mobile menu, embed and WebMCP monitor enums, CORS and Sentry host allowlists, `vercel.json` rewrites and CSP, docker nginx parity, favicons under `public/favico/nuclear/`, and the inline variant bootstrap in `index.html` (whose CSP hash is pinned in `vercel.json` and the nginx configs).
+
+The nuclear subdomain is deliberately not in the WebMCP origin-trial host set or the `Origin-Agent-Cluster` rule: those require a Chrome origin trial token minted for the exact origin, which this repository cannot produce.

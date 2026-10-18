@@ -95,6 +95,7 @@ import type { StorageFacilityMapPanel } from '@/components/StorageFacilityMapPan
 import type { FuelShortagePanel } from '@/components/FuelShortagePanel';
 import type { EnergyDisruptionsPanel } from '@/components/EnergyDisruptionsPanel';
 import type { EnergyRiskOverviewPanel } from '@/components/EnergyRiskOverviewPanel';
+import type { NuclearReactorStatusPanel } from '@/components/NuclearReactorStatusPanel';
 import type { ChokepointStripPanel } from '@/components/ChokepointStripPanel';
 import type { ClimateNewsPanel } from '@/components/ClimateNewsPanel';
 import type { ConsumerPricesPanel } from '@/components/ConsumerPricesPanel';
@@ -847,6 +848,11 @@ export class App {
     if (shouldPrime('energy-disruptions')) {
       const panel = this.state.panels['energy-disruptions'] as EnergyDisruptionsPanel | undefined;
       if (panel) primeTask('energy-disruptions', () => panel.fetchData());
+    }
+    // NucMonitor — NRC reactor status self-fetches through the edge proxy.
+    if (shouldPrime('nuclear-reactor-status')) {
+      const panel = this.state.panels['nuclear-reactor-status'] as NuclearReactorStatusPanel | undefined;
+      if (panel) primeTask('nuclear-reactor-status', () => panel.fetchData());
     }
     if (shouldPrime('energy-risk-overview')) {
       const panel = this.state.panels['energy-risk-overview'] as EnergyRiskOverviewPanel | undefined;
@@ -2438,7 +2444,10 @@ export class App {
     // Localize the static index.html shell — <title>, meta description, and
     // the accessible <h1> are baked in English before the app boots; once i18n
     // is ready we swap them to the user's locale.
-    document.title = t('shell.documentTitle');
+    // Dedicated variant shells (tech, finance, ..., nuclear) carry their own
+    // <title> from VARIANT_META via meta-tags.ts; only the full dashboard
+    // swaps in the localized World Monitor title.
+    if (SITE_VARIANT === 'full') document.title = t('shell.documentTitle');
     const setMeta = (sel: string, val: string) => {
       const el = document.querySelector(sel);
       if (el) el.setAttribute('content', val);
@@ -4164,6 +4173,13 @@ export class App {
       () => (this.state.panels['fuel-shortages'] as FuelShortagePanel).fetchData(),
       REFRESH_INTERVALS.fuelShortages,
       () => this.isPanelNearViewport('fuel-shortages')
+    );
+
+    this.refreshScheduler.scheduleRefresh(
+      'nuclear-reactor-status',
+      () => (this.state.panels['nuclear-reactor-status'] as NuclearReactorStatusPanel).fetchData(),
+      REFRESH_INTERVALS.nrcReactorStatus,
+      () => this.isPanelNearViewport('nuclear-reactor-status')
     );
 
     this.refreshScheduler.scheduleRefresh(

@@ -14,7 +14,7 @@ import {
 // <variant>.worldmonitor.app/dashboard → /dashboard-<variant>.html).
 // Desktop/self-host variant builds are NOT in scope — they run
 // htmlVariantPlugin at build time with VITE_VARIANT set.
-export const WEB_DASHBOARD_VARIANTS = ['tech', 'finance', 'commodity', 'happy', 'energy'] as const;
+export const WEB_DASHBOARD_VARIANTS = ['tech', 'finance', 'commodity', 'happy', 'energy', 'nuclear'] as const;
 
 export function renderVariantSeoSummaryHtml(variant: VariantSeoKey): string {
   const paragraphs = VARIANT_SEO_PARAGRAPHS[variant];

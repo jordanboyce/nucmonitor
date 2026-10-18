@@ -380,9 +380,9 @@
     "panelCatHappyNews": "Tin tốt",
     "panelCatHappyPlanet": "Hành tinh & Trao tặng",
     "embed": "Nhúng",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "HẠT NHÂN",
+    "panelCatNuclearHub": "Trung tâm hạt nhân",
+    "panelCatNuclearNews": "Tin tức hạt nhân"
   },
   "panels": {
     "liveNews": "Tin tức Trực tiếp",
@@ -494,12 +494,12 @@
     "marketBreadth": "Độ rộng Thị trường",
     "climateNews": "Tin tức về Khí hậu",
     "fx": "Tỷ giá ngoại hối",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Trạng thái công suất lò phản ứng (NRC)",
+    "nuclearHazards": "Giám sát mọi hiểm họa tại cơ sở",
+    "nuclearFacilities": "Danh bạ cơ sở hạt nhân Hoa Kỳ",
+    "nuclearRegulatory": "Chính thức: NRC, DOE & IAEA",
+    "nuclearIndustry": "Tin ngành hạt nhân",
+    "nuclearPolicy": "Chính sách & an ninh hạt nhân"
   },
   "commands": {
     "prefixes": {
@@ -1237,7 +1237,7 @@
         "diseaseAlert": "Cảnh báo bệnh tật",
         "diseaseWarning": "Cảnh báo bệnh dịch",
         "diseaseWatch": "Theo dõi bệnh tật",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Cơ sở hạt nhân Hoa Kỳ"
       },
       "layerGuide": "Hướng dẫn Lớp",
       "layerWarningTitle": "Lưu ý về hiệu suất",
@@ -1307,7 +1307,7 @@
         "radiationElevated": "Bức xạ tăng cao",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Các cơ sở hạt nhân Hoa Kỳ"
       },
       "tooltip": {
         "earthquake": "Động đất",

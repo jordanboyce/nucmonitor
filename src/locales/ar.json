@@ -390,9 +390,9 @@
     "panelCatHappyNews": "أخبار إيجابية",
     "panelCatHappyPlanet": "الكوكب والعطاء",
     "embed": "تضمين",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "نووي",
+    "panelCatNuclearHub": "مركز الطاقة النووية",
+    "panelCatNuclearNews": "أخبار نووية"
   },
   "panels": {
     "liveNews": "أخبار مباشرة",
@@ -504,12 +504,12 @@
     "marketBreadth": "اتساع السوق",
     "climateNews": "أخبار المناخ",
     "fx": "أسعار الصرف الأجنبي",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "حالة قدرة المفاعلات (NRC)",
+    "nuclearHazards": "رصد جميع المخاطر للمنشآت",
+    "nuclearFacilities": "دليل المنشآت النووية الأمريكية",
+    "nuclearRegulatory": "رسمي: NRC وDOE والوكالة الدولية للطاقة الذرية",
+    "nuclearIndustry": "أخبار الصناعة النووية",
+    "nuclearPolicy": "السياسة والأمن النوويان"
   },
   "commands": {
     "prefixes": {
@@ -1203,7 +1203,7 @@
         "diseaseAlert": "تنبيه مرض",
         "diseaseWarning": "تحذير مرض",
         "diseaseWatch": "مراقبة مرض",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "منشأة نووية أمريكية"
       },
       "layerGuide": "دليل الطبقات",
       "layerWarningTitle": "ملاحظة حول الأداء",
@@ -1273,7 +1273,7 @@
         "radiationElevated": "إشعاع مرتفع",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "المنشآت النووية الأمريكية"
       },
       "tooltip": {
         "earthquake": "زلزال",

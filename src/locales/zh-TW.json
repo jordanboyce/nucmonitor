@@ -380,9 +380,9 @@
     "panelCatHappyNews": "好訊息",
     "panelCatHappyPlanet": "地球與慈善",
     "embed": "嵌入",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "核能",
+    "panelCatNuclearHub": "核能中心",
+    "panelCatNuclearNews": "核能新聞"
   },
   "panels": {
     "liveNews": "即時新聞",
@@ -494,12 +494,12 @@
     "marketBreadth": "市場廣度",
     "climateNews": "氣候新聞",
     "fx": "外匯匯率",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC 反應堆功率狀態",
+    "nuclearHazards": "設施全災種監視",
+    "nuclearFacilities": "美國核設施名錄",
+    "nuclearRegulatory": "官方：NRC、DOE 與 IAEA",
+    "nuclearIndustry": "核工業新聞",
+    "nuclearPolicy": "核政策與安全"
   },
   "commands": {
     "prefixes": {
@@ -1237,7 +1237,7 @@
         "diseaseAlert": "疾病警報",
         "diseaseWarning": "疾病預警",
         "diseaseWatch": "疾病監測",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "美國核設施"
       },
       "layerGuide": "圖層指南",
       "layerWarningTitle": "效能提示",
@@ -1307,7 +1307,7 @@
         "radiationElevated": "輻射升高",
         "canadaRoads": "Canada 道路",
         "canadaAlerts": "加拿大警報（AB + BC + SK）",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "美國核設施圖層"
       },
       "tooltip": {
         "earthquake": "地震",

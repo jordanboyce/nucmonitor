@@ -382,9 +382,9 @@
     "panelCatHappyNews": "Добри Вести",
     "panelCatHappyPlanet": "Планета & Давање",
     "embed": "Вграждане",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "ЯДРЕН",
+    "panelCatNuclearHub": "Ядрен хъб",
+    "panelCatNuclearNews": "Ядрени новини"
   },
   "panels": {
     "liveNews": "Живи новини",
@@ -496,12 +496,12 @@
     "marketBreadth": "Пазарна Ширина",
     "climateNews": "Климатски Вести",
     "fx": "Валутни курсове",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Състояние на мощността на реакторите (NRC)",
+    "nuclearHazards": "Наблюдение на всички опасности за съоръженията",
+    "nuclearFacilities": "Справочник на ядрените съоръжения в САЩ",
+    "nuclearRegulatory": "Официално: NRC, DOE и МААЕ",
+    "nuclearIndustry": "Новини от ядрената индустрия",
+    "nuclearPolicy": "Ядрена политика и сигурност"
   },
   "commands": {
     "prefixes": {
@@ -1240,7 +1240,7 @@
         "diseaseAlert": "Предупреждение за болест",
         "diseaseWarning": "Внимание за болест",
         "diseaseWatch": "Наблюдение на болест",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Ядрено съоръжение в САЩ"
       },
       "layerGuide": "Ръководство на слои",
       "layerWarningTitle": "Бележка за производителността",
@@ -1310,7 +1310,7 @@
         "radiationElevated": "Повишена радиация",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Ядрени съоръжения в САЩ"
       },
       "tooltip": {
         "earthquake": "Земетресение",

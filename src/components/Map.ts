@@ -2277,7 +2277,7 @@ export class MapComponent {
         if (!pos) return;
 
         const div = document.createElement('div');
-        div.className = `us-nuclear-marker ${facility.category}`;
+        div.className = `us-facility-marker ${facility.category}`;
         div.style.left = `${pos[0]}px`;
         div.style.top = `${pos[1]}px`;
         div.title = `${facility.name} (${facility.category})`;

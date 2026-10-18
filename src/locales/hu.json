@@ -451,9 +451,9 @@
     "panelCatHappyNews": "Jó Hírek",
     "panelCatHappyPlanet": "Bolygó & Adományozás",
     "embed": "Beágyazás",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NUKLEÁRIS",
+    "panelCatNuclearHub": "Nukleáris központ",
+    "panelCatNuclearNews": "Nukleáris hírek"
   },
   "panels": {
     "liveNews": "Élő Hírek",
@@ -565,12 +565,12 @@
     "marketBreadth": "Piaci szélesség",
     "climateNews": "Klíma hírek",
     "fx": "Devizaárfolyamok",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC reaktorteljesítmény-állapot",
+    "nuclearHazards": "Létesítmények összveszély-figyelése",
+    "nuclearFacilities": "Amerikai nukleáris létesítmények jegyzéke",
+    "nuclearRegulatory": "Hivatalos: NRC, DOE és NAÜ",
+    "nuclearIndustry": "Nukleáris iparági hírek",
+    "nuclearPolicy": "Nukleáris politika és biztonság"
   },
   "commands": {
     "prefixes": {
@@ -1382,7 +1382,7 @@
         "diseaseAlert": "Betegség-riasztás",
         "diseaseWarning": "Betegség-figyelmeztetés",
         "diseaseWatch": "Betegség-megfigyelés",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Amerikai nukleáris létesítmény"
       },
       "layerGuide": "Réteg útmutató",
       "layerWarningTitle": "Teljesítményre vonatkozó figyelmeztetés",
@@ -1452,7 +1452,7 @@
         "renewableInstallations": "Tiszta energia",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Amerikai nukleáris létesítmények"
       },
       "tooltip": {
         "earthquake": "Földrengés",

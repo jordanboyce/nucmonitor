@@ -109,12 +109,12 @@
     "marketBreadth": "Marktbreedte",
     "climateNews": "Klimaatnieuws",
     "fx": "Wisselkoersen",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC-reactorvermogensstatus",
+    "nuclearHazards": "Multirisicobewaking van installaties",
+    "nuclearFacilities": "Overzicht Amerikaanse nucleaire installaties",
+    "nuclearRegulatory": "Officieel: NRC, DOE & IAEA",
+    "nuclearIndustry": "Nieuws uit de nucleaire industrie",
+    "nuclearPolicy": "Nucleair beleid & veiligheid"
   },
   "commands": {
     "prefixes": {
@@ -556,7 +556,7 @@
         "diseaseAlert": "Ziekte-waarschuwing",
         "diseaseWarning": "Ziekte-alarm",
         "diseaseWatch": "Ziektetoezicht",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Amerikaanse nucleaire installatie"
       },
       "timeAll": "Alle",
       "layers": {
@@ -609,7 +609,7 @@
         "radiationElevated": "Verhoogde straling",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Amerikaanse nucleaire installaties"
       },
       "layersTitle": "Lagen",
       "layerSearch": "Lagen zoeken...",
@@ -3322,9 +3322,9 @@
     "panelCatHappyNews": "Goed Nieuws",
     "panelCatHappyPlanet": "Planeet & Geven",
     "embed": "Insluiten",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NUCLEAIR",
+    "panelCatNuclearHub": "Nucleaire hub",
+    "panelCatNuclearNews": "Nucleair nieuws"
   },
   "countryBrief": {
     "identifying": "Land identificeren...",

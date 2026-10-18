@@ -1163,7 +1163,7 @@ const NUCLEAR_FEEDS: Record<string, Feed[]> = {
     { name: 'Nuclear Policy',        url: rss('https://news.google.com/rss/search?q=("nuclear+energy"+OR+"nuclear+power")+(Congress+OR+Senate+OR+"White+House"+OR+"executive+order"+OR+legislation+OR+ADVANCE+Act)+when:3d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'Spent Fuel & Waste',    url: rss('https://news.google.com/rss/search?q=("spent+nuclear+fuel"+OR+"nuclear+waste"+OR+"Yucca+Mountain"+OR+"interim+storage"+OR+WIPP+OR+ISFSI)+when:7d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'Nuclear Security & Nonproliferation', url: rss('https://news.google.com/rss/search?q=(nonproliferation+OR+"nuclear+security"+OR+"nuclear+safeguards"+OR+"nuclear+material")+when:3d&hl=en-US&gl=US&ceid=US:en') },
-    { name: 'Bulletin of the Atomic Scientists', url: rss('https://news.google.com/rss/search?q=site:thebulletin.org+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'Bulletin of Atomic Scientists',    url: rss('https://news.google.com/rss/search?q=site:thebulletin.org+when:7d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'Union of Concerned Scientists', url: rss('https://news.google.com/rss/search?q=site:ucs.org+nuclear+when:14d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'State Radiation Programs', url: rss('https://news.google.com/rss/search?q=("radiation+control"+OR+"radiological+emergency"+OR+"emergency+planning+zone"+OR+"potassium+iodide")+nuclear+when:7d&hl=en-US&gl=US&ceid=US:en') },
   ],
@@ -1172,11 +1172,6 @@ const NUCLEAR_FEEDS: Record<string, Feed[]> = {
     { name: 'Natural Gas & LNG',     url: rss('https://news.google.com/rss/search?q=("natural+gas"+OR+LNG+OR+"gas+price"+OR+"Henry+Hub")+when:1d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'US Grid & Reliability', url: rss('https://news.google.com/rss/search?q=(NERC+OR+PJM+OR+ERCOT+OR+MISO+OR+"grid+reliability"+OR+"capacity+auction")+when:2d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'Energy Intel',          url: rss('https://news.google.com/rss/search?q=(energy+commodities+OR+"energy+market"+OR+"energy+prices"+OR+"energy+security")+when:2d&hl=en-US&gl=US&ceid=US:en') },
-  ],
-  'climate-news': [
-    { name: 'NWS & Severe Weather',  url: rss('https://news.google.com/rss/search?q=("National+Weather+Service"+OR+"hurricane+warning"+OR+"tornado+warning"+OR+"flash+flood")+when:1d&hl=en-US&gl=US&ceid=US:en') },
-    { name: 'USGS Earthquakes',      url: rss('https://news.google.com/rss/search?q=(earthquake+USGS+OR+"magnitude"+earthquake)+(US+OR+California+OR+Virginia+OR+Oklahoma)+when:2d&hl=en-US&gl=US&ceid=US:en') },
-    { name: 'Wildfire & Heat',       url: rss('https://news.google.com/rss/search?q=(wildfire+OR+"red+flag+warning"+OR+"heat+dome"+OR+"extreme+heat")+(utility+OR+power+OR+plant)+when:2d&hl=en-US&gl=US&ceid=US:en') },
   ],
 };
 

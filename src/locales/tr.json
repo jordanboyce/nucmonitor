@@ -382,9 +382,9 @@
     "panelCatHappyNews": "İyi Haberler",
     "panelCatHappyPlanet": "Gezegen & Hayırseverlik",
     "embed": "Göm",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NÜKLEER",
+    "panelCatNuclearHub": "Nükleer merkez",
+    "panelCatNuclearNews": "Nükleer haberler"
   },
   "panels": {
     "liveNews": "Canli Haberler",
@@ -496,12 +496,12 @@
     "marketBreadth": "Pazar Genişliği",
     "climateNews": "İklim Haberleri",
     "fx": "Döviz kurları",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC reaktör güç durumu",
+    "nuclearHazards": "Tesisler için tüm tehlike izleme",
+    "nuclearFacilities": "ABD nükleer tesis rehberi",
+    "nuclearRegulatory": "Resmî: NRC, DOE ve IAEA",
+    "nuclearIndustry": "Nükleer sektör haberleri",
+    "nuclearPolicy": "Nükleer politika ve güvenlik"
   },
   "commands": {
     "prefixes": {
@@ -1240,7 +1240,7 @@
         "diseaseAlert": "Hastalık Uyarısı",
         "diseaseWarning": "Hastalık İkazı",
         "diseaseWatch": "Hastalık Izleme",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "ABD nükleer tesisi"
       },
       "layerGuide": "Katman Rehberi",
       "layerWarningTitle": "Performans bildirimi",
@@ -1310,7 +1310,7 @@
         "radiationElevated": "Yükseltilmiş radyasyon",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "ABD nükleer tesisleri"
       },
       "tooltip": {
         "earthquake": "Deprem",

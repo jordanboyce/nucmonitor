@@ -109,12 +109,12 @@
     "marketBreadth": "Marknadsbredd",
     "climateNews": "Klimatnyheter",
     "fx": "Valutakurser",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC reaktoreffektstatus",
+    "nuclearHazards": "Allriskbevakning av anläggningar",
+    "nuclearFacilities": "Katalog över amerikanska kärnanläggningar",
+    "nuclearRegulatory": "Officiellt: NRC, DOE & IAEA",
+    "nuclearIndustry": "Nyheter från kärnkraftsindustrin",
+    "nuclearPolicy": "Kärnkraftspolitik & säkerhet"
   },
   "commands": {
     "prefixes": {
@@ -556,7 +556,7 @@
         "diseaseAlert": "Sjukdomsvarning",
         "diseaseWarning": "Sjukdomsuppmaning",
         "diseaseWatch": "Sjukdomsövervakning",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Amerikansk kärnanläggning"
       },
       "timeAll": "Alla",
       "layers": {
@@ -609,7 +609,7 @@
         "radiationElevated": "Förhöjd strålning",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Amerikanska kärnanläggningar"
       },
       "layersTitle": "Lager",
       "layerSearch": "Sök lager...",
@@ -3322,9 +3322,9 @@
     "panelCatHappyNews": "Goda Nyheter",
     "panelCatHappyPlanet": "Planet & Välgörenhet",
     "embed": "Bädda in",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "KÄRNKRAFT",
+    "panelCatNuclearHub": "Kärnkraftsnav",
+    "panelCatNuclearNews": "Kärnkraftsnyheter"
   },
   "countryBrief": {
     "identifying": "Identifierar land...",

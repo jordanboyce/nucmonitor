@@ -232,6 +232,7 @@ describe('news panel ↔ feed coverage (panel-layout createNewsPanel ⇔ feeds.t
   // CANONICAL_FEEDS is their union; nq-news lives only in ON_DEMAND_FEEDS.
   const ALL_FEED_CONSTS = [
     'FULL_FEEDS',
+    'NUCLEAR_FEEDS',
     'TECH_FEEDS',
     'FINANCE_FEEDS',
     'COMMODITY_FEEDS',

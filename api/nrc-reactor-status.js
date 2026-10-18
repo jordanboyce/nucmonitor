@@ -90,7 +90,10 @@ export default async function handler(req) {
       },
     });
   } catch (error) {
-    captureSilentError(error, { endpoint: 'nrc-reactor-status' });
+    captureSilentError(error, {
+      tags: { route: 'api/nrc-reactor-status', step: 'fetch' },
+      fingerprint: ['api/nrc-reactor-status', 'upstream-fetch'],
+    });
     const timedOut = error && (error.name === 'TimeoutError' || error.name === 'AbortError');
     return jsonResponse(
       { error: timedOut ? 'NRC reactor status upstream timed out' : 'NRC reactor status fetch failed' },

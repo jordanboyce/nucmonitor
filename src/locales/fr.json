@@ -384,9 +384,9 @@
     "panelCatHappyNews": "Bonnes Nouvelles",
     "panelCatHappyPlanet": "Planète & Solidarité",
     "embed": "Intégrer",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NUCLÉAIRE",
+    "panelCatNuclearHub": "Pôle nucléaire",
+    "panelCatNuclearNews": "Actualités nucléaires"
   },
   "panels": {
     "liveNews": "Actualités en direct",
@@ -498,12 +498,12 @@
     "marketBreadth": "Étendue du marché",
     "climateNews": "Actualités climatiques",
     "fx": "Taux de change",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "État de puissance des réacteurs (NRC)",
+    "nuclearHazards": "Veille tous risques des installations",
+    "nuclearFacilities": "Répertoire des installations nucléaires américaines",
+    "nuclearRegulatory": "Officiel : NRC, DOE et AIEA",
+    "nuclearIndustry": "Actualités de l'industrie nucléaire",
+    "nuclearPolicy": "Politique et sécurité nucléaires"
   },
   "commands": {
     "prefixes": {
@@ -1194,7 +1194,7 @@
         "diseaseAlert": "Alerte maladie",
         "diseaseWarning": "Avertissement maladie",
         "diseaseWatch": "Surveillance maladie",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Installation nucléaire américaine"
       },
       "layerGuide": "Guide des calques",
       "layerWarningTitle": "Avis de performance",
@@ -1264,7 +1264,7 @@
         "radiationElevated": "Radiation élevée",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Installations nucléaires américaines"
       },
       "tooltip": {
         "earthquake": "Tremblement de terre",

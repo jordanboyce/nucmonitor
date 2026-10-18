@@ -384,9 +384,9 @@
     "panelCatHappyNews": "Buone Notizie",
     "panelCatHappyPlanet": "Pianeta e Beneficenza",
     "embed": "Incorpora",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NUCLEARE",
+    "panelCatNuclearHub": "Hub nucleare",
+    "panelCatNuclearNews": "Notizie nucleari"
   },
   "panels": {
     "liveNews": "Notizie in diretta",
@@ -498,12 +498,12 @@
     "marketBreadth": "Ampiezza di Mercato",
     "climateNews": "Notizie Clima",
     "fx": "Tassi di cambio",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Stato di potenza dei reattori (NRC)",
+    "nuclearHazards": "Sorveglianza multirischio degli impianti",
+    "nuclearFacilities": "Elenco degli impianti nucleari USA",
+    "nuclearRegulatory": "Ufficiale: NRC, DOE e AIEA",
+    "nuclearIndustry": "Notizie dall'industria nucleare",
+    "nuclearPolicy": "Politica e sicurezza nucleare"
   },
   "commands": {
     "prefixes": {
@@ -1102,7 +1102,7 @@
         "diseaseAlert": "Avviso Malattia",
         "diseaseWarning": "Avvertenza Malattia",
         "diseaseWatch": "Monitoraggio Malattia",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Impianto nucleare USA"
       },
       "timeAll": "Tutto",
       "layers": {
@@ -1155,7 +1155,7 @@
         "radiationElevated": "Radiazione elevata",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Impianti nucleari USA"
       },
       "layersTitle": "Livelli",
       "layerSearch": "Cerca livelli...",

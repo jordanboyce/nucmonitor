@@ -380,9 +380,9 @@
     "panelCatHappyNews": "ニュース",
     "panelCatHappyPlanet": "地球・社会貢献",
     "embed": "埋め込む",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "原子力",
+    "panelCatNuclearHub": "原子力ハブ",
+    "panelCatNuclearNews": "原子力ニュース"
   },
   "panels": {
     "liveNews": "ライブニュース",
@@ -494,12 +494,12 @@
     "marketBreadth": "市場の広がり",
     "climateNews": "気候ニュース",
     "fx": "外国為替レート",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC 原子炉出力ステータス",
+    "nuclearHazards": "施設オールハザード監視",
+    "nuclearFacilities": "米国原子力施設ディレクトリ",
+    "nuclearRegulatory": "公式: NRC・DOE・IAEA",
+    "nuclearIndustry": "原子力産業ニュース",
+    "nuclearPolicy": "原子力政策と安全保障"
   },
   "commands": {
     "prefixes": {
@@ -1237,7 +1237,7 @@
         "diseaseAlert": "疾病警報",
         "diseaseWarning": "疾病警告",
         "diseaseWatch": "疾病監視",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "米国の原子力施設"
       },
       "layerGuide": "レイヤーガイド",
       "layerWarningTitle": "パフォーマンスに関するお知らせ",
@@ -1307,7 +1307,7 @@
         "radiationElevated": "放射線上昇",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "米国原子力施設"
       },
       "tooltip": {
         "earthquake": "地震",

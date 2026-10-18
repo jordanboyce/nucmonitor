@@ -455,9 +455,9 @@
     "panelCatCommodityEcon": "Economy & Trade",
     "panelCatHappyNews": "Good News",
     "panelCatHappyPlanet": "Planet & Giving",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "ЯДЕРНИЙ",
+    "panelCatNuclearHub": "Ядерний хаб",
+    "panelCatNuclearNews": "Ядерні новини"
   },
   "panels": {
     "liveNews": "Live News",
@@ -569,12 +569,12 @@
     "marketBreadth": "Market Breadth",
     "climateNews": "Climate News",
     "fx": "Курси іноземних валют",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Стан потужності реакторів (NRC)",
+    "nuclearHazards": "Спостереження за всіма загрозами для об'єктів",
+    "nuclearFacilities": "Довідник ядерних об'єктів США",
+    "nuclearRegulatory": "Офіційно: NRC, DOE та МАГАТЕ",
+    "nuclearIndustry": "Новини атомної галузі",
+    "nuclearPolicy": "Ядерна політика та безпека"
   },
   "commands": {
     "prefixes": {
@@ -1390,7 +1390,7 @@
         "diseaseAlert": "Disease Alert",
         "diseaseWarning": "Disease Warning",
         "diseaseWatch": "Disease Watch",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Ядерний об'єкт США"
       },
       "layerGuide": "Layer Guide",
       "layerWarningTitle": "Performance notice",
@@ -1460,7 +1460,7 @@
         "renewableInstallations": "Clean Energy",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Ядерні об'єкти США"
       },
       "tooltip": {
         "earthquake": "Earthquake",

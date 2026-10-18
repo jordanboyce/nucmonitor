@@ -109,12 +109,12 @@
     "marketBreadth": "Amplitude de Mercado",
     "climateNews": "Notícias Climáticas",
     "fx": "Taxas de câmbio",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Estado de potência dos reatores (NRC)",
+    "nuclearHazards": "Vigilância multirrisco das instalações",
+    "nuclearFacilities": "Diretório de instalações nucleares dos EUA",
+    "nuclearRegulatory": "Oficial: NRC, DOE e AIEA",
+    "nuclearIndustry": "Notícias da indústria nuclear",
+    "nuclearPolicy": "Política e segurança nuclear"
   },
   "commands": {
     "prefixes": {
@@ -557,7 +557,7 @@
         "diseaseAlert": "Alerta de Doença",
         "diseaseWarning": "Aviso de Doença",
         "diseaseWatch": "Monitoramento de Doença",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Instalação nuclear dos EUA"
       },
       "timeAll": "Todos",
       "layers": {
@@ -610,7 +610,7 @@
         "radiationElevated": "Radiação elevada",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Instalações nucleares dos EUA"
       },
       "layersTitle": "Camadas",
       "layerSearch": "Pesquisar camadas...",
@@ -3341,8 +3341,8 @@
     "panelCatHappyPlanet": "Planeta & Doações",
     "embed": "Incorporar",
     "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "panelCatNuclearHub": "Centro nuclear",
+    "panelCatNuclearNews": "Notícias nucleares"
   },
   "countryBrief": {
     "identifying": "Identificando país...",

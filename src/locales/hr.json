@@ -454,9 +454,9 @@
     "panelCatHappyNews": "Dobre vijesti",
     "panelCatHappyPlanet": "Planet i pomoć",
     "embed": "Ugradi",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NUKLEARNO",
+    "panelCatNuclearHub": "Nuklearni centar",
+    "panelCatNuclearNews": "Nuklearne vijesti"
   },
   "panels": {
     "liveNews": "Vijesti uživo",
@@ -568,12 +568,12 @@
     "marketBreadth": "Širina Tržišta",
     "climateNews": "Klimatske Vijesti",
     "fx": "Tečajevi deviza",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Stanje snage reaktora (NRC)",
+    "nuclearHazards": "Nadzor svih opasnosti za postrojenja",
+    "nuclearFacilities": "Imenik nuklearnih postrojenja SAD-a",
+    "nuclearRegulatory": "Službeno: NRC, DOE i IAEA",
+    "nuclearIndustry": "Vijesti iz nuklearne industrije",
+    "nuclearPolicy": "Nuklearna politika i sigurnost"
   },
   "commands": {
     "prefixes": {
@@ -1390,7 +1390,7 @@
         "diseaseAlert": "Upozorenje na bolest",
         "diseaseWarning": "Upozorenje na bolest",
         "diseaseWatch": "Praćenje bolesti",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Nuklearno postrojenje SAD-a"
       },
       "layerGuide": "Vodič slojeva",
       "layerWarningTitle": "Obavijest o performansama",
@@ -1460,7 +1460,7 @@
         "renewableInstallations": "Čista energija",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Nuklearna postrojenja SAD-a"
       },
       "tooltip": {
         "earthquake": "Zemljotres",

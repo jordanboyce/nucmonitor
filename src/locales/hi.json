@@ -451,9 +451,9 @@
     "panelCatHappyNews": "अच्छी खबरें",
     "panelCatHappyPlanet": "प्लैनेट और दान",
     "embed": "एम्बेड",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "परमाणु",
+    "panelCatNuclearHub": "परमाणु हब",
+    "panelCatNuclearNews": "परमाणु समाचार"
   },
   "panels": {
     "liveNews": "ताजा खबरें",
@@ -565,12 +565,12 @@
     "marketBreadth": "बाजार की पहुंच",
     "climateNews": "जलवायु समाचार",
     "fx": "विदेशी मुद्रा दरें",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "NRC रिएक्टर पावर स्थिति",
+    "nuclearHazards": "सुविधाओं की सर्व-खतरा निगरानी",
+    "nuclearFacilities": "अमेरिकी परमाणु सुविधा निर्देशिका",
+    "nuclearRegulatory": "आधिकारिक: NRC, DOE और IAEA",
+    "nuclearIndustry": "परमाणु उद्योग समाचार",
+    "nuclearPolicy": "परमाणु नीति और सुरक्षा"
   },
   "commands": {
     "prefixes": {
@@ -1382,7 +1382,7 @@
         "diseaseAlert": "रोग अलर्ट",
         "diseaseWarning": "रोग चेतावनी",
         "diseaseWatch": "रोग निगरानी",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "अमेरिकी परमाणु सुविधा"
       },
       "layerGuide": "लेयर गाइड",
       "layerWarningTitle": "प्रदर्शन सूचना",
@@ -1452,7 +1452,7 @@
         "renewableInstallations": "स्वच्छ ऊर्जा",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "अमेरिकी परमाणु सुविधाएँ"
       },
       "tooltip": {
         "earthquake": "भूकंप",

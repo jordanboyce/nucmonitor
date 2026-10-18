@@ -451,9 +451,9 @@
     "panelCatCommodityEcon": "Uchumi na Biashara",
     "panelCatHappyNews": "Habari Njema",
     "panelCatHappyPlanet": "Sayari & Kutoa",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "NYUKLIA",
+    "panelCatNuclearHub": "Kitovu cha nyuklia",
+    "panelCatNuclearNews": "Habari za nyuklia"
   },
   "panels": {
     "liveNews": "Habari za Moja kwa Moja",
@@ -565,12 +565,12 @@
     "marketBreadth": "Upana wa Soko",
     "climateNews": "Habari za Hali ya Hewa",
     "fx": "Kiwango cha ubadilishaji wa fedha za kigeni",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Hali ya nguvu ya vinu (NRC)",
+    "nuclearHazards": "Ufuatiliaji wa hatari zote kwa vituo",
+    "nuclearFacilities": "Orodha ya vituo vya nyuklia vya Marekani",
+    "nuclearRegulatory": "Rasmi: NRC, DOE na IAEA",
+    "nuclearIndustry": "Habari za sekta ya nyuklia",
+    "nuclearPolicy": "Sera na usalama wa nyuklia"
   },
   "commands": {
     "prefixes": {
@@ -1382,7 +1382,7 @@
         "diseaseAlert": "Tahadhari ya Ugonjwa",
         "diseaseWarning": "Onyo la Ugonjwa",
         "diseaseWatch": "Uangalizi wa Magonjwa",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Kituo cha nyuklia cha Marekani"
       },
       "layerGuide": "Mwongozo wa Tabaka",
       "layerWarningTitle": "Notisi ya utendaji",
@@ -1452,7 +1452,7 @@
         "renewableInstallations": "Nishati Safi",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Vituo vya nyuklia vya Marekani"
       },
       "tooltip": {
         "earthquake": "Tetemeko la ardhi",

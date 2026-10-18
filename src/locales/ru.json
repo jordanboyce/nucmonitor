@@ -386,9 +386,9 @@
     "panelCatHappyNews": "Хорошие новости",
     "panelCatHappyPlanet": "Планета и благотворительность",
     "embed": "Встроить",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "ЯДЕРНЫЙ",
+    "panelCatNuclearHub": "Ядерный хаб",
+    "panelCatNuclearNews": "Ядерные новости"
   },
   "panels": {
     "liveNews": "Новости в реальном времени",
@@ -500,12 +500,12 @@
     "marketBreadth": "Ширина рынка",
     "climateNews": "Новости климата",
     "fx": "Валютные курсы",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Состояние мощности реакторов (NRC)",
+    "nuclearHazards": "Наблюдение за всеми угрозами для объектов",
+    "nuclearFacilities": "Справочник ядерных объектов США",
+    "nuclearRegulatory": "Официально: NRC, DOE и МАГАТЭ",
+    "nuclearIndustry": "Новости атомной отрасли",
+    "nuclearPolicy": "Ядерная политика и безопасность"
   },
   "commands": {
     "prefixes": {
@@ -1246,7 +1246,7 @@
         "diseaseAlert": "Оповещение о болезни",
         "diseaseWarning": "Предупреждение о болезни",
         "diseaseWatch": "Наблюдение за болезнью",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Ядерный объект США"
       },
       "layerGuide": "Справочник слоёв",
       "layerWarningTitle": "Уведомление о производительности",
@@ -1316,7 +1316,7 @@
         "radiationElevated": "Повышенный уровень радиации",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Ядерные объекты США"
       },
       "tooltip": {
         "earthquake": "Землетрясение",

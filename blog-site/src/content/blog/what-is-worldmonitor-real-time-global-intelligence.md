@@ -42,7 +42,7 @@ World Monitor currently maintains:
 - The public Country Resilience Index universe
 - Stock exchanges and central-bank or supranational institutions in the generated market catalog
 - Interface languages, including right-to-left Arabic
-- Dashboard variants (registry keys): `full`, `tech`, `finance`, `commodity`, `happy`, `energy`, and `nuclear`
+- Dashboard variants (registry keys): `full`, `tech`, `finance`, `commodity`, `happy`, `nuclear`, and `energy`
 
 These counts are generated from the repository rather than estimated in editorial copy. The current plans, limits, and capability summary are also published in [machine-readable pricing](https://www.worldmonitor.app/pricing.md).
 

@@ -380,9 +380,9 @@
     "panelCatHappyNews": "ข่าวดี",
     "panelCatHappyPlanet": "โลกและการให้กำลังใจ",
     "embed": "ฝังตัว",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "นิวเคลียร์",
+    "panelCatNuclearHub": "ศูนย์นิวเคลียร์",
+    "panelCatNuclearNews": "ข่าวนิวเคลียร์"
   },
   "panels": {
     "liveNews": "ข่าวสด",
@@ -494,12 +494,12 @@
     "marketBreadth": "ความกว้างของตลาด",
     "climateNews": "ข่าวสภาพอากาศ",
     "fx": "อัตราแลกเปลี่ยนเงินตราต่างประเทศ",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "สถานะกำลังเครื่องปฏิกรณ์ (NRC)",
+    "nuclearHazards": "เฝ้าระวังทุกภัยของสถานประกอบการ",
+    "nuclearFacilities": "ทำเนียบสถานประกอบการนิวเคลียร์สหรัฐฯ",
+    "nuclearRegulatory": "ทางการ: NRC, DOE และ IAEA",
+    "nuclearIndustry": "ข่าวอุตสาหกรรมนิวเคลียร์",
+    "nuclearPolicy": "นโยบายและความมั่นคงนิวเคลียร์"
   },
   "commands": {
     "prefixes": {
@@ -1237,7 +1237,7 @@
         "diseaseAlert": "การแจ้งเตือนโรค",
         "diseaseWarning": "คำเตือนโรค",
         "diseaseWatch": "การติดตามโรค",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "สถานประกอบการนิวเคลียร์สหรัฐฯ"
       },
       "layerGuide": "คู่มือเลเยอร์",
       "layerWarningTitle": "แจ้งเตือนประสิทธิภาพ",
@@ -1307,7 +1307,7 @@
         "radiationElevated": "รังสีสูงขึ้น",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "สถานประกอบการนิวเคลียร์ในสหรัฐฯ"
       },
       "tooltip": {
         "earthquake": "แผ่นดินไหว",

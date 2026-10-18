@@ -451,9 +451,9 @@
     "panelCatCommodityEcon": "Economy & Trade",
     "panelCatHappyNews": "Good News",
     "panelCatHappyPlanet": "Planet & Giving",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "هسته‌ای",
+    "panelCatNuclearHub": "مرکز هسته‌ای",
+    "panelCatNuclearNews": "اخبار هسته‌ای"
   },
   "panels": {
     "liveNews": "Live News",
@@ -565,12 +565,12 @@
     "marketBreadth": "Market Breadth",
     "climateNews": "Climate News",
     "fx": "نرخ تبادل ارز",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "وضعیت توان رآکتورها (NRC)",
+    "nuclearHazards": "پایش همه مخاطرات تأسیسات",
+    "nuclearFacilities": "فهرست تأسیسات هسته‌ای آمریکا",
+    "nuclearRegulatory": "رسمی: NRC، DOE و آژانس بین‌المللی انرژی اتمی",
+    "nuclearIndustry": "اخبار صنعت هسته‌ای",
+    "nuclearPolicy": "سیاست و امنیت هسته‌ای"
   },
   "commands": {
     "prefixes": {
@@ -1382,7 +1382,7 @@
         "diseaseAlert": "Disease Alert",
         "diseaseWarning": "Disease Warning",
         "diseaseWatch": "Disease Watch",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "تأسیسات هسته‌ای در آمریکا"
       },
       "layerGuide": "Layer Guide",
       "layerWarningTitle": "Performance notice",
@@ -1452,7 +1452,7 @@
         "renewableInstallations": "Clean Energy",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "تأسیسات هسته‌ای آمریکا"
       },
       "tooltip": {
         "earthquake": "Earthquake",

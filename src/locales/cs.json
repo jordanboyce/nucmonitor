@@ -386,9 +386,9 @@
     "panelCatHappyNews": "Dobré zprávy",
     "panelCatHappyPlanet": "Planeta a dárcovství",
     "embed": "Vložit",
-    "nuclear": "NUCLEAR",
-    "panelCatNuclearHub": "Nuclear Hub",
-    "panelCatNuclearNews": "Nuclear News"
+    "nuclear": "JADERNÉ",
+    "panelCatNuclearHub": "Jaderný hub",
+    "panelCatNuclearNews": "Jaderné zprávy"
   },
   "panels": {
     "liveNews": "Živé zprávy",
@@ -500,12 +500,12 @@
     "marketBreadth": "Šíře trhu",
     "climateNews": "Zprávy o klimatu",
     "fx": "Kurzy zahraniční měny",
-    "nuclearReactorStatus": "NRC Reactor Power Status",
-    "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearRegulatory": "NRC, DOE & IAEA Official",
-    "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearReactorStatus": "Stav výkonu reaktorů (NRC)",
+    "nuclearHazards": "Sledování všech hrozeb pro zařízení",
+    "nuclearFacilities": "Adresář jaderných zařízení USA",
+    "nuclearRegulatory": "Oficiálně: NRC, DOE a MAAE",
+    "nuclearIndustry": "Zprávy z jaderného průmyslu",
+    "nuclearPolicy": "Jaderná politika a bezpečnost"
   },
   "commands": {
     "prefixes": {
@@ -1234,7 +1234,7 @@
         "diseaseAlert": "Výstraha na nemoc",
         "diseaseWarning": "Varování na nemoc",
         "diseaseWatch": "Sledování nemoci",
-        "usNuclearFacility": "US nuclear facility"
+        "usNuclearFacility": "Jaderné zařízení USA"
       },
       "layerGuide": "Průvodce vrstvami",
       "layerWarningTitle": "Upozornění na výkon",
@@ -1304,7 +1304,7 @@
         "radiationElevated": "Zvýšená radiace",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "Jaderná zařízení USA"
       },
       "tooltip": {
         "earthquake": "Zemětřesení",

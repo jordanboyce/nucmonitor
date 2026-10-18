@@ -241,7 +241,7 @@
 }
 
 /* ── SVG / mobile map markers for the US facility registry ───────────── */
-.us-nuclear-marker {
+.us-facility-marker {
   position: absolute;
   transform: translate(-50%, -50%) scale(var(--marker-scale, 1));
   transform-origin: center;
@@ -254,13 +254,13 @@
   box-shadow: 0 0 6px rgba(245, 197, 24, 0.6);
   clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
 }
-.us-nuclear-marker.restart { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.6); }
-.us-nuclear-marker.new-build { background: #3498db; box-shadow: 0 0 6px rgba(52, 152, 219, 0.6); }
-.us-nuclear-marker.decommissioning, .us-nuclear-marker.waste { background: #95a5a6; box-shadow: none; width: 9px; height: 9px; }
-.us-nuclear-marker.fuel-cycle { background: #9b59b6; box-shadow: 0 0 6px rgba(155, 89, 182, 0.6); }
-.us-nuclear-marker.doe-site { background: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, 0.6); }
-.us-nuclear-marker.research-reactor { background: #1abc9c; box-shadow: none; width: 8px; height: 8px; }
-.us-nuclear-marker.uranium-recovery { background: #e67e22; box-shadow: none; width: 9px; height: 9px; }
+.us-facility-marker.restart { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.6); }
+.us-facility-marker.new-build { background: #3498db; box-shadow: 0 0 6px rgba(52, 152, 219, 0.6); }
+.us-facility-marker.decommissioning, .us-facility-marker.waste { background: #95a5a6; box-shadow: none; width: 9px; height: 9px; }
+.us-facility-marker.fuel-cycle { background: #9b59b6; box-shadow: 0 0 6px rgba(155, 89, 182, 0.6); }
+.us-facility-marker.doe-site { background: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, 0.6); }
+.us-facility-marker.research-reactor { background: #1abc9c; box-shadow: none; width: 8px; height: 8px; }
+.us-facility-marker.uranium-recovery { background: #e67e22; box-shadow: none; width: 9px; height: 9px; }
 
 .popup-table.us-nuclear-units { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
 .popup-table.us-nuclear-units th { text-align: left; font-weight: 500; opacity: 0.7; padding: 2px 4px; }

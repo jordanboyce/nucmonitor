@@ -379,7 +379,10 @@
     "panelCatCommodityEcon": "경제 & 무역",
     "panelCatHappyNews": "좋은 소식",
     "panelCatHappyPlanet": "지구 & 기부",
-    "embed": "삽입"
+    "embed": "삽입",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "실시간 뉴스",
@@ -490,7 +493,13 @@
     "fearGreed": "공포 & 탐욕",
     "marketBreadth": "시장 폭",
     "climateNews": "기후 뉴스",
-    "fx": "외환 환율"
+    "fx": "외환 환율",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1227,7 +1236,8 @@
         "conflict": "분쟁 지역",
         "diseaseAlert": "질병 경보",
         "diseaseWarning": "질병 경고",
-        "diseaseWatch": "질병 관찰"
+        "diseaseWatch": "질병 관찰",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "레이어 가이드",
       "layerWarningTitle": "성능 안내",
@@ -1296,7 +1306,8 @@
         "radiationSpike": "방사능 급증",
         "radiationElevated": "상승된 방사능",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "지진",

@@ -383,7 +383,10 @@
     "panelCatCommodityEcon": "Economie și comerț",
     "panelCatHappyNews": "Știri bune",
     "panelCatHappyPlanet": "Planetă și donații",
-    "embed": "Încorporează"
+    "embed": "Încorporează",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Știri Live",
@@ -494,7 +497,13 @@
     "fearGreed": "Frică și lacómie",
     "marketBreadth": "Amploarea pieței",
     "climateNews": "Știri despre climă",
-    "fx": "Cursuri de schimb valutar"
+    "fx": "Cursuri de schimb valutar",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1233,7 +1242,8 @@
         "conflict": "Zonă de Conflict",
         "diseaseAlert": "Alertă Boală",
         "diseaseWarning": "Avertisment Boală",
-        "diseaseWatch": "Supraveghere Boală"
+        "diseaseWatch": "Supraveghere Boală",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Ghid de straturi",
       "layerWarningTitle": "Notificare de performanță",
@@ -1302,7 +1312,8 @@
         "radiationSpike": "Vârf de radiații",
         "radiationElevated": "Radiații ridicate",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Cutremur",

@@ -450,7 +450,10 @@
     "panelCatCommodityEcon": "Gazdaság & Kereskedelem",
     "panelCatHappyNews": "Jó Hírek",
     "panelCatHappyPlanet": "Bolygó & Adományozás",
-    "embed": "Beágyazás"
+    "embed": "Beágyazás",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Élő Hírek",
@@ -561,7 +564,13 @@
     "fearGreed": "Félelem és mohóság",
     "marketBreadth": "Piaci szélesség",
     "climateNews": "Klíma hírek",
-    "fx": "Devizaárfolyamok"
+    "fx": "Devizaárfolyamok",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1372,7 +1381,8 @@
         "conflict": "Konfliktuszóna",
         "diseaseAlert": "Betegség-riasztás",
         "diseaseWarning": "Betegség-figyelmeztetés",
-        "diseaseWatch": "Betegség-megfigyelés"
+        "diseaseWatch": "Betegség-megfigyelés",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Réteg útmutató",
       "layerWarningTitle": "Teljesítményre vonatkozó figyelmeztetés",
@@ -1441,7 +1451,8 @@
         "speciesRecovery": "Fajmegmentés",
         "renewableInstallations": "Tiszta energia",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Földrengés",

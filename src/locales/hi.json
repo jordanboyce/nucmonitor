@@ -450,7 +450,10 @@
     "panelCatCommodityEcon": "अर्थव्यवस्था और व्यापार",
     "panelCatHappyNews": "अच्छी खबरें",
     "panelCatHappyPlanet": "प्लैनेट और दान",
-    "embed": "एम्बेड"
+    "embed": "एम्बेड",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "ताजा खबरें",
@@ -561,7 +564,13 @@
     "fearGreed": "डर और लालच",
     "marketBreadth": "बाजार की पहुंच",
     "climateNews": "जलवायु समाचार",
-    "fx": "विदेशी मुद्रा दरें"
+    "fx": "विदेशी मुद्रा दरें",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1372,7 +1381,8 @@
         "conflict": "संघर्ष क्षेत्र",
         "diseaseAlert": "रोग अलर्ट",
         "diseaseWarning": "रोग चेतावनी",
-        "diseaseWatch": "रोग निगरानी"
+        "diseaseWatch": "रोग निगरानी",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "लेयर गाइड",
       "layerWarningTitle": "प्रदर्शन सूचना",
@@ -1441,7 +1451,8 @@
         "speciesRecovery": "प्रजाति पुनर्प्राप्ति",
         "renewableInstallations": "स्वच्छ ऊर्जा",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "भूकंप",

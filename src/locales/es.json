@@ -383,7 +383,10 @@
     "panelCatCommodityEcon": "Economía y Comercio",
     "panelCatHappyNews": "Buenas Noticias",
     "panelCatHappyPlanet": "Planeta y Donaciones",
-    "embed": "Insertar"
+    "embed": "Insertar",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Noticias en vivo",
@@ -494,7 +497,13 @@
     "consumerPrices": "Precios al Consumidor",
     "marketBreadth": "Amplitud de Mercado",
     "climateNews": "Noticias de Clima",
-    "fx": "Tipos de cambio"
+    "fx": "Tipos de cambio",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1092,7 +1101,8 @@
         "conflict": "Zona de conflicto",
         "diseaseAlert": "Alerta de enfermedad",
         "diseaseWarning": "Advertencia de enfermedad",
-        "diseaseWatch": "Vigilancia de enfermedad"
+        "diseaseWatch": "Vigilancia de enfermedad",
+        "usNuclearFacility": "US nuclear facility"
       },
       "timeAll": "Todo",
       "layers": {
@@ -1144,7 +1154,8 @@
         "radiationSpike": "Pico de radiación",
         "radiationElevated": "Radiación elevada",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "layersTitle": "capas",
       "layerSearch": "Buscar capas...",

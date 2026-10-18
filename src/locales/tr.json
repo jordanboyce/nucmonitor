@@ -381,7 +381,10 @@
     "panelCatCommodityEcon": "Ekonomi & Ticaret",
     "panelCatHappyNews": "İyi Haberler",
     "panelCatHappyPlanet": "Gezegen & Hayırseverlik",
-    "embed": "Göm"
+    "embed": "Göm",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Canli Haberler",
@@ -492,7 +495,13 @@
     "fearGreed": "Korku & Açgözlülük",
     "marketBreadth": "Pazar Genişliği",
     "climateNews": "İklim Haberleri",
-    "fx": "Döviz kurları"
+    "fx": "Döviz kurları",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1230,7 +1239,8 @@
         "conflict": "Çatışma Bölgesi",
         "diseaseAlert": "Hastalık Uyarısı",
         "diseaseWarning": "Hastalık İkazı",
-        "diseaseWatch": "Hastalık Izleme"
+        "diseaseWatch": "Hastalık Izleme",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Katman Rehberi",
       "layerWarningTitle": "Performans bildirimi",
@@ -1299,7 +1309,8 @@
         "radiationSpike": "Radyasyon artışı",
         "radiationElevated": "Yükseltilmiş radyasyon",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Deprem",

@@ -450,7 +450,10 @@
     "panelCatMining": "Mnyororo wa Uchimbaji na Ugavi",
     "panelCatCommodityEcon": "Uchumi na Biashara",
     "panelCatHappyNews": "Habari Njema",
-    "panelCatHappyPlanet": "Sayari & Kutoa"
+    "panelCatHappyPlanet": "Sayari & Kutoa",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Habari za Moja kwa Moja",
@@ -561,7 +564,13 @@
     "fearGreed": "Hofu & Uchoyo",
     "marketBreadth": "Upana wa Soko",
     "climateNews": "Habari za Hali ya Hewa",
-    "fx": "Kiwango cha ubadilishaji wa fedha za kigeni"
+    "fx": "Kiwango cha ubadilishaji wa fedha za kigeni",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1372,7 +1381,8 @@
         "conflict": "Eneo la Migogoro",
         "diseaseAlert": "Tahadhari ya Ugonjwa",
         "diseaseWarning": "Onyo la Ugonjwa",
-        "diseaseWatch": "Uangalizi wa Magonjwa"
+        "diseaseWatch": "Uangalizi wa Magonjwa",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Mwongozo wa Tabaka",
       "layerWarningTitle": "Notisi ya utendaji",
@@ -1441,7 +1451,8 @@
         "speciesRecovery": "Urejeshaji wa Aina",
         "renewableInstallations": "Nishati Safi",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Tetemeko la ardhi",

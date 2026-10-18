@@ -389,7 +389,10 @@
     "panelCatCommodityEcon": "الاقتصاد والتجارة",
     "panelCatHappyNews": "أخبار إيجابية",
     "panelCatHappyPlanet": "الكوكب والعطاء",
-    "embed": "تضمين"
+    "embed": "تضمين",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "أخبار مباشرة",
@@ -500,7 +503,13 @@
     "consumerPrices": "أسعار المستهلك",
     "marketBreadth": "اتساع السوق",
     "climateNews": "أخبار المناخ",
-    "fx": "أسعار الصرف الأجنبي"
+    "fx": "أسعار الصرف الأجنبي",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1193,7 +1202,8 @@
         "conflict": "منطقة صراع",
         "diseaseAlert": "تنبيه مرض",
         "diseaseWarning": "تحذير مرض",
-        "diseaseWatch": "مراقبة مرض"
+        "diseaseWatch": "مراقبة مرض",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "دليل الطبقات",
       "layerWarningTitle": "ملاحظة حول الأداء",
@@ -1262,7 +1272,8 @@
         "radiationSpike": "ارتفاع حاد في الإشعاع",
         "radiationElevated": "إشعاع مرتفع",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "زلزال",

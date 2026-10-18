@@ -108,7 +108,13 @@
     "fearGreed": "Rädsla & Girighet",
     "marketBreadth": "Marknadsbredd",
     "climateNews": "Klimatnyheter",
-    "fx": "Valutakurser"
+    "fx": "Valutakurser",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -549,7 +555,8 @@
         "conflict": "Konfliktzон",
         "diseaseAlert": "Sjukdomsvarning",
         "diseaseWarning": "Sjukdomsuppmaning",
-        "diseaseWatch": "Sjukdomsövervakning"
+        "diseaseWatch": "Sjukdomsövervakning",
+        "usNuclearFacility": "US nuclear facility"
       },
       "timeAll": "Alla",
       "layers": {
@@ -601,7 +608,8 @@
         "radiationSpike": "Strålningsökning",
         "radiationElevated": "Förhöjd strålning",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "layersTitle": "Lager",
       "layerSearch": "Sök lager...",
@@ -3313,7 +3321,10 @@
     "panelCatCommodityEcon": "Ekonomi & Handel",
     "panelCatHappyNews": "Goda Nyheter",
     "panelCatHappyPlanet": "Planet & Välgörenhet",
-    "embed": "Bädda in"
+    "embed": "Bädda in",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "countryBrief": {
     "identifying": "Identifierar land...",

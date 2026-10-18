@@ -381,7 +381,10 @@
     "panelCatCommodityEcon": "Οικονομία & Εμπόριο",
     "panelCatHappyNews": "Καλές Ειδήσεις",
     "panelCatHappyPlanet": "Πλανήτης & Δωρεές",
-    "embed": "Ενσωμάτωση"
+    "embed": "Ενσωμάτωση",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Ζωντανές Ειδήσεις",
@@ -492,7 +495,13 @@
     "fearGreed": "Fear & Greed",
     "marketBreadth": "Market Breadth",
     "climateNews": "Ειδήσεις για το Κλίμα",
-    "fx": "Ισοτιμίες συναλλάγματος"
+    "fx": "Ισοτιμίες συναλλάγματος",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1230,7 +1239,8 @@
         "conflict": "Ζώνη Σύγκρουσης",
         "diseaseAlert": "Προειδοποίηση Νόσου",
         "diseaseWarning": "Προειδοποίηση Νόσου",
-        "diseaseWatch": "Παρακολούθηση Νόσου"
+        "diseaseWatch": "Παρακολούθηση Νόσου",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Οδηγός Επιπέδων",
       "layerWarningTitle": "Σημείωση απόδοσης",
@@ -1299,7 +1309,8 @@
         "radiationSpike": "Αιχμή ραδιενέργειας",
         "radiationElevated": "Αυξημένη ραδιενέργεια",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Σεισμός",

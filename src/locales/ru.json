@@ -385,7 +385,10 @@
     "panelCatCommodityEcon": "Экономика и торговля",
     "panelCatHappyNews": "Хорошие новости",
     "panelCatHappyPlanet": "Планета и благотворительность",
-    "embed": "Встроить"
+    "embed": "Встроить",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Новости в реальном времени",
@@ -496,7 +499,13 @@
     "fearGreed": "Страх и жадность",
     "marketBreadth": "Ширина рынка",
     "climateNews": "Новости климата",
-    "fx": "Валютные курсы"
+    "fx": "Валютные курсы",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1236,7 +1245,8 @@
         "conflict": "Зона конфликта",
         "diseaseAlert": "Оповещение о болезни",
         "diseaseWarning": "Предупреждение о болезни",
-        "diseaseWatch": "Наблюдение за болезнью"
+        "diseaseWatch": "Наблюдение за болезнью",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Справочник слоёв",
       "layerWarningTitle": "Уведомление о производительности",
@@ -1305,7 +1315,8 @@
         "radiationSpike": "Всплеск радиации",
         "radiationElevated": "Повышенный уровень радиации",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Землетрясение",

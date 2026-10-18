@@ -379,7 +379,10 @@
     "panelCatCommodityEcon": "Kinh tế & Thương mại",
     "panelCatHappyNews": "Tin tốt",
     "panelCatHappyPlanet": "Hành tinh & Trao tặng",
-    "embed": "Nhúng"
+    "embed": "Nhúng",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Tin tức Trực tiếp",
@@ -490,7 +493,13 @@
     "fearGreed": "Sợ hãi & Tham lam",
     "marketBreadth": "Độ rộng Thị trường",
     "climateNews": "Tin tức về Khí hậu",
-    "fx": "Tỷ giá ngoại hối"
+    "fx": "Tỷ giá ngoại hối",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1227,7 +1236,8 @@
         "conflict": "Khu vực xung đột",
         "diseaseAlert": "Cảnh báo bệnh tật",
         "diseaseWarning": "Cảnh báo bệnh dịch",
-        "diseaseWatch": "Theo dõi bệnh tật"
+        "diseaseWatch": "Theo dõi bệnh tật",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Hướng dẫn Lớp",
       "layerWarningTitle": "Lưu ý về hiệu suất",
@@ -1296,7 +1306,8 @@
         "radiationSpike": "Đột tăng bức xạ",
         "radiationElevated": "Bức xạ tăng cao",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Động đất",

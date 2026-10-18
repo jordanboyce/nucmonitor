@@ -381,7 +381,10 @@
     "panelCatCommodityEcon": "Економија & Трговија",
     "panelCatHappyNews": "Добри Вести",
     "panelCatHappyPlanet": "Планета & Давање",
-    "embed": "Вграждане"
+    "embed": "Вграждане",
+    "nuclear": "NUCLEAR",
+    "panelCatNuclearHub": "Nuclear Hub",
+    "panelCatNuclearNews": "Nuclear News"
   },
   "panels": {
     "liveNews": "Живи новини",
@@ -492,7 +495,13 @@
     "fearGreed": "Страв & Алчност",
     "marketBreadth": "Пазарна Ширина",
     "climateNews": "Климатски Вести",
-    "fx": "Валутни курсове"
+    "fx": "Валутни курсове",
+    "nuclearReactorStatus": "NRC Reactor Power Status",
+    "nuclearHazards": "Facility All-Hazards Watch",
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearRegulatory": "NRC, DOE & IAEA Official",
+    "nuclearIndustry": "Nuclear Industry News",
+    "nuclearPolicy": "Nuclear Policy & Security"
   },
   "commands": {
     "prefixes": {
@@ -1230,7 +1239,8 @@
         "conflict": "Зона на конфликт",
         "diseaseAlert": "Предупреждение за болест",
         "diseaseWarning": "Внимание за болест",
-        "diseaseWatch": "Наблюдение на болест"
+        "diseaseWatch": "Наблюдение на болест",
+        "usNuclearFacility": "US nuclear facility"
       },
       "layerGuide": "Ръководство на слои",
       "layerWarningTitle": "Бележка за производителността",
@@ -1299,7 +1309,8 @@
         "radiationSpike": "Пик на радиация",
         "radiationElevated": "Повишена радиация",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "usNuclearFacilities": "US Nuclear Facilities"
       },
       "tooltip": {
         "earthquake": "Земетресение",

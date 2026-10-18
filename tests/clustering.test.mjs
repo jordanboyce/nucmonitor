@@ -423,7 +423,6 @@ describe('_clustering.mjs', () => {
       'Reuters Business',
       'Reuters Asia',
       'Reuters Energy',
-      'Reuters Commodities',
     ];
 
     const wireCluster = (overrides = {}) => ({

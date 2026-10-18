@@ -534,7 +534,7 @@ describe('main.js eager diet — review feedback guards', () => {
 
   it('allows Signal Aggregator API status updates to be recorded', () => {
     const signalAggregatorOccurrences = (statusPanelWithoutComments.match(/'Signal Aggregator'/g) ?? []).length;
-    assert.equal(signalAggregatorOccurrences, 2, 'Signal Aggregator should be allowlisted for tech and world variants');
+    assert.equal(signalAggregatorOccurrences, 1, 'Signal Aggregator should be allowlisted for the world variant');
     assert.match(statusPanelWithoutComments, /interface\s+ApiStatus\s*\{[\s\S]*errorMessage\?:\s*string/);
   });
 });

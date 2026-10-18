@@ -309,7 +309,6 @@ const BOOTSTRAP_KEYS = {
   techReadiness:     'economic:worldbank-techreadiness:v1',
   progressData:      'economic:worldbank-progress:v1',
   renewableEnergy:   'economic:worldbank-renewable:v1',
-  positiveGeoEvents: 'positive_events:geo-bootstrap:v1',
   riskScores:        CII_RISK_SCORE_CACHE_KEYS.stale,
   naturalEvents:     'natural:events:v1',
   flightDelays:      'aviation:delays-bootstrap:v2',
@@ -408,6 +407,9 @@ const BOOTSTRAP_KEYS = {
 // aggregate is cleanly absent. Include both fallback keys in the same health
 // sweep so the canadaAlerts probe grades the data clients actually receive.
 const STANDALONE_KEYS = {
+  // Positive-events geo layer: seeded, but no dashboard consumer since the
+  // happy variant was retired.
+  positiveGeoEvents: 'positive_events:geo-bootstrap:v1',
   sanctionsChanges: 'sanctions:changes:v1',
   predictionCountryMarkets: 'prediction:markets-country-index:v1',
   // US HTS chapter 99 duty index (catalog; coverage shards are versioned by

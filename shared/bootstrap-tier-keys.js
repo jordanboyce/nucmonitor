@@ -50,7 +50,6 @@ export const BOOTSTRAP_CACHE_KEYS = Object.freeze({
   techReadiness: 'economic:worldbank-techreadiness:v1',
   progressData: 'economic:worldbank-progress:v1',
   renewableEnergy: 'economic:worldbank-renewable:v1',
-  positiveGeoEvents: 'positive_events:geo-bootstrap:v1',
   theaterPosture: 'theater_posture:sebuf:stale:v1',
   riskScores: 'risk:scores:sebuf:stale:v8',
   naturalEvents: 'natural:events:v1',
@@ -174,7 +173,7 @@ const SLOW_KEY_NAMES = new Set([
 
 const FAST_KEY_NAMES = new Set([
   'earthquakes', 'outages', 'serviceStatuses', 'ddosAttacks', 'trafficAnomalies', 'macroSignals', 'chokepoints',
-  'marketQuotes', 'commodityQuotes', 'positiveGeoEvents', 'riskScores', 'insights', 'predictions',
+  'marketQuotes', 'commodityQuotes', 'riskScores', 'insights', 'predictions',
   'iranEvents', 'temporalAnomalies', 'weatherAlerts', 'spending', 'theaterPosture', 'gdeltIntel', 'canadaAlerts',
   'shippingRates', 'shippingStress', 'socialVelocity',
 ]);

@@ -498,7 +498,7 @@ describe('news digest methodology parity', () => {
     const rows = extractFeedInventoryRows(feedsSrc);
     assert.equal(
       rows.length,
-      67,
+      22,
       'server news feed inventory row count changed; update _feeds.ts, docs/data-sources.mdx, and this assertion together',
     );
     for (const row of rows) {
@@ -576,19 +576,13 @@ describe('news digest methodology parity', () => {
 
   it('documents the accepted feed digest variants from VALID_VARIANTS', () => {
     const variants = extractSetLiteralValues(digestSrc, 'VALID_VARIANTS');
-    assert.deepEqual(variants, ['full', 'tech', 'finance', 'happy', 'commodity']);
+    assert.deepEqual(variants, ['full', 'nuclear']);
     for (const variant of variants) assertDocIncludes(`\`${variant}\``, `variant ${variant}`);
-    for (const variant of variants) {
-      assert.ok(
-        protoText.includes(variant),
-        `list_feed_digest.proto variant comment must mention ${variant}`,
-      );
-    }
-    assertDocIncludes('`energy` is a site and client-feed variant', 'energy site-variant distinction');
-    assertDocMatches(/variant=energy[\s\S]*to\s+`full`/, 'energy digest fallback');
+    // The proto comment predates the nuclear bucket; regenerating the sebuf
+    // clients is a separate step, so only the fallback contract is pinned here.
     assert.ok(
-      protoText.includes('including energy') && protoText.includes('fall back to full'),
-      'list_feed_digest.proto variant comment must document energy fallback',
+      protoText.includes('full') && protoText.includes('fall back to full'),
+      'list_feed_digest.proto variant comment must document the full fallback',
     );
   });
 

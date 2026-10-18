@@ -198,7 +198,7 @@ describe('server catalog extraction (#4920a)', () => {
 
   it('extracts double-quoted names (Tom\'s Hardware class — #4927 cross-model)', () => {
     const feeds = extractServerFeeds();
-    assert.ok(feeds.some((f) => f.name === "Tom's Hardware"), 'double-quoted names must not be skipped');
+    assert.ok(feeds.some((f) => f.name === "Maclean's"), 'double-quoted names must not be skipped');
   });
 
   it('uses Nature\'s canonical RSS endpoint with the runtime redirect budget', () => {

@@ -3857,6 +3857,36 @@ export class App {
       );
     });
 
+    this.refreshScheduler.scheduleRefresh(
+      // inFlight lock key matches the hydration loader's runGuarded key so
+      // boot and refresh one-flight each other (loadStockAnalysis has no
+      // internal guard). The panel/viewport key stays kebab below (#6770).
+      'stockAnalysis',
+      () => this.dataLoader.loadStockAnalysis(),
+      REFRESH_INTERVALS.stockAnalysis,
+      () => hasPremiumAccess() && this.isPanelNearViewport('stock-analysis'),
+    );
+    this.refreshScheduler.scheduleRefresh(
+      'daily-market-brief',
+      () => this.dataLoader.loadDailyMarketBrief(),
+      REFRESH_INTERVALS.dailyMarketBrief,
+      () => hasPremiumAccess() && this.isPanelNearViewport('daily-market-brief'),
+    );
+    this.refreshScheduler.scheduleRefresh(
+      // inFlight lock key matches the hydration loader's runGuarded key
+      // (loadStockBacktest has no internal guard); panel key stays kebab (#6770).
+      'stockBacktest',
+      () => this.dataLoader.loadStockBacktest(),
+      REFRESH_INTERVALS.stockBacktest,
+      () => hasPremiumAccess() && this.isPanelNearViewport('stock-backtest'),
+    );
+    this.refreshScheduler.scheduleRefresh(
+      'market-implications',
+      () => this.dataLoader.loadMarketImplications(),
+      REFRESH_INTERVALS.marketImplications,
+      () => hasPremiumAccess() && this.isPanelNearViewport('market-implications'),
+    );
+
     this.refreshScheduler.registerAll([
       {
         name: 'markets',

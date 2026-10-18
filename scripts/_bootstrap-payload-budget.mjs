@@ -33,7 +33,7 @@ export const CAPTURED_BASE_TIER_KEYS = Object.freeze({
   fast: Object.freeze([
     'earthquakes', 'outages', 'serviceStatuses', 'ddosAttacks', 'trafficAnomalies',
     'marketQuotes', 'commodityQuotes', 'macroSignals', 'shippingRates', 'chokepoints',
-    'positiveGeoEvents', 'theaterPosture', 'riskScores', 'flightDelays', 'insights',
+    'theaterPosture', 'riskScores', 'flightDelays', 'insights',
     'predictions', 'temporalAnomalies', 'weatherAlerts', 'canadaAlerts', 'spending',
     'gdeltIntel', 'correlationCards', 'forecasts', 'shippingStress', 'socialVelocity',
     'wsbTickers',
@@ -70,7 +70,6 @@ export const CAPTURED_KEY_DECODED_BYTES = Object.freeze({
   macroSignals: 3_112,
   shippingRates: 8_180,
   chokepoints: 13_837,
-  positiveGeoEvents: 25_682,
   theaterPosture: 1_302,
   riskScores: 10_352,
   flightDelays: 57_826,

@@ -317,12 +317,4 @@ describe('renewable energy last-known-good recovery (#5497)', () => {
     );
   });
 
-  it('only allows live canonical observations to trigger happy-variant milestones', () => {
-    const dataLoader = readFileSync(resolve(root, 'src/app/data-loader.ts'), 'utf8');
-    assert.match(
-      dataLoader,
-      /SITE_VARIANT === 'happy'\s*&&\s*result\.state === 'live'\s*&&\s*result\.data\?\.globalPercentage/,
-    );
-    assert.match(dataLoader, /renewablePercent:\s*result\.data\.globalPercentage/);
-  });
 });

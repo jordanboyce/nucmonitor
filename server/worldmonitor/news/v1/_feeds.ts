@@ -470,9 +470,11 @@ export const VARIANT_FEEDS: Record<string, Record<string, ServerFeed[]>> = {
   // tests/news-feed-key-parity.test.mts).
   nuclear: {
     'live-news': [
-      { name: 'World Nuclear News', url: gn('site:world-nuclear-news.org when:2d') },
-      { name: 'ANS Nuclear Newswire', url: gn('site:ans.org nuclear when:3d') },
-      { name: 'NRC News', url: gn('site:nrc.gov when:7d') },
+      // Faster-churn copies of the regulatory/industry feeds (distinct URLs:
+      // the parsed RSS cache is keyed by variant + URL and retains names).
+      { name: 'World Nuclear News', url: gn('site:world-nuclear-news.org when:1d') },
+      { name: 'ANS Nuclear Newswire', url: gn('site:ans.org nuclear when:1d') },
+      { name: 'NRC News', url: gn('site:nrc.gov when:2d') },
       { name: 'Reuters Nuclear', url: gn('site:reuters.com (nuclear OR reactor OR uranium OR NRC) when:1d') },
       { name: 'AP Nuclear', url: gn('site:apnews.com (nuclear plant OR reactor OR "nuclear regulatory") when:2d') },
       { name: 'US Nuclear Plants', url: gn('("nuclear plant" OR "nuclear power plant" OR "nuclear station") (outage OR refueling OR restart OR shutdown OR NRC OR license) when:1d') },

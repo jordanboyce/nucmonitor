@@ -106,13 +106,13 @@ describe('parseRssXml publisher-link gate (#8398)', () => {
   it('keeps a digest link on the trusted origin publisher domain', () => {
     const xml = rss(`<item>
       <title>Oil prices climb as supply concerns mount</title>
-      <link>https://www.spglobal.com/commodityinsights/en/market-insights/x</link>
+      <link>https://www.reuters.com/markets/commodities/x</link>
       <pubDate>Tue, 07 Jul 2026 12:00:00 GMT</pubDate>
-      <source url="https://www.spglobal.com">S&amp;P Global</source>
+      <source url="https://www.reuters.com">Reuters</source>
     </item>`);
     const parsed = parseRssXml(xml, FEED, 'full');
     assert.ok(parsed && parsed.items.length === 1);
-    assert.equal(parsed.items[0]!.link, 'https://www.spglobal.com/commodityinsights/en/market-insights/x');
+    assert.equal(parsed.items[0]!.link, 'https://www.reuters.com/markets/commodities/x');
   });
 
   it('keeps a digest link on the feed URL host', () => {

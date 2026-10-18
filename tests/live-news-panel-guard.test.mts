@@ -33,18 +33,6 @@ describe('LiveNewsPanel instantiation guard', () => {
   // 1. Happy variant: DEFAULT_LIVE_CHANNELS is empty
   // -------------------------------------------------------------------------
 
-  it('DEFAULT_LIVE_CHANNELS is [] on happy variant (crash source)', () => {
-    const liveNews = src('src/services/live-channels.ts');
-    const match = liveNews.match(/DEFAULT_LIVE_CHANNELS\s*=\s*SITE_VARIANT\s*===\s*['"]tech['"]\s*\?[^:]+:\s*SITE_VARIANT\s*===\s*['"]happy['"]\s*\?\s*(\[[^\]]*\])/);
-    assert.ok(match, 'DEFAULT_LIVE_CHANNELS assignment not found');
-    assert.equal(match[1].replace(/\s/g, ''), '[]', 'happy variant DEFAULT_LIVE_CHANNELS must be []');
-  });
-
-  // -------------------------------------------------------------------------
-  // 2. Constructor must NOT have a FULL_LIVE_CHANNELS fallback
-  //    (would override intentionally empty stored channel sets)
-  // -------------------------------------------------------------------------
-
   it('constructor does not fall back to FULL_LIVE_CHANNELS after getDefaultLiveChannels()', () => {
     const liveNews = src('src/components/LiveNewsPanel.ts');
     // Extract the region between the two channel-init lines to check for an

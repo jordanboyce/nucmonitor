@@ -601,9 +601,9 @@ export const FULL_FEEDS: Record<string, Feed[]> = {
 // (VARIANT_FEEDS.nuclear); tests/news-feed-key-parity.test.mts keeps them aligned.
 const NUCLEAR_FEEDS: Record<string, Feed[]> = {
   'live-news': [
-    { name: 'World Nuclear News',    url: rss('https://news.google.com/rss/search?q=site:world-nuclear-news.org+when:2d&hl=en-US&gl=US&ceid=US:en') },
-    { name: 'ANS Nuclear Newswire',  url: rss('https://news.google.com/rss/search?q=site:ans.org+nuclear+when:3d&hl=en-US&gl=US&ceid=US:en') },
-    { name: 'NRC News',              url: rss('https://news.google.com/rss/search?q=site:nrc.gov+when:7d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'World Nuclear News',    url: rss('https://news.google.com/rss/search?q=site:world-nuclear-news.org+when:1d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'ANS Nuclear Newswire',  url: rss('https://news.google.com/rss/search?q=site:ans.org+nuclear+when:1d&hl=en-US&gl=US&ceid=US:en') },
+    { name: 'NRC News',              url: rss('https://news.google.com/rss/search?q=site:nrc.gov+when:2d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'Reuters Nuclear',       url: rss('https://news.google.com/rss/search?q=site:reuters.com+(nuclear+OR+reactor+OR+uranium+OR+NRC)+when:1d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'AP Nuclear',            url: rss('https://news.google.com/rss/search?q=site:apnews.com+(nuclear+plant+OR+reactor+OR+"nuclear+regulatory")+when:2d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'US Nuclear Plants',     url: rss('https://news.google.com/rss/search?q=("nuclear+plant"+OR+"nuclear+power+plant"+OR+"nuclear+station")+(outage+OR+refueling+OR+restart+OR+shutdown+OR+NRC+OR+license)+when:1d&hl=en-US&gl=US&ceid=US:en') },

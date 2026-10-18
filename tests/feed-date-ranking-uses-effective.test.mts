@@ -54,7 +54,7 @@ interface AllowEntry {
 const ALLOW_LIST: AllowEntry[] = [
   {
     file: 'src/services/rss.ts',
-    line: 390,
+    line: 318,
     reason: 'mlWorker.vectorStoreIngest stores pubDate as embedding metadata; not used as a freshness comparator.',
   },
   // effectivePubDateMs implementation moved to shared/news-clustering-core.js
@@ -158,14 +158,6 @@ describe('feed-date freshness guardrail — effectivePubDateMs usage', () => {
 
     assert.equal(displayPubDateMs(item), displayDate.getTime());
     assert.equal(effectivePubDateMs(item), 0);
-  });
-
-  it('happy cache serialization stores the display timestamp, not the effective ranking timestamp', () => {
-    assert.match(
-      readFileSync(resolve(repoRoot, 'src/app/data-loader.ts'), 'utf8'),
-      /pubDate:\s*displayPubDateMs\(item\)/,
-      'happy-panel cache writes must preserve a valid display Date even when pubDateMissing sorts the item as stale',
-    );
   });
 
   it('every .pubDate.getTime() in src/services + src/app + shared ranking modules is helper-routed or explicitly allow-listed', () => {

@@ -577,23 +577,17 @@ describe('push-handler.js — apex exemption list stays in sync', () => {
       return (block[1].match(/\/\^[^\n,]*\//g) ?? []).map((p) => p.trim()).sort();
     };
 
-    const guard = patternsIn(read('./agent-corpus-canonical-host.test.mjs'), 'APEX_SERVED');
     const worker = patternsIn(read('../public/push-handler.js'), 'APEX_SERVED_PATHS');
-    // THREE copies exist, not two: the corpus guard, the worker, and the relay.
-    // Binding only two left the relay's free to drift, reproducing the #4938
-    // POST-to-GET 405 on the half that talks to push services.
+    // Two in-repo copies remain since the published-corpus guard was retired:
+    // the worker and the relay. Binding them keeps the half that talks to
+    // push services from drifting and reproducing the #4938 POST-to-GET 405.
     const relay = patternsIn(read('../scripts/notification-relay.cjs'), 'APEX_SERVED_PATHS');
 
-    assert.ok(guard.length >= 5, 'the corpus guard must still carry the exemption list');
-    assert.deepEqual(
-      worker,
-      guard,
-      'public/push-handler.js must exempt exactly the paths Cloudflare serves on the apex',
-    );
+    assert.ok(worker.length >= 5, 'the worker must still carry the exemption list');
     assert.deepEqual(
       relay,
-      guard,
-      'scripts/notification-relay.cjs must exempt exactly the same paths',
+      worker,
+      'scripts/notification-relay.cjs must exempt exactly the paths public/push-handler.js exempts',
     );
   });
 

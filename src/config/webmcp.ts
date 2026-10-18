@@ -147,11 +147,6 @@ function variantInventory(hasDefaultProcurement: boolean): WebMcpVariantInventor
 
 export const WEBMCP_VARIANT_INVENTORIES = Object.freeze({
   full: variantInventory(true),
-  tech: variantInventory(true),
-  finance: variantInventory(true),
-  happy: variantInventory(false),
-  commodity: variantInventory(false),
-  energy: variantInventory(false),
   nuclear: variantInventory(false),
 }) satisfies Readonly<Record<SiteVariant, WebMcpVariantInventory>>;
 

@@ -80,8 +80,9 @@ describe('WebMCP dashboard panel catalog', () => {
 
     assert.equal(uniqueIds.length, Object.keys(ALL_PANELS).length);
     assert.equal(worldIds.length, 111);
-    assert.ok(uniqueIds.includes('regionalStartups'));
-    assert.ok(uniqueIds.includes('gccNews'));
+    assert.ok(uniqueIds.includes('nuclear-reactor-status'));
+    assert.ok(uniqueIds.includes('nuclear-hazards'));
+    assert.equal(worldIds.includes('nuclear-reactor-status'), false);
     assert.ok(disabledWorld.length > 0, 'World registry must include disabled panels');
     assert.ok(disabledWorld.every((panelId) => worldIds.includes(panelId)));
     assert.deepEqual([...uniqueIds], [...uniqueIds].sort((left, right) => left.localeCompare(right, 'en')));
@@ -110,18 +111,18 @@ describe('WebMCP dashboard panel catalog', () => {
     const live = liveState('full');
     const allPages = collectPages(live);
     const worldPages = collectPages(live, { variant: 'full' });
-    const techPages = collectPages(live, { variant: 'tech' });
+    const nuclearPages = collectPages(live, { variant: 'nuclear' });
     const allIds = allPages.flatMap((page) => page.panels.map((panel) => panel.id));
     const worldIds = worldPages.flatMap((page) => page.panels.map((panel) => panel.id));
-    const techIds = techPages.flatMap((page) => page.panels.map((panel) => panel.id));
+    const nuclearIds = nuclearPages.flatMap((page) => page.panels.map((panel) => panel.id));
 
     assert.deepEqual(allIds, [...getCanonicalDashboardPanelIds()]);
     assert.deepEqual(worldIds, [...getCanonicalDashboardPanelIds('full')]);
-    assert.deepEqual(techIds, [...getCanonicalDashboardPanelIds('tech')]);
-    assert.notDeepEqual(worldIds, techIds);
-    assert.ok(techIds.every((panelId) => allIds.includes(panelId)));
+    assert.deepEqual(nuclearIds, [...getCanonicalDashboardPanelIds('nuclear')]);
+    assert.notDeepEqual(worldIds, nuclearIds);
+    assert.ok(nuclearIds.every((panelId) => allIds.includes(panelId)));
     assert.equal(allPages[0]?.variant, 'full');
-    assert.equal(techPages[0]?.variant, 'full');
+    assert.equal(nuclearPages[0]?.variant, 'full');
   });
 
   it('filters by category, enabled state, and availability', () => {
@@ -186,46 +187,46 @@ describe('WebMCP dashboard panel catalog', () => {
   });
 
   it('keeps variant availability and category assignment aligned with settings registries', () => {
-    const githubCategory = getDashboardPanelCategoryKey('github', 'tech');
-    const githubOnWorld = getDashboardPanelCategoryKey('github', 'full');
+    const reactorCategory = getDashboardPanelCategoryKey('nuclear-reactor-status', 'nuclear');
+    const reactorOnWorld = getDashboardPanelCategoryKey('nuclear-reactor-status', 'full');
     const live = liveState('full');
-    const github = collectPages(live)
+    const reactor = collectPages(live)
       .flatMap((page) => page.panels)
-      .find((panel) => panel.id === 'github');
+      .find((panel) => panel.id === 'nuclear-reactor-status');
 
-    assert.equal(githubCategory, 'techAi');
-    assert.equal(githubOnWorld, 'techAi');
-    assert.ok(github);
-    assert.deepEqual(github.variants, ['tech']);
-    assert.equal(github.category, 'techAi');
-    assert.ok(Object.keys(PANEL_CATEGORY_MAP).includes('techAi'));
+    assert.equal(reactorCategory, 'nuclearHub');
+    assert.equal(reactorOnWorld, 'nuclearHub');
+    assert.ok(reactor);
+    assert.deepEqual(reactor.variants, ['nuclear']);
+    assert.equal(reactor.category, 'nuclearHub');
+    assert.ok(Object.keys(PANEL_CATEGORY_MAP).includes('nuclearHub'));
   });
 
   it('classifies a filtered variant catalog with that variant\'s categories', () => {
     const live = liveState('full');
-    const techMarketIds = collectPages(live, { variant: 'tech', category: 'techMarkets' })
+    const nuclearNewsIds = collectPages(live, { variant: 'nuclear', category: 'nuclearNews' })
       .flatMap((page) => page.panels.map((panel) => panel.id));
-    const marketsOnWorld = collectPages(live, { variant: 'full' })
+    const commoditiesOnWorld = collectPages(live, { variant: 'full' })
       .flatMap((page) => page.panels)
-      .find((panel) => panel.id === 'markets');
-    const techMarkets = listDashboardPanelCatalog(live, {
-      variant: 'tech',
-      category: 'techMarkets',
+      .find((panel) => panel.id === 'commodities');
+    const nuclearNews = listDashboardPanelCatalog(live, {
+      variant: 'nuclear',
+      category: 'nuclearNews',
       limit: 8,
     });
 
-    assert.ok(techMarketIds.includes('markets'));
-    assert.ok(techMarketIds.includes('finance'));
-    assert.ok(techMarketIds.includes('crypto'));
+    assert.ok(nuclearNewsIds.includes('commodities'));
+    assert.ok(nuclearNewsIds.includes('energy'));
+    assert.ok(nuclearNewsIds.includes('nuclear-regulatory'));
     assert.deepEqual(
-      [...techMarketIds].sort((left, right) => left.localeCompare(right, 'en')),
-      [...(PANEL_CATEGORY_MAP.techMarkets?.panelKeys ?? [])]
-        .filter((panelId) => getCanonicalDashboardPanelIds('tech').includes(panelId))
+      [...nuclearNewsIds].sort((left, right) => left.localeCompare(right, 'en')),
+      [...(PANEL_CATEGORY_MAP.nuclearNews?.panelKeys ?? [])]
+        .filter((panelId) => getCanonicalDashboardPanelIds('nuclear').includes(panelId))
         .sort((left, right) => left.localeCompare(right, 'en')),
     );
-    assert.ok(techMarkets.panels.every((panel) => panel.category === 'techMarkets'));
-    assert.equal(marketsOnWorld?.category, 'marketsFinance');
-    assert.equal(techMarkets.variant, 'full');
+    assert.ok(nuclearNews.panels.every((panel) => panel.category === 'nuclearNews'));
+    assert.equal(commoditiesOnWorld?.category, 'marketsFinance');
+    assert.equal(nuclearNews.variant, 'full');
   });
 
   it('rejects invalid filters and cursors with structured reasons', () => {

@@ -63,6 +63,9 @@ const entitled = {
   isPanelAllowed: () => true,
   hasPremiumAccess: () => false,
   applyLayerChange: () => {},
+  // The node fallback variant is the nuclear hub; these cases exercise the
+  // full-variant layer catalogue (conflicts, CII, storage facilities).
+  getVariant: () => 'full' as const,
 };
 
 describe('agent bus applier', () => {
@@ -302,6 +305,7 @@ describe('agent bus applier', () => {
       getPanelConfig: entitled.getPanelConfig,
       isPanelAllowed: entitled.isPanelAllowed,
       hasPremiumAccess: entitled.hasPremiumAccess,
+      getVariant: entitled.getVariant,
     });
     const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
 

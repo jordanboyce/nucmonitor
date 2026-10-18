@@ -98,43 +98,46 @@ describe('webmcp mission preset catalog', () => {
     assert.ok(JSON.stringify(result).length <= WEBMCP_TOOL_BUDGETS.outputJsonChars);
   });
 
-  it('omits NQ Day Trader from non-finance monitors and lists it on finance', () => {
-    for (const variant of SITE_VARIANTS.filter((item) => item !== 'finance')) {
+  it('omits Nuclear Facilities from non-nuclear monitors and lists it on nuclear', () => {
+    for (const variant of SITE_VARIANTS.filter((item) => item !== 'nuclear')) {
       const result = listMissionPresetCatalog(live({ variant }));
-      assert.equal(result.presets.some((preset) => preset.id === 'nq-day-trader'), false);
+      assert.equal(result.presets.some((preset) => preset.id === 'nuclear-hub'), false);
       assert.equal(result.count, getMissionPresetsForVariant(variant).length);
     }
-    const finance = listMissionPresetCatalog(live({ variant: 'finance' }));
-    assert.equal(finance.presets.some((preset) => preset.id === 'nq-day-trader'), true);
-    assert.equal(finance.count, getMissionPresetsForVariant('finance').length);
-    assert.equal(finance.count, getMissionPresetsForVariant('full').length + 1);
+    const nuclear = listMissionPresetCatalog(live({ variant: 'nuclear' }));
+    assert.equal(nuclear.presets.some((preset) => preset.id === 'nuclear-hub'), true);
+    assert.equal(nuclear.count, getMissionPresetsForVariant('nuclear').length);
+    assert.equal(nuclear.count, getMissionPresetsForVariant('full').length + 1);
   });
 
   it('marks monitor-incompatible presets with a stable reason', () => {
-    const result = listMissionPresetCatalog(live({ variant: 'happy' }));
+    const result = listMissionPresetCatalog(live({ variant: 'nuclear' }));
+    const supply = result.presets.find((preset) => preset.id === 'supply-chain-risk');
+    assert.ok(supply);
+    assert.equal(supply.monitorCompatible, false);
+    assert.equal(supply.available, false);
+    assert.equal(supply.unavailableReason, 'preset_incompatible');
+    assert.equal(supply.panelCount, 0);
+    assert.equal(supply.layerCount, 0);
+    assert.equal('view' in supply, false);
+    assert.equal('timeRange' in supply, false);
+
+    const nuclearHub = result.presets.find((preset) => preset.id === 'nuclear-hub');
+    assert.ok(nuclearHub);
+    assert.equal(nuclearHub.monitorCompatible, true);
+    assert.equal(nuclearHub.available, true);
+    assert.equal(nuclearHub.unavailableReason, undefined);
+    assert.equal(nuclearHub.view, 'america');
+    assert.equal(nuclearHub.timeRange, '7d');
+    assert.equal(nuclearHub.panelCount, 8);
+
+    // A shared mission stays compatible when enough of its panels are native,
+    // and its counts reflect the trimmed nuclear selection.
     const crisis = result.presets.find((preset) => preset.id === 'crisis-desk');
     assert.ok(crisis);
-    assert.equal(crisis.monitorCompatible, false);
-    assert.equal(crisis.available, false);
-    assert.equal(crisis.unavailableReason, 'preset_incompatible');
-    assert.equal(crisis.panelCount, 0);
-    assert.equal(crisis.layerCount, 0);
-    assert.equal('view' in crisis, false);
-    assert.equal('timeRange' in crisis, false);
-
-    const goodNews = result.presets.find((preset) => preset.id === 'good-news-explorer');
-    assert.ok(goodNews);
-    assert.equal(goodNews.monitorCompatible, true);
-    assert.equal(goodNews.available, true);
-    assert.equal(goodNews.unavailableReason, undefined);
-    assert.equal(goodNews.view, 'global');
-    assert.equal(goodNews.timeRange, '7d');
-
-    const countryWatcher = result.presets.find((preset) => preset.id === 'country-watcher');
-    assert.ok(countryWatcher);
-    assert.equal(countryWatcher.monitorCompatible, true);
-    assert.equal(countryWatcher.available, true);
-    assert.equal(countryWatcher.panelCount, 6);
+    assert.equal(crisis.monitorCompatible, true);
+    assert.equal(crisis.available, true);
+    assert.equal(crisis.panelCount, 3);
   });
 
   it('reports entitlement denials without leaking premium payloads', () => {
@@ -175,11 +178,11 @@ describe('webmcp mission preset catalog', () => {
   });
 
   it('filters available=true to eligible presets only', () => {
-    const result = listMissionPresetCatalog(live({ variant: 'happy' }), { available: true });
+    const result = listMissionPresetCatalog(live({ variant: 'nuclear' }), { available: true });
     assert.ok(result.presets.every((preset) => preset.available));
-    assert.ok(result.presets.some((preset) => preset.id === 'good-news-explorer'));
-    assert.ok(result.presets.some((preset) => preset.id === 'country-watcher'));
-    assert.ok(!result.presets.some((preset) => preset.id === 'crisis-desk'));
+    assert.ok(result.presets.some((preset) => preset.id === 'nuclear-hub'));
+    assert.ok(result.presets.some((preset) => preset.id === 'crisis-desk'));
+    assert.ok(!result.presets.some((preset) => preset.id === 'supply-chain-risk'));
   });
 
   it('evaluates compatibility for every bundled preset on every monitor', () => {

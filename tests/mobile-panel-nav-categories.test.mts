@@ -40,19 +40,22 @@ describe('getVariantPanelCategories', () => {
     assert.equal(result.length, 0);
   });
 
-  it('respects variant scoping (gulfMena is finance-only)', () => {
-    const enabled = settings({ 'gulf-economies': true });
-    assert.ok(PANEL_CATEGORY_MAP['gulfMena']!.variants?.includes('finance'), 'fixture assumption');
-    const forFull = getVariantPanelCategories(enabled, 'full');
-    const forFinance = getVariantPanelCategories(enabled, 'finance');
-    assert.ok(!forFull.some((c) => c.key === 'gulfMena'));
-    assert.ok(forFinance.some((c) => c.key === 'gulfMena'));
+  it('respects variant scoping (nuclearHub is nuclear-only, intelligence is full-only)', () => {
+    const hub = settings({ 'nuclear-reactor-status': true });
+    assert.deepEqual(PANEL_CATEGORY_MAP['nuclearHub']!.variants, ['nuclear'], 'fixture assumption');
+    assert.ok(!getVariantPanelCategories(hub, 'full').some((c) => c.key === 'nuclearHub'));
+    assert.ok(getVariantPanelCategories(hub, 'nuclear').some((c) => c.key === 'nuclearHub'));
+
+    const intel = settings({ cii: true });
+    assert.deepEqual(PANEL_CATEGORY_MAP['intelligence']!.variants, ['full'], 'fixture assumption');
+    assert.ok(getVariantPanelCategories(intel, 'full').some((c) => c.key === 'intelligence'));
+    assert.ok(!getVariantPanelCategories(intel, 'nuclear').some((c) => c.key === 'intelligence'));
   });
 
   it('unscoped categories (core) are available to every variant', () => {
     assert.equal(PANEL_CATEGORY_MAP['core']!.variants, undefined, 'core stays unscoped');
     const enabled = settings({ 'live-news': true });
-    for (const variant of ['full', 'tech', 'finance', 'commodity', 'energy', 'happy']) {
+    for (const variant of ['full', 'nuclear']) {
       const result = getVariantPanelCategories(enabled, variant);
       assert.ok(
         result.some((c) => c.key === 'core'),
@@ -68,12 +71,9 @@ describe('getVariantPanelCategories', () => {
   it('variant defaults yield the curated category set, free of duplicate labels', () => {
     const expected: Record<string, string[]> = {
       full: ['core', 'intelligence', 'correlation', 'regionalNews', 'marketsFinance', 'topical', 'dataTracking'],
-      tech: ['core', 'techAi', 'startupsVc', 'securityPolicy', 'techMarkets'],
-      finance: ['core', 'finMarkets', 'fixedIncomeFx', 'finCommodities', 'cryptoDigital', 'centralBanksEcon', 'dealsInstitutional', 'gulfMena'],
-      commodity: ['core', 'commodityPrices', 'miningIndustry', 'commodityEcon'],
-      energy: ['core', 'marketsFinance', 'topical', 'dataTracking'],
-      happy: ['core', 'happyNews', 'happyPlanet'],
+      nuclear: ['core', 'nuclearHub', 'nuclearNews'],
     };
+    assert.deepEqual(Object.keys(VARIANT_DEFAULTS).sort(), Object.keys(expected).sort(), 'every variant with defaults is covered');
     for (const [variant, expectedKeys] of Object.entries(expected)) {
       const enabledDefaults = settings(
         Object.fromEntries((VARIANT_DEFAULTS[variant] ?? []).map((k: string) => [k, true])),

@@ -45,7 +45,7 @@ const CHINA_BASKET: StockEntry[] = [
 
 const CLIENT_VARIANT_BLOCKS: Record<string, string> = {
   full: 'FULL_FEEDS',
-  finance: 'FINANCE_FEEDS',
+  nuclear: 'NUCLEAR_FEEDS',
 };
 
 function clientCategoryBlock(variant: string, category: string): string | null {
@@ -159,7 +159,8 @@ describe('China client/server news digest parity (#5272)', () => {
     ['Xinhua', { variant: 'full', category: 'asia' }],
     ['MIIT (China)', { variant: 'full', category: 'asia' }],
     ['MOFCOM (China)', { variant: 'full', category: 'asia' }],
-    ['PBoC Watch', { variant: 'finance', category: 'centralbanks' }],
+    // PBoC Watch lived in the finance variant's centralbanks bucket; that
+    // variant was removed with the NucMonitor collapse (full + nuclear only).
   ]);
 
   for (const [name, { variant, category }] of expectedMembership) {
@@ -169,7 +170,7 @@ describe('China client/server news digest parity (#5272)', () => {
       assert.notEqual(clientRoute, null, `${name} must remain in client ${category}`);
       assert.notEqual(serverRoute, null, `${name} must be present in server ${category}`);
       assert.equal(serverRoute, clientRoute, `${name} client/server routing class drifted`);
-      const otherVariant = variant === 'full' ? 'finance' : 'full';
+      const otherVariant = variant === 'full' ? 'nuclear' : 'full';
       assert.equal(
         clientRouteClass(otherVariant, category, name),
         null,

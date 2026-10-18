@@ -74,10 +74,11 @@ test('does not treat inherited Object properties as known platforms', async () =
 
 // #5908: one published desktop binary, variants switch in-app. Every supported
 // variant must resolve to that same artifact — the old per-variant identifiers
-// advertised `techmonitor`/`financemonitor` assets no pipeline has ever built,
-// so `variant=tech` and `variant=finance` could only ever 302 to the releases
-// page while the docs and the in-app switcher promised a download.
-for (const variant of ['full', 'world', 'tech', 'finance', 'commodity', 'energy', 'happy', 'nuclear']) {
+// advertised branded assets no pipeline has ever built, so a non-default
+// variant could only ever 302 to the releases page while the docs and the
+// in-app switcher promised a download. The supported set is SITE_VARIANTS
+// (full, nuclear) plus the `world` alias for `full`.
+for (const variant of ['full', 'world', 'nuclear']) {
   test(`resolves variant=${variant} to the single desktop binary`, async () => {
     const response = await download(`platform=linux-appimage&variant=${variant}`);
     assert.equal(response.status, 302);
@@ -101,7 +102,7 @@ test('treats an empty variant the same as omitting it', async () => {
 });
 
 test('is case-insensitive about the variant', async () => {
-  const response = await download('platform=linux-appimage&variant=TECH');
+  const response = await download('platform=linux-appimage&variant=NUCLEAR');
   assert.equal(response.status, 302);
   assert.equal(response.headers.get('location'), WORLD_APPIMAGE);
 });
@@ -109,7 +110,7 @@ test('is case-insensitive about the variant', async () => {
 test('still resolves to the World Monitor asset when a stray branded asset is present', async () => {
   // Defends the collapse itself: a leftover per-variant artifact on a release
   // must not resurrect per-variant asset selection.
-  const response = await download('platform=linux-appimage&variant=tech', [
+  const response = await download('platform=linux-appimage&variant=nuclear', [
     {
       name: 'Tech-Monitor_2.5.7_amd64.AppImage',
       browser_download_url: 'https://downloads.example/Tech-Monitor_2.5.7_amd64.AppImage',
@@ -125,6 +126,17 @@ test('falls back to the release page for a variant the product does not support'
   assert.equal(response.status, 302);
   assert.equal(response.headers.get('location'), RELEASES_PAGE);
 });
+
+// The tech/finance/commodity/energy/happy variants were retired when the site
+// variant system collapsed to full + nuclear. They must fall back like any other
+// unsupported variant rather than keep resolving to the binary.
+for (const variant of ['tech', 'finance', 'commodity', 'energy', 'happy']) {
+  test(`treats retired variant=${variant} as unsupported`, async () => {
+    const response = await download(`platform=linux-appimage&variant=${variant}`);
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), RELEASES_PAGE);
+  });
+}
 
 test('rejects an unsupported variant without calling GitHub', async () => {
   // An unsupported variant has one answer regardless of what upstream returns,

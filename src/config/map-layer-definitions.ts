@@ -10,7 +10,7 @@ import { isDesktopRuntime } from '@/services/runtime';
  * imports this type so the picker, dispatcher, and shell stay in lockstep.
  */
 export type RendererKind = 'svg' | 'deck' | 'globe';
-export type MapVariant = 'full' | 'tech' | 'finance' | 'happy' | 'commodity' | 'energy' | 'nuclear';
+export type MapVariant = 'full' | 'nuclear';
 
 const _desktop = isDesktopRuntime();
 
@@ -386,35 +386,6 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
     'waterways', 'economic', 'minerals', 'gpsJamming',
     'satellites', 'ciiChoropleth', 'resilienceScore', 'sanctions', 'dayNight', 'webcams',
     'diseaseOutbreaks',
-  ],
-  tech: [
-    'startupHubs', 'techHQs', 'accelerators', 'cloudRegions',
-    'datacenters', 'cables', 'outages', 'cyberThreats',
-    'techEvents', 'resilienceScore', 'natural', 'fires', 'dayNight',
-  ],
-  finance: [
-    'stockExchanges', 'financialCenters', 'centralBanks', 'commodityHubs',
-    'gulfInvestments', 'tradeRoutes', 'cables', 'pipelines',
-    'outages', 'weather', 'canadaRoads', 'economic', 'waterways', 'canadaAlerts',
-    'resilienceScore', 'natural', 'cyberThreats', 'sanctions', 'dayNight',
-  ],
-  happy: [
-    'positiveEvents', 'kindness', 'happiness', 'resilienceScore',
-    'speciesRecovery', 'renewableInstallations',
-  ],
-  commodity: [
-    'miningSites', 'processingPlants', 'commodityPorts', 'commodityHubs',
-    'minerals', 'pipelines', 'waterways', 'tradeRoutes',
-    'ais', 'economic', 'fires', 'climate',
-    'resilienceScore', 'natural', 'weather', 'canadaRoads', 'outages', 'sanctions', 'dayNight', 'canadaAlerts',
-  ],
-  energy: [
-    // Core energy infrastructure — mirror of ENERGY_MAP_LAYERS in panels.ts
-    'pipelines', 'storageFacilities', 'fuelShortages', 'waterways', 'commodityPorts', 'commodityHubs',
-    'ais', 'liveTankers', 'tradeRoutes', 'minerals',
-    // Energy-adjacent context
-    'sanctions', 'fires', 'climate', 'weather', 'canadaRoads', 'outages', 'natural', 'canadaAlerts',
-    'resilienceScore', 'dayNight',
   ],
   nuclear: [
     // NucMonitor — facilities first, then every hazard layer that can touch a site

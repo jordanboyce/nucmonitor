@@ -11,11 +11,12 @@
  * missing data, and the trimmed layer still spends fair share out of the global
  * total, tightening the cap on the layers that DO disclose.
  *
- * #7144 closed the live case: commodity now has its own `commodityLayers` picker
- * list, so `fires` / `minerals` / `commodityHubs` (all default-on in
- * COMMODITY_MAP_LAYERS, none of them in `fullLayers`) get rows the badge can
- * write onto. This pins the relationship for every variant so the next gap
- * fails here instead of in production.
+ * #7144 closed the original live case (the commodity variant's own picker list).
+ * NucMonitor keeps two variants, full and nuclear: `nuclearLayers` must carry a
+ * row for every budgeted layer NUCLEAR_MAP_LAYERS switches on (`fires`,
+ * `usNuclearFacilities`, …), none of which `fullLayers` lists. This pins the
+ * relationship for every variant so the next gap fails here instead of in
+ * production.
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,30 +41,21 @@ function sliceBetween(src, start, end) {
  * budgeted because the DOM ceiling is the point of #7112 and none of these feeds
  * is bounded upstream (`toMapFires` caps nothing), and their cut is reported via
  * `getOverlayMarkerBudgetState().undisclosed` rather than vanishing.
- *
- * Empty after #7144: commodity now has `commodityLayers`. Keep the map so the
- * stale-entry arm still exercises, and so the next gap has a place.
+
  */
-const DECLARED_GAPS = new Map();
+const DECLARED_GAPS = new Map([
+]);
 
 /** Variant -> the createLayerToggles list it actually uses. */
 const VARIANT_PICKER_LIST = {
   full: 'fullLayers',
-  tech: 'techLayers',
-  finance: 'financeLayers',
-  happy: 'happyLayers',
-  energy: 'energyLayers',
-  commodity: 'commodityLayers',
+  nuclear: 'nuclearLayers',
 };
 
 /** Variant -> the panels.ts default map-layer state it boots with. */
 const VARIANT_LAYER_STATE = {
   full: 'FULL_MAP_LAYERS',
-  tech: 'TECH_MAP_LAYERS',
-  finance: 'FINANCE_MAP_LAYERS',
-  happy: 'HAPPY_MAP_LAYERS',
-  energy: 'ENERGY_MAP_LAYERS',
-  commodity: 'COMMODITY_MAP_LAYERS',
+  nuclear: 'NUCLEAR_MAP_LAYERS',
 };
 
 const planBlock = sliceBetween(
@@ -127,7 +119,7 @@ describe('SVG overlay marker budget disclosure (#7112)', () => {
       assert.ok(pickerLayersFor('fullLayers').has(layer), `${layer} must have a row`);
     }
     // Negative control: exempt groups must not count as budgeted.
-    assert.ok(!planned.has('techHubs') && !planned.has('geoHubs'));
+    assert.ok(!planned.has('geoHubs'));
   });
 
   it('gives every budgeted, default-on layer a row to disclose its cut on', () => {
@@ -181,21 +173,23 @@ describe('SVG overlay marker budget disclosure (#7112)', () => {
     );
   });
 
-  it('gives commodity toggle rows for fires/minerals/commodityHubs so a shown/total badge can render (#7144)', () => {
-    // The live gap: COMMODITY_MAP_LAYERS turns these on, fullLayers lists none
-    // of them, and without a commodityLayers list the ternary fell through.
-    const defaultOn = defaultOnLayersFor('COMMODITY_MAP_LAYERS');
-    const rows = pickerLayersFor('commodityLayers');
+  it('gives nuclear toggle rows for fires/usNuclearFacilities so a shown/total badge can render (#7144)', () => {
+    // The same shape as the original commodity gap: NUCLEAR_MAP_LAYERS turns
+    // these on, fullLayers lists neither, and without a nuclearLayers list the
+    // ternary would fall through to fullLayers.
+    const defaultOn = defaultOnLayersFor('NUCLEAR_MAP_LAYERS');
+    const rows = pickerLayersFor('nuclearLayers');
     const planned = plannedLayers();
-    for (const layer of ['fires', 'minerals', 'commodityHubs']) {
-      assert.ok(defaultOn.has(layer), `${layer} must stay default-on for commodity`);
+    for (const layer of ['fires', 'usNuclearFacilities']) {
+      assert.ok(defaultOn.has(layer), `${layer} must stay default-on for nuclear`);
       assert.ok(planned.has(layer), `${layer} must stay budgeted`);
-      assert.ok(rows.has(layer), `commodityLayers must include ${layer}`);
+      assert.ok(rows.has(layer), `nuclearLayers must include ${layer}`);
+      assert.ok(!pickerLayersFor('fullLayers').has(layer), `${layer} is nuclear-only, so fullLayers cannot stand in`);
     }
     assert.match(
       togglesBlock,
-      /SITE_VARIANT === 'commodity' \? commodityLayers/,
-      'createLayerToggles must select commodityLayers, not fall through to fullLayers',
+      /SITE_VARIANT === 'nuclear' \? nuclearLayers/,
+      'createLayerToggles must select nuclearLayers, not fall through to fullLayers',
     );
 
     // The badge writer keys off `.layer-toggle-row[data-layer="<key>"]`. Both

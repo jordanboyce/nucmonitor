@@ -11,7 +11,7 @@ describe('variant switcher navigation', () => {
       expect(
         variantSwitcherHref(
           variant as keyof typeof VARIANT_SWITCHER_DASHBOARD_URLS,
-          variant === 'full' ? 'tech' : 'full',
+          variant === 'full' ? 'nuclear' : 'full',
           false,
         ),
       ).toBe(expected);
@@ -20,7 +20,7 @@ describe('variant switcher navigation', () => {
   });
 
   it('does not navigate for local development or the active variant', () => {
-    expect(variantSwitcherHref('tech', 'full', true)).toBe('#');
-    expect(variantSwitcherHref('tech', 'tech', false)).toBe('#');
+    expect(variantSwitcherHref('nuclear', 'full', true)).toBe('#');
+    expect(variantSwitcherHref('nuclear', 'nuclear', false)).toBe('#');
   });
 });

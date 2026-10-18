@@ -1,7 +1,6 @@
 
 import { getRpcBaseUrl } from '@/services/rpc-client';
 import { createCircuitBreaker } from '@/utils';
-import { SITE_VARIANT } from '@/config';
 import { getHydratedData } from '@/services/bootstrap';
 
 export interface PredictionMarket {
@@ -30,8 +29,6 @@ import predictionTags from '../../../scripts/data/prediction-tags.json';
 import { PredictionServiceClient } from '@/services/generated-rpc-clients';
 
 const GEOPOLITICAL_TAGS = predictionTags.geopolitical;
-const TECH_TAGS = predictionTags.tech;
-const FINANCE_TAGS = predictionTags.finance;
 
 interface BootstrapPredictionData {
   geopolitical: PredictionMarket[];
@@ -100,9 +97,7 @@ export async function fetchPredictionCandidates(opts?: { region?: string }): Pro
   const markets = await breaker.execute(async () => {
     const hydrated = getHydratedData('predictions') as BootstrapPredictionData | undefined;
     if (hydrated?.fetchedAt && Date.now() - hydrated.fetchedAt < 40 * 60 * 1000) {
-      const variant = SITE_VARIANT === 'tech' ? hydrated.tech
-        : SITE_VARIANT === 'finance' ? (hydrated.finance ?? hydrated.geopolitical)
-        : hydrated.geopolitical;
+      const variant = hydrated.geopolitical;
       if (variant && variant.length > 0) {
         return variant
           .filter(m => !isExpired(m.endDate))
@@ -111,9 +106,7 @@ export async function fetchPredictionCandidates(opts?: { region?: string }): Pro
       }
     }
 
-    const tags = SITE_VARIANT === 'tech' ? TECH_TAGS
-      : SITE_VARIANT === 'finance' ? FINANCE_TAGS
-      : GEOPOLITICAL_TAGS;
+    const tags = GEOPOLITICAL_TAGS;
     const rpcResults = await client.listPredictionMarkets({
       category: tags[0] ?? '',
       query: '',

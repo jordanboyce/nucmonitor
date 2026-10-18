@@ -582,7 +582,7 @@ describe("userPreferences.pruneStaleWriteRateLimits", () => {
 });
 
 describe("preference variant boundary", () => {
-  const variants = ["full", "tech", "finance", "happy", "commodity", "energy"];
+  const variants = ["full", "nuclear"];
 
   test("round-trips all supported variants without crossing users or creating duplicate rows", async () => {
     const t = makeT();
@@ -601,7 +601,7 @@ describe("preference variant boundary", () => {
       expect(await t.query(internal.userPreferences.getPreferencesByUserId, { userId: USER_A.subject, variant }))
         .toMatchObject({ data, syncVersion: 2 });
     }
-    expect(await t.run(ctx => ctx.db.query("userPreferences").collect())).toHaveLength(6);
+    expect(await t.run(ctx => ctx.db.query("userPreferences").collect())).toHaveLength(2);
   });
 
   test.each(["", "FULL", " full", "full ", "unknown", "__proto__", "x".repeat(1024)])(

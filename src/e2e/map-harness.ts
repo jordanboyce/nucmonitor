@@ -12,16 +12,8 @@ import {
   STRATEGIC_WATERWAYS,
   PORTS,
   APT_GROUPS,
-  STOCK_EXCHANGES,
-  FINANCIAL_CENTERS,
-  CENTRAL_BANKS,
-  COMMODITY_HUBS,
-  MINING_SITES,
-  PROCESSING_PLANTS,
-  COMMODITY_PORTS,
 } from '../config';
-// Tech-geo + ai-datacenters + geo-map tables imported directly so they stay off the eager @/config barrel (#4404).
-import { STARTUP_HUBS, ACCELERATORS, TECH_HQS, CLOUD_REGIONS } from '../config/tech-geo';
+// ai-datacenters + geo-map tables imported directly so they stay off the eager @/config barrel (#4404).
 import { AI_DATA_CENTERS } from '../config/ai-datacenters';
 import { UNDERSEA_CABLES, NUCLEAR_FACILITIES, ECONOMIC_CENTERS, SPACEPORTS, CRITICAL_MINERALS } from '../config/geo-map';
 import type { PositiveGeoEvent } from '../services/positive-events-geo';
@@ -57,7 +49,7 @@ import type { WeatherAlert } from '../services/weather';
 import { CHINA_LOGISTICS_CORRIDORS } from '../../shared/china-logistics-corridors';
 
 type Scenario = 'alpha' | 'beta';
-type HarnessVariant = 'full' | 'tech' | 'finance' | 'commodity' | 'energy' | 'happy' | 'nuclear';
+type HarnessVariant = 'full' | 'nuclear';
 type HarnessLayerKey = keyof MapLayers;
 type PulseProtestScenario =
   | 'none'
@@ -205,8 +197,6 @@ type MapHarness = {
   ) => Promise<TradeAnimationProfileResult>;
   destroy: () => void;
 };
-
-const isEnergyHarnessVariant = SITE_VARIANT === 'energy';
 
 declare global {
   interface Window {
@@ -471,39 +461,7 @@ const SEEDED_DISEASE_OUTBREAKS: DiseaseOutbreakItem[] = [
 const SEEDED_MILITARY_BASES: MilitaryBaseEnriched[] = (MILITARY_BASES as MilitaryBaseEnriched[])
   .map((base) => ({ ...base }));
 
-const commodityAllLayersEnabled: MapLayers = {
-  ...allLayersEnabled,
-  miningSites: true,
-  processingPlants: true,
-  commodityPorts: true,
-};
-
-const energyAllLayersEnabled: MapLayers = {
-  ...allLayersEnabled,
-  // commodityPorts is base-false in allLayersEnabled post-#3925 isolation
-  // refactor (was true in an earlier snapshot Greptile reviewed) — energy
-  // explicitly enables it because the energy harness ships seeded port
-  // fixtures; e2e/map-harness.spec.ts (npm run test:e2e:energy) expects
-  // the Atlas deck layers these flags enable.
-  commodityPorts: true,
-  storageFacilities: true,
-  fuelShortages: true,
-  liveTankers: true,
-};
-
-const happyAllLayersEnabled: MapLayers = {
-  ...allLayersEnabled,
-  speciesRecovery: true,
-  renewableInstallations: true,
-};
-
-const seededAllLayers: MapLayers = isEnergyHarnessVariant
-  ? energyAllLayersEnabled
-  : SITE_VARIANT === 'commodity'
-  ? commodityAllLayersEnabled
-  : SITE_VARIANT === 'happy'
-  ? happyAllLayersEnabled
-  : allLayersEnabled;
+const seededAllLayers: MapLayers = allLayersEnabled;
 
 const initialLayers: MapLayers = {
   ...seededAllLayers,
@@ -968,19 +926,8 @@ const [economicLon, economicLat] = firstLatLon(ECONOMIC_CENTERS, [-74.0, 40.7]);
 const [datacenterLon, datacenterLat] = firstLatLon(AI_DATA_CENTERS, [-121.9, 37.3]);
 const [spaceportLon, spaceportLat] = firstLatLon(SPACEPORTS, [-80.6, 28.6]);
 const [mineralLon, mineralLat] = firstLatLon(CRITICAL_MINERALS, [135.0, -27.0]);
-const [startupLon, startupLat] = firstLatLon(STARTUP_HUBS, [-122.08, 37.38]);
-const [acceleratorLon, acceleratorLat] = firstLatLon(ACCELERATORS, [-122.41, 37.77]);
-const [techHQLon, techHQLat] = firstLatLon(TECH_HQS, [-122.0, 37.3]);
-const [cloudRegionLon, cloudRegionLat] = firstLatLon(CLOUD_REGIONS, [-122.3, 37.6]);
 const [aptLon, aptLat] = firstLatLon(APT_GROUPS, [116.4, 39.9]);
 const [portLon, portLat] = firstLatLon(PORTS, [32.5, 29.9]);
-const [exchangeLon, exchangeLat] = firstLatLon(STOCK_EXCHANGES, [-74.0, 40.7]);
-const [financialCenterLon, financialCenterLat] = firstLatLon(FINANCIAL_CENTERS, [-74.0, 40.7]);
-const [centralBankLon, centralBankLat] = firstLatLon(CENTRAL_BANKS, [-77.0, 38.9]);
-const [commodityHubLon, commodityHubLat] = firstLatLon(COMMODITY_HUBS, [-87.6, 41.8]);
-const [miningSiteLon, miningSiteLat] = firstLatLon(MINING_SITES, [-116.12, 40.73]);
-const [processingPlantLon, processingPlantLat] = firstLatLon(PROCESSING_PLANTS, [121.5, -30.7]);
-const [commodityPortLon, commodityPortLat] = firstLatLon(COMMODITY_PORTS, [32.5, 29.9]);
 
 const VISUAL_SCENARIOS: VisualScenario[] = [
   {
@@ -1191,134 +1138,6 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     expectedSelectors: [],
   },
   {
-    id: 'startup-hubs-z5',
-    variant: 'tech',
-    enabledLayers: ['startupHubs'],
-    camera: toCamera(startupLon, startupLat, 5.2),
-    expectedDeckLayers: ['startup-hubs-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'accelerators-z5',
-    variant: 'tech',
-    enabledLayers: ['accelerators'],
-    camera: toCamera(acceleratorLon, acceleratorLat, 5.2),
-    expectedDeckLayers: ['accelerators-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'cloud-regions-z5',
-    variant: 'tech',
-    enabledLayers: ['cloudRegions'],
-    camera: toCamera(cloudRegionLon, cloudRegionLat, 5.2),
-    expectedDeckLayers: ['cloud-regions-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'tech-hqs-z5',
-    variant: 'tech',
-    enabledLayers: ['techHQs'],
-    camera: toCamera(techHQLon, techHQLat, 5.2),
-    expectedDeckLayers: ['tech-hq-clusters-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'tech-events-z5',
-    variant: 'tech',
-    enabledLayers: ['techEvents'],
-    camera: seededCameras.techEvents,
-    expectedDeckLayers: ['tech-event-clusters-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'stock-exchanges-z5',
-    variant: 'finance',
-    enabledLayers: ['stockExchanges'],
-    camera: toCamera(exchangeLon, exchangeLat, 5.2),
-    expectedDeckLayers: ['stock-exchanges-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'financial-centers-z5',
-    variant: 'finance',
-    enabledLayers: ['financialCenters'],
-    camera: toCamera(financialCenterLon, financialCenterLat, 5.2),
-    expectedDeckLayers: ['financial-centers-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'central-banks-z5',
-    variant: 'finance',
-    enabledLayers: ['centralBanks'],
-    camera: toCamera(centralBankLon, centralBankLat, 5.2),
-    expectedDeckLayers: ['central-banks-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'commodity-hubs-z5',
-    variant: 'finance',
-    enabledLayers: ['commodityHubs'],
-    camera: toCamera(commodityHubLon, commodityHubLat, 5.2),
-    expectedDeckLayers: ['commodity-hubs-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'mining-sites-z5',
-    variant: 'commodity',
-    enabledLayers: ['miningSites'],
-    camera: toCamera(miningSiteLon, miningSiteLat, 5.2),
-    expectedDeckLayers: ['mining-sites-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'processing-plants-z5',
-    variant: 'commodity',
-    enabledLayers: ['processingPlants'],
-    camera: toCamera(processingPlantLon, processingPlantLat, 5.2),
-    expectedDeckLayers: ['processing-plants-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'commodity-ports-z5',
-    variant: 'commodity',
-    enabledLayers: ['commodityPorts'],
-    camera: toCamera(commodityPortLon, commodityPortLat, 5.2),
-    expectedDeckLayers: ['commodity-ports-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'positive-events-z5',
-    variant: 'happy',
-    enabledLayers: ['positiveEvents'],
-    camera: seededCameras.positiveEvents,
-    expectedDeckLayers: ['positive-events-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'kindness-z5',
-    variant: 'happy',
-    enabledLayers: ['kindness'],
-    camera: seededCameras.kindness,
-    expectedDeckLayers: ['kindness-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'species-recovery-z5',
-    variant: 'happy',
-    enabledLayers: ['speciesRecovery'],
-    camera: seededCameras.speciesRecovery,
-    expectedDeckLayers: ['species-recovery-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'renewable-installations-z5',
-    variant: 'happy',
-    enabledLayers: ['renewableInstallations'],
-    camera: seededCameras.renewableInstallations,
-    expectedDeckLayers: ['renewable-installations-layer'],
-    expectedSelectors: [],
-  },
-  {
     id: 'disease-outbreaks-z5',
     variant: 'full',
     enabledLayers: ['diseaseOutbreaks'],
@@ -1337,19 +1156,7 @@ const filterScenariosForVariant = (variant: HarnessVariant): VisualScenario[] =>
   );
 };
 
-const currentHarnessVariant: HarnessVariant = SITE_VARIANT === 'tech'
-  ? 'tech'
-  : SITE_VARIANT === 'energy'
-  ? 'energy'
-  : SITE_VARIANT === 'nuclear'
-  ? 'nuclear'
-  : SITE_VARIANT === 'finance'
-  ? 'finance'
-  : SITE_VARIANT === 'commodity'
-  ? 'commodity'
-  : SITE_VARIANT === 'happy'
-  ? 'happy'
-  : 'full';
+const currentHarnessVariant: HarnessVariant = SITE_VARIANT === 'nuclear' ? 'nuclear' : 'full';
 
 const buildProtests = (scenario: Scenario): SocialUnrestEvent[] => {
   const title =

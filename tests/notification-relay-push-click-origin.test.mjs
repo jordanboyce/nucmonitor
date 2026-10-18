@@ -96,8 +96,8 @@ describe('safePushClickUrl', () => {
 
   it('keeps vertical-subdomain targets absolute — a different surface is not ours to relativize', () => {
     assert.equal(
-      safePushClickUrl('https://tech.worldmonitor.app/dashboard'),
-      'https://tech.worldmonitor.app/dashboard',
+      safePushClickUrl('https://nuclear.worldmonitor.app/dashboard'),
+      'https://nuclear.worldmonitor.app/dashboard',
     );
   });
 

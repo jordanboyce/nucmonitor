@@ -10,21 +10,10 @@ import { registerClsReporting } from '@/bootstrap/cls-report';
 import { registerInpReporting } from '@/bootstrap/inp-report';
 import { registerLcpReporting } from '@/bootstrap/lcp-report';
 import { initVercelAnalytics, stripSensitiveParamsFromUrl } from '@/bootstrap/secondary-startup';
-import { loadVariantThemeStylesheet } from '@/bootstrap/variant-theme';
 import { installUtmInterceptor } from './utils/utm';
 import { captureContentAttributionFromUrl } from '../shared/content-attribution';
 import { captureAgentRefFromSearch } from '../shared/agent-client-source';
 import { agentRefStorage } from '@/services/agent-ref';
-
-if (SITE_VARIANT === 'happy') {
-  // Keeps happy-theme.css off other variants' eager CSS graph. On happy, the
-  // stylesheet applies asynchronously, so a brief base-theme flash is possible.
-  // The import is fire-and-forget, so its rejection must be consumed: Vite's
-  // preload helper rejects with `Unable to preload CSS for <url>` when the
-  // injected <link> errors, and a bare `void import(...)` let that escape to
-  // onunhandledrejection (WORLDMONITOR-XT). See bootstrap/variant-theme.ts.
-  void loadVariantThemeStylesheet('happy', () => import('./styles/happy-theme.css'));
-}
 
 // Activate the deferred dashboard app stylesheet. The build
 // (deferDashboardStylesheetLinks in vite.config.ts) emits the large dashboard

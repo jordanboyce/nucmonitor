@@ -69,16 +69,8 @@ describe('secondary dashboard startup', () => {
     assert.deepEqual(dashboardFontFamilies({ variant: 'full', lang: 'en', dir: '' }), []);
   });
 
-  it('loads only Nunito for the happy dashboard', () => {
-    assert.deepEqual(dashboardFontFamilies({ variant: 'happy', lang: 'en', dir: '' }), ['nunito']);
-  });
-
-  it('loads only Tajawal for the Arabic dashboard, not happy fonts', () => {
+  it('loads only Tajawal for the Arabic dashboard', () => {
     assert.deepEqual(dashboardFontFamilies({ variant: 'full', lang: 'ar', dir: 'rtl' }), ['tajawal']);
-  });
-
-  it('combines Nunito + Tajawal for the Arabic happy dashboard', () => {
-    assert.deepEqual(dashboardFontFamilies({ variant: 'happy', lang: 'ar', dir: 'rtl' }), ['nunito', 'tajawal']);
   });
 });
 
@@ -196,7 +188,7 @@ describe('deferred Umami loader', () => {
       // www MUST stay listed (#4931): the apex 301s to www in production and
       // the tracker's data-domains check is an exact hostname match — without
       // www, analytics on the canonical host are silently disabled.
-      assert.equal(firstScript.dataset.domains, 'worldmonitor.app,www.worldmonitor.app,happy.worldmonitor.app,finance.worldmonitor.app');
+      assert.equal(firstScript.dataset.domains, 'worldmonitor.app,www.worldmonitor.app,nuclear.worldmonitor.app');
       assert.deepEqual(calls, []);
       firstScript.listeners.get('error')?.();
       assert.equal(firstScript.removed, true);

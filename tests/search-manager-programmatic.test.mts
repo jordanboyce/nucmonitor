@@ -33,7 +33,7 @@ import {
 } from '../src/services/webmcp.ts';
 import { withTimeout } from '../src/utils/with-timeout.ts';
 
-type Variant = 'full' | 'tech' | 'finance' | 'happy' | 'commodity' | 'energy';
+type Variant = 'full' | 'nuclear';
 
 const managerSource = readFileSync(
   new URL('../src/app/search-manager.ts', import.meta.url),
@@ -160,7 +160,13 @@ interface Scenario {
   };
 }
 
-function createHarness(variant: Variant, runtime: Runtime): new (ctx: any, callbacks: any) => any {
+type AllowedLayerKeysFn = typeof getAllowedLayerKeys;
+
+function createHarness(
+  variant: Variant,
+  runtime: Runtime,
+  allowedLayerKeys: AllowedLayerKeysFn = getAllowedLayerKeys,
+): new (ctx: any, callbacks: any) => any {
   const dependencyNames = [
     'OpaqueResultCache',
     'SEARCH_RESULT_CACHE_MAX_ENTRIES',
@@ -279,7 +285,7 @@ function createHarness(variant: Variant, runtime: Runtime): new (ctx: any, callb
     () => true,
     () => 0,
     6,
-    getAllowedLayerKeys,
+    allowedLayerKeys,
     isLayerCommandAllowed,
     isLayerExecutable,
     isLayerEntitled,
@@ -376,6 +382,7 @@ function commandMatch(id: string, category: string, title = id): SearchMatch {
 function makeScenario(
   matches: SearchMatch[],
   variant: Variant = 'full',
+  options: { allowedLayerKeys?: AllowedLayerKeysFn } = {},
 ): Scenario {
   const runtime: Runtime = {
     auth: { user: { id: 'user-a', role: 'pro' } },
@@ -486,7 +493,7 @@ function makeScenario(
     latestMarkets: [],
     latestTechEvents: [],
   };
-  const Harness = createHarness(variant, runtime);
+  const Harness = createHarness(variant, runtime, options.allowedLayerKeys);
   const manager = new Harness(ctx, {
     openCountryBriefByCode: (
       code: string,
@@ -1950,28 +1957,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(scenario.calls.centers, [[3, 4, 9]]);
   });
 
-  it('denies tech-event centering after a globe switch', async () => {
-    const scenario = makeScenario([
-      resultMatch(
-        'techevent',
-        'event-1',
-        'Needle tech event',
-        { id: 'event-1', lat: 37.8, lng: -122.4 },
-      ),
-    ], 'tech');
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    assert.equal(response.results[0]?.executable, true);
-
-    scenario.state.globe = true;
-    assert.deepEqual(await scenario.manager.openSearchResult(response.results[0].key), {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    assert.deepEqual(scenario.calls.layers, []);
-    assert.deepEqual(scenario.calls.centers, []);
-  });
-
   it('denies globe time commands that only mutate hidden renderer state', async () => {
     const scenario = makeScenario([
       commandMatch('time:24h', 'actions', 'Last 24 hours'),
@@ -2151,16 +2136,24 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
   });
 
   it('does not treat an incidental preset overlap as a meaningful agent action', () => {
-    const finance = makeScenario([], 'finance');
+    // Both remaining monitors allow a defining military layer (bases), so the
+    // contextual-only overlap is modelled by narrowing the allowlist to the
+    // preset's waterways extra.
     const militaryPreset = commandMatch('layers:military', 'layers', 'Military layers').command;
-    assert.equal(finance.manager.isModalCommandVisible(militaryPreset), true);
-    assert.equal(finance.manager.isCommandExecutable(militaryPreset), false);
+    const contextualOnly = makeScenario([], 'nuclear', {
+      allowedLayerKeys: () => new Set(['waterways'] as const),
+    });
+    assert.equal(contextualOnly.manager.isModalCommandVisible(militaryPreset), true);
+    assert.equal(contextualOnly.manager.isCommandExecutable(militaryPreset), false);
+
+    const nuclear = makeScenario([], 'nuclear');
+    assert.equal(nuclear.manager.isCommandExecutable(militaryPreset), true, 'bases is a defining military layer');
 
     const full = makeScenario([], 'full');
     assert.equal(full.manager.isCommandExecutable(militaryPreset), true);
   });
 
-  it('routes country, panel, map, infrastructure, finance, and command selections through shared handlers', async () => {
+  it('routes country, panel, map, infrastructure, and command selections through shared handlers', async () => {
     const cases: Array<{
       label: string;
       variant?: Variant;
@@ -2209,31 +2202,12 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
         },
       },
       {
-        label: 'finance',
-        variant: 'finance',
-        match: resultMatch(
-          'exchange',
-          'xnas',
-          'Needle exchange',
-          { id: 'xnas', lat: 40.7, lon: -74 },
-        ),
+        label: 'infrastructure on nuclear',
+        variant: 'nuclear',
+        match: resultMatch('pipeline', 'pipe-2', 'Needle pipeline', { id: 'pipe-2' }),
         verify: ({ calls }) => {
-          assert.ok(calls.layers.includes('stockExchanges'));
-          assert.deepEqual(calls.centers, [[40.7, -74, 4]]);
-        },
-      },
-      {
-        label: 'tech event',
-        variant: 'tech',
-        match: resultMatch(
-          'techevent',
-          'event-1',
-          'Needle tech event',
-          { id: 'event-1', lat: 37.8, lng: -122.4 },
-        ),
-        verify: ({ calls }) => {
-          assert.ok(calls.layers.includes('techEvents'));
-          assert.deepEqual(calls.centers, [[37.8, -122.4, 5]]);
+          assert.ok(calls.layers.includes('pipelines'));
+          assert.deepEqual(calls.pipelineIds, ['pipe-2']);
         },
       },
       {
@@ -2544,7 +2518,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     ), true);
   });
 
-  it('enforces the six-variant entity visibility matrix without leaking foreign domains', () => {
+  it('enforces the two-variant entity visibility matrix without leaking foreign domains', () => {
     const probes: Record<string, SearchResult> = {
       country: {
         type: 'country', id: 'US', title: 'United States', data: { code: 'US', name: 'United States' },
@@ -2557,11 +2531,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     };
     const expected: Record<Variant, string[]> = {
       full: ['country', 'hotspot', 'pipeline'],
-      tech: ['country', 'techcompany'],
-      finance: ['country', 'pipeline', 'exchange', 'commodityhub'],
-      happy: ['country'],
-      commodity: ['country', 'pipeline', 'commodityhub'],
-      energy: ['country', 'pipeline', 'commodityhub'],
+      nuclear: ['country', 'pipeline'],
     };
 
     for (const variant of Object.keys(expected) as Variant[]) {
@@ -2575,9 +2545,9 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
   });
 
   it('registers commodity hubs through the shared variant-layer policy', () => {
-    const enabledVariants = (['full', 'tech', 'finance', 'happy', 'commodity', 'energy'] as Variant[])
+    const enabledVariants = (['full', 'nuclear'] as Variant[])
       .filter((variant) => getAllowedLayerKeys(variant).has('commodityHubs'));
-    assert.deepEqual(enabledVariants, ['finance', 'commodity', 'energy']);
+    assert.deepEqual(enabledVariants, [], 'no remaining variant allows commodity hubs');
 
     let commodityRegistration: ts.CallExpression | undefined;
     const visit = (node: ts.Node): void => {
@@ -2621,9 +2591,9 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.ok(parent && ts.isIfStatement(parent));
     assert.match(parent.expression.getText(sourceFile), /\.has\('bases'\)/);
     assert.deepEqual(
-      (['full', 'tech', 'finance', 'happy', 'commodity', 'energy'] as Variant[])
+      (['full', 'nuclear'] as Variant[])
         .filter((variant) => getAllowedLayerKeys(variant).has('bases')),
-      ['full'],
+      ['full', 'nuclear'],
     );
   });
 

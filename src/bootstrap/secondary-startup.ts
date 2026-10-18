@@ -15,18 +15,16 @@ export interface DashboardFontContext {
   dir?: string | null;
 }
 
-export type DashboardFontFamily = 'nunito' | 'tajawal';
+export type DashboardFontFamily = 'tajawal';
 
-// Which web-font families the dashboard actually needs for a given variant/locale.
-// The default (full variant, LTR/non-Arabic) needs none — its body font is the
+// Which web-font families the dashboard actually needs for a given locale.
+// The default (LTR/non-Arabic) needs none — its body font is the
 // system/mono stack — so those users download zero web fonts.
 export function dashboardFontFamilies(context: DashboardFontContext = {}): DashboardFontFamily[] {
-  const variant = (context.variant || 'full').toLowerCase();
   const lang = (context.lang || 'en').split('-')[0]?.toLowerCase() || 'en';
   const dir = (context.dir || '').toLowerCase();
   const families: DashboardFontFamily[] = [];
 
-  if (variant === 'happy') families.push('nunito');             // happy theme body font
   if (dir === 'rtl' || lang === 'ar') families.push('tajawal'); // Arabic body font
 
   return families;
@@ -37,12 +35,6 @@ export function dashboardFontFamilies(context: DashboardFontContext = {}): Dashb
 // (unlike fonts.gstatic.com, a third-party origin). Each family pulls only the
 // weights the UI actually uses.
 const DASHBOARD_FONT_LOADERS: Record<DashboardFontFamily, () => Promise<unknown>> = {
-  nunito: () => Promise.all([
-    import('@fontsource/nunito/400.css'),
-    import('@fontsource/nunito/600.css'),
-    import('@fontsource/nunito/700.css'),
-    import('@fontsource/nunito/400-italic.css'),
-  ]),
   tajawal: () => Promise.all([
     import('@fontsource/tajawal/400.css'),
     import('@fontsource/tajawal/500.css'),

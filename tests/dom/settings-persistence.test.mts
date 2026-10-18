@@ -48,7 +48,7 @@ describe('settings file import', () => {
 
   it('round trips real exports including legacy optional fields and variant prefixes', async () => {
     localStorage.setItem('worldmonitor-monitors', JSON.stringify([monitor, { ...monitor, id: 'geo', name: 'Energy', lat: 25, lon: 55, futureField: true }]));
-    localStorage.setItem('worldmonitor-panels-tech', '{"future-panel":{"enabled":true}}');
+    localStorage.setItem('worldmonitor-panels-nuclear', '{"future-panel":{"enabled":true}}');
     localStorage.setItem('wm-map-theme:carto', 'voyager');
     localStorage.setItem('worldmonitor-disabled-feeds-schema', '9');
     const before = snapshot();
@@ -91,10 +91,10 @@ describe('settings file import', () => {
 
 
 it('ignores prefix impostors while preserving known variant keys', async () => {
-  await importSettings(file({ 'worldmonitor-theme-evil': '=bad', 'worldmonitor-panels-tech': '{}', 'wm-map-theme:unknown': 'bad' }));
+  await importSettings(file({ 'worldmonitor-theme-evil': '=bad', 'worldmonitor-panels-nuclear': '{}', 'wm-map-theme:unknown': 'bad' }));
   expect(localStorage.getItem('worldmonitor-theme-evil')).toBeNull();
   expect(localStorage.getItem('wm-map-theme:unknown')).toBeNull();
-  expect(localStorage.getItem('worldmonitor-panels-tech')).toBe('{}');
+  expect(localStorage.getItem('worldmonitor-panels-nuclear')).toBe('{}');
 });
 
 it.each([
@@ -138,12 +138,12 @@ describe('dashboard tabs in the settings backup (#9372)', () => {
 
   it('exports every variant tabs key and ignores impostors', async () => {
     localStorage.setItem('worldmonitor-tabs-v1:full', JSON.stringify(tabsState));
-    localStorage.setItem('worldmonitor-tabs-v1:tech', JSON.stringify(tabsState));
+    localStorage.setItem('worldmonitor-tabs-v1:nuclear', JSON.stringify(tabsState));
     localStorage.setItem('worldmonitor-tabs-v1:evil', '{}');
     localStorage.setItem('worldmonitor-tabs-v2:full', '{}');
     const { data } = await exportToObject();
     expect(data['worldmonitor-tabs-v1:full']).toBe(JSON.stringify(tabsState));
-    expect(data['worldmonitor-tabs-v1:tech']).toBe(JSON.stringify(tabsState));
+    expect(data['worldmonitor-tabs-v1:nuclear']).toBe(JSON.stringify(tabsState));
     expect(data['worldmonitor-tabs-v1:evil']).toBeUndefined();
     expect(data['worldmonitor-tabs-v2:full']).toBeUndefined();
   });

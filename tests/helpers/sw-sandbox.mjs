@@ -23,7 +23,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const PRIMARY_ORIGIN = 'https://www.worldmonitor.app';
 
 /** A vertical-subdomain install. Serves the same build, its own worker, its own push origin. */
-export const VERTICAL_ORIGIN = 'https://tech.worldmonitor.app';
+export const VERTICAL_ORIGIN = 'https://nuclear.worldmonitor.app';
 
 /** Both origins that origin-sensitive behaviour must be proven against. */
 export const SERVING_ORIGINS = [PRIMARY_ORIGIN, VERTICAL_ORIGIN];

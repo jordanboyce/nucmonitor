@@ -287,13 +287,6 @@ export const VARIANT_FEEDS: Record<string, Record<string, ServerFeed[]>> = {
       { name: 'Binance Announcements', url: gn('site:binance.com/en/support/announcement when:3d') },
       { name: 'Jin10', url: gnLocale('site:jin10.com when:1d', 'zh-CN', 'CN', 'CN:zh-Hans'), lang: 'zh' },
     ],
-    // MCP digest-backed tools consume `full`, while the finance dashboard
-    // consumes `finance`. Keep this literal array aligned with the finance
-    // bucket below; the static per-variant feed-key guard requires literals.
-    commodities: [
-      { name: 'Oil & Gas', url: gn('(oil price OR OPEC OR "natural gas" OR pipeline OR LNG) when:2d') },
-      { name: 'Gold & Metals', url: gn('("gold price" OR "silver price" OR "precious metals" OR "copper price") when:2d') },
-    ],
     gov: [
       // White House: two direct WordPress RSS feeds. Replaces
       // gn('site:whitehouse.gov ...') so the publisher's pubDate is
@@ -472,321 +465,54 @@ export const VARIANT_FEEDS: Record<string, Record<string, ServerFeed[]>> = {
     ],
   },
 
-  tech: {
-    tech: [
-      { name: 'TechCrunch', url: 'https://techcrunch.com/feed/' },
-      { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml' },
-      { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/technology-lab' },
-      { name: 'Hacker News', url: 'https://hnrss.org/frontpage' },
-      { name: 'Wired', url: 'https://www.wired.com/feed/rss' },
-    ],
-    ai: [
-      { name: 'AI News', url: gn('(OpenAI OR Anthropic OR Google AI OR "large language model" OR ChatGPT) when:2d') },
-      { name: 'VentureBeat AI', url: 'https://venturebeat.com/category/ai/feed/' },
-      { name: 'The Verge AI', url: 'https://www.theverge.com/rss/ai-artificial-intelligence/index.xml' },
-      { name: 'ArXiv AI', url: 'https://export.arxiv.org/rss/cs.AI' },
-    ],
-    startups: [
-      { name: 'TechCrunch Startups', url: 'https://techcrunch.com/category/startups/feed/' },
-      { name: 'VentureBeat', url: 'https://venturebeat.com/feed/' },
-      { name: 'Crunchbase News', url: 'https://news.crunchbase.com/feed/' },
-    ],
-    vcblogs: [
-      { name: 'Y Combinator Blog', url: 'https://www.ycombinator.com/blog/rss/' },
-      { name: 'a16z Blog', url: 'https://www.a16z.news/feed' },
-      { name: 'First Round Review', url: 'https://review.firstround.com/articles/rss' },
-      { name: 'Sequoia Blog', url: gn('site:sequoiacap.com when:7d') },
-      { name: 'Stratechery', url: 'https://stratechery.com/feed/' },
-    ],
-    regionalStartups: [
-      { name: 'EU Startups', url: 'https://www.eu-startups.com/feed/' },
-      { name: 'Tech.eu', url: 'https://tech.eu/feed/' },
-      { name: 'Sifted (Europe)', url: 'https://sifted.eu/feed' },
-      { name: 'Tech in Asia', url: 'https://www.techinasia.com/feed' },
-      { name: 'TechCabal (Africa)', url: 'https://techcabal.com/feed/' },
-      { name: 'Inc42 (India)', url: 'https://inc42.com/feed/' },
-    ],
-    unicorns: [
-      { name: 'Unicorn News', url: gn('("unicorn startup" OR "unicorn valuation" OR "$1 billion valuation") when:7d') },
-      { name: 'Decacorn News', url: gn('("decacorn" OR "$10 billion valuation") startup when:14d') },
-    ],
-    accelerators: [
-      { name: 'YC News', url: 'https://news.ycombinator.com/rss' },
-      { name: 'Demo Day News', url: gn('("demo day" OR "YC batch" OR "accelerator batch") startup when:7d') },
-    ],
-    security: [
-      { name: 'Krebs Security', url: 'https://krebsonsecurity.com/feed/' },
-      { name: 'Dark Reading', url: 'https://www.darkreading.com/rss.xml' },
-    ],
-    policy: [
-      { name: 'Politico Tech', url: 'https://rss.politico.com/technology.xml' },
-      { name: 'AI Regulation', url: gn('AI regulation OR "artificial intelligence" law OR policy when:7d') },
-      { name: 'Tech Antitrust', url: gn('tech antitrust OR FTC Google OR FTC Apple OR FTC Amazon when:7d') },
-    ],
-    github: [
-      { name: 'GitHub Blog', url: 'https://github.blog/feed/' },
-    ],
-    funding: [
-      { name: 'VC News', url: gn('("Series A" OR "Series B" OR "Series C" OR "venture capital" OR "funding round") when:2d') },
-    ],
-    cloud: [
-      { name: 'InfoQ', url: 'https://feed.infoq.com/' },
-      { name: 'The New Stack', url: 'https://thenewstack.io/feed/' },
-    ],
-    layoffs: [
-      { name: 'Layoffs.fyi', url: gn('tech+layoffs+when:7d') },
-      { name: 'TechCrunch Layoffs', url: 'https://techcrunch.com/tag/layoffs/feed/' },
-    ],
-    finance: [
-      { name: 'CNBC Tech', url: 'https://www.cnbc.com/id/19854910/device/rss/rss.html' },
-      { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/rss/topstories' },
-    ],
-    dev: [
-      { name: 'Dev.to', url: 'https://dev.to/feed' },
-      { name: 'Lobsters', url: 'https://lobste.rs/rss' },
-      { name: 'Changelog', url: 'https://changelog.com/feed' },
-      { name: 'Show HN', url: 'https://hnrss.org/show' },
-    ],
-    ipo: [
-      { name: 'IPO News', url: gn('(IPO OR "initial public offering" OR SPAC) tech when:7d') },
-      { name: 'Tech IPO News', url: gn('tech IPO OR "tech company" IPO when:7d') },
-    ],
-    producthunt: [
-      { name: 'Product Hunt', url: 'https://www.producthunt.com/feed' },
-    ],
-    hardware: [
-      { name: "Tom's Hardware", url: 'https://www.tomshardware.com/feeds.xml' },
-      { name: 'SemiAnalysis', url: 'https://www.semianalysis.com/feed' },
-      { name: 'Semiconductor News', url: gn('semiconductor OR chip OR TSMC OR NVIDIA OR Intel when:3d') },
-    ],
-    outages: [
-      { name: 'AWS Status', url: gn('AWS outage OR "Amazon Web Services" down when:1d') },
-      { name: 'Cloud Outages', url: gn('(Azure outage OR "Google Cloud" outage OR Cloudflare outage OR Slack down OR GitHub down) when:1d') },
-    ],
-  },
 
-  finance: {
-    markets: [
-      { name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
-      { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/rss/topstories' },
-      { name: 'Seeking Alpha', url: 'https://seekingalpha.com/market_currents.xml' },
-      { name: 'Fox Business', url: 'https://moxie.foxbusiness.com/google-publisher/latest.xml' },
-      { name: 'Business Insider', url: 'https://www.businessinsider.com/rss' },
-      { name: 'GlobeNewswire', url: 'https://www.globenewswire.com/RssFeed/subjectcode/22/feedTitle/GlobeNewswire' },
-      { name: 'Business Wire', url: 'https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeGVtRWA==' },
-      { name: 'PR Newswire', url: gn('site:prnewswire.com when:1d') },
+  // NucMonitor — mirrors NUCLEAR_FEEDS in src/config/feeds.ts (guarded by
+  // tests/news-feed-key-parity.test.mts).
+  nuclear: {
+    'live-news': [
+      { name: 'World Nuclear News', url: gn('site:world-nuclear-news.org when:2d') },
+      { name: 'ANS Nuclear Newswire', url: gn('site:ans.org nuclear when:3d') },
+      { name: 'NRC News', url: gn('site:nrc.gov when:7d') },
+      { name: 'Reuters Nuclear', url: gn('site:reuters.com (nuclear OR reactor OR uranium OR NRC) when:1d') },
+      { name: 'AP Nuclear', url: gn('site:apnews.com (nuclear plant OR reactor OR "nuclear regulatory") when:2d') },
+      { name: 'US Nuclear Plants', url: gn('("nuclear plant" OR "nuclear power plant" OR "nuclear station") (outage OR refueling OR restart OR shutdown OR NRC OR license) when:1d') },
+      { name: 'Utility Dive Nuclear', url: gn('site:utilitydive.com nuclear when:3d') },
+      { name: 'POWER Magazine Nuclear', url: gn('site:powermag.com nuclear when:3d') },
     ],
-    forex: [
-      { name: 'Forex News', url: gn('(forex OR currency OR "exchange rate" OR FX OR "US dollar") when:2d') },
+    'nuclear-regulatory': [
+      { name: 'NRC News', url: gn('site:nrc.gov when:7d') },
+      { name: 'NRC Event Reports', url: gn('site:nrc.gov ("event notification" OR "event report" OR "inspection report" OR "confirmatory action") when:7d') },
+      { name: 'DOE Nuclear Energy', url: gn('site:energy.gov (nuclear OR reactor OR uranium OR HALEU) when:7d') },
+      { name: 'NNSA', url: gn('site:energy.gov/nnsa when:7d') },
+      { name: 'DOE Environmental Management', url: gn('site:energy.gov/em when:7d') },
+      { name: 'EIA Nuclear', url: gn('site:eia.gov nuclear when:7d') },
+      { name: 'IAEA News', url: gn('site:iaea.org when:3d') },
+      { name: 'EPA RadNet', url: gn('site:epa.gov (radnet OR radiation OR radiological) when:14d') },
+      { name: 'FEMA & Emergency Management', url: gn('site:fema.gov (nuclear OR radiological) when:14d') },
     ],
-    bonds: [
-      { name: 'Bond Market', url: gn('("bond market" OR "treasury yield" OR "bond yield" OR "fixed income") when:2d') },
+    'nuclear-industry': [
+      { name: 'World Nuclear News', url: gn('site:world-nuclear-news.org when:2d') },
+      { name: 'ANS Nuclear Newswire', url: gn('site:ans.org nuclear when:3d') },
+      { name: 'NEI', url: gn('site:nei.org when:7d') },
+      { name: 'Exchange Monitor', url: gn('site:exchangemonitor.com when:3d') },
+      { name: 'Nuclear Engineering International', url: gn('site:neimagazine.com when:3d') },
+      { name: 'SMR & Advanced Reactors', url: gn('("small modular reactor" OR SMR OR "advanced reactor" OR microreactor OR TerraPower OR "X-energy" OR NuScale OR Kairos OR Oklo) when:2d') },
+      { name: 'Uranium & Fuel Cycle', url: gn('(uranium OR enrichment OR HALEU OR Centrus OR Urenco OR "fuel fabrication" OR "spent fuel") when:2d') },
+      { name: 'Nuclear & Data Centers', url: gn('(nuclear AND ("data center" OR hyperscaler OR Microsoft OR Amazon OR Google OR Meta) AND (power OR reactor OR PPA)) when:3d') },
     ],
-    commodities: [
-      { name: 'Oil & Gas', url: gn('(oil price OR OPEC OR "natural gas" OR pipeline OR LNG) when:2d') },
-      { name: 'Gold & Metals', url: gn('("gold price" OR "silver price" OR "precious metals" OR "copper price") when:2d') },
-    ],
-    crypto: [
-      { name: 'CoinDesk', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/' },
-      { name: 'Cointelegraph', url: 'https://cointelegraph.com/rss' },
-      { name: 'The Block', url: 'https://news.google.com/rss/search?q=site:theblock.co+when:1d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'Decrypt', url: 'https://decrypt.co/feed' },
-      { name: 'Chainwire', url: 'https://chainwire.org/feed/' },
-      { name: 'Coinbase Blog', url: gn('site:coinbase.com/blog when:7d') },
-      { name: 'Binance Announcements', url: gn('site:binance.com/en/support/announcement when:3d') },
-      { name: 'Jin10', url: gnLocale('site:jin10.com when:1d', 'zh-CN', 'CN', 'CN:zh-Hans'), lang: 'zh' },
-      // Blockworks REMOVED in parity with src/config/feeds.ts (PR #3715
-      // review). blockworks.co/feed is Cloudflare-blocked from both Vercel
-      // edge AND Railway egress, AND Google News returns 0 items for
-      // site:blockworks.co. The Block (above) covers the same
-      // institutional-crypto territory; no coverage lost.
-      { name: 'The Defiant', url: 'https://thedefiant.io/feed' },
-      { name: 'Bitcoin Magazine', url: 'https://bitcoinmagazine.com/feed' },
-      { name: 'DL News', url: 'https://news.google.com/rss/search?q=site:dlnews.com+when:3d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'CryptoSlate', url: 'https://cryptoslate.com/feed/' },
-      { name: 'Unchained', url: 'https://unchainedcrypto.com/feed/' },
-      { name: 'DeFi News', url: 'https://news.google.com/rss/search?q=(DeFi+OR+"decentralized+finance")+when:3d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'Bloomberg Crypto', url: 'https://news.google.com/rss/search?q=bloomberg+crypto+when:1d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'Reuters Crypto', url: 'https://news.google.com/rss/search?q=reuters+crypto+when:1d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'Wu Blockchain', url: 'https://news.google.com/rss/search?q=site:wublockchain.com+when:7d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'Messari', url: 'https://news.google.com/rss/search?q=site:messari.io+when:3d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'NFT News', url: 'https://news.google.com/rss/search?q=(NFT+OR+"non-fungible")+when:3d&hl=en-US&gl=US&ceid=US:en' },
-      { name: 'Stablecoin Policy', url: 'https://news.google.com/rss/search?q=(stablecoin+regulation+OR+"stablecoin+bill")+when:7d&hl=en-US&gl=US&ceid=US:en' },
-    ],
-    centralbanks: [
-      { name: 'Federal Reserve', url: 'https://www.federalreserve.gov/feeds/press_all.xml' },
-      { name: 'PBoC Watch', url: gn('("People\'s Bank of China" OR PBoC OR PBOC) when:7d') },
-    ],
-    economic: [
-      { name: 'Economic Data', url: gn('(CPI OR inflation OR GDP OR "economic data" OR "jobs report") when:2d') },
-    ],
-    ipo: [
-      { name: 'IPO News', url: gn('(IPO OR "initial public offering" OR "stock market debut") when:2d') },
-    ],
-    derivatives: [
-      { name: 'Options Market', url: gn('("options market" OR "options trading" OR "put call ratio" OR VIX) when:2d') },
-      { name: 'Futures Trading', url: gn('("futures trading" OR "S&P 500 futures" OR "Nasdaq futures") when:1d') },
-    ],
-    fintech: [
-      { name: 'Fintech News', url: gn('(fintech OR "payment technology" OR neobank OR "digital banking") when:3d') },
-      { name: 'Trading Tech', url: gn('("algorithmic trading" OR "trading platform" OR "quantitative finance") when:7d') },
-      { name: 'Blockchain Finance', url: gn('("blockchain finance" OR tokenization OR "digital securities" OR CBDC) when:7d') },
-    ],
-    // Key MUST match the client-side category key in src/config/feeds.ts
-    // FINANCE_FEEDS (`'fin-regulation'`). The client iterates
-    // `Object.keys(FEEDS)` and looks up `digest.categories[category]` by the
-    // same key — a name drift here means the server returns the digest
-    // bucket but the client never finds it, and the panel renders empty.
-    // The panel name was renamed `regulation` → `fin-regulation` client-side
-    // in PR #3578-era work (App.ts:539-542 has a one-time storage migration
-    // for prior users), but this server-side key was never updated.
-    'fin-regulation': [
-      { name: 'SEC', url: 'https://www.sec.gov/news/pressreleases.rss' },
-      { name: 'Financial Regulation', url: gn('(SEC OR CFTC OR FINRA OR FCA) regulation OR enforcement when:3d') },
-      { name: 'Banking Rules', url: gn('(Basel OR "capital requirements" OR "banking regulation") when:7d') },
-      { name: 'Crypto Regulation', url: gn('(crypto regulation OR "digital asset" regulation OR stablecoin regulation) when:7d') },
-    ],
-    institutional: [
-      { name: 'Hedge Fund News', url: gn('("hedge fund" OR Bridgewater OR Citadel OR Renaissance) when:7d') },
-      { name: 'Private Equity', url: gn('("private equity" OR Blackstone OR KKR OR Apollo OR Carlyle) when:3d') },
-      { name: 'Sovereign Wealth', url: gn('("sovereign wealth fund" OR "pension fund" OR "institutional investor") when:7d') },
-    ],
-    analysis: [
-      { name: 'Market Outlook', url: gn('("market outlook" OR "stock market forecast" OR "bull market" OR "bear market") when:3d') },
-      { name: 'Risk & Volatility', url: gn('(VIX OR "market volatility" OR "risk off" OR "market correction") when:3d') },
-      { name: 'Bank Research', url: gn('("Goldman Sachs" OR JPMorgan OR "Morgan Stanley") forecast OR outlook when:3d') },
-    ],
-    gccNews: [
-      { name: 'Arabian Business', url: gn('site:arabianbusiness.com (Saudi Arabia OR UAE OR GCC) when:7d') },
-      { name: 'The National', url: gn('site:thenationalnews.com (Abu Dhabi OR UAE OR Saudi) when:7d') },
-      { name: 'Arab News', url: gn('site:arabnews.com (Saudi Arabia OR investment OR infrastructure) when:7d') },
-      { name: 'Gulf FDI', url: gn('(PIF OR "DP World" OR Mubadala OR ADNOC OR Masdar OR "ACWA Power") infrastructure when:7d') },
-      { name: 'Gulf Investments', url: gn('("Saudi Arabia" OR UAE OR "Abu Dhabi") investment infrastructure when:7d') },
-      { name: 'Vision 2030', url: gn('"Vision 2030" (project OR investment OR announced) when:14d') },
-    ],
-  },
-
-  // ── Commodity variant (Mining, Metals, Energy) ─────────────────────────────
-  commodity: {
-    'commodity-news': [
-      { name: 'Kitco News', url: gn('site:kitco.com gold OR silver OR commodity OR metals when:1d') },
-      { name: 'Mining.com', url: 'https://www.mining.com/feed/' },
-      { name: 'Bloomberg Commodities', url: gn('site:bloomberg.com commodities OR metals OR mining when:1d') },
-      { name: 'Reuters Commodities', url: gn('site:reuters.com commodities OR metals OR mining when:1d') },
-      { name: 'S&P Global Commodity', url: gn('site:spglobal.com commodities metals when:3d') },
-      // Commodity Trade Mantra REMOVED in parity with src/config/feeds.ts
-      // (PR #3715 review follow-up #3717). Server emits ~10 items per refresh
-      // but the client filters digest items against the client feed-name set
-      // (src/app/data-loader.ts:908-914), so these are invisible to users.
-      // Worse, the server truncates to MAX_ITEMS_PER_CATEGORY (list-feed-
-      // digest.ts:1076-1082) BEFORE the client filter — so invisible CTM
-      // items crowd out visible commodity-news items, leaving the panel with
-      // fewer results. The other 6 commodity-news feeds (Kitco / Mining.com
-      // / Bloomberg / Reuters / S&P / CNBC) cover the same territory.
-      { name: 'CNBC Commodities', url: gn('site:cnbc.com (commodities OR metals OR gold OR copper) when:1d') },
-    ],
-    'gold-silver': [
-      { name: 'Kitco Gold', url: gn('site:kitco.com gold price OR "gold market" OR "silver price" when:2d') },
-      { name: 'Gold Price News', url: gn('(gold price OR "gold market" OR bullion OR LBMA) when:1d') },
-      { name: 'Silver Price News', url: gn('(silver price OR "silver market" OR "silver futures") when:2d') },
-      { name: 'Precious Metals', url: gn('("precious metals" OR platinum OR palladium OR "gold ETF" OR GLD OR SLV) when:2d') },
-      { name: 'World Gold Council', url: gn('"World Gold Council" OR "central bank gold" OR "gold reserves" when:7d') },
+    'nuclear-policy': [
+      { name: 'Nuclear Policy', url: gn('("nuclear energy" OR "nuclear power") (Congress OR Senate OR "White House" OR "executive order" OR legislation OR ADVANCE Act) when:3d') },
+      { name: 'Spent Fuel & Waste', url: gn('("spent nuclear fuel" OR "nuclear waste" OR "Yucca Mountain" OR "interim storage" OR WIPP OR ISFSI) when:7d') },
+      { name: 'Nuclear Security & Nonproliferation', url: gn('(nonproliferation OR "nuclear security" OR "nuclear safeguards" OR "nuclear material") when:3d') },
+      { name: 'Bulletin of Atomic Scientists', url: gn('site:thebulletin.org when:7d') },
+      { name: 'Union of Concerned Scientists', url: gn('site:ucs.org nuclear when:14d') },
+      { name: 'State Radiation Programs', url: gn('("radiation control" OR "radiological emergency" OR "emergency planning zone" OR "potassium iodide") nuclear when:7d') },
     ],
     energy: [
-      { name: 'OilPrice.com', url: 'https://oilprice.com/rss/main' },
-      { name: 'Rigzone', url: 'https://www.rigzone.com/news/rss/rigzone_latest.aspx' },
-      { name: 'EIA Reports', url: gn('site:eia.gov energy oil gas when:14d') },
-      { name: 'OPEC News', url: gn('(OPEC OR "oil price" OR "crude oil" OR WTI OR Brent OR "oil production") when:1d') },
-      { name: 'Natural Gas News', url: gn('("natural gas" OR LNG OR "gas price" OR "Henry Hub") when:1d') },
-      { name: 'Energy Intel', url: gn('(energy commodities OR "energy market" OR "energy prices") when:2d') },
-      { name: 'Reuters Energy', url: gn('site:reuters.com (oil OR gas OR energy) when:1d') },
-    ],
-    'mining-news': [
-      { name: 'Mining Journal', url: gn('site:mining-journal.com when:7d') },
-      { name: 'Northern Miner', url: gn('site:northernminer.com when:7d') },
-      { name: 'Mining Weekly', url: gn('site:miningweekly.com when:7d') },
-      { name: 'Mining Technology', url: 'https://www.mining-technology.com/feed/' },
-      { name: 'Australian Mining', url: 'https://www.australianmining.com.au/feed/' },
-      { name: 'Mine Web (SNL)', url: gn('("mining company" OR "mine production" OR "mining operations") when:2d') },
-      { name: 'Resource World', url: gn('("mining project" OR "mineral exploration" OR "mine development") when:3d') },
-    ],
-    'critical-minerals': [
-      { name: 'Benchmark Mineral', url: gn('("critical minerals" OR "battery metals" OR lithium OR cobalt OR "rare earths") when:2d') },
-      { name: 'Lithium Market', url: gn('(lithium price OR "lithium market" OR "lithium supply" OR spodumene OR LCE) when:2d') },
-      { name: 'Cobalt Market', url: gn('(cobalt price OR "cobalt market" OR "DRC cobalt" OR "battery cobalt") when:3d') },
-      { name: 'Rare Earths News', url: gn('("rare earth" OR "rare earths" OR REE OR neodymium OR praseodymium) when:3d') },
-      { name: 'EV Battery Supply', url: gn('("EV battery" OR "battery supply chain" OR "battery materials") when:3d') },
-      { name: 'IEA Critical Minerals', url: gn('site:iea.org (minerals OR critical OR battery) when:14d') },
-      { name: 'Uranium Market', url: gn('(uranium price OR "uranium market" OR U3O8 OR nuclear fuel) when:3d') },
-    ],
-    'base-metals': [
-      { name: 'LME Metals', url: gn('(LME OR "London Metal Exchange") copper OR aluminum OR zinc OR nickel when:2d') },
-      { name: 'Copper Market', url: gn('(copper price OR "copper market" OR "copper supply" OR COMEX copper) when:2d') },
-      { name: 'Nickel News', url: gn('(nickel price OR "nickel market" OR "nickel supply" OR Indonesia nickel) when:3d') },
-      { name: 'Aluminum & Zinc', url: gn('(aluminum price OR aluminium OR zinc price OR "base metals") when:3d') },
-      { name: 'Iron Ore Market', url: gn('("iron ore" price OR "iron ore market" OR "steel raw materials") when:2d') },
-      { name: 'Metals Bulletin', url: gn('("metals market" OR "base metals" OR SHFE OR "Shanghai Futures") when:2d') },
-    ],
-    'mining-companies': [
-      { name: 'BHP News', url: gn('BHP (mining OR production OR results OR copper OR "iron ore") when:7d') },
-      { name: 'Rio Tinto News', url: gn('"Rio Tinto" (mining OR production OR results OR Pilbara) when:7d') },
-      { name: 'Glencore & Vale', url: gn('(Glencore OR Vale) (mining OR production OR cobalt OR "iron ore") when:7d') },
-      { name: 'Gold Majors', url: gn('(Newmont OR Barrick OR AngloGold OR Agnico) (gold mine OR production OR results) when:7d') },
-      { name: 'Freeport & Copper Miners', url: gn('(Freeport McMoRan OR Southern Copper OR Teck OR Antofagasta) when:7d') },
-      { name: 'Critical Mineral Companies', url: gn('(Albemarle OR SQM OR "MP Materials" OR Lynas OR Cameco) when:7d') },
-    ],
-    'supply-chain': [
-      { name: 'Shipping & Freight', url: gn('("bulk carrier" OR "dry bulk" OR "commodity shipping" OR "Port Hedland" OR "Strait of Hormuz") when:3d') },
-      { name: 'Trade Routes', url: gn('("trade route" OR "supply chain" OR "commodity export" OR "mineral export") when:3d') },
-      { name: 'China Commodity Imports', url: gn('China imports copper OR "iron ore" OR lithium OR cobalt OR "rare earth" when:3d') },
-      { name: 'Port & Logistics', url: gn('("iron ore port" OR "copper port" OR "commodity port" OR "mineral logistics") when:7d') },
-    ],
-    'commodity-regulation': [
-      { name: 'Mining Regulation', url: gn('("mining regulation" OR "mining policy" OR "mining permit" OR "mining ban") when:7d') },
-      { name: 'ESG in Mining', url: gn('("mining ESG" OR "responsible mining" OR "mine closure" OR tailings) when:7d') },
-      { name: 'Trade & Tariffs', url: gn('("mineral tariff" OR "metals tariff" OR "critical mineral policy" OR "mining export ban") when:7d') },
-      { name: 'Indonesia Nickel Policy', url: gn('(Indonesia nickel OR "nickel export" OR "nickel ban" OR "nickel processing") when:7d') },
-      { name: 'China Mineral Policy', url: gn('China "rare earth" OR "mineral export" OR "critical mineral" policy OR restriction when:7d') },
-    ],
-    markets: [
-      { name: 'Yahoo Finance Commodities', url: 'https://finance.yahoo.com/rss/topstories' },
-      { name: 'CNBC Markets', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
-      { name: 'Seeking Alpha Metals', url: gn('site:seekingalpha.com (gold OR silver OR copper OR mining) when:2d') },
-      { name: 'Commodity Futures', url: gn('(COMEX OR NYMEX OR "commodity futures" OR CME commodities) when:2d') },
-    ],
-    finance: [
-      { name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
-      { name: 'MarketWatch', url: gn('site:marketwatch.com markets when:1d') },
-      { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/news/rssindex' },
-      { name: 'Financial Times', url: 'https://www.ft.com/rss/home' },
-      { name: 'Reuters Business', url: gn('site:reuters.com business markets when:1d') },
-    ],
-  },
-
-  happy: {
-    positive: [
-      { name: 'Good News Network', url: 'https://www.goodnewsnetwork.org/feed/' },
-      { name: 'Positive.News', url: 'https://www.positive.news/feed/' },
-      { name: 'Reasons to be Cheerful', url: 'https://reasonstobecheerful.world/feed/' },
-      { name: 'Optimist Daily', url: 'https://www.optimistdaily.com/feed/' },
-    ],
-    science: [
-      { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml' },
-      { name: 'Nature News', url: 'https://www.nature.com/nature.rss' },
-      { name: 'Singularity Hub', url: 'https://singularityhub.com/feed/' },
-      { name: 'Human Progress', url: 'https://humanprogress.org/feed/' },
-    ],
-    nature: [
-      { name: 'Mongabay', url: 'https://news.mongabay.com/feed/' },
-      { name: 'Conservation Optimism', url: 'https://conservationoptimism.org/feed/' },
-    ],
-    inspiring: [
-      { name: 'GNN Heroes', url: 'https://www.goodnewsnetwork.org/category/news/inspiring/feed/' },
-      { name: 'GNN Health', url: 'https://www.goodnewsnetwork.org/category/news/health/feed/' },
-    ],
-    community: [
-      { name: 'Yes! Magazine', url: 'https://www.yesmagazine.org/feed' },
-      { name: 'Shareable', url: 'https://www.shareable.net/feed/' },
+      { name: 'EIA Press Room', url: 'https://www.eia.gov/rss/press_room.xml' },
+      { name: 'Natural Gas & LNG', url: gn('("natural gas" OR LNG OR "gas price" OR "Henry Hub") when:1d') },
+      { name: 'US Grid & Reliability', url: gn('(NERC OR PJM OR ERCOT OR MISO OR "grid reliability" OR "capacity auction") when:2d') },
+      { name: 'Energy Intel', url: gn('(energy commodities OR "energy market" OR "energy prices" OR "energy security") when:2d') },
     ],
   },
 };

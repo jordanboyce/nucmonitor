@@ -32,7 +32,7 @@ test('allows Google Translate proxy origins of worldmonitor.app (#6411)', () => 
   const origins = [
     'https://www-worldmonitor-app.translate.goog',
     'https://worldmonitor-app.translate.goog',
-    'https://tech-worldmonitor-app.translate.goog',
+    'https://nuclear-worldmonitor-app.translate.goog',
   ];
 
   for (const origin of origins) {
@@ -60,7 +60,7 @@ test('rejects unrelated translate.goog hosts', () => {
 test('allows trailing-dot FQDN form of first-party origins (#6411)', () => {
   const origins = [
     'https://worldmonitor.app.',
-    'https://tech.worldmonitor.app.',
+    'https://nuclear.worldmonitor.app.',
     'https://www.worldmonitor.app.',
   ];
 

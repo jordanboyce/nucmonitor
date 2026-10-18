@@ -134,6 +134,15 @@ const escHtml = (s: string) =>
     .replace(/'/g, '&#39;');
 
 describe('renderVariantDashboardHtml (#4996)', () => {
+  it('serves only the nuclear hub from its own subdomain', () => {
+    // NucMonitor collapsed the variant system to full + nuclear; only the
+    // nuclear hub still gets a derived dashboard-<variant>.html.
+    assert.deepEqual([...WEB_DASHBOARD_VARIANTS], ['nuclear']);
+    for (const variant of WEB_DASHBOARD_VARIANTS) {
+      assert.ok(VARIANT_META[variant], `${variant} needs VARIANT_META`);
+    }
+  });
+
   it('synchronizes each variant description across crawler metadata', () => {
     for (const variant of WEB_DASHBOARD_VARIANTS) {
       const html = renderVariantDashboardHtml(fixture, variant);
@@ -161,34 +170,34 @@ describe('renderVariantDashboardHtml (#4996)', () => {
     }
   });
 
-  it('rewrites brand meta, English discovery links, social images, and h1 for tech', () => {
-    const html = renderVariantDashboardHtml(fixture, 'tech');
-    const tech = VARIANT_META.tech;
-    assert.ok(html.includes(`<title>${escHtml(tech.title)}</title>`), 'title');
-    assert.ok(html.includes(`<meta name="description" content="${escHtml(tech.description)}" />`), 'description');
-    assert.ok(html.includes(`<meta property="og:site_name" content="Tech Monitor" />`), 'og:site_name');
-    assert.ok(html.includes(`<meta name="application-name" content="Tech Monitor" />`), 'application-name');
-    assert.ok(html.includes(`<meta name="subject" content="${escHtml(tech.subject)}" />`), 'subject');
+  it('rewrites brand meta, English discovery links, social images, and h1 for nuclear', () => {
+    const html = renderVariantDashboardHtml(fixture, 'nuclear');
+    const nuclear = VARIANT_META.nuclear;
+    assert.ok(html.includes(`<title>${escHtml(nuclear.title)}</title>`), 'title');
+    assert.ok(html.includes(`<meta name="description" content="${escHtml(nuclear.description)}" />`), 'description');
+    assert.ok(html.includes(`<meta property="og:site_name" content="NucMonitor" />`), 'og:site_name');
+    assert.ok(html.includes(`<meta name="application-name" content="NucMonitor" />`), 'application-name');
+    assert.ok(html.includes(`<meta name="subject" content="${escHtml(nuclear.subject)}" />`), 'subject');
     assert.ok(
-      html.includes(`<link rel="alternate" hreflang="en" href="${tech.url}" />`),
+      html.includes(`<link rel="alternate" hreflang="en" href="${nuclear.url}" />`),
       'English alternate moves to the variant host without query-string application state',
     );
     assert.ok(
-      html.includes(`<link rel="alternate" hreflang="x-default" href="${tech.url}" />`),
+      html.includes(`<link rel="alternate" hreflang="x-default" href="${nuclear.url}" />`),
       'x-default alternate moves to the variant host',
     );
     assert.doesNotMatch(html, /hreflang="[^"]+"\s+href="[^"]*[?&]lang=/);
     assert.ok(
-      html.includes('content="https://tech.worldmonitor.app/favico/tech/og-image.png"'),
+      html.includes('content="https://nuclear.worldmonitor.app/favico/nuclear/og-image.png"'),
       'og/twitter image points at the variant OG asset',
     );
     assert.ok(html.includes('<meta property="og:image:width" content="1200" />'), 'og:image:width untouched');
-    assert.ok(html.includes(`<h1 class="app-heading">${escHtml(tech.title)}</h1>`), 'h1');
+    assert.ok(html.includes(`<h1 class="app-heading">${escHtml(nuclear.title)}</h1>`), 'h1');
   });
 
   it('rewrites SoftwareApplication and attaches WebPage plus breadcrumbs instead of claiming the site', () => {
-    const html = renderVariantDashboardHtml(fixture, 'finance');
-    const finance = VARIANT_META.finance;
+    const html = renderVariantDashboardHtml(fixture, 'nuclear');
+    const nuclear = VARIANT_META.nuclear;
     const blocks = [...html.matchAll(/<script\b(?=[^>]*\btype=["']application\/ld\+json["'])[^>]*>\s*([\s\S]*?)\s*<\/script>/gi)].map(
       (m) => JSON.parse(m[1]),
     );
@@ -197,21 +206,21 @@ describe('renderVariantDashboardHtml (#4996)', () => {
       ['BreadcrumbList', 'SoftwareApplication', 'WebPage'],
     );
     const webApp = blocks.find((b) => b['@type'] === 'SoftwareApplication');
-    assert.equal(webApp['@id'], `${finance.url}#software`);
-    assert.equal(webApp.name, 'Finance Monitor');
-    assert.equal(webApp.url, finance.url);
-    assert.equal(webApp.screenshot, 'https://finance.worldmonitor.app/favico/finance/og-image.png');
-    assert.deepEqual(webApp.featureList, finance.features);
+    assert.equal(webApp['@id'], `${nuclear.url}#software`);
+    assert.equal(webApp.name, 'NucMonitor');
+    assert.equal(webApp.url, nuclear.url);
+    assert.equal(webApp.screenshot, 'https://nuclear.worldmonitor.app/favico/nuclear/og-image.png');
+    assert.deepEqual(webApp.featureList, nuclear.features);
     assert.deepEqual(webApp.publisher, { '@id': 'https://www.worldmonitor.app/#organization' });
     assert.deepEqual(webApp.isPartOf, { '@id': 'https://www.worldmonitor.app/#website' });
     const webPage = blocks.find((b) => b['@type'] === 'WebPage');
-    assert.equal(webPage['@id'], `${finance.url}#webpage`);
+    assert.equal(webPage['@id'], `${nuclear.url}#webpage`);
     assert.deepEqual(webPage.isPartOf, { '@id': 'https://www.worldmonitor.app/#website' });
     assert.equal(webPage.speakable['@type'], 'SpeakableSpecification');
-    assert.deepEqual(webPage.breadcrumb, { '@id': `${finance.url}#breadcrumb` });
+    assert.deepEqual(webPage.breadcrumb, { '@id': `${nuclear.url}#breadcrumb` });
     const crumbs = blocks.find((b) => b['@type'] === 'BreadcrumbList');
-    assert.equal(crumbs['@id'], `${finance.url}#breadcrumb`);
-    assert.equal(crumbs.itemListElement[1].name, 'Finance Monitor');
+    assert.equal(crumbs['@id'], `${nuclear.url}#breadcrumb`);
+    assert.equal(crumbs.itemListElement[1].name, 'NucMonitor');
     const injected = [...html.matchAll(/<script\b([^>]*\btype=["']application\/ld\+json["'][^>]*)>/gi)]
       .map((match) => match[1]);
     assert.equal(injected.length, 3);
@@ -221,28 +230,28 @@ describe('renderVariantDashboardHtml (#4996)', () => {
   });
 
   it('injects variant-specific SEO summary and noscript differentiation copy', () => {
-    const html = renderVariantDashboardHtml(fixture, 'tech');
+    const html = renderVariantDashboardHtml(fixture, 'nuclear');
     assert.match(html, /<section class="app-seo-summary">/);
     assert.doesNotMatch(
       html,
       /<section class="app-seo-summary"[^>]*aria-hidden/,
       'variant SEO summary must stay in the accessibility tree (#7607)',
     );
-    assert.match(html, /Tech Monitor is the World Monitor variant/);
+    assert.match(html, /NucMonitor is the World Monitor variant/);
     assert.match(html, /<main id="dashboard-noscript"/);
-    assert.match(html, /Tech Monitor requires JavaScript for the live map/);
+    assert.match(html, /NucMonitor requires JavaScript for the live map/);
     assert.doesNotMatch(html, /Full dashboard SEO summary placeholder/);
     assert.doesNotMatch(html, /Full dashboard noscript placeholder/);
   });
 
   it('leaves body links to the main dashboard untouched', () => {
-    const html = renderVariantDashboardHtml(fixture, 'energy');
+    const html = renderVariantDashboardHtml(fixture, 'nuclear');
     assert.ok(html.includes(`<a href="${FULL.url}">the main dashboard</a>`));
   });
 
   it('throws loudly when an anchor is missing (markup drift guard)', () => {
     const withoutCanonical = fixture.replace(/<link rel="canonical"[^>]*>\n/, '');
-    assert.throws(() => renderVariantDashboardHtml(withoutCanonical, 'tech'), /anchor "canonical" matched 0/);
+    assert.throws(() => renderVariantDashboardHtml(withoutCanonical, 'nuclear'), /anchor "canonical" matched 0/);
   });
 
   it('throws loudly when an anchor is duplicated', () => {
@@ -250,7 +259,7 @@ describe('renderVariantDashboardHtml (#4996)', () => {
       `<link rel="canonical" href="${FULL.url}" />`,
       `<link rel="canonical" href="${FULL.url}" />\n    <link rel="canonical" href="${FULL.url}" />`,
     );
-    assert.throws(() => renderVariantDashboardHtml(doubled, 'tech'), /anchor "canonical" matched 2/);
+    assert.throws(() => renderVariantDashboardHtml(doubled, 'nuclear'), /anchor "canonical" matched 2/);
   });
 
   it('throws when a query-string locale is reintroduced as an indexable alternate', () => {
@@ -259,7 +268,7 @@ describe('renderVariantDashboardHtml (#4996)', () => {
       `<link rel="alternate" hreflang="en" href="${FULL.url}" />\n    <link rel="alternate" hreflang="fr" href="${FULL.url}?lang=fr" />`,
     );
     assert.throws(
-      () => renderVariantDashboardHtml(withPseudoLocale, 'tech'),
+      () => renderVariantDashboardHtml(withPseudoLocale, 'nuclear'),
       /anchor "hreflang alternates" matched 3 time\(s\), expected 2\.\.2/,
     );
   });
@@ -267,9 +276,13 @@ describe('renderVariantDashboardHtml (#4996)', () => {
   it('rejects unknown variants and the full variant itself', () => {
     assert.throws(() => renderVariantDashboardHtml(fixture, 'full'));
     assert.throws(() => renderVariantDashboardHtml(fixture, 'nope'));
+    // Deleted variants must not quietly keep a derived dashboard page.
+    for (const gone of ['tech', 'finance', 'commodity', 'energy', 'happy']) {
+      assert.throws(() => renderVariantDashboardHtml(fixture, gone), `${gone} was removed`);
+    }
   });
 
   it('names output files after the variant', () => {
-    assert.equal(variantDashboardFileName('tech'), 'dashboard-tech.html');
+    assert.equal(variantDashboardFileName('nuclear'), 'dashboard-nuclear.html');
   });
 });

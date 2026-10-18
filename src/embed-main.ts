@@ -1,5 +1,4 @@
 import './styles/base-layer.css';
-import './styles/happy-theme.css';
 import './styles/embed.css';
 import { initI18n } from '@/services/i18n';
 import { getEmbedPanelFreeTier } from '../shared/embed-panels';

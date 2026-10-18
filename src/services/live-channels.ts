@@ -1,4 +1,3 @@
-import { SITE_VARIANT } from '@/config/variant';
 import { STORAGE_KEYS } from '@/config/variants/base';
 import { LIVE_NEWS_SOURCES, type LiveNewsSlotId } from '@/config/live-video-sources';
 import { CHANNEL_ID, type LiveVideoSource } from '@/services/live-video/model';
@@ -155,7 +154,7 @@ export const OPTIONAL_CHANNEL_REGIONS: { key: string; labelKey: string; channelI
   ..._REGION_ENTRIES,
 ];
 
-const DEFAULT_LIVE_CHANNELS = SITE_VARIANT === 'tech' ? TECH_LIVE_CHANNELS : SITE_VARIANT === 'happy' ? [] : FULL_LIVE_CHANNELS;
+const DEFAULT_LIVE_CHANNELS = FULL_LIVE_CHANNELS;
 
 /** Default channel list for the current variant (for restore in channel management). */
 export function getDefaultLiveChannels(): LiveChannel[] {

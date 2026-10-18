@@ -40,8 +40,8 @@ describe('OAuth authorize — consent POST origin gate (P1)', () => {
     'https://worldmonitor.app',          // apex — the scanned host, previously 403'd
     'https://www.worldmonitor.app',      // canonical Vercel host
     'https://api.worldmonitor.app',      // the only host that worked before
-    'https://tech.worldmonitor.app',     // variant subdomain
-    'https://finance.worldmonitor.app',
+    'https://app.worldmonitor.app',      // hosted app subdomain
+    'https://nuclear.worldmonitor.app',  // variant subdomain
   ];
 
   for (const origin of firstPartyOrigins) {
@@ -72,6 +72,8 @@ describe('OAuth authorize — consent POST origin gate (P1)', () => {
     'https://worldmonitor.app:8443',         // port smuggling
     'https://clerk.worldmonitor.app',        // vendor CNAME, not an app host
     'https://abacus.worldmonitor.app',       // vendor CNAME, not an app host
+    'https://tech.worldmonitor.app',         // retired variant host
+    'https://finance.worldmonitor.app',      // retired variant host
   ];
 
   for (const origin of foreignOrigins) {

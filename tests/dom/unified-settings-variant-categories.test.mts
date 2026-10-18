@@ -7,7 +7,7 @@ import { initTestI18n } from './helpers/i18n.mts';
 
 function createSettings(): UnifiedSettings {
   return new UnifiedSettings({
-    getPanelSettings: () => ({ markets: { name: 'Markets', enabled: true, priority: 1 } }),
+    getPanelSettings: () => ({ monitors: { name: 'Monitors', enabled: true, priority: 1 } }),
     savePanelSettings: () => {},
     getDisabledSources: () => new Set<string>(),
     toggleSource: () => {},
@@ -42,24 +42,24 @@ afterEach(() => {
 
 describe('UnifiedSettings panel categories follow the active variant', () => {
   it('hides categories scoped to another variant, even when they list panels this variant has', () => {
-    // Fixture assumptions: tests run as the full variant, and `markets` sits in
-    // both the full-scoped marketsFinance and the tech-only techMarkets category.
+    // Fixture assumptions: tests run as the full variant, and `monitors` sits in
+    // both the full-scoped dataTracking and the nuclear-only nuclearNews category.
     expect(SITE_VARIANT).toBe('full');
-    expect(PANEL_CATEGORY_MAP.marketsFinance!.variants).toContain('full');
-    expect(PANEL_CATEGORY_MAP.marketsFinance!.panelKeys).toContain('markets');
-    expect(PANEL_CATEGORY_MAP.techMarkets!.variants).not.toContain('full');
-    expect(PANEL_CATEGORY_MAP.techMarkets!.panelKeys).toContain('markets');
+    expect(PANEL_CATEGORY_MAP.dataTracking!.variants).toContain('full');
+    expect(PANEL_CATEGORY_MAP.dataTracking!.panelKeys).toContain('monitors');
+    expect(PANEL_CATEGORY_MAP.nuclearNews!.variants).not.toContain('full');
+    expect(PANEL_CATEGORY_MAP.nuclearNews!.panelKeys).toContain('monitors');
 
     const settings = createSettings();
     settings.open('panels');
 
-    expect(pillKeys()).toContain('marketsFinance');
-    expect(pillKeys()).not.toContain('techMarkets');
+    expect(pillKeys()).toContain('dataTracking');
+    expect(pillKeys()).not.toContain('nuclearNews');
 
-    // Positive control: the in-variant category lists `markets`.
-    expect(selectCategory('marketsFinance')).toContain('markets');
+    // Positive control: the in-variant category lists `monitors`.
+    expect(selectCategory('dataTracking')).toContain('monitors');
     // A stale or injected out-of-variant category lists nothing.
-    expect(selectCategory('techMarkets')).toEqual([]);
+    expect(selectCategory('nuclearNews')).toEqual([]);
     settings.close();
   });
 });

@@ -55,7 +55,7 @@ export type {
 const UMAMI_SCRIPT_SRC = 'https://abacus.worldmonitor.app/script.js';
 const UMAMI_COLLECTOR_ENDPOINT = new URL('/api/send', UMAMI_SCRIPT_SRC).href;
 const UMAMI_WEBSITE_ID = 'e8800335-c853-46a8-8497-c993ed2f58bc';
-// data-domains is temporarily reduced to the worldmonitor.app hosts + happy
+// data-domains is temporarily reduced to the worldmonitor.app and nuclear hosts
 // while upstream Umami issue #4183 (https://github.com/umami-software/umami/issues/4183)
 // is open — v3.1.0 has a race in prisma.sessionData.updateMany() that returns HTTP 500
 // from /api/send for 4-8% of requests across all listed hosts. Self-hosted Umami has no
@@ -73,7 +73,7 @@ const UMAMI_WEBSITE_ID = 'e8800335-c853-46a8-8497-c993ed2f58bc';
 // tracker self-disabled there. Upstream #4183 still drops 4-8% of /api/send
 // on affected hosts — accepted noise; durable checkout markers already
 // tolerate collector failures. tech/commodity stay out until #4183 ships.
-const UMAMI_DOMAINS = 'worldmonitor.app,www.worldmonitor.app,happy.worldmonitor.app,finance.worldmonitor.app';
+const UMAMI_DOMAINS = 'worldmonitor.app,www.worldmonitor.app,nuclear.worldmonitor.app';
 const UMAMI_QUEUE_LIMIT = 50;
 const UMAMI_BEFORE_SEND_HOOK = '__wmUmamiBeforeSend';
 

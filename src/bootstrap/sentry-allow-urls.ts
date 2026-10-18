@@ -13,6 +13,6 @@
  * variant list, and why both patterns are anchored (#6545, WORLDMONITOR-K7 / -Q4).
  */
 export const SENTRY_ALLOW_URLS: RegExp[] = [
-  /^https?:\/\/(www\.|app\.|api\.|tech\.|finance\.|commodity\.|happy\.|energy\.|nuclear\.)?worldmonitor\.app(?=[:/?#]|$)/,
+  /^https?:\/\/(www\.|app\.|api\.|nuclear\.)?worldmonitor\.app(?=[:/?#]|$)/,
   /^https?:\/\/[^/]*\.vercel\.app(?=[:/?#]|$)/,
 ];

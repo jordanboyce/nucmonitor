@@ -105,10 +105,10 @@ describe('live dashboard tab backups', () => {
   });
 
   it('continues capturing live tabs after importing a different variant', async () => {
-    await importSettings(file({ 'worldmonitor-tabs-v1:tech': JSON.stringify(restored) }));
+    await importSettings(file({ 'worldmonitor-tabs-v1:nuclear': JSON.stringify(restored) }));
     const data = await backup();
     expect((JSON.parse(data[tabsKey]!) as TabsState).tabs[0]!.panelSettings.news!.enabled).toBe(false);
-    expect(JSON.parse(data['worldmonitor-tabs-v1:tech']!)).toEqual(restored);
+    expect(JSON.parse(data['worldmonitor-tabs-v1:nuclear']!)).toEqual(restored);
   });
 
   it('keeps the live hook when a layout import fails', async () => {

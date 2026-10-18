@@ -219,7 +219,7 @@ describe('durable mission return', () => {
     assert.deepEqual(calls, [{
       name: 'mission-returned-after-purchase',
       data: {
-        variant: 'full',
+        variant: 'nuclear',
         deviceClass: 'desktop',
         missionId: 'energy-security',
         panelKey: 'pipeline-status',

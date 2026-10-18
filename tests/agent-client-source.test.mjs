@@ -185,7 +185,7 @@ describe('cookie storage', () => {
     const www = agentRefCookieStorage(doc, { hostname: 'www.worldmonitor.app', protocol: 'https:' });
     assert.equal(captureAgentRefFromSearch('?ref=agent-claude', www, NOW), 'agent-claude');
     assert.match(doc.writes[0], /^wm-agent-ref=[^;]+; max-age=2592000; path=\/; domain=\.worldmonitor\.app; SameSite=Lax; Secure$/);
-    const tech = agentRefCookieStorage(doc, { hostname: 'tech.worldmonitor.app', protocol: 'https:' });
+    const tech = agentRefCookieStorage(doc, { hostname: 'nuclear.worldmonitor.app', protocol: 'https:' });
     assert.equal(loadAgentRef(tech, NOW + 1000), 'agent-claude');
     clearAgentRef(tech);
     assert.equal(loadAgentRef(www, NOW + 2000), null);

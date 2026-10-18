@@ -4,24 +4,24 @@ import schema from "../schema";
 
 const modules = import.meta.glob("../**/*.ts");
 afterEach(() => vi.unstubAllEnvs());
-const appOrigins = ["", "www.", "app.", "api.", "tech.", "finance.", "commodity.", "happy.", "energy."]
+const appOrigins = ["", "www.", "app.", "api.", "nuclear."]
   .map(host => `https://${host}worldmonitor.app`);
 const trusted = [...appOrigins,
   "https://worldmonitor-git-test-eliewm.vercel.app",
   "https://worldmonitor-abc123-eliewm.vercel.app",
   "tauri://localhost", "asset://localhost", "http://tauri.localhost",
   "https://tauri.localhost:444", "http://main.tauri.localhost",
-  "https://tech.worldmonitor.app.", "https://www-worldmonitor-app.translate.goog",
+  "https://nuclear.worldmonitor.app.", "https://www-worldmonitor-app.translate.goog",
 ];
 const denied = [
   "https://clerk.worldmonitor.app", "https://abacus.worldmonitor.app",
-  "https://unknown.worldmonitor.app", "http://tech.worldmonitor.app",
+  "https://unknown.worldmonitor.app", "https://tech.worldmonitor.app", "https://happy.worldmonitor.app", "http://nuclear.worldmonitor.app",
   "https://worldmonitor.app:8443", "https://worldmonitor.app.evil.test",
   "https://evil.test/worldmonitor.app", "https://worldmonitor.app/path",
-  "https://user:pass@tech.worldmonitor.app", "https://tech.worldmonitor.app?query=1",
+  "https://user:pass@tech.worldmonitor.app", "https://nuclear.worldmonitor.app?query=1",
   "https://worldmonitor-abc-other.vercel.app", "https://evil.vercel.app",
   "https://tauri.localhost.evil.test", "https://localhost:99999",
-  "not-an-origin.worldmonitor.app", "null", "", "https://tech.worldmonitor.app#fragment",
+  "not-an-origin.worldmonitor.app", "null", "", "https://nuclear.worldmonitor.app#fragment",
   "https://clerk-worldmonitor-app.translate.goog", "https://abacus-worldmonitor-app.translate.goog",
   "https://evil--worldmonitor-app.translate.goog", "https://worldmonitor.app./path",
   "https://user:pass@worldmonitor.app.", "https://worldmonitor.app.:8443",
@@ -64,7 +64,7 @@ test("trusted origin still needs identity; authenticated write retains CORS and 
   const t = convexTest(schema, modules);
   const init = {
     method: "POST" as const,
-    headers: { Origin: "https://tech.worldmonitor.app", "Content-Type": "application/json" },
+    headers: { Origin: "https://nuclear.worldmonitor.app", "Content-Type": "application/json" },
     body: JSON.stringify({ variant: "full", data: { theme: "dark" }, expectedSyncVersion: 0 }),
   };
   expect((await t.fetch("/api/user-prefs", init)).status).toBe(401);

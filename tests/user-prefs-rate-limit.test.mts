@@ -200,7 +200,7 @@ describe('user-prefs POST write rate limit', () => {
     });
 
     const res = await handler(makePost({
-      variant: 'tech',
+      variant: 'nuclear',
       data: { theme: 'light' },
       expectedSyncVersion: 2,
       schemaVersion: 3,
@@ -218,7 +218,7 @@ describe('user-prefs POST write rate limit', () => {
     assert.ok(mutation, 'under-budget request should call setPreferences');
     assert.equal(mutation.name, 'userPreferences:setPreferences');
     assert.deepEqual(mutation.args, {
-      variant: 'tech',
+      variant: 'nuclear',
       data: { theme: 'light' },
       expectedSyncVersion: 2,
       schemaVersion: 3,
@@ -466,8 +466,10 @@ describe('user-prefs variant boundary', () => {
   it('supports exactly the current app variants', () => {
     assert.deepEqual(PREFERENCE_VARIANTS, SITE_VARIANTS);
   });
-  const variants = ['full', 'tech', 'finance', 'happy', 'commodity', 'energy'];
-  const invalidVariants = ['', 'FULL', ' full', 'full ', 'unknown', '__proto__', 'x'.repeat(1024)];
+  const variants = ['full', 'nuclear'];
+  // tech/finance/happy/commodity/energy were retired with the variant collapse
+  // and must be rejected like any other unknown value.
+  const invalidVariants = ['', 'FULL', ' full', 'full ', 'unknown', 'tech', 'finance', 'happy', 'commodity', 'energy', '__proto__', 'x'.repeat(1024)];
 
   for (const variant of [...variants, ...invalidVariants]) {
     it(`validates GET and POST variant ${JSON.stringify(variant.slice(0, 20))}`, async () => {

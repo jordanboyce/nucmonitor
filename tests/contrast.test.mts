@@ -11,7 +11,7 @@ const readFile = (rel: string): string =>
  * Brace-match the rule that starts at `blockStart`. Markers must include the
  * opening `{` so a comment such as `overridden by [data-theme="light"] below`
  * cannot steal the light-theme lookup, and so a prefix such as
- * `:root[data-variant="happy"]` cannot leak into the happy-dark block.
+ * `:root[data-variant="nuclear"]` cannot leak into the base dark block.
  */
 function extractBlock(css: string, blockStart: string): string {
   const start = css.indexOf(blockStart);
@@ -86,13 +86,10 @@ describe('contrast util', () => {
  */
 describe('theme text-token contrast', () => {
   const mainCss = readFile('src/styles/main.css');
-  const happyCss = readFile('src/styles/happy-theme.css');
 
   const themes: Array<{ name: string; css: string; block: string }> = [
     { name: 'dark', css: mainCss, block: ':root {' },
     { name: 'light', css: mainCss, block: '[data-theme="light"] {' },
-    { name: 'happy light', css: happyCss, block: ':root[data-variant="happy"][data-theme="light"] {' },
-    { name: 'happy dark', css: happyCss, block: ':root[data-variant="happy"][data-theme="dark"] {' },
   ];
 
   it('extracts a distinct --bg from each theme block', () => {
@@ -136,7 +133,6 @@ describe('theme text-token contrast', () => {
  */
 describe('billing tone contrast', () => {
   const mainCss = readFile('src/styles/main.css');
-  const happyCss = readFile('src/styles/happy-theme.css');
   const settingsSource = readFile('src/components/UnifiedSettings.ts');
   const tones = [
     '--billing-tone-active',
@@ -209,29 +205,4 @@ describe('billing tone contrast', () => {
     }
   });
 
-  for (const theme of [
-    {
-      name: 'happy light',
-      block: ':root[data-variant="happy"][data-theme="light"] {',
-    },
-    {
-      name: 'happy dark',
-      block: ':root[data-variant="happy"][data-theme="dark"] {',
-    },
-  ]) {
-    it(`${theme.name}: every billing tone clears 4.5:1 on --bg and --surface`, () => {
-      const bg = token(happyCss, theme.block, '--bg');
-      const surface = token(happyCss, theme.block, '--surface');
-      for (const tone of tones) {
-        const color = token(happyCss, theme.block, tone);
-        for (const base of [bg, surface]) {
-          const ratio = contrastRatio(color, base);
-          assert.ok(
-            ratio >= 4.5,
-            `${theme.name} ${tone} (${color}) on ${base} is ${ratio.toFixed(2)}:1, needs >= 4.5:1`,
-          );
-        }
-      }
-    });
-  }
 });

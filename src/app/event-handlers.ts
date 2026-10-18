@@ -104,7 +104,6 @@ import { WM_OPEN_NOTIFICATIONS_FOR_COUNTRY } from '@/utils/notify-country-link';
 import { AuthLauncher } from '@/components/AuthLauncher';
 import { AuthHeaderWidget } from '@/components/AuthHeaderWidget';
 import { t } from '@/services/i18n';
-import { TvModeController } from '@/services/tv-mode';
 import { getAuthState, subscribeAuthState } from '@/services/auth-state';
 import { hasEmbedAccessForAccount, onEntitlementChange } from '@/services/entitlements';
 import { evaluateAvailableExportFormats, evaluateExportGate, exportLockToGateReason } from '@/services/gates/export';
@@ -306,7 +305,6 @@ export class EventHandlerManager implements AppModule {
   private boundDesktopExternalLinkHandler: ((e: MouseEvent) => void) | null = null;
   private boundIdleResetHandler: (() => void) | null = null;
   private boundStorageHandler: ((e: StorageEvent) => void) | null = null;
-  private boundTvKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private boundThemeChangedHandler: (() => void) | null = null;
   private boundDropdownClickHandler: ((e: MouseEvent) => void) | null = null;
   private boundDropdownKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -376,7 +374,6 @@ export class EventHandlerManager implements AppModule {
     this.setupEventListeners();
     this.mobilePrimaryNav.init();
     this.setupIdleDetection();
-    this.setupTvMode();
   }
 
   private performUndo(): void {
@@ -453,48 +450,6 @@ export class EventHandlerManager implements AppModule {
     );
   }
 
-  private setupTvMode(): void {
-    if (SITE_VARIANT !== 'happy') return;
-
-    const tvBtn = document.getElementById('tvModeBtn');
-    const tvExitBtn = document.getElementById('tvExitBtn');
-    if (tvBtn) {
-      tvBtn.addEventListener('click', () => this.toggleTvMode());
-    }
-    if (tvExitBtn) {
-      tvExitBtn.addEventListener('click', () => this.toggleTvMode());
-    }
-    // Keyboard shortcut: Shift+T
-    this.boundTvKeydownHandler = (e: KeyboardEvent) => {
-      if (e.shiftKey && e.key === 'T' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const active = document.activeElement;
-        if (active?.tagName !== 'INPUT' && active?.tagName !== 'TEXTAREA') {
-          e.preventDefault();
-          this.toggleTvMode();
-        }
-      }
-    };
-    document.addEventListener('keydown', this.boundTvKeydownHandler);
-  }
-
-  private toggleTvMode(): void {
-    const panelKeys = Object.keys(this.ctx.panelSettings).filter(
-      key => this.ctx.panelSettings[key]?.enabled !== false
-    );
-    if (!this.ctx.tvMode) {
-      this.ctx.tvMode = new TvModeController({
-        panelKeys,
-        onPanelChange: () => {
-          document.getElementById('tvModeBtn')?.classList.toggle('active', this.ctx.tvMode?.active ?? false);
-        }
-      });
-    } else {
-      this.ctx.tvMode.updatePanelKeys(panelKeys);
-    }
-    this.ctx.tvMode.toggle();
-    document.getElementById('tvModeBtn')?.classList.toggle('active', this.ctx.tvMode.active);
-  }
-
   destroy(): void {
     this.closeEmbedDialog();
     this.debouncedUrlSync.cancel();
@@ -536,10 +491,6 @@ export class EventHandlerManager implements AppModule {
     if (this.boundStorageHandler) {
       window.removeEventListener('storage', this.boundStorageHandler);
       this.boundStorageHandler = null;
-    }
-    if (this.boundTvKeydownHandler) {
-      document.removeEventListener('keydown', this.boundTvKeydownHandler);
-      this.boundTvKeydownHandler = null;
     }
     if (this.boundThemeChangedHandler) {
       window.removeEventListener('theme-changed', this.boundThemeChangedHandler);

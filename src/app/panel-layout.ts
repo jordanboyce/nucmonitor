@@ -240,12 +240,7 @@ const DASHBOARD_REFERENCE_LINKS = [
 
 export const VARIANT_SWITCHER_DASHBOARD_URLS = {
   full: 'https://www.worldmonitor.app/dashboard',
-  tech: 'https://tech.worldmonitor.app/dashboard',
-  finance: 'https://finance.worldmonitor.app/dashboard',
-  commodity: 'https://commodity.worldmonitor.app/dashboard',
-  energy: 'https://energy.worldmonitor.app/dashboard',
   nuclear: 'https://nuclear.worldmonitor.app/dashboard',
-  happy: 'https://happy.worldmonitor.app/dashboard',
 } as const;
 
 export function variantSwitcherHref(
@@ -875,26 +870,6 @@ export class PanelLayoutManager implements AppModule {
     this.panelTabBar = null;
     this.unregisterExportFlush?.();
     this.unregisterExportFlush = null;
-    // Clean up happy variant panels
-    destroyOnce(this.ctx.tvMode);
-    this.ctx.tvMode = null;
-    destroyOnce(this.ctx.countersPanel);
-    this.ctx.countersPanel = null;
-    destroyOnce(this.ctx.progressPanel);
-    this.ctx.progressPanel = null;
-    destroyOnce(this.ctx.breakthroughsPanel);
-    this.ctx.breakthroughsPanel = null;
-    destroyOnce(this.ctx.heroPanel);
-    this.ctx.heroPanel = null;
-    destroyOnce(this.ctx.digestPanel);
-    this.ctx.digestPanel = null;
-    destroyOnce(this.ctx.speciesPanel);
-    this.ctx.speciesPanel = null;
-    destroyOnce(this.ctx.positivePanel);
-    this.ctx.positivePanel = null;
-    destroyOnce(this.ctx.renewablePanel);
-    this.ctx.renewablePanel = null;
-
     // Clean up aviation components
     destroyOnce(this.aviationCommandBar);
     this.aviationCommandBar = null;
@@ -1090,42 +1065,6 @@ export class PanelLayoutManager implements AppModule {
               <span class="variant-label">${t('header.world')}</span>
             </a>
             <span class="variant-divider"></span>
-            <a href="${vHref('tech')}"
-               class="variant-option ${SITE_VARIANT === 'tech' ? 'active' : ''}"
-               data-variant="tech"
-               ${vTarget('tech')}
-               title="${t('header.tech')}${SITE_VARIANT === 'tech' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">💻</span>
-              <span class="variant-label">${t('header.tech')}</span>
-            </a>
-            <span class="variant-divider"></span>
-            <a href="${vHref('finance')}"
-               class="variant-option ${SITE_VARIANT === 'finance' ? 'active' : ''}"
-               data-variant="finance"
-               ${vTarget('finance')}
-               title="${t('header.finance')}${SITE_VARIANT === 'finance' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">📈</span>
-              <span class="variant-label">${t('header.finance')}</span>
-            </a>
-            <span class="variant-divider"></span>
-            <a href="${vHref('commodity')}"
-               class="variant-option ${SITE_VARIANT === 'commodity' ? 'active' : ''}"
-               data-variant="commodity"
-               ${vTarget('commodity')}
-               title="${t('header.commodity')}${SITE_VARIANT === 'commodity' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">⛏️</span>
-              <span class="variant-label">${t('header.commodity')}</span>
-            </a>
-            <span class="variant-divider"></span>
-            <a href="${vHref('energy')}"
-               class="variant-option ${SITE_VARIANT === 'energy' ? 'active' : ''}"
-               data-variant="energy"
-               ${vTarget('energy')}
-               title="${t('header.energy')}${SITE_VARIANT === 'energy' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">⚡</span>
-              <span class="variant-label">${t('header.energy')}</span>
-            </a>
-            <span class="variant-divider"></span>
             <a href="${vHref('nuclear')}"
                class="variant-option ${SITE_VARIANT === 'nuclear' ? 'active' : ''}"
                data-variant="nuclear"
@@ -1133,15 +1072,6 @@ export class PanelLayoutManager implements AppModule {
                title="${t('header.nuclear')}${SITE_VARIANT === 'nuclear' ? ` ${t('common.currentVariant')}` : ''}">
               <span class="variant-icon">☢️</span>
               <span class="variant-label">${t('header.nuclear')}</span>
-            </a>
-            <span class="variant-divider"></span>
-            <a href="${vHref('happy')}"
-               class="variant-option ${SITE_VARIANT === 'happy' ? 'active' : ''}"
-               data-variant="happy"
-               ${vTarget('happy')}
-               title="Good News${SITE_VARIANT === 'happy' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">☀️</span>
-              <span class="variant-label">Good News</span>
             </a>`;
       })()}</div>
           <span class="logo">MONITOR</span><span class="logo-mobile">World Monitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
@@ -1181,7 +1111,6 @@ export class PanelLayoutManager implements AppModule {
           ${this.ctx.isDesktopApp ? '' : `<button class="copy-link-btn" id="copyLinkBtn">${t('header.copyLink')}</button>`}
           ${this.ctx.isDesktopApp ? '' : `<button class="copy-link-btn embed-link-btn" id="embedLinkBtn">${t('header.embed')}</button>`}
           ${this.ctx.isDesktopApp ? '' : `<button class="fullscreen-btn" id="fullscreenBtn" title="${t('header.fullscreen')}" aria-label="${t('header.fullscreen')}">⛶</button>`}
-          ${SITE_VARIANT === 'happy' ? `<button class="tv-mode-btn" id="tvModeBtn" title="TV Mode (Shift+T)" aria-label="TV Mode"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>` : ''}
           <span id="unifiedSettingsMount"></span>
           <span id="authWidgetMount" class="auth-widget-mount"></span>
         </div>
@@ -1204,12 +1133,7 @@ export class PanelLayoutManager implements AppModule {
         ${(() => {
         const variants = [
           { key: 'full', icon: '🌍', label: t('header.world') },
-          { key: 'tech', icon: '💻', label: t('header.tech') },
-          { key: 'finance', icon: '📈', label: t('header.finance') },
-          { key: 'commodity', icon: '⛏️', label: t('header.commodity') },
-          { key: 'energy', icon: '⚡', label: t('header.energy') },
           { key: 'nuclear', icon: '☢️', label: t('header.nuclear') },
-          { key: 'happy', icon: '☀️', label: 'Good News' },
         ];
         return variants.map(v =>
           `<button class="mobile-menu-item mobile-menu-variant ${v.key === SITE_VARIANT ? 'active' : ''}" data-variant="${v.key}">
@@ -1278,7 +1202,7 @@ export class PanelLayoutManager implements AppModule {
         <div class="map-section${mapStartsCollapsed ? ' collapsed' : ''}" id="mapSection">
           <div class="panel-header">
             <div class="panel-header-left">
-              <span class="panel-title">${SITE_VARIANT === 'tech' ? t('panels.techMap') : SITE_VARIANT === 'happy' ? 'Good News Map' : SITE_VARIANT === 'nuclear' ? 'US Nuclear Facilities Map' : t('panels.map')}</span>
+              <span class="panel-title">${SITE_VARIANT === 'nuclear' ? 'US Nuclear Facilities Map' : t('panels.map')}</span>
             </div>
             <span class="header-clock" id="headerClock" translate="no"></span>
             <div class="map-header-actions">
@@ -1300,7 +1224,6 @@ export class PanelLayoutManager implements AppModule {
             </div>
           </div>
           <div class="map-container" id="mapContainer"></div>
-          ${SITE_VARIANT === 'happy' ? '<button class="tv-exit-btn" id="tvExitBtn">Exit TV Mode</button>' : ''}
           <div class="map-resize-handle" id="mapResizeHandle"></div>
           <div class="map-bottom-grid" id="mapBottomGrid"></div>
         </div>
@@ -2778,7 +2701,6 @@ export class PanelLayoutManager implements AppModule {
     this.lazyDefaultPanel('energy-complex', () => import('@/components/EnergyComplexPanel'), 'EnergyComplexPanel');
     this.lazyDefaultPanel('oil-inventories', () => import('@/components/OilInventoriesPanel'), 'OilInventoriesPanel');
     this.lazyDefaultPanel('energy-crisis', () => import('@/components/EnergyCrisisPanel'), 'EnergyCrisisPanel');
-    this.lazyDefaultPanel('chokepoint-strip', () => import('@/components/ChokepointStripPanel'), 'ChokepointStripPanel');
     this.lazyPanel('pipeline-status', () =>
       this.importPanel('pipeline-status', () => import('@/components/PipelineStatusPanel'), 'PipelineStatusPanel', (PipelineStatusPanel) => new PipelineStatusPanel()),
     );
@@ -2831,20 +2753,6 @@ export class PanelLayoutManager implements AppModule {
     this.createNewsPanel('middleeast', 'panels.middleeast');
     this.createNewsPanel('layoffs', 'panels.layoffs');
     this.createNewsPanel('ai', 'panels.ai');
-    this.createNewsPanel('startups', 'panels.startups');
-    this.createNewsPanel('vcblogs', 'panels.vcblogs');
-    this.createNewsPanel('regionalStartups', 'panels.regionalStartups');
-    this.createNewsPanel('unicorns', 'panels.unicorns');
-    this.createNewsPanel('accelerators', 'panels.accelerators');
-    this.createNewsPanel('funding', 'panels.funding');
-    this.createNewsPanel('producthunt', 'panels.producthunt');
-    this.createNewsPanel('security', 'panels.security');
-    this.createNewsPanel('policy', 'panels.policy');
-    this.createNewsPanel('hardware', 'panels.hardware');
-    this.createNewsPanel('cloud', 'panels.cloud');
-    this.createNewsPanel('dev', 'panels.dev');
-    this.createNewsPanel('github', 'panels.github');
-    this.createNewsPanel('ipo', 'panels.ipo');
     this.createNewsPanel('thinktanks', 'panels.thinktanks');
     this.createNewsPanel('science', 'panels.science');
     this.lazyDefaultPanel('economic', () => import('@/components/EconomicPanel'), 'EconomicPanel');
@@ -3253,66 +3161,6 @@ export class PanelLayoutManager implements AppModule {
     // Global Giving panel (all variants)
     this.lazyDefaultPanel('giving', () => import('@/components/GivingPanel'), 'GivingPanel');
 
-    // Happy variant panels (lazy-loaded — only relevant for happy variant)
-    if (SITE_VARIANT === 'happy') {
-      this.lazyImportedPanel('positive-feed', () => import('@/components/PositiveNewsFeedPanel'), 'PositiveNewsFeedPanel', (PositiveNewsFeedPanel) => {
-        const p = new PositiveNewsFeedPanel();
-        this.ctx.positivePanel = p;
-        return p;
-      });
-
-      this.lazyImportedPanel('counters', () => import('@/components/CountersPanel'), 'CountersPanel', (CountersPanel) => {
-        const p = new CountersPanel();
-        p.startTicking();
-        this.ctx.countersPanel = p;
-        return p;
-      });
-
-      this.lazyImportedPanel('progress', () => import('@/components/ProgressChartsPanel'), 'ProgressChartsPanel', (ProgressChartsPanel) => {
-        const p = new ProgressChartsPanel();
-        this.ctx.progressPanel = p;
-        return p;
-      });
-
-      this.lazyImportedPanel('breakthroughs', () => import('@/components/BreakthroughsTickerPanel'), 'BreakthroughsTickerPanel', (BreakthroughsTickerPanel) => {
-        const p = new BreakthroughsTickerPanel();
-        this.ctx.breakthroughsPanel = p;
-        return p;
-      });
-
-      this.lazyImportedPanel('spotlight', () => import('@/components/HeroSpotlightPanel'), 'HeroSpotlightPanel', (HeroSpotlightPanel) => {
-        const p = new HeroSpotlightPanel();
-        p.onLocationRequest = (lat: number, lon: number) => {
-          this.ctx.map?.setCenter(lat, lon, 4);
-          this.ctx.map?.flashLocation(lat, lon, 3000);
-        };
-        this.ctx.heroPanel = p;
-        return p;
-      });
-
-      this.lazyImportedPanel('digest', () => import('@/components/GoodThingsDigestPanel'), 'GoodThingsDigestPanel', (GoodThingsDigestPanel) => {
-        const p = new GoodThingsDigestPanel();
-        this.ctx.digestPanel = p;
-        return p;
-      });
-
-      this.lazyImportedPanel('species', () => import('@/components/SpeciesComebackPanel'), 'SpeciesComebackPanel', (SpeciesComebackPanel) => {
-        const p = new SpeciesComebackPanel();
-        this.ctx.speciesPanel = p;
-        return p;
-      });
-
-    }
-
-    // Renewable Energy is shared by happy and energy variants.
-    if (this.shouldCreatePanel('renewable')) {
-      this.lazyImportedPanel('renewable', () => import('@/components/RenewableEnergyPanel'), 'RenewableEnergyPanel', (RenewableEnergyPanel) => {
-        const p = new RenewableEnergyPanel();
-        this.ctx.renewablePanel = p;
-        return p;
-      });
-    }
-
     // Always load custom widgets — Pro gating is handled reactively by auth state.
     for (const spec of loadWidgets()) {
       if (!this.ctx.panelSettings[spec.id]) {
@@ -3359,7 +3207,7 @@ export class PanelLayoutManager implements AppModule {
     let allOrder: string[];
 
     if (hasSavedOrder) {
-      const valid = savedOrder.filter(k => activePanelKeys.includes(k) && (SITE_VARIANT !== 'happy' || k !== 'monitors'));
+      const valid = savedOrder.filter(k => activePanelKeys.includes(k));
       const missing = activePanelKeys.filter(k => !valid.includes(k));
 
       missing.forEach(k => {
@@ -3374,24 +3222,22 @@ export class PanelLayoutManager implements AppModule {
         if (!inserted) valid.push(k);
       });
 
-      if (SITE_VARIANT !== 'happy' && !valid.includes('monitors')) valid.push('monitors');
+      if (!valid.includes('monitors')) valid.push('monitors');
       allOrder = valid;
     } else {
       allOrder = [...defaultOrder];
 
-      if (SITE_VARIANT !== 'happy') {
-        const liveNewsIdx = allOrder.indexOf('live-news');
-        if (liveNewsIdx > 0) {
-          allOrder.splice(liveNewsIdx, 1);
-          allOrder.unshift('live-news');
-        }
+      const liveNewsIdx = allOrder.indexOf('live-news');
+      if (liveNewsIdx > 0) {
+        allOrder.splice(liveNewsIdx, 1);
+        allOrder.unshift('live-news');
+      }
 
-        const webcamsIdx = allOrder.indexOf('live-webcams');
-        if (webcamsIdx !== -1 && webcamsIdx !== allOrder.indexOf('live-news') + 1) {
-          allOrder.splice(webcamsIdx, 1);
-          const afterNews = allOrder.indexOf('live-news') + 1;
-          allOrder.splice(afterNews, 0, 'live-webcams');
-        }
+      const webcamsIdx = allOrder.indexOf('live-webcams');
+      if (webcamsIdx !== -1 && webcamsIdx !== allOrder.indexOf('live-news') + 1) {
+        allOrder.splice(webcamsIdx, 1);
+        const afterNews = allOrder.indexOf('live-news') + 1;
+        allOrder.splice(afterNews, 0, 'live-webcams');
       }
 
       if (this.ctx.isDesktopApp) {

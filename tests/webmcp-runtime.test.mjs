@@ -871,7 +871,7 @@ describe('WebMCP registry behavioral contract', () => {
       assert.deepEqual(await executeRegistered(provider, tool, JSON.stringify(input)), denial);
     }
     assert.deepEqual(
-      await executeRegistered(provider, 'switch_monitor', JSON.stringify({ monitor: 'tech' })),
+      await executeRegistered(provider, 'switch_monitor', JSON.stringify({ monitor: 'nuclear' })),
       denial,
     );
     assert.deepEqual(

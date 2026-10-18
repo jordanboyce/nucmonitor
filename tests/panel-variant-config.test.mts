@@ -25,53 +25,61 @@ function src(relPath: string): string {
 }
 
 describe('variant panel config resolution', () => {
-  it('prefers the happy variant config over a duplicate full panel key', () => {
-    const giving = getEffectivePanelConfig('giving', 'happy');
+  it('prefers the nuclear variant config over a duplicate full panel key', () => {
+    // ALL_PANELS spreads FULL_PANELS last, so a shared key resolves to the full
+    // definition there; the variant catalog must still win for its own variant.
+    const climate = getEffectivePanelConfig('climate', 'nuclear');
 
-    assert.equal(giving.name, 'Global Giving');
-    assert.equal(giving.enabled, true);
-    assert.equal(giving.priority, 1);
+    assert.equal(climate.name, 'Climate & Weather Impact');
+    assert.equal(climate.enabled, true);
+    assert.equal(climate.priority, 2);
+    assert.equal(getEffectivePanelConfig('climate', 'full').name, 'Climate Anomalies');
+
+    const fires = getEffectivePanelConfig('satellite-fires', 'nuclear');
+    assert.equal(fires.name, 'Satellite Fire Detections');
+    assert.equal(getEffectivePanelConfig('satellite-fires', 'full').name, 'Fires');
   });
 
-  it('preserves commodity and energy labels for shared supply-chain panels', () => {
-    assert.equal(
-      getEffectivePanelConfig('supply-chain', 'commodity').name,
-      'Supply Chain & Logistics',
-    );
-    assert.equal(
-      getEffectivePanelConfig('supply-chain', 'energy').name,
-      'Chokepoints & Routes',
-    );
+  it('preserves nuclear labels for the news panels it shares with full', () => {
+    assert.equal(getEffectivePanelConfig('energy', 'nuclear').name, 'Energy Markets News');
+    assert.equal(getEffectivePanelConfig('energy', 'full').name, 'Energy & Resources');
+    assert.equal(getEffectivePanelConfig('commodities', 'nuclear').name, 'Energy Commodities');
+    assert.equal(getEffectivePanelConfig('commodities', 'full').name, 'Metals & Materials');
   });
 
-  it('does not inherit full desktop premium metadata for variant-specific supply-chain panels', () => {
+  it('does not inherit full desktop premium metadata into the nuclear hub catalog', () => {
     const panels = src('src/config/panels.ts');
     const definitionFor = (variant: string): string => {
       const match = panels.match(new RegExp(`const ${variant}_PANELS[\\s\\S]*?'supply-chain': \\{([^}]*)\\}`));
       assert.ok(match, `${variant}_PANELS must define supply-chain`);
       return match[1] ?? '';
     };
+    const nuclearBlock = panels.match(/const NUCLEAR_PANELS:[\s\S]*?^};/m);
+    assert.ok(nuclearBlock, 'NUCLEAR_PANELS block not found');
 
     assert.match(definitionFor('FULL'), /premium:\s*'enhanced'/);
-    assert.doesNotMatch(definitionFor('COMMODITY'), /premium:/);
-    assert.doesNotMatch(definitionFor('ENERGY'), /premium:/);
-    assert.equal(getEffectivePanelConfig('supply-chain', 'commodity').premium, undefined);
-    assert.equal(getEffectivePanelConfig('supply-chain', 'energy').premium, undefined);
+    // The nuclear hub ships free: none of its own definitions carry a premium
+    // gate, and a key it shares with full must not pick one up at runtime.
+    assert.doesNotMatch(nuclearBlock[0], /premium:/);
+    for (const key of ['map', 'live-news', 'insights', 'energy', 'commodities', 'climate', 'satellite-fires']) {
+      assert.equal(getEffectivePanelConfig(key, 'nuclear').premium, undefined, `${key} must stay free on nuclear`);
+    }
   });
 
   it('still falls back to the cross-variant registry for panels outside a variant default set', () => {
-    const forecast = getEffectivePanelConfig('forecast', 'happy');
+    const forecast = getEffectivePanelConfig('forecast', 'nuclear');
 
     assert.equal(forecast.name, 'AI Forecasts');
     assert.equal(forecast.enabled, true);
   });
 
   it('applies variant overrides on top of the variant-specific base config', () => {
-    const financeMap = getEffectivePanelConfig('map', 'finance');
+    const nuclearMap = getEffectivePanelConfig('map', 'nuclear');
 
-    assert.equal(financeMap.name, 'Global Markets Map');
-    assert.equal(financeMap.enabled, true);
-    assert.equal(financeMap.priority, 1);
+    assert.equal(nuclearMap.name, 'US Nuclear Facilities Map');
+    assert.equal(nuclearMap.enabled, true);
+    assert.equal(nuclearMap.priority, 1);
+    assert.equal(getEffectivePanelConfig('map', 'full').name, 'Global Map');
   });
 
   it('keeps the global map available when free-tier defaults are clamped', () => {

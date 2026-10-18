@@ -1,4 +1,3 @@
-import { SITE_VARIANT } from '@/config';
 import { h } from '@/utils/dom-utils'; // kept for Panel base class compat
 
 export type StatusLevel = 'ok' | 'warning' | 'error' | 'disabled';
@@ -17,19 +16,6 @@ export interface ApiStatus {
   latency?: number;
   errorMessage?: string;
 }
-
-// Allowlists for each variant
-const TECH_FEEDS = new Set([
-  'Tech', 'Ai', 'Startups', 'Vcblogs', 'RegionalStartups',
-  'Unicorns', 'Accelerators', 'Security', 'Policy', 'Layoffs',
-  'Finance', 'Hardware', 'Cloud', 'Dev', 'Tech Events', 'Crypto',
-  'Markets', 'Events', 'Producthunt', 'Funding', 'Polymarket',
-  'Cyber Threats'
-]);
-const TECH_APIS = new Set([
-  'RSS Proxy', 'Finnhub', 'CoinGecko', 'Tech Events API', 'Service Status', 'Polymarket',
-  'Cyber Threats API', 'Signal Aggregator'
-]);
 
 const WORLD_FEEDS = new Set([
   'Politics', 'Middleeast', 'Tech', 'Ai', 'Finance',
@@ -82,8 +68,8 @@ export class StatusPanel extends Panel {
   }
 
   private init(): void {
-    this.allowedFeeds = SITE_VARIANT === 'tech' ? TECH_FEEDS : WORLD_FEEDS;
-    this.allowedApis = SITE_VARIANT === 'tech' ? TECH_APIS : WORLD_APIS;
+    this.allowedFeeds = WORLD_FEEDS;
+    this.allowedApis = WORLD_APIS;
 
     this.element = h('div', { className: 'status-panel-container' });
     this.initDefaultStatuses();

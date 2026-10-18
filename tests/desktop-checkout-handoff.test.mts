@@ -141,8 +141,8 @@ function resetHarness(
         // worldmonitor.app, the web return-origin assertion below would pass
         // even if resolveCheckoutReturnOrigin always returned the canonical
         // origin — the exact property the desktop case exists to prove.
-        href: desktop ? 'tauri://localhost/index.html' : 'https://tech.worldmonitor.app/dashboard',
-        origin: desktop ? 'tauri://localhost' : 'https://tech.worldmonitor.app',
+        href: desktop ? 'tauri://localhost/index.html' : 'https://nuclear.worldmonitor.app/dashboard',
+        origin: desktop ? 'tauri://localhost' : 'https://nuclear.worldmonitor.app',
         pathname: desktop ? '/index.html' : '/dashboard',
         search: '',
         hash: '',
@@ -417,6 +417,6 @@ describe('startCheckout on web is unchanged (#5911 regression guard)', () => {
     const [body] = globalThis.__desktopCheckoutHarness.requestBodies;
     // The variant host, NOT the canonical origin — this is what proves the
     // desktop swap is conditional rather than unconditional.
-    assert.equal(body?.returnUrl, 'https://tech.worldmonitor.app/dashboard?wm_checkout=return');
+    assert.equal(body?.returnUrl, 'https://nuclear.worldmonitor.app/dashboard?wm_checkout=return');
   });
 });

@@ -18,11 +18,17 @@ const csp = vercelConfig.headers
 const variantBootstrapScript = indexHtml.match(/<script data-wm-prepaint>([\s\S]*?)<\/script>/)?.[1];
 
 describe('variant inline bootstrap', () => {
-  it('detects every public variant host before the app bundle loads', () => {
-    for (const variant of ['happy', 'tech', 'finance', 'commodity', 'energy']) {
+  it('detects the nuclear hub hosts before the app bundle loads', () => {
+    // NucMonitor answers on nuclear.<domain> and on any nucmonitor-branded
+    // host (nucmonitor.app, nucmonitor.vercel.app) — mirrors src/config/variant.ts.
+    assert.ok(
+      indexHtml.includes("if(h.startsWith('nuclear.')||h.indexOf('nucmonitor')!==-1)v='nuclear'"),
+      'index.html inline bootstrap must set data-variant=nuclear for nuclear.* and nucmonitor hosts',
+    );
+    for (const gone of ['happy', 'tech', 'finance', 'commodity', 'energy']) {
       assert.ok(
-        indexHtml.includes(`h.startsWith('${variant}.'))v='${variant}'`),
-        `index.html inline bootstrap must set data-variant for ${variant}.worldmonitor.app`,
+        !indexHtml.includes(`h.startsWith('${gone}.')`),
+        `index.html inline bootstrap must no longer detect the removed ${gone}.worldmonitor.app host`,
       );
     }
   });

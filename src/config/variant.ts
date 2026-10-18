@@ -3,10 +3,10 @@ import { isDesktopRuntime } from '@/config/desktop-runtime';
 /**
  * Every variant a user can switch to. One desktop binary ships and switches
  * between all of these in-app (#5908), so this list is also the set
- * `/api/download` accepts — `tests/desktop-one-binary-model.test.mjs` fails if
+ * `/api/download` accepts — `tests/download-handler.test.mjs` fails if
  * the two drift apart.
  */
-export const SITE_VARIANTS = ['full', 'tech', 'finance', 'happy', 'commodity', 'energy', 'nuclear'] as const;
+export const SITE_VARIANTS = ['full', 'nuclear'] as const;
 
 export type SiteVariant = (typeof SITE_VARIANTS)[number];
 
@@ -14,11 +14,12 @@ export function isSiteVariant(value: string | null | undefined): value is SiteVa
   return typeof value === 'string' && (SITE_VARIANTS as readonly string[]).includes(value);
 }
 
-const buildVariant = (() => {
+const buildVariant: SiteVariant = (() => {
   try {
-    return import.meta.env.VITE_VARIANT || 'full';
+    const value = import.meta.env.VITE_VARIANT || 'nuclear';
+    return isSiteVariant(value) ? value : 'nuclear';
   } catch {
-    return 'full';
+    return 'nuclear';
   }
 })();
 
@@ -30,7 +31,7 @@ function loadStoredVariant(): string | null {
   }
 }
 
-export const SITE_VARIANT: string = (() => {
+export const SITE_VARIANT: SiteVariant = ((): SiteVariant => {
   if (typeof window === 'undefined') return buildVariant;
 
   // Same detector the in-app variant switcher writes through
@@ -48,11 +49,6 @@ export const SITE_VARIANT: string = (() => {
   // without a global `location`, and this module must stay importable there.
   const h = window.location?.hostname;
   if (!h) return buildVariant;
-  if (h.startsWith('tech.')) return 'tech';
-  if (h.startsWith('finance.')) return 'finance';
-  if (h.startsWith('happy.')) return 'happy';
-  if (h.startsWith('commodity.')) return 'commodity';
-  if (h.startsWith('energy.')) return 'energy';
   // NucMonitor: the nuclear hub answers on nuclear.<domain> and on any
   // nucmonitor-branded host (e.g. nucmonitor.app, nucmonitor.vercel.app).
   if (h.startsWith('nuclear.') || h.includes('nucmonitor')) return 'nuclear';
@@ -63,5 +59,9 @@ export const SITE_VARIANT: string = (() => {
     return buildVariant;
   }
 
-  return 'full';
+  // The upstream World Monitor hosts keep serving the global dashboard; every
+  // other host (nucmonitor previews, custom domains) is the nuclear hub.
+  if (h === 'worldmonitor.app' || h === 'www.worldmonitor.app' || h === 'app.worldmonitor.app') return 'full';
+
+  return 'nuclear';
 })();

@@ -975,8 +975,7 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
       // served 200, Chrome Mobile / Android 10). The dashboard-styles chunk in
       // vite.config.ts restores that link, so the helper skips it. Lazy chunks
       // with their own CSS, such as the maplibre stylesheet, still take this
-      // path. The fire-and-forget variant theme import is consumed and
-      // re-reported at warning level by bootstrap/variant-theme.ts.
+      // path.
       const preloadCssUrl = msg.match(
         /^(?:Error: )?Unable to preload CSS for ((?:https?:\/\/[^\s'")]+)?\/assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]+\.css)$/,
       )?.[1];
@@ -1064,7 +1063,7 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
       // browser-created rejection has no first-party stack frames, so it
       // exempts the WHOLE chain below rather than one branch of it. The tag is
       // the invariant, not a list of names: `kind` is set ONLY by our own
-      // capture call sites — six today, in main.ts, variant-theme.ts,
+      // capture call sites — five today, in main.ts,
       // pending-panel-data.ts, wm-session.ts (x2) and checkout.ts — and never
       // by the SDK, an extension, or an injected script, so presence alone
       // proves first-party ownership without anyone maintaining a census.

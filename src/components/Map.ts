@@ -8,7 +8,6 @@ import type { MapLayers, Hotspot, NewsItem, NewsLocationMarker, InternetOutage, 
 import type { AirportDelayAlert, PositionSample } from '@/services/aviation';
 import type { Earthquake } from '@/services/earthquakes';
 import { type IranEvent, getIranEventCssColor, getIranEventSize } from '@/services/conflict';
-import type { TechHubActivity } from '@/services/tech-activity';
 import type { GeoHubActivity } from '@/services/geo-activity';
 import { getNaturalEventIcon } from '@/services/eonet';
 import type { WeatherAlert } from '@/services/weather';
@@ -215,14 +214,12 @@ export class MapComponent {
   private naturalEvents: NaturalEvent[] = [];
   private firmsFireData: Array<{ lat: number; lon: number; brightness: number; frp: number; confidence: number; region: string; acq_date: string; daynight: string }> = [];
   private techEvents: TechEventMarker[] = [];
-  private techActivities: TechHubActivity[] = [];
   private geoActivities: GeoHubActivity[] = [];
   private iranEvents: IranEvent[] = [];
   private aptGroups: import('@/types').APTGroup[] = [];
   private aptGroupsLoaded = false;
   private webcamData: Array<WebcamEntry | WebcamCluster> = [];
   private news: NewsItem[] = [];
-  private onTechHubClick?: (hub: TechHubActivity) => void;
   private onGeoHubClick?: (hub: GeoHubActivity) => void;
   private popup: MapPopup;
   private onNewsClick?: (item: Pick<NewsLocationMarker, 'article' | 'title'>) => void;
@@ -370,7 +367,7 @@ export class MapComponent {
     window.addEventListener('theme-changed', this.handleThemeChange);
 
     // Kick off lazy APT load if cyberThreats is already on at init (e.g. from URL/localStorage)
-    if (this.state.layers.cyberThreats && SITE_VARIANT !== 'tech' && SITE_VARIANT !== 'happy') {
+    if (this.state.layers.cyberThreats) {
       this.loadAptGroups();
     }
   }
@@ -588,72 +585,20 @@ export class MapComponent {
       'waterways',                                        // labels
       'ciiChoropleth',                                    // Candidate only; SVG capability filter below omits it.
     ];
-    const techLayers: (keyof MapLayers)[] = [
-      'cables', 'datacenters', 'outages',                // tech infrastructure
-      'startupHubs', 'cloudRegions', 'accelerators', 'techHQs', 'techEvents', // tech ecosystem
-      'natural', 'weather',                               // natural events
-      'economic',                                         // economic/geographic
-    ];
-    const financeLayers: (keyof MapLayers)[] = [
-      'stockExchanges', 'financialCenters', 'centralBanks', 'commodityHubs', // finance ecosystem
-      'cables', 'pipelines', 'outages',                   // infrastructure
-      'sanctions', 'economic', 'waterways',               // geopolitical/economic
-      'natural', 'weather',                               // natural events
-    ];
-    const happyLayers: (keyof MapLayers)[] = [
-      'positiveEvents', 'kindness', 'happiness', 'speciesRecovery', 'renewableInstallations',
-    ];
-    // Energy variant — SVG/mobile fallback. Only include keys that actually render
-    // in this file (commodityPorts/climate/tradeRoutes/resilienceScore/dayNight do
-    // not, so they're omitted). Mirrors VARIANT_LAYER_ORDER.energy in
-    // src/config/map-layer-definitions.ts but filtered to the SVG-capable subset.
-    const energyLayers: (keyof MapLayers)[] = [
-      'pipelines',                            // oil + gas pipeline registry (Week 2)
-      'waterways',                            // strategic chokepoints
-      'ais',                                  // tanker positions at chokepoints
-      'commodityHubs',                        // energy exchanges / hubs
-      'minerals',                             // critical-minerals + energy-transition overlap
-      'sanctions',                            // energy sanctions flows
-      'outages',                              // power / energy system status
-      'natural',                              // earthquakes near energy infrastructure
-      'weather', 'fires',                     // operational risk
-      'economic',                             // infrastructure context
-    ];
-    // Commodity variant — SVG/mobile fallback. Only include keys that actually
-    // render in this file (miningSites/processingPlants/commodityPorts/climate/
-    // tradeRoutes/resilienceScore/dayNight do not, so they're omitted). Mirrors
-    // VARIANT_LAYER_ORDER.commodity in src/config/map-layer-definitions.ts but
-    // filtered to the SVG-capable subset. COMMODITY_MAP_LAYERS turns all eleven
-    // on; MAX_SVG_LAYERS = 9 then disables the last two active buttons on first
-    // load (outages, sanctions in this order). They stay in the picker so a
-    // later trim still discloses, instead of spending overlay fair-share with
-    // no row (#7144). fires is unbounded (toMapFires caps nothing) and must
-    // keep a row — it is the feed #7112 exists to bound.
     // Nuclear variant — SVG/mobile fallback. Facilities registry plus the
     // hazard layers this renderer can paint.
     const nuclearLayers: (keyof MapLayers)[] = [
       'usNuclearFacilities',                  // NucMonitor registry
+      'radiationWatch',                       // EPA RadNet / Safecast watch
       'natural', 'weather', 'fires',          // all-hazards inputs
       'outages',                              // grid status
       'nuclear', 'irradiators',               // global strategic context
       'pipelines', 'cables', 'datacenters',   // infrastructure
       'economic',
     ];
-    const commodityLayers: (keyof MapLayers)[] = [
-      'commodityHubs', 'minerals',                    // commodity identity
-      'pipelines', 'waterways', 'ais',                // logistics
-      'economic', 'fires',                            // markets + FIRMS
-      'natural', 'weather',                           // operational risk
-      'outages', 'sanctions',                         // disruption context
-    ];
     // Filter sunset and renderer-incompatible layers so the SVG/mobile picker
     // cannot expose a toggle whose layer has no SVG paint path.
-    const layers = (SITE_VARIANT === 'tech' ? techLayers
-                 : SITE_VARIANT === 'finance' ? financeLayers
-                 : SITE_VARIANT === 'happy' ? happyLayers
-                 : SITE_VARIANT === 'energy' ? energyLayers
-                 : SITE_VARIANT === 'nuclear' ? nuclearLayers
-                 : SITE_VARIANT === 'commodity' ? commodityLayers
+    const layers = (SITE_VARIANT === 'nuclear' ? nuclearLayers
                  : fullLayers).filter((key) => !isSunsetLayer(key) && isLayerExecutable(key, 'svg'));
     const MAX_SVG_LAYERS = 9;
     const enforceLayerLimit = () => {
@@ -808,57 +753,6 @@ export class MapComponent {
       </div>
     `;
 
-    const techHelpContent = `
-      ${helpHeader}
-      <div class="layer-help-content">
-        ${helpSection('techEcosystem', [
-      helpItem(label('startupHubs'), 'techStartupHubs'),
-      helpItem(label('cloudRegions'), 'techCloudRegions'),
-      helpItem(label('techHQs'), 'techHQs'),
-      helpItem(label('accelerators'), 'techAccelerators'),
-      helpItem(label('techEvents'), 'techEvents'),
-    ])}
-        ${helpSection('infrastructure', [
-      helpItem(label('underseaCables'), 'infraCables'),
-      helpItem(label('aiDataCenters'), 'infraDatacenters'),
-      helpItem(label('internetOutages'), 'infraOutages'),
-      helpItem(label('cyberThreats'), 'techCyberThreats'),
-    ])}
-        ${helpSection('naturalEconomic', [
-      helpItem(label('naturalEvents'), 'naturalEventsTech'),
-      helpItem(label('fires'), 'techFires'),
-      helpItem(staticLabel('countries'), 'countriesOverlay'),
-    ])}
-      </div>
-    `;
-
-    const financeHelpContent = `
-      ${helpHeader}
-      <div class="layer-help-content">
-        ${helpSection('financeCore', [
-      helpItem(label('stockExchanges'), 'financeExchanges'),
-      helpItem(label('financialCenters'), 'financeCenters'),
-      helpItem(label('centralBanks'), 'financeCentralBanks'),
-      helpItem(label('commodityHubs'), 'financeCommodityHubs'),
-      helpItem(label('gulfInvestments'), 'financeGulfInvestments'),
-    ])}
-        ${helpSection('infrastructureRisk', [
-      helpItem(label('underseaCables'), 'financeCables'),
-      helpItem(label('pipelines'), 'financePipelines'),
-      helpItem(label('internetOutages'), 'financeOutages'),
-      helpItem(label('cyberThreats'), 'financeCyberThreats'),
-    ])}
-        ${helpSection('macroContext', [
-      helpItem(label('economicCenters'), 'economicCenters'),
-      helpItem(label('strategicWaterways'), 'macroWaterways'),
-      helpItem(label('weatherAlerts'), 'weatherAlertsMarket'),
-      helpItem(label('canadaRoads'), 'canadaRoads'),
-      helpItem(label('canadaAlerts'), 'canadaAlerts'),
-      helpItem(label('naturalEvents'), 'naturalEventsMacro'),
-    ])}
-      </div>
-    `;
-
     const fullHelpContent = `
       ${helpHeader}
       <div class="layer-help-content">
@@ -909,11 +803,7 @@ export class MapComponent {
       </div>
     `;
 
-    setTrustedHtml(popup, trustedHtml(SITE_VARIANT === 'tech'
-      ? techHelpContent
-      : SITE_VARIANT === 'finance'
-        ? financeHelpContent
-        : fullHelpContent, "legacy direct innerHTML migration"));
+    setTrustedHtml(popup, trustedHtml(fullHelpContent, "legacy direct innerHTML migration"));
 
     popup.querySelector('.layer-help-close')?.addEventListener('click', () => popup.remove());
 
@@ -950,31 +840,15 @@ export class MapComponent {
     const legend = document.createElement('div');
     legend.className = 'map-legend';
 
-    if (SITE_VARIANT === 'tech') {
-      // Tech variant legend
-      setTrustedHtml(legend, trustedHtml(`
-        <div class="map-legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>${escapeHtml(t('components.deckgl.layers.techHQs').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="legend-dot" style="background:#06b6d4"></span>${escapeHtml(t('components.deckgl.layers.startupHubs').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="legend-dot" style="background:#f59e0b"></span>${escapeHtml(t('components.deckgl.layers.cloudRegions').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="map-legend-icon" style="color:#a855f7">📅</span>${escapeHtml(t('components.deckgl.layers.techEvents').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="map-legend-icon" style="color:#4ecdc4">💾</span>${escapeHtml(t('components.deckgl.layers.aiDataCenters').toUpperCase())}</div>
-      `, "legacy direct innerHTML migration"));
-    } else if (SITE_VARIANT === 'happy') {
-      // Happy variant legend — natural events only
-      setTrustedHtml(legend, trustedHtml(`
-        <div class="map-legend-item"><span class="map-legend-icon earthquake">●</span>${escapeHtml(t('components.deckgl.layers.naturalEvents').toUpperCase())}</div>
-      `, "legacy direct innerHTML migration"));
-    } else {
-      // Geopolitical variant legend
-      setTrustedHtml(legend, trustedHtml(`
-        <div class="map-legend-item"><span class="legend-dot high"></span>${escapeHtml((t('popups.hotspot.levels.high') ?? 'HIGH').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="legend-dot elevated"></span>${escapeHtml((t('popups.hotspot.levels.elevated') ?? 'ELEVATED').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="legend-dot low"></span>${escapeHtml((t('popups.monitoring') ?? 'MONITORING').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="map-legend-icon conflict">⚔</span>${escapeHtml(t('modals.search.types.conflict').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="map-legend-icon earthquake">●</span>${escapeHtml(t('modals.search.types.earthquake').toUpperCase())}</div>
-        <div class="map-legend-item"><span class="map-legend-icon apt">⚠</span>APT</div>
-      `, "legacy direct innerHTML migration"));
-    }
+    // Geopolitical variant legend
+    setTrustedHtml(legend, trustedHtml(`
+      <div class="map-legend-item"><span class="legend-dot high"></span>${escapeHtml((t('popups.hotspot.levels.high') ?? 'HIGH').toUpperCase())}</div>
+      <div class="map-legend-item"><span class="legend-dot elevated"></span>${escapeHtml((t('popups.hotspot.levels.elevated') ?? 'ELEVATED').toUpperCase())}</div>
+      <div class="map-legend-item"><span class="legend-dot low"></span>${escapeHtml((t('popups.monitoring') ?? 'MONITORING').toUpperCase())}</div>
+      <div class="map-legend-item"><span class="map-legend-icon conflict">⚔</span>${escapeHtml(t('modals.search.types.conflict').toUpperCase())}</div>
+      <div class="map-legend-item"><span class="map-legend-icon earthquake">●</span>${escapeHtml(t('modals.search.types.earthquake').toUpperCase())}</div>
+      <div class="map-legend-item"><span class="map-legend-icon apt">⚠</span>APT</div>
+    `, "legacy direct innerHTML migration"));
     return legend;
   }
 
@@ -1937,7 +1811,7 @@ export class MapComponent {
       add('ais', this.aisDisruptions);
       add('ais', PORTS);
     }
-    if (layers.cyberThreats && SITE_VARIANT !== 'tech') add('cyberThreats', this.aptGroups);
+    if (layers.cyberThreats) add('cyberThreats', this.aptGroups);
     // The zoom gates below mirror the render conditions exactly: a group that
     // is planned but not rendered would spend fair share it never uses, and
     // tighten the cap on the layers that do render.
@@ -2001,7 +1875,6 @@ export class MapComponent {
     // Variant hub overlays have no layer-toggle row, so a truncation here would
     // have nowhere to be disclosed — exempt like the globe's `news` group. Both
     // are bounded by the hub registry, not by an upstream feed.
-    if (SITE_VARIANT === 'tech') add('techHubs', this.techActivities, { exempt: true });
     if (SITE_VARIANT === 'full') add('geoHubs', this.geoActivities, { exempt: true });
 
     // Layers with no severity signal rank by nearness to the centre of the
@@ -2236,7 +2109,7 @@ export class MapComponent {
     }
 
     // APT groups — rendered only when cyberThreats layer is active, loaded lazily
-    if (this.state.layers.cyberThreats && SITE_VARIANT !== 'tech' && this.aptGroups.length > 0) {
+    if (this.state.layers.cyberThreats && this.aptGroups.length > 0) {
       this.renderAPTMarkers(projection);
     }
 
@@ -3220,48 +3093,6 @@ export class MapComponent {
         });
 
         this.appendOverlay(div);
-      });
-    }
-
-    // Tech Hub Activity Markers (shows activity heatmap for tech hubs with news activity)
-    if (SITE_VARIANT === 'tech' && this.techActivities.length > 0) {
-      this.techActivities.forEach((activity) => {
-        const pos = projection([activity.lon, activity.lat]);
-        if (!pos) return;
-
-        // Only show markers for hubs with actual activity
-        if (activity.newsCount === 0) return;
-
-        const div = document.createElement('div');
-        div.className = `tech-activity-marker ${activity.activityLevel}`;
-        div.style.left = `${pos[0]}px`;
-        div.style.top = `${pos[1]}px`;
-        div.style.zIndex = activity.activityLevel === 'high' ? '60' : activity.activityLevel === 'elevated' ? '50' : '40';
-        div.title = `${activity.city}: ${activity.newsCount} stories`;
-
-        div.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.onTechHubClick?.(activity);
-          const rect = this.container.getBoundingClientRect();
-          this.popup.show({
-            type: 'techActivity',
-            data: activity,
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-          });
-        });
-
-        this.appendOverlay(div);
-
-        // Add label for high/elevated activity hubs at sufficient zoom
-        if ((activity.activityLevel === 'high' || (activity.activityLevel === 'elevated' && this.state.zoom >= 2)) && this.state.zoom >= 1.5) {
-          const label = document.createElement('div');
-          label.className = 'tech-activity-label';
-          label.textContent = activity.city;
-          label.style.left = `${pos[0]}px`;
-          label.style.top = `${pos[1] + 14}px`;
-          this.appendOverlay(label);
-        }
       });
     }
 
@@ -5152,15 +4983,6 @@ export class MapComponent {
   public setNewsLocations(data: NewsLocationMarker[]): void {
     this.newsLocations = data;
     this.render();
-  }
-
-  public setTechActivity(activities: TechHubActivity[]): void {
-    this.techActivities = activities;
-    this.render();
-  }
-
-  public setOnTechHubClick(handler: (hub: TechHubActivity) => void): void {
-    this.onTechHubClick = handler;
   }
 
   public setGeoActivity(activities: GeoHubActivity[]): void {

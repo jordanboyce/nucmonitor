@@ -196,6 +196,6 @@ describe("preference HTTP variant boundaries", () => {
       expect(read.status).toBe(200);
       expect(await read.json()).toEqual({ theme: variant });
     }
-    expect(await t.run(ctx => ctx.db.query("userPreferences").collect())).toHaveLength(6);
+    expect(await t.run(ctx => ctx.db.query("userPreferences").collect())).toHaveLength(2);
   });
 });

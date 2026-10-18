@@ -77,11 +77,6 @@ function getAllowedForVariant(variant) {
 
 const VARIANT_DEFAULTS = {
   full:      { desktop: 'FULL_MAP_LAYERS',      mobile: 'FULL_MOBILE_MAP_LAYERS' },
-  tech:      { desktop: 'TECH_MAP_LAYERS',      mobile: 'TECH_MOBILE_MAP_LAYERS' },
-  finance:   { desktop: 'FINANCE_MAP_LAYERS',    mobile: 'FINANCE_MOBILE_MAP_LAYERS' },
-  happy:     { desktop: 'HAPPY_MAP_LAYERS',      mobile: 'HAPPY_MOBILE_MAP_LAYERS' },
-  commodity: { desktop: 'COMMODITY_MAP_LAYERS',  mobile: 'COMMODITY_MOBILE_MAP_LAYERS' },
-  energy:    { desktop: 'ENERGY_MAP_LAYERS',     mobile: 'ENERGY_MOBILE_MAP_LAYERS' },
 };
 
 describe('variant layer guardrail', () => {

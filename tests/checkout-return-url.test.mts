@@ -17,8 +17,8 @@ describe('buildDashboardCheckoutReturnUrl', () => {
 
   it('preserves the active origin so preview and variant hosts return to their own dashboard', () => {
     assert.equal(
-      buildDashboardCheckoutReturnUrl('https://tech.worldmonitor.app'),
-      'https://tech.worldmonitor.app/dashboard?wm_checkout=return',
+      buildDashboardCheckoutReturnUrl('https://nuclear.worldmonitor.app'),
+      'https://nuclear.worldmonitor.app/dashboard?wm_checkout=return',
     );
   });
 });
@@ -26,8 +26,8 @@ describe('buildDashboardCheckoutReturnUrl', () => {
 describe('resolveCheckoutReturnOrigin (#5911)', () => {
   it('keeps the active origin on web, so variant and preview hosts still self-return', () => {
     assert.equal(
-      resolveCheckoutReturnOrigin('https://tech.worldmonitor.app', false),
-      'https://tech.worldmonitor.app',
+      resolveCheckoutReturnOrigin('https://nuclear.worldmonitor.app', false),
+      'https://nuclear.worldmonitor.app',
     );
     assert.equal(
       resolveCheckoutReturnOrigin('https://worldmonitor-git-x.vercel.app', false),

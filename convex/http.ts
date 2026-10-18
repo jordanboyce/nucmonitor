@@ -24,7 +24,7 @@ import {
 } from "./intelHistory";
 
 // App-serving hosts only, aligned with api/_cors.js and server/cors.ts.
-const APP_ORIGIN = /^https:\/\/(?:(?:www|app|api|tech|finance|commodity|happy|energy|nuclear)\.)?worldmonitor\.app$/;
+const APP_ORIGIN = /^https:\/\/(?:(?:www|app|api|nuclear)\.)?worldmonitor\.app$/;
 const TRUSTED_ORIGINS = [
   APP_ORIGIN,
   /^https:\/\/worldmonitor-[a-z0-9-]+-eliewm\.vercel\.app$/,

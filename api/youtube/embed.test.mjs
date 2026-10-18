@@ -107,8 +107,8 @@ test('rejects vendor, unknown, and look-alike origins for both player and parent
     assert.equal(config.origin, 'https://worldmonitor.app', origin);
     assert.equal(config.parentOrigin, 'https://worldmonitor.app', origin);
 
-    query.set('origin', 'https://tech.worldmonitor.app');
-    assert.equal((await render(`?${query}`)).config.parentOrigin, 'https://tech.worldmonitor.app', origin);
+    query.set('origin', 'https://nuclear.worldmonitor.app');
+    assert.equal((await render(`?${query}`)).config.parentOrigin, 'https://nuclear.worldmonitor.app', origin);
   }
 });
 

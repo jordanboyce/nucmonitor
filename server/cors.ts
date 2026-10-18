@@ -7,7 +7,7 @@
 
 // App-serving hosts only; sibling vendor hosts do not inherit browser trust.
 // Keep aligned with convex/payments/returnUrlOrigin.ts and CORS parity tests.
-const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|tech|finance|commodity|happy|energy|nuclear)\.)?worldmonitor\.app$/;
+const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|nuclear)\.)?worldmonitor\.app$/;
 const MAX_ORIGIN_BYTES = 300;
 const ORIGIN_ENCODER = new TextEncoder();
 
@@ -98,7 +98,7 @@ function stripTrailingDnsDots(hostname: string): string {
 
 /**
  * Strip trailing DNS dots before allowlist match so
- * `https://tech.worldmonitor.app.` is treated as first-party (#6411).
+ * `https://nuclear.worldmonitor.app.` is treated as first-party (#6411).
  * Matching only — ACAO still echoes the raw Origin.
  */
 function originForAllowlistMatch(origin: string): string {

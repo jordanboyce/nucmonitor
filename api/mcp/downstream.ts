@@ -16,11 +16,7 @@ import type {
 export const MCP_CANONICAL_API_ORIGIN = 'https://api.worldmonitor.app';
 
 const VARIANT_HOSTS: ReadonlySet<string> = new Set([
-  'tech.worldmonitor.app',
-  'finance.worldmonitor.app',
-  'commodity.worldmonitor.app',
-  'happy.worldmonitor.app',
-  'energy.worldmonitor.app',
+  'nuclear.worldmonitor.app',
 ]);
 
 const SAFE_GATEWAY_ERROR_CODES: ReadonlySet<string> = new Set([

@@ -54,14 +54,6 @@ describe('Auto theme preference', () => {
     } finally { window.removeEventListener('theme-changed', changed); }
   });
 
-  it('retains the first-visit Happy light default', () => {
-    document.documentElement.dataset.variant = 'happy';
-    applyStoredTheme();
-    expect(getCurrentTheme()).toBe('light');
-    expect(localStorage.getItem('worldmonitor-theme')).toBeNull();
-    expect(listeners.size).toBe(0);
-  });
-
   it('follows the system theme on a first visit, when settings shows Auto', () => {
     applyStoredTheme();
     expect(getThemePreference()).toBe('auto');

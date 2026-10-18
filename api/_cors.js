@@ -1,6 +1,6 @@
 // App-serving hosts only; sibling vendor hosts do not inherit browser trust.
 // Keep aligned with convex/payments/returnUrlOrigin.ts and CORS parity tests.
-const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|tech|finance|commodity|happy|energy|nuclear)\.)?worldmonitor\.app$/;
+const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|nuclear)\.)?worldmonitor\.app$/;
 const MAX_ORIGIN_BYTES = 300;
 const ORIGIN_ENCODER = new TextEncoder();
 
@@ -95,7 +95,7 @@ function stripTrailingDnsDots(hostname) {
 
 /**
  * Browsers occasionally emit the FQDN form of a hostname (trailing DNS dot),
- * e.g. `https://tech.worldmonitor.app.`. Allowlist patterns are anchored at `$`,
+ * e.g. `https://nuclear.worldmonitor.app.`. Allowlist patterns are anchored at `$`,
  * so that form would otherwise be refused even though it is first-party (#6411).
  * Normalize only for matching; callers still echo the raw Origin into ACAO
  * because browsers compare ACAO to the request Origin byte-for-byte.

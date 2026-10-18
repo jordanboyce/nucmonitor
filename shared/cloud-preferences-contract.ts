@@ -1,4 +1,4 @@
-export const PREFERENCE_VARIANTS = ['full', 'tech', 'finance', 'happy', 'commodity', 'energy', 'nuclear'] as const;
+export const PREFERENCE_VARIANTS = ['full', 'nuclear'] as const;
 
 export type PreferenceVariant = (typeof PREFERENCE_VARIANTS)[number];
 

@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const newsPanelSource = readFileSync(resolve(root, 'src/components/NewsPanel.ts'), 'utf8');
 const mainCss = readFileSync(resolve(root, 'src/styles/main.css'), 'utf8');
-const happyCss = readFileSync(resolve(root, 'src/styles/happy-theme.css'), 'utf8');
 
 function cssBlock(source: string, selector: string): string {
   const start = source.indexOf(selector);
@@ -75,13 +74,9 @@ describe('Intel Feed category-tag contrast (#5166)', () => {
     const rootBlocks = [...mainCss.matchAll(/:root\s*\{/g)].map(match => cssBlock(mainCss.slice(match.index), ':root'));
     const base = cssVars(rootBlocks[0]!, rootBlocks[1]!);
     const light = { ...base, ...cssVars(cssBlock(mainCss, '[data-theme="light"]')) };
-    const happyLight = cssVars(cssBlock(happyCss, ':root[data-variant="happy"]'));
-    const happyDark = cssVars(cssBlock(happyCss, ':root[data-variant="happy"][data-theme="dark"]'));
     const themes = [
       ['dark', base],
       ['light', light],
-      ['happy light', happyLight],
-      ['happy dark', happyDark],
     ] as const;
     const threatVars = ['--threat-critical', '--threat-high', '--threat-medium', '--threat-low', '--threat-info'];
 

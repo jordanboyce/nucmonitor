@@ -66,7 +66,7 @@ class MemoryStorage {
   }
 }
 
-const VARIANTS: MapVariant[] = ['full', 'tech', 'finance', 'commodity', 'energy', 'happy'];
+const VARIANTS: MapVariant[] = ['full', 'nuclear'];
 
 let originalLocalStorage: PropertyDescriptor | undefined;
 let originalWindow: PropertyDescriptor | undefined;
@@ -82,6 +82,19 @@ type EventHandlerManagerCtor = new (ctx: unknown, callbacks: unknown) => {
 
 let EventHandlerManager: EventHandlerManagerCtor;
 let cleanupEventHandlerBundle: (() => void) | null = null;
+
+// The shell harness bundle below is built with VITE_VARIANT=full, while this
+// file's direct imports resolve SITE_VARIANT through the node build fallback
+// (no import.meta.env), which is now 'nuclear'. The bundle therefore exports its
+// own full-variant defaults so full-variant assertions compare against the
+// layer set the manager really resets to, and the direct-import defaults serve
+// the nuclear-variant cases.
+let FULL_DEFAULT_MAP_LAYERS: MapLayers;
+const NUCLEAR_DEFAULT_MAP_LAYERS: MapLayers = DEFAULT_MAP_LAYERS;
+
+function defaultLayersFor(variant: string): MapLayers {
+  return variant === 'nuclear' ? NUCLEAR_DEFAULT_MAP_LAYERS : FULL_DEFAULT_MAP_LAYERS;
+}
 
 function defineLocalStorage(value: unknown): void {
   Object.defineProperty(globalThis, 'localStorage', {
@@ -330,9 +343,13 @@ function defineBrowserGlobals(): MiniDocument {
   return document;
 }
 
-async function loadEventHandlerManager(): Promise<EventHandlerManagerCtor> {
+async function loadEventHandlerBundle(): Promise<{
+  EventHandlerManager: EventHandlerManagerCtor;
+  DEFAULT_MAP_LAYERS: MapLayers;
+}> {
   const tempDir = mkdtempSync(join(tmpdir(), 'mission-handler-test-'));
   const outfile = join(tempDir, 'event-handlers.mjs');
+  const repoRoot = fileURLToPath(new URL('..', import.meta.url));
   // The URL-sync predicate is pure and lives beside its type, so the stub
   // re-exports the real one rather than carrying a copy that could drift.
   const urlStateModule = JSON.stringify(fileURLToPath(new URL('../src/utils/urlState.ts', import.meta.url)));
@@ -529,7 +546,14 @@ async function loadEventHandlerManager(): Promise<EventHandlerManagerCtor> {
   };
 
   const result = await build({
-    entryPoints: [fileURLToPath(new URL('../src/app/event-handlers.ts', import.meta.url))],
+    stdin: {
+      contents: [
+        "export { EventHandlerManager } from './src/app/event-handlers.ts';",
+        "export { DEFAULT_MAP_LAYERS } from './src/config/panels.ts';",
+      ].join('\n'),
+      resolveDir: repoRoot,
+      loader: 'ts',
+    },
     bundle: true,
     format: 'esm',
     platform: 'browser',
@@ -544,7 +568,10 @@ async function loadEventHandlerManager(): Promise<EventHandlerManagerCtor> {
   writeFileSync(outfile, result.outputFiles[0].text, 'utf8');
   cleanupEventHandlerBundle = () => rmSync(tempDir, { recursive: true, force: true });
   const mod = await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
-  return mod.EventHandlerManager as EventHandlerManagerCtor;
+  return {
+    EventHandlerManager: mod.EventHandlerManager as EventHandlerManagerCtor,
+    DEFAULT_MAP_LAYERS: mod.DEFAULT_MAP_LAYERS as MapLayers,
+  };
 }
 
 function makePanelSettings(variant: string): Record<string, PanelConfig> {
@@ -575,12 +602,17 @@ function enabledWorkspacePanelKeys(settings: Record<string, PanelConfig>): strin
 }
 
 function defaultWorkspacePanelKeys(variant: string): string[] {
-  const reset = resetMissionPresetState(makePanelSettings(variant), DEFAULT_MAP_LAYERS, variant);
+  const reset = resetMissionPresetState(makePanelSettings(variant), defaultLayersFor(variant), variant);
   return enabledWorkspacePanelKeys(reset.panelSettings);
 }
 
 before(async () => {
-  EventHandlerManager = await loadEventHandlerManager();
+  const bundle = await loadEventHandlerBundle();
+  EventHandlerManager = bundle.EventHandlerManager;
+  FULL_DEFAULT_MAP_LAYERS = bundle.DEFAULT_MAP_LAYERS;
+  assert.equal(FULL_DEFAULT_MAP_LAYERS.conflicts, true, 'the harness bundle must carry full-variant defaults');
+  assert.notEqual(FULL_DEFAULT_MAP_LAYERS.usNuclearFacilities, true, 'the harness bundle must carry full-variant defaults');
+  assert.equal(NUCLEAR_DEFAULT_MAP_LAYERS.usNuclearFacilities, true, 'direct imports must carry nuclear-variant defaults');
 });
 
 after(() => {
@@ -654,8 +686,6 @@ describe('mission preset definitions', () => {
         'osint-newsroom',
         'macro-market-watch',
         'tech-ai-watch',
-        'good-news-explorer',
-        'nq-day-trader',
         'country-watcher',
       ],
     );
@@ -668,8 +698,8 @@ describe('mission preset definitions', () => {
     assert.equal(getMissionPreset('macro-market-watch')?.shortLabel, 'Stocks');
     assert.equal(getMissionPreset('tech-ai-watch')?.label, 'Tech / AI Watcher');
     assert.equal(getMissionPreset('tech-ai-watch')?.shortLabel, 'Tech');
-    assert.equal(getMissionPreset('good-news-explorer')?.label, 'Good News Explorer');
-    assert.equal(getMissionPreset('good-news-explorer')?.shortLabel, 'Good');
+    assert.equal(getMissionPreset('nuclear-hub')?.label, 'Nuclear Facilities');
+    assert.equal(getMissionPreset('nuclear-hub')?.shortLabel, 'Nuclear');
   });
 
   it('uses known panel and layer keys without duplicate ids', () => {
@@ -703,7 +733,7 @@ describe('mission preset definitions', () => {
 describe('applyMissionPresetToState', () => {
   it('applies a coherent full-variant preset while preserving dynamic panels', () => {
     const current = makePanelSettings('full');
-    const applied = applyMissionPresetToState('crisis-desk', current, DEFAULT_MAP_LAYERS, 'full');
+    const applied = applyMissionPresetToState('crisis-desk', current, FULL_DEFAULT_MAP_LAYERS, 'full');
 
     assert.equal(applied.preset.id, 'crisis-desk');
     assert.equal(applied.panelSettings.map?.enabled, true);
@@ -723,62 +753,61 @@ describe('applyMissionPresetToState', () => {
     assert.equal(applied.mapLayers.ciiChoropleth, true);
   });
 
-  it('lists NQ Day Trader only on finance and rejects it on other variants', () => {
-    const financeIds = getMissionPresetsForVariant('finance').map((preset) => preset.id);
-    assert.equal(financeIds.length, 9);
-    assert.ok(financeIds.includes('nq-day-trader'));
-    for (const variant of VARIANTS.filter((item) => item !== 'finance')) {
+  it('lists Nuclear Facilities only on nuclear and rejects it on other variants', () => {
+    const nuclearIds = getMissionPresetsForVariant('nuclear').map((preset) => preset.id);
+    assert.equal(nuclearIds.length, 8);
+    assert.ok(nuclearIds.includes('nuclear-hub'));
+    for (const variant of VARIANTS.filter((item) => item !== 'nuclear')) {
       const ids = getMissionPresetsForVariant(variant).map((preset) => preset.id);
-      assert.equal(ids.length, 8, `${variant} should keep the eight shared missions`);
-      assert.ok(!ids.includes('nq-day-trader'), `${variant} must not offer NQ Day Trader`);
+      assert.equal(ids.length, 7, `${variant} should keep the seven shared missions`);
+      assert.ok(!ids.includes('nuclear-hub'), `${variant} must not offer Nuclear Facilities`);
     }
 
     const before = makePanelSettings('full');
     const snapshot = structuredClone(before);
     assert.throws(
-      () => applyMissionPresetToState('nq-day-trader', before, DEFAULT_MAP_LAYERS, 'full'),
+      () => applyMissionPresetToState('nuclear-hub', before, FULL_DEFAULT_MAP_LAYERS, 'full'),
       /not available on this variant/,
     );
     assert.deepEqual(before, snapshot);
   });
 
-  it('applies the NQ Day Trader workspace without touching the market watchlist', () => {
+  it('applies the Nuclear Facilities workspace without touching the market watchlist', () => {
     const originalWatchlist = '["AAPL","MSFT","NVDA"]';
     localStorage.setItem(MARKET_WATCHLIST_STORAGE_KEY, originalWatchlist);
 
-    const current = makePanelSettings('finance');
-    const applied = applyMissionPresetToState('nq-day-trader', current, DEFAULT_MAP_LAYERS, 'finance');
+    const current = makePanelSettings('nuclear');
+    const applied = applyMissionPresetToState('nuclear-hub', current, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear');
 
-    assert.equal(applied.preset.id, 'nq-day-trader');
+    assert.equal(applied.preset.id, 'nuclear-hub');
     assert.equal(applied.preset.view, 'america');
-    assert.equal(applied.preset.timeRange, '24h');
+    assert.equal(applied.preset.timeRange, '7d');
     assert.deepEqual(applied.panelOrder, [
-      'nq-pulse',
-      'nq-catalysts',
-      'nq-news',
+      'nuclear-reactor-status',
+      'nuclear-hazards',
+      'nuclear-facilities',
+      'radiation-watch',
+      'satellite-fires',
+      'climate',
       'live-news',
-      'heatmap',
-      'economic',
-      'fear-greed',
-      'fsi',
-      'yield-curve',
-      'markets',
     ]);
     for (const key of applied.panelOrder) {
       assert.equal(applied.panelSettings[key]?.enabled, true, `${key} should be enabled`);
     }
-    assert.equal(applied.mapLayers.stockExchanges, true);
-    assert.equal(applied.mapLayers.financialCenters, true);
-    assert.equal(applied.mapLayers.centralBanks, true);
-    assert.equal(applied.mapLayers.economic, true);
+    assert.equal(applied.panelSettings.markets?.enabled, false);
+    assert.equal(applied.mapLayers.usNuclearFacilities, true);
+    assert.equal(applied.mapLayers.radiationWatch, true);
+    assert.equal(applied.mapLayers.natural, true);
+    assert.equal(applied.mapLayers.weather, true);
+    assert.equal(applied.mapLayers.fires, true);
     assert.equal(applied.mapLayers.outages, true);
     assert.equal(applied.mapLayers.conflicts, false);
     assert.equal(localStorage.getItem(MARKET_WATCHLIST_STORAGE_KEY), originalWatchlist);
 
-    const reset = resetMissionPresetState(applied.panelSettings, DEFAULT_MAP_LAYERS, 'finance');
-    assert.equal(reset.panelSettings['nq-pulse']?.enabled, false);
-    assert.equal(reset.panelSettings['nq-catalysts']?.enabled, false);
-    assert.equal(reset.panelSettings['nq-news']?.enabled, false);
+    const reset = resetMissionPresetState(applied.panelSettings, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear');
+    assert.deepEqual(reset.panelOrder, VARIANT_DEFAULTS.nuclear.filter((key) => key !== 'map'));
+    assert.equal(reset.panelSettings['nuclear-regulatory']?.enabled, true);
+    assert.equal(reset.panelSettings.markets?.enabled, false);
     assert.equal(localStorage.getItem(MARKET_WATCHLIST_STORAGE_KEY), originalWatchlist);
   });
 
@@ -790,7 +819,7 @@ describe('applyMissionPresetToState', () => {
         const applied = applyMissionPresetToState(
           preset.id,
           makePanelSettings(variant),
-          DEFAULT_MAP_LAYERS,
+          defaultLayersFor(variant),
           variant,
         );
         for (const panelId of enabledPanelKeys(applied.panelSettings)) {
@@ -807,91 +836,71 @@ describe('applyMissionPresetToState', () => {
   });
 
   it('falls back to variant defaults when a preset has too few matching panels', () => {
-    for (const preset of MISSION_PRESETS.filter((preset) => (
-      preset.id !== 'good-news-explorer'
-      && preset.id !== 'country-watcher'
-      && isMissionPresetAvailableForVariant(preset, 'happy')
-    ))) {
+    // Shared missions whose panels barely overlap the nuclear catalog must not
+    // leave a one-panel workspace behind.
+    for (const presetId of [
+      'supply-chain-risk',
+      'energy-security',
+      'osint-newsroom',
+      'macro-market-watch',
+      'country-watcher',
+    ] as const) {
       const applied = applyMissionPresetToState(
-        preset.id,
-        makePanelSettings('happy'),
-        DEFAULT_MAP_LAYERS,
-        'happy',
+        presetId,
+        makePanelSettings('nuclear'),
+        NUCLEAR_DEFAULT_MAP_LAYERS,
+        'nuclear',
       );
       assert.deepEqual(
         enabledWorkspacePanelKeys(applied.panelSettings),
-        defaultWorkspacePanelKeys('happy'),
-        `happy/${preset.id} should fall back to happy defaults`,
+        defaultWorkspacePanelKeys('nuclear'),
+        `nuclear/${presetId} should fall back to nuclear defaults`,
       );
     }
 
-    const happyApplied = applyMissionPresetToState(
-      'good-news-explorer',
-      makePanelSettings('happy'),
-      DEFAULT_MAP_LAYERS,
-      'happy',
+    const nuclearApplied = applyMissionPresetToState(
+      'nuclear-hub',
+      makePanelSettings('nuclear'),
+      NUCLEAR_DEFAULT_MAP_LAYERS,
+      'nuclear',
     );
-    assert.deepEqual(happyApplied.panelOrder.slice(0, 4), [
-      'positive-feed',
-      'progress',
-      'counters',
-      'spotlight',
-    ]);
-    assert.equal(happyApplied.mapLayers.positiveEvents, true);
-    assert.equal(happyApplied.mapLayers.speciesRecovery, true);
-
-    const happyCountryWatcher = applyMissionPresetToState(
-      'country-watcher',
-      makePanelSettings('happy'),
-      DEFAULT_MAP_LAYERS,
-      'happy',
-    );
-    assert.deepEqual(happyCountryWatcher.panelOrder, [
-      'positive-feed',
-      'progress',
-      'spotlight',
-      'species',
-      'renewable',
+    assert.deepEqual(nuclearApplied.panelOrder.slice(0, 4), [
+      'nuclear-reactor-status',
+      'nuclear-hazards',
+      'nuclear-facilities',
+      'radiation-watch',
     ]);
     assert.notDeepEqual(
-      enabledWorkspacePanelKeys(happyCountryWatcher.panelSettings),
-      defaultWorkspacePanelKeys('happy'),
+      enabledWorkspacePanelKeys(nuclearApplied.panelSettings),
+      defaultWorkspacePanelKeys('nuclear'),
     );
-    assert.equal(happyCountryWatcher.mapLayers.happiness, true);
+    assert.equal(nuclearApplied.mapLayers.usNuclearFacilities, true);
+    assert.equal(nuclearApplied.mapLayers.radiationWatch, true);
+
+    // A shared mission with enough native overlap keeps its own selection
+    // rather than falling back, on both variants.
+    const nuclearCrisis = applyMissionPresetToState(
+      'crisis-desk',
+      makePanelSettings('nuclear'),
+      NUCLEAR_DEFAULT_MAP_LAYERS,
+      'nuclear',
+    );
+    assert.deepEqual(nuclearCrisis.panelOrder, ['live-news', 'insights']);
 
     const techApplied = applyMissionPresetToState(
       'tech-ai-watch',
-      makePanelSettings('tech'),
-      DEFAULT_MAP_LAYERS,
-      'tech',
+      makePanelSettings('full'),
+      FULL_DEFAULT_MAP_LAYERS,
+      'full',
     );
-    assert.deepEqual(techApplied.panelOrder.slice(0, 5), [
+    assert.deepEqual(techApplied.panelOrder.slice(0, 4), [
       'live-news',
       'insights',
       'ai',
       'tech',
-      'startups',
     ]);
     assert.equal(techApplied.mapLayers.datacenters, true);
-    assert.equal(techApplied.mapLayers.startupHubs, true);
-
-    for (const [variant, presetId] of [
-      ['tech', 'energy-security'],
-      ['commodity', 'osint-newsroom'],
-      ['energy', 'osint-newsroom'],
-    ] as const) {
-      const applied = applyMissionPresetToState(
-        presetId,
-        makePanelSettings(variant),
-        DEFAULT_MAP_LAYERS,
-        variant,
-      );
-      assert.deepEqual(
-        enabledWorkspacePanelKeys(applied.panelSettings),
-        defaultWorkspacePanelKeys(variant),
-        `${variant}/${presetId} should fall back to ${variant} defaults`,
-      );
-    }
+    assert.equal(techApplied.mapLayers.startupHubs, false, 'startup hubs are outside the full allowlist');
   });
 
   it('never applies a preset as an empty or single-panel workspace across variants', () => {
@@ -901,7 +910,7 @@ describe('applyMissionPresetToState', () => {
         const applied = applyMissionPresetToState(
           preset.id,
           makePanelSettings(variant),
-          DEFAULT_MAP_LAYERS,
+          defaultLayersFor(variant),
           variant,
         );
         assert.ok(
@@ -920,7 +929,7 @@ describe('applyMissionPresetToState', () => {
         const applied = applyMissionPresetToState(
           preset.id,
           makePanelSettings(variant),
-          DEFAULT_MAP_LAYERS,
+          defaultLayersFor(variant),
           variant,
         );
         for (const [layerId, enabled] of Object.entries(applied.mapLayers)) {
@@ -942,14 +951,23 @@ describe('resetMissionPresetState', () => {
     current.markets!.enabled = true;
     current['cw-market-note']!.enabled = true;
 
-    const reset = resetMissionPresetState(current, DEFAULT_MAP_LAYERS, 'full');
+    const reset = resetMissionPresetState(current, FULL_DEFAULT_MAP_LAYERS, 'full');
 
     assert.deepEqual(reset.panelOrder, VARIANT_DEFAULTS.full.filter((key) => key !== 'map'));
     assert.equal(reset.panelSettings.map?.enabled, true);
     assert.equal(reset.panelSettings['live-news']?.enabled, getEffectivePanelConfig('live-news', 'full').enabled);
     assert.equal(reset.panelSettings['energy-risk-overview']?.enabled, false);
+    assert.equal(reset.panelSettings['nuclear-reactor-status']?.enabled, false);
     assert.equal(reset.panelSettings['cw-market-note']?.enabled, true);
-    assert.deepEqual(reset.mapLayers, DEFAULT_MAP_LAYERS);
+    assert.deepEqual(reset.mapLayers, FULL_DEFAULT_MAP_LAYERS);
+
+    const nuclear = makePanelSettings('nuclear');
+    nuclear.markets!.enabled = true;
+    const nuclearReset = resetMissionPresetState(nuclear, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear');
+    assert.deepEqual(nuclearReset.panelOrder, VARIANT_DEFAULTS.nuclear.filter((key) => key !== 'map'));
+    assert.equal(nuclearReset.panelSettings['nuclear-reactor-status']?.enabled, true);
+    assert.equal(nuclearReset.panelSettings.markets?.enabled, false);
+    assert.deepEqual(nuclearReset.mapLayers, NUCLEAR_DEFAULT_MAP_LAYERS);
   });
 });
 
@@ -957,20 +975,19 @@ describe('mission preset renderer filtering', () => {
   it('removes DeckGL-only energy layers on the mobile/SVG fallback path', () => {
     const applied = applyMissionPresetToState(
       'energy-security',
-      makePanelSettings('energy'),
-      DEFAULT_MAP_LAYERS,
-      'energy',
+      makePanelSettings('full'),
+      FULL_DEFAULT_MAP_LAYERS,
+      'full',
     );
 
     assert.equal(applied.mapLayers.storageFacilities, true);
     assert.equal(applied.mapLayers.fuelShortages, true);
-    assert.equal(applied.mapLayers.liveTankers, true);
 
-    const filtered = filterMissionLayersForRenderer(applied.mapLayers, 'svg', DEFAULT_MAP_LAYERS);
+    const filtered = filterMissionLayersForRenderer(applied.mapLayers, 'svg', FULL_DEFAULT_MAP_LAYERS);
 
     assert.equal(filtered.storageFacilities, false);
     assert.equal(filtered.fuelShortages, false);
-    assert.equal(filtered.liveTankers, false);
+    assert.equal(filtered.pipelines, true);
     assert.ok(Object.values(filtered).some(Boolean), 'renderer filtering should keep executable context layers');
   });
 
@@ -992,13 +1009,13 @@ describe('mission preset renderer filtering', () => {
     const applied = applyMissionPresetToState(
       'supply-chain-risk',
       makePanelSettings('full'),
-      DEFAULT_MAP_LAYERS,
+      FULL_DEFAULT_MAP_LAYERS,
       'full',
     );
 
     assert.equal(applied.mapLayers.resilienceScore, true);
 
-    const filtered = filterMissionLayersForRenderer(applied.mapLayers, 'svg', DEFAULT_MAP_LAYERS);
+    const filtered = filterMissionLayersForRenderer(applied.mapLayers, 'svg', FULL_DEFAULT_MAP_LAYERS);
 
     assert.equal(filtered.resilienceScore, false);
     assert.equal(filtered.tradeRoutes, true);
@@ -1031,10 +1048,10 @@ describe('mission preset persistence', () => {
     assert.equal(loadStoredMissionPreset(), null);
   });
 
-  it('ignores a stored NQ Day Trader preset on a non-finance variant', () => {
-    localStorage.setItem(MISSION_PRESET_STORAGE_KEY, 'nq-day-trader');
+  it('ignores a stored Nuclear Facilities preset on a non-nuclear variant', () => {
+    localStorage.setItem(MISSION_PRESET_STORAGE_KEY, 'nuclear-hub');
     assert.equal(loadStoredMissionPreset('full'), null);
-    assert.equal(loadStoredMissionPreset('finance')?.id, 'nq-day-trader');
+    assert.equal(loadStoredMissionPreset('nuclear')?.id, 'nuclear-hub');
   });
 
   it('does not throw when storage is unavailable', () => {
@@ -1124,7 +1141,7 @@ function makeMapSpy(options: { isGlobe?: boolean; isDeckGLActive?: boolean } = {
     view: 'global',
     zoom: 2.3,
     timeRange: '7d',
-    layers: { ...DEFAULT_MAP_LAYERS },
+    layers: { ...FULL_DEFAULT_MAP_LAYERS },
   };
   const calls = {
     setLayers: [] as MapLayers[],
@@ -1204,7 +1221,7 @@ function createMissionHarness(options: {
     panels: {},
     newsPanels: {},
     panelSettings: makePanelSettings('full'),
-    mapLayers: { ...DEFAULT_MAP_LAYERS },
+    mapLayers: { ...FULL_DEFAULT_MAP_LAYERS },
     allNews: [],
     newsByCategory: {},
     latestMarkets: [],
@@ -1363,7 +1380,7 @@ describe('mission preset shell integration', () => {
   it('applies a preset through the real manager path and resets state, storage, layers, map view, and URL to defaults', async () => {
     const { ctx, callbacks, manager } = createMissionHarness();
     const baselineWorkspace = defaultWorkspacePanelKeys('full');
-    const baselineLayers = activeLayers(DEFAULT_MAP_LAYERS);
+    const baselineLayers = activeLayers(FULL_DEFAULT_MAP_LAYERS);
 
     (globalThis as { __missionAnalytics?: unknown[] }).__missionAnalytics = [];
     manager.applyMissionPreset('supply-chain-risk');
@@ -1458,9 +1475,11 @@ describe('mission preset shell integration', () => {
         for (let i = 0; i < FREE_MAX_PANELS; i++) {
           ctx.panelSettings[`mcp-feed-${i}`] = { name: `Feed ${i}`, enabled: true, priority: 99 };
         }
+        // The harness bundle runs as the full variant, so the expected layout is
+        // computed for 'full' explicitly rather than through the direct-import default.
         const candidate = action === 'resetMissionPreset'
-          ? resetMissionPresetState(ctx.panelSettings).panelSettings
-          : applyMissionPresetToState('crisis-desk', ctx.panelSettings).panelSettings;
+          ? resetMissionPresetState(ctx.panelSettings, FULL_DEFAULT_MAP_LAYERS, 'full').panelSettings
+          : applyMissionPresetToState('crisis-desk', ctx.panelSettings, FULL_DEFAULT_MAP_LAYERS, 'full').panelSettings;
         assert.ok(countFreePanelCapUsage(candidate) > FREE_MAX_PANELS);
         manager[action]('crisis-desk');
         assert.deepEqual(rendered, ctx.panelSettings);

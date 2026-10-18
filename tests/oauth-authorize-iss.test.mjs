@@ -129,7 +129,7 @@ describe('RFC 9207 — authorization server metadata', () => {
 describe('RFC 9207 — issuer captured when the flow starts', () => {
   it('derives the same origin as the AS metadata issuer, including spoofed-Host fallback', () => {
     const hosts = [
-      'worldmonitor.app', 'www.worldmonitor.app', 'api.worldmonitor.app', 'tech.worldmonitor.app',
+      'worldmonitor.app', 'www.worldmonitor.app', 'api.worldmonitor.app', 'nuclear.worldmonitor.app',
       'API.WorldMonitor.app', 'evil.com', 'worldmonitor.app.evil.com', 'evilworldmonitor.app',
       'x.y.worldmonitor.app', 'api.worldmonitor.app:443',
     ];

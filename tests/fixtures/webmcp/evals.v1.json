@@ -1113,13 +1113,13 @@
       "id": "switch_monitor_direct",
       "category": "dashboard_control",
       "promptKind": "direct",
-      "prompt": "Switch the dashboard to the Tech monitor.",
+      "prompt": "Switch the dashboard to the Nuclear monitor.",
       "expectedPlans": [
         [
           {
             "tool": "switch_monitor",
             "arguments": {
-              "monitor": "tech"
+              "monitor": "nuclear"
             }
           }
         ]
@@ -1149,13 +1149,13 @@
       "id": "switch_monitor_ambiguous",
       "category": "dashboard_control",
       "promptKind": "ambiguous",
-      "prompt": "Take me to Good News.",
+      "prompt": "Take me to the global view.",
       "expectedPlans": [
         [
           {
             "tool": "switch_monitor",
             "arguments": {
-              "monitor": "happy"
+              "monitor": "full"
             }
           }
         ]

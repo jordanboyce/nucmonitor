@@ -74,11 +74,11 @@ afterEach(() => {
 
 describe('SITE_VARIANT desktop detection converges on isDesktopRuntime (#5912)', () => {
   it('honours the stored variant on a Tauri host whose bridge globals have not attached yet', async () => {
-    const { variant, desktop } = await siteVariantUnder(TAURI_HOST_NO_GLOBALS, 'finance');
+    const { variant, desktop } = await siteVariantUnder(TAURI_HOST_NO_GLOBALS, 'nuclear');
     // Premise guard: the detector must call this origin desktop, or the case
     // is not exercising the split the raw check had.
     expect(desktop).toBe(true);
-    expect(variant).toBe('finance');
+    expect(variant).toBe('nuclear');
   });
 
   it('falls back to the build variant on desktop when nothing is stored', async () => {
@@ -87,7 +87,7 @@ describe('SITE_VARIANT desktop detection converges on isDesktopRuntime (#5912)',
   });
 
   it('ignores a stored variant on the public web origin and resolves from the hostname', async () => {
-    const { variant, desktop } = await siteVariantUnder(WEB, 'finance');
+    const { variant, desktop } = await siteVariantUnder(WEB, 'nuclear');
     expect(desktop).toBe(false);
     expect(variant).toBe('full');
   });
@@ -97,12 +97,12 @@ describe('SITE_VARIANT desktop detection converges on isDesktopRuntime (#5912)',
       TAURI_HOST_NO_GLOBALS,
       WEB,
       { protocol: 'tauri:', host: 'localhost', origin: 'tauri://localhost', tauriGlobals: false },
-      { protocol: 'https:', host: 'tech.worldmonitor.app', origin: 'https://tech.worldmonitor.app', tauriGlobals: false },
+      { protocol: 'https:', host: 'app.worldmonitor.app', origin: 'https://app.worldmonitor.app', tauriGlobals: false },
       { protocol: 'https:', host: 'worldmonitor.app', origin: 'https://worldmonitor.app', tauriGlobals: true },
     ];
     for (const probe of probes) {
-      const { variant, desktop } = await siteVariantUnder(probe, 'energy');
-      expect(variant === 'energy', `probe ${probe.origin} globals=${probe.tauriGlobals}`).toBe(desktop);
+      const { variant, desktop } = await siteVariantUnder(probe, 'nuclear');
+      expect(variant === 'nuclear', `probe ${probe.origin} globals=${probe.tauriGlobals}`).toBe(desktop);
     }
   });
 });

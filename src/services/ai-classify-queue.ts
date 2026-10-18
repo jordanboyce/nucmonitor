@@ -19,19 +19,10 @@
  * label stays at keyword confidence instead of being upgraded.
  */
 
-// Import from the leaf variant module rather than '@/config' (the barrel)
-// so node:test runners that don't provide Vite's import.meta.env can load
-// this file without pulling in the entire config chain (feeds.ts →
-// @/utils/proxy → import.meta.env.DEV crash). See route-explorer-keyboard
-// test header for the broader Vite/Node compat pattern.
-import { SITE_VARIANT } from '@/config/variant';
-
 const AI_CLASSIFY_DEDUP_MS = 30 * 60 * 1000;
 const AI_CLASSIFY_WINDOW_MS = 60 * 1000;
-const AI_CLASSIFY_MAX_PER_WINDOW =
-  SITE_VARIANT === 'finance' ? 40 : SITE_VARIANT === 'tech' ? 60 : 80;
-export const AI_CLASSIFY_MAX_PER_FEED =
-  SITE_VARIANT === 'finance' ? 2 : SITE_VARIANT === 'tech' ? 2 : 3;
+const AI_CLASSIFY_MAX_PER_WINDOW = 80;
+export const AI_CLASSIFY_MAX_PER_FEED = 3;
 
 const aiRecentlyQueued = new Map<string, number>();
 const aiDispatches: number[] = [];

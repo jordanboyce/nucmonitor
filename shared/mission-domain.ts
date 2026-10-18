@@ -6,8 +6,6 @@ export const MISSION_PRESET_IDS = [
   'osint-newsroom',
   'macro-market-watch',
   'tech-ai-watch',
-  'good-news-explorer',
-  'nq-day-trader',
   'country-watcher',
 ] as const;
 

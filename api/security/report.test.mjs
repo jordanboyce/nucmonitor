@@ -24,7 +24,7 @@ test('security report endpoint accepts Reporting API batches and redacts URLs in
       {
         type: 'coep',
         age: 10,
-        url: 'https://tech.worldmonitor.app/panel?token=secret',
+        url: 'https://nuclear.worldmonitor.app/panel?token=secret',
         body: {
           type: 'corp-not-same-origin',
           disposition: 'reporting',
@@ -39,7 +39,7 @@ test('security report endpoint accepts Reporting API batches and redacts URLs in
   assert.equal(response.status, 204);
   assert.equal(logs.length, 1);
   assert.match(logs[0], /\[security\/report\]/);
-  assert.match(logs[0], /"urlOrigin":"https:\/\/tech\.worldmonitor\.app"/);
+  assert.match(logs[0], /"urlOrigin":"https:\/\/nuclear\.worldmonitor\.app"/);
   assert.match(logs[0], /"blockedURLOrigin":"https:\/\/cdn\.example\.test"/);
   assert.doesNotMatch(logs[0], /token=secret|private=true/);
 });

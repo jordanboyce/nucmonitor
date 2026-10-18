@@ -24,7 +24,6 @@ import {
   enforceFreePanelLimit,
   restoreFreeMapPanelAccess,
   restoreProGatedPanels,
-  userSetPanelEnabled,
   shouldDeferFreeTierEnforcement,
   FREE_MAX_PANELS,
   FREE_MAX_SOURCES,
@@ -1138,10 +1137,9 @@ export class App {
         const keyRenames: Array<[string, string]> = [
           ['live-youtube', 'live-webcams'],
           ['pinned-webcams', 'windy-webcams'],
-          ...(SITE_VARIANT === 'finance' ? [['regulation', 'fin-regulation'] as [string, string]] : []),
         ];
-        // In non-finance variants, 'regulation' was dead config (no feeds). Just prune it.
-        if (SITE_VARIANT !== 'finance' && panelSettings['regulation']) {
+        // 'regulation' was dead config (no feeds). Just prune it.
+        if (panelSettings['regulation']) {
           delete panelSettings['regulation'];
           migrated = true;
         }
@@ -1195,28 +1193,6 @@ export class App {
         localStorage.setItem(UNIFIED_MIGRATION_KEY, 'done');
       }
 
-      // One-time migration: fix happy variant sessions that got cross-variant panels enabled
-      // (regression from #1911 unified panel registry which failed to disable non-variant panels on variant switch)
-      const HAPPY_PANEL_FIX_KEY = 'worldmonitor-happy-panel-fix-v1';
-      if (SITE_VARIANT === 'happy' && !localStorage.getItem(HAPPY_PANEL_FIX_KEY)) {
-        const happyKeys = new Set(VARIANT_DEFAULTS['happy'] ?? []);
-        let fixed = false;
-        for (const key of Object.keys(panelSettings)) {
-          const config = panelSettings[key];
-          if (
-            !happyKeys.has(key)
-            && !isDynamicPanel(key)
-            && config
-            && (config.enabled || config.proGated)
-          ) {
-            userSetPanelEnabled(config, false);
-            fixed = true;
-          }
-        }
-        if (fixed) saveToStorage(STORAGE_KEYS.panels, panelSettings);
-        localStorage.setItem(HAPPY_PANEL_FIX_KEY, 'done');
-      }
-
       console.log('[App] Loaded panel settings from storage:', Object.entries(panelSettings).filter(([_, v]) => !v.enabled).map(([k]) => k));
 
       // One-time migration: reorder panels for existing users (v1.9 panel layout)
@@ -1238,29 +1214,6 @@ export class App {
           }
         }
         localStorage.setItem(PANEL_ORDER_MIGRATION_KEY, 'done');
-      }
-
-      // Tech variant migration: move insights to top (after live-news)
-      if (currentVariant === 'tech') {
-        const TECH_INSIGHTS_MIGRATION_KEY = 'worldmonitor-tech-insights-top-v1';
-        if (!localStorage.getItem(TECH_INSIGHTS_MIGRATION_KEY)) {
-          const savedOrder = localStorage.getItem(PANEL_ORDER_KEY);
-          if (savedOrder) {
-            try {
-              const order: string[] = JSON.parse(savedOrder);
-              const filtered = order.filter(k => k !== 'insights' && k !== 'live-news');
-              const newOrder: string[] = [];
-              if (order.includes('live-news')) newOrder.push('live-news');
-              if (order.includes('insights')) newOrder.push('insights');
-              newOrder.push(...filtered);
-              localStorage.setItem(PANEL_ORDER_KEY, JSON.stringify(newOrder));
-              console.log('[App] Tech variant: Migrated insights panel to top');
-            } catch {
-              // Invalid saved order, will use defaults
-            }
-          }
-          localStorage.setItem(TECH_INSIGHTS_MIGRATION_KEY, 'done');
-        }
       }
     }
 
@@ -1581,7 +1534,6 @@ export class App {
       heroPanel: null,
       digestPanel: null,
       speciesPanel: null,
-      renewablePanel: null,
       authModal: null,
       authHeaderWidget: null,
       tvMode: null,
@@ -2934,11 +2886,6 @@ export class App {
       map.setCenter(mobileGeoCoords.lat, mobileGeoCoords.lon, 6);
     });
 
-    // Happy variant: pre-populate panels from persistent cache for instant render
-    if (SITE_VARIANT === 'happy') {
-      await this.dataLoader.hydrateHappyPanelsFromCache();
-    }
-
     // Phase 2: Shared UI components
     if (!this.state.isMobile) {
       void this.initFindingsBadge();
@@ -3910,87 +3857,52 @@ export class App {
       );
     });
 
-    // Happy variant only refreshes news -- skip all geopolitical/financial/military refreshes
-    if (SITE_VARIANT !== 'happy') {
-      this.refreshScheduler.registerAll([
-        {
-          name: 'markets',
-          fn: () => this.dataLoader.loadMarkets(),
-          intervalMs: REFRESH_INTERVALS.markets,
-          condition: () => this.isAnyPanelNearViewport(['markets', 'heatmap', 'commodities', 'crypto', 'crypto-heatmap', 'defi-tokens', 'ai-tokens', 'other-tokens']),
-        },
-        {
-          name: 'predictions',
-          fn: () => this.dataLoader.loadPredictions(),
-          intervalMs: REFRESH_INTERVALS.predictions,
-          condition: () => this.isPanelNearViewport('polymarket'),
-        },
-        {
-          name: 'forecasts',
-          fn: () => this.dataLoader.loadForecasts(),
-          intervalMs: REFRESH_INTERVALS.forecasts,
-          condition: () => this.isPanelNearViewport('forecast'),
-        },
-        { name: 'pizzint', fn: () => this.dataLoader.loadPizzInt(), intervalMs: REFRESH_INTERVALS.pizzint, condition: () => SITE_VARIANT === 'full' },
-        { name: 'natural', fn: () => this.dataLoader.loadNatural(), intervalMs: REFRESH_INTERVALS.natural, condition: () => this.state.mapLayers.natural },
-        { name: 'weather', fn: () => this.dataLoader.loadWeatherAlerts(), intervalMs: REFRESH_INTERVALS.weather, condition: () => this.state.mapLayers.weather },
-        { name: 'canadaRoads', fn: () => this.dataLoader.loadCanadaRoads(), intervalMs: REFRESH_INTERVALS.canadaRoads, condition: () => !!this.state.mapLayers.canadaRoads },
-        { name: 'pipelineRegistries', fn: () => this.dataLoader.loadPipelineRegistries({ refresh: true }), intervalMs: REFRESH_INTERVALS.pipelineStatus, condition: () => !!this.state.mapLayers.pipelines },
-        { name: 'storageFacilities', fn: () => this.dataLoader.loadStorageFacilities({ refresh: true }), intervalMs: REFRESH_INTERVALS.storageFacilityMap, condition: () => !!this.state.mapLayers.storageFacilities },
-        { name: 'canadaAlerts', fn: () => this.dataLoader.loadCanadaAlerts(), intervalMs: REFRESH_INTERVALS.canadaAlerts, condition: () => !!this.state.mapLayers.canadaAlerts },
-        { name: 'fred', fn: () => this.dataLoader.loadFredData(), intervalMs: REFRESH_INTERVALS.fred, condition: () => this.isPanelNearViewport('economic') },
-        { name: 'spending', fn: () => this.dataLoader.loadGovernmentSpending(), intervalMs: REFRESH_INTERVALS.spending, condition: () => this.isPanelNearViewport('economic') },
-        { name: 'global-tenders', fn: () => this.dataLoader.loadGlobalTenders(), intervalMs: REFRESH_INTERVALS.spending, condition: () => hasPremiumAccess() && this.isPanelNearViewport('global-procurement') },
-        { name: 'bis', fn: () => this.dataLoader.loadBisData(), intervalMs: REFRESH_INTERVALS.bis, condition: () => this.isPanelNearViewport('economic') },
-        { name: 'oil', fn: () => this.dataLoader.loadOilAnalytics(), intervalMs: REFRESH_INTERVALS.oil, condition: () => this.isPanelNearViewport('energy-complex') },
-        // inFlight key 'fires' matches the hydration loader and loadDataForLayer
-        // (the map-layer key), like every other layer refresh here — so all three
-        // firms call sites one-flight the guard-less loadFirmsData (#6770).
-        { name: 'fires', fn: () => this.dataLoader.loadFirmsData(), intervalMs: REFRESH_INTERVALS.firms, condition: () => this.shouldRefreshFirms() },
-        { name: 'ais', fn: () => this.dataLoader.loadAisSignals(), intervalMs: REFRESH_INTERVALS.ais, condition: () => this.state.mapLayers.ais },
-        { name: 'cables', fn: () => this.dataLoader.loadCableActivity(), intervalMs: REFRESH_INTERVALS.cables, condition: () => this.state.mapLayers.cables },
-        { name: 'cableHealth', fn: () => this.dataLoader.loadCableHealth(), intervalMs: REFRESH_INTERVALS.cableHealth, condition: () => this.state.mapLayers.cables },
-        { name: 'flights', fn: () => this.dataLoader.loadFlightDelays(), intervalMs: REFRESH_INTERVALS.flights, condition: () => this.state.mapLayers.flights },
-        {
-          name: 'cyberThreats', fn: () => {
-            this.state.cyberThreatsCache = null;
-            return this.dataLoader.loadCyberThreats();
-          }, intervalMs: REFRESH_INTERVALS.cyberThreats, condition: () => CYBER_LAYER_ENABLED && this.state.mapLayers.cyberThreats
-        },
-      ]);
-    }
-
-    if (SITE_VARIANT === 'finance') {
-      this.refreshScheduler.scheduleRefresh(
-        // inFlight lock key matches the hydration loader's runGuarded key so
-        // boot and refresh one-flight each other (loadStockAnalysis has no
-        // internal guard). The panel/viewport key stays kebab below (#6770).
-        'stockAnalysis',
-        () => this.dataLoader.loadStockAnalysis(),
-        REFRESH_INTERVALS.stockAnalysis,
-        () => hasPremiumAccess() && this.isPanelNearViewport('stock-analysis'),
-      );
-      this.refreshScheduler.scheduleRefresh(
-        'daily-market-brief',
-        () => this.dataLoader.loadDailyMarketBrief(),
-        REFRESH_INTERVALS.dailyMarketBrief,
-        () => hasPremiumAccess() && this.isPanelNearViewport('daily-market-brief'),
-      );
-      this.refreshScheduler.scheduleRefresh(
-        // inFlight lock key matches the hydration loader's runGuarded key
-        // (loadStockBacktest has no internal guard); panel key stays kebab (#6770).
-        'stockBacktest',
-        () => this.dataLoader.loadStockBacktest(),
-        REFRESH_INTERVALS.stockBacktest,
-        () => hasPremiumAccess() && this.isPanelNearViewport('stock-backtest'),
-      );
-      this.refreshScheduler.scheduleRefresh(
-        'market-implications',
-        () => this.dataLoader.loadMarketImplications(),
-        REFRESH_INTERVALS.marketImplications,
-        () => hasPremiumAccess() && this.isPanelNearViewport('market-implications'),
-      );
-    }
+    this.refreshScheduler.registerAll([
+      {
+        name: 'markets',
+        fn: () => this.dataLoader.loadMarkets(),
+        intervalMs: REFRESH_INTERVALS.markets,
+        condition: () => this.isAnyPanelNearViewport(['markets', 'heatmap', 'commodities', 'crypto', 'crypto-heatmap', 'defi-tokens', 'ai-tokens', 'other-tokens']),
+      },
+      {
+        name: 'predictions',
+        fn: () => this.dataLoader.loadPredictions(),
+        intervalMs: REFRESH_INTERVALS.predictions,
+        condition: () => this.isPanelNearViewport('polymarket'),
+      },
+      {
+        name: 'forecasts',
+        fn: () => this.dataLoader.loadForecasts(),
+        intervalMs: REFRESH_INTERVALS.forecasts,
+        condition: () => this.isPanelNearViewport('forecast'),
+      },
+      { name: 'pizzint', fn: () => this.dataLoader.loadPizzInt(), intervalMs: REFRESH_INTERVALS.pizzint, condition: () => SITE_VARIANT === 'full' },
+      { name: 'natural', fn: () => this.dataLoader.loadNatural(), intervalMs: REFRESH_INTERVALS.natural, condition: () => this.state.mapLayers.natural },
+      { name: 'weather', fn: () => this.dataLoader.loadWeatherAlerts(), intervalMs: REFRESH_INTERVALS.weather, condition: () => this.state.mapLayers.weather },
+      { name: 'canadaRoads', fn: () => this.dataLoader.loadCanadaRoads(), intervalMs: REFRESH_INTERVALS.canadaRoads, condition: () => !!this.state.mapLayers.canadaRoads },
+      { name: 'pipelineRegistries', fn: () => this.dataLoader.loadPipelineRegistries({ refresh: true }), intervalMs: REFRESH_INTERVALS.pipelineStatus, condition: () => !!this.state.mapLayers.pipelines },
+      { name: 'storageFacilities', fn: () => this.dataLoader.loadStorageFacilities({ refresh: true }), intervalMs: REFRESH_INTERVALS.storageFacilityMap, condition: () => !!this.state.mapLayers.storageFacilities },
+      { name: 'canadaAlerts', fn: () => this.dataLoader.loadCanadaAlerts(), intervalMs: REFRESH_INTERVALS.canadaAlerts, condition: () => !!this.state.mapLayers.canadaAlerts },
+      { name: 'fred', fn: () => this.dataLoader.loadFredData(), intervalMs: REFRESH_INTERVALS.fred, condition: () => this.isPanelNearViewport('economic') },
+      { name: 'spending', fn: () => this.dataLoader.loadGovernmentSpending(), intervalMs: REFRESH_INTERVALS.spending, condition: () => this.isPanelNearViewport('economic') },
+      { name: 'global-tenders', fn: () => this.dataLoader.loadGlobalTenders(), intervalMs: REFRESH_INTERVALS.spending, condition: () => hasPremiumAccess() && this.isPanelNearViewport('global-procurement') },
+      { name: 'bis', fn: () => this.dataLoader.loadBisData(), intervalMs: REFRESH_INTERVALS.bis, condition: () => this.isPanelNearViewport('economic') },
+      { name: 'oil', fn: () => this.dataLoader.loadOilAnalytics(), intervalMs: REFRESH_INTERVALS.oil, condition: () => this.isPanelNearViewport('energy-complex') },
+      // inFlight key 'fires' matches the hydration loader and loadDataForLayer
+      // (the map-layer key), like every other layer refresh here — so all three
+      // firms call sites one-flight the guard-less loadFirmsData (#6770).
+      { name: 'fires', fn: () => this.dataLoader.loadFirmsData(), intervalMs: REFRESH_INTERVALS.firms, condition: () => this.shouldRefreshFirms() },
+      { name: 'ais', fn: () => this.dataLoader.loadAisSignals(), intervalMs: REFRESH_INTERVALS.ais, condition: () => this.state.mapLayers.ais },
+      { name: 'cables', fn: () => this.dataLoader.loadCableActivity(), intervalMs: REFRESH_INTERVALS.cables, condition: () => this.state.mapLayers.cables },
+      { name: 'cableHealth', fn: () => this.dataLoader.loadCableHealth(), intervalMs: REFRESH_INTERVALS.cableHealth, condition: () => this.state.mapLayers.cables },
+      { name: 'flights', fn: () => this.dataLoader.loadFlightDelays(), intervalMs: REFRESH_INTERVALS.flights, condition: () => this.state.mapLayers.flights },
+      {
+        name: 'cyberThreats', fn: () => {
+          this.state.cyberThreatsCache = null;
+          return this.dataLoader.loadCyberThreats();
+        }, intervalMs: REFRESH_INTERVALS.cyberThreats, condition: () => CYBER_LAYER_ENABLED && this.state.mapLayers.cyberThreats
+      },
+    ]);
 
     // Panel-level refreshes (moved from panel constructors into scheduler for hidden-tab awareness + jitter)
     this.refreshScheduler.scheduleRefresh(
@@ -4068,15 +3980,13 @@ export class App {
     );
 
     // Server-side temporal anomalies (news + satellite_fires)
-    if (SITE_VARIANT !== 'happy') {
-      this.refreshScheduler.scheduleRefresh('temporalBaseline', () => this.dataLoader.refreshTemporalBaseline(), REFRESH_INTERVALS.temporalBaseline, () => this.shouldRefreshIntelligence());
-    }
+    this.refreshScheduler.scheduleRefresh('temporalBaseline', () => this.dataLoader.refreshTemporalBaseline(), REFRESH_INTERVALS.temporalBaseline, () => this.shouldRefreshIntelligence());
 
     // WTO trade policy data — annual data, poll every 10 min to avoid hammering upstream.
     // PRO-gated: the isNearViewport check is a visibility gate, not an entitlement gate,
     // so without hasPremiumAccess() here we'd still hit the 6 WTO RPCs every poll for
     // free users once the panel scrolled into view.
-    if (SITE_VARIANT === 'full' || SITE_VARIANT === 'finance' || SITE_VARIANT === 'commodity' || SITE_VARIANT === 'energy') {
+    if (SITE_VARIANT === 'full') {
       this.refreshScheduler.scheduleRefresh('tradePolicy', () => this.dataLoader.loadTradePolicy(), REFRESH_INTERVALS.tradePolicy, () => hasPremiumAccess() && this.isPanelNearViewport('trade-policy'));
       this.refreshScheduler.scheduleRefresh('supplyChain', () => this.dataLoader.loadSupplyChain(), REFRESH_INTERVALS.supplyChain, () => this.isPanelNearViewport('supply-chain'));
       this.refreshScheduler.scheduleRefresh('chinaCorridors', () => this.dataLoader.loadChinaCorridors(), REFRESH_INTERVALS.chinaCorridors, () => this.isPanelNearViewport('china-corridors'));

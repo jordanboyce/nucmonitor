@@ -108,7 +108,7 @@ import {
   type StockAnalysisHistory,
 } from '@/services/stock-analysis-history';
 import { checkBatchForBreakingAlerts, dispatchOrefBreakingAlert } from '@/services/breaking-news-alerts';
-import { displayPubDateMs, effectivePubDateMs } from '@/services/feed-date';
+import { effectivePubDateMs } from '@/services/feed-date';
 import { mlWorker } from '@/services/ml-worker';
 import { clusterNewsHybrid, clusterNewsWithWorkerFallback } from '@/services/clustering';
 import { ingestProtests, ingestFlights, ingestVessels, ingestEarthquakes, detectGeoConvergence, geoConvergenceToSignal } from '@/services/geo-convergence';
@@ -185,21 +185,7 @@ import type { WsbTickerScannerPanel } from '@/components/WsbTickerScannerPanel';
 import type { AAIISentimentPanel } from '@/components/AAIISentimentPanel';
 import type { MarketBreadthPanel } from '@/components/MarketBreadthPanel';
 import type { SatelliteFiresPanel } from '@/components/SatelliteFiresPanel';
-import { classifyNewsItem } from '@/services/positive-classifier';
 import { fetchGivingSummary } from '@/services/giving';
-import { fetchProgressData } from '@/services/progress-data';
-import { fetchConservationWins } from '@/services/conservation-data';
-// #4571: renewable-energy-data (+ its transitive economic edge) dynamic-imported
-// inside loadRenewableData so it doesn't parse/execute at boot — the renewable
-// panel is below-fold and its load is viewport-gated (shouldLoad('renewable')).
-import { checkMilestones } from '@/services/celebration';
-import { fetchHappinessScores } from '@/services/happiness-data';
-import { fetchRenewableInstallations } from '@/services/renewable-installations';
-import { filterBySentiment } from '@/services/sentiment-gate';
-import { fetchAllPositiveTopicIntelligence } from '@/services/gdelt-intel';
-import { fetchPositiveGeoEvents, geocodePositiveNewsItems, type PositiveGeoEvent } from '@/services/positive-events-geo';
-import type { HappyContentCategory } from '@/services/positive-classifier';
-import { fetchKindnessData } from '@/services/kindness-data';
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import { getActiveFrameworkForPanel, subscribeFrameworkChange } from '@/services/analysis-framework-store';
 import type {
@@ -999,97 +985,56 @@ export class DataLoaderManager implements AppModule {
       tasks.push({ name: 'news', task: () => runGuarded('news', () => this.loadNews()) });
     }
 
-    // Happy variant only loads news data -- skip all geopolitical/financial/military data
-    if (SITE_VARIANT !== 'happy') {
-      if (shouldLoadAny(['markets', 'heatmap', 'commodities', 'crypto', 'energy-complex', 'crypto-heatmap', 'defi-tokens', 'ai-tokens', 'other-tokens'])) {
-        tasks.push({ name: 'markets', task: () => runGuarded('markets', () => this.loadMarkets()) });
-      }
-      if (hasPremiumAccess() && shouldLoad('stock-analysis')) {
-        tasks.push({ name: 'stockAnalysis', task: () => runGuarded('stockAnalysis', () => this.loadStockAnalysis()) });
-      }
-      if (hasPremiumAccess() && shouldLoad('stock-backtest')) {
-        tasks.push({ name: 'stockBacktest', task: () => runGuarded('stockBacktest', () => this.loadStockBacktest()) });
-      }
-      // The daily market brief is loaded by the post-hydration pass below
-      // (search for `loadDailyMarketBrief()`), which calls it directly.
-      // loadDailyMarketBrief already self-guards on the shared inFlight set, so
-      // an earlier hydration task that re-locked the same key here always
-      // returned immediately — a guaranteed no-op. Removed (#6770); the direct
-      // post-pass call is the single source of truth.
-      if (shouldLoad('polymarket')) {
-        tasks.push({ name: 'predictions', task: () => runGuarded('predictions', () => this.loadPredictions()) });
-      }
-      if (shouldLoad('forecast')) {
-        tasks.push({ name: 'forecasts', task: () => runGuarded('forecasts', () => this.loadForecasts()) });
-        tasks.push({ name: 'simulation-outcome', task: () => runGuarded('simulation-outcome', () => this.loadSimulationOutcome()) });
-      }
-      if (SITE_VARIANT === 'full') tasks.push({ name: 'pizzint', task: () => runGuarded('pizzint', () => this.loadPizzInt()) });
-      if (shouldLoad('economic')) {
-        tasks.push({ name: 'fred', task: () => runGuarded('fred', () => this.loadFredData()) });
-        tasks.push({ name: 'spending', task: () => runGuarded('spending', () => this.loadGovernmentSpending()) });
-        tasks.push({ name: 'bis', task: () => runGuarded('bis', () => this.loadBisData()) });
-        tasks.push({ name: 'bls', task: () => runGuarded('bls', () => this.loadBlsData()) });
-      }
-      if (hasPremiumAccess() && shouldLoad('global-procurement')) {
-        tasks.push({ name: 'global-tenders', task: () => runGuarded('global-tenders', () => this.loadGlobalTenders()) });
-      }
-      if (shouldLoad('energy-complex')) {
-        tasks.push({ name: 'oil', task: () => runGuarded('oil', () => this.loadOilAnalytics()) });
-      }
-
-      // Trade policy + supply-chain data (FULL, FINANCE, COMMODITY, ENERGY variants use supply-chain surface)
-      if (SITE_VARIANT === 'full' || SITE_VARIANT === 'finance' || SITE_VARIANT === 'commodity' || SITE_VARIANT === 'energy') {
-        if (shouldLoad('trade-policy')) {
-          tasks.push({ name: 'tradePolicy', task: () => runGuarded('tradePolicy', () => this.loadTradePolicy()) });
-        }
-        if (shouldLoad('supply-chain')) {
-          tasks.push({ name: 'supplyChain', task: () => runGuarded('supplyChain', () => this.loadSupplyChain()) });
-        }
-        if (shouldLoad('china-corridors')) {
-          tasks.push({ name: 'chinaCorridors', task: () => runGuarded('chinaCorridors', () => this.loadChinaCorridors({ skipIfPopulated: true })) });
-        }
-        if (shouldLoad('china-activity-nowcast')) {
-          tasks.push({ name: 'chinaActivityNowcast', task: () => runGuarded('chinaActivityNowcast', () => this.loadChinaActivityNowcast({ skipIfPopulated: true })) });
-        }
-      }
+    if (shouldLoadAny(['markets', 'heatmap', 'commodities', 'crypto', 'energy-complex', 'crypto-heatmap', 'defi-tokens', 'ai-tokens', 'other-tokens'])) {
+      tasks.push({ name: 'markets', task: () => runGuarded('markets', () => this.loadMarkets()) });
+    }
+    if (hasPremiumAccess() && shouldLoad('stock-analysis')) {
+      tasks.push({ name: 'stockAnalysis', task: () => runGuarded('stockAnalysis', () => this.loadStockAnalysis()) });
+    }
+    if (hasPremiumAccess() && shouldLoad('stock-backtest')) {
+      tasks.push({ name: 'stockBacktest', task: () => runGuarded('stockBacktest', () => this.loadStockBacktest()) });
+    }
+    // The daily market brief is loaded by the post-hydration pass below
+    // (search for `loadDailyMarketBrief()`), which calls it directly.
+    // loadDailyMarketBrief already self-guards on the shared inFlight set, so
+    // an earlier hydration task that re-locked the same key here always
+    // returned immediately — a guaranteed no-op. Removed (#6770); the direct
+    // post-pass call is the single source of truth.
+    if (shouldLoad('polymarket')) {
+      tasks.push({ name: 'predictions', task: () => runGuarded('predictions', () => this.loadPredictions()) });
+    }
+    if (shouldLoad('forecast')) {
+      tasks.push({ name: 'forecasts', task: () => runGuarded('forecasts', () => this.loadForecasts()) });
+      tasks.push({ name: 'simulation-outcome', task: () => runGuarded('simulation-outcome', () => this.loadSimulationOutcome()) });
+    }
+    if (SITE_VARIANT === 'full') tasks.push({ name: 'pizzint', task: () => runGuarded('pizzint', () => this.loadPizzInt()) });
+    if (shouldLoad('economic')) {
+      tasks.push({ name: 'fred', task: () => runGuarded('fred', () => this.loadFredData()) });
+      tasks.push({ name: 'spending', task: () => runGuarded('spending', () => this.loadGovernmentSpending()) });
+      tasks.push({ name: 'bis', task: () => runGuarded('bis', () => this.loadBisData()) });
+      tasks.push({ name: 'bls', task: () => runGuarded('bls', () => this.loadBlsData()) });
+    }
+    if (hasPremiumAccess() && shouldLoad('global-procurement')) {
+      tasks.push({ name: 'global-tenders', task: () => runGuarded('global-tenders', () => this.loadGlobalTenders()) });
+    }
+    if (shouldLoad('energy-complex')) {
+      tasks.push({ name: 'oil', task: () => runGuarded('oil', () => this.loadOilAnalytics()) });
     }
 
-    // Progress charts data (happy variant only)
-    if (SITE_VARIANT === 'happy') {
-      if (shouldLoad('progress')) {
-        tasks.push({
-          name: 'progress',
-          task: () => runGuarded('progress', () => this.loadProgressData()),
-        });
+    // Trade policy + supply-chain data (FULL variant uses supply-chain surface)
+    if (SITE_VARIANT === 'full') {
+      if (shouldLoad('trade-policy')) {
+        tasks.push({ name: 'tradePolicy', task: () => runGuarded('tradePolicy', () => this.loadTradePolicy()) });
       }
-      if (shouldLoad('species')) {
-        tasks.push({
-          name: 'species',
-          task: () => runGuarded('species', () => this.loadSpeciesData()),
-        });
+      if (shouldLoad('supply-chain')) {
+        tasks.push({ name: 'supplyChain', task: () => runGuarded('supplyChain', () => this.loadSupplyChain()) });
       }
-      tasks.push({
-        name: 'happinessMap',
-        task: () => runGuarded('happinessMap', async () => {
-          const data = await fetchHappinessScores();
-          this.ctx.map?.setHappinessScores(data);
-        }),
-      });
-      tasks.push({
-        name: 'renewableMap',
-        task: () => runGuarded('renewableMap', async () => {
-          const installations = await fetchRenewableInstallations();
-          this.ctx.map?.setRenewableInstallations(installations);
-        }),
-      });
-    }
-
-    // Renewable panel is shared by happy and energy variants.
-    if (shouldLoad('renewable')) {
-      tasks.push({
-        name: 'renewable',
-        task: () => runGuarded('renewable', () => this.loadRenewableData()),
-      });
+      if (shouldLoad('china-corridors')) {
+        tasks.push({ name: 'chinaCorridors', task: () => runGuarded('chinaCorridors', () => this.loadChinaCorridors({ skipIfPopulated: true })) });
+      }
+      if (shouldLoad('china-activity-nowcast')) {
+        tasks.push({ name: 'chinaActivityNowcast', task: () => runGuarded('chinaActivityNowcast', () => this.loadChinaActivityNowcast({ skipIfPopulated: true })) });
+      }
     }
 
     if (shouldLoad('giving')) {
@@ -1138,21 +1083,21 @@ export class DataLoaderManager implements AppModule {
     if (shouldLoad('social-velocity')) tasks.push({ name: 'socialVelocity', task: () => runGuarded('socialVelocity', () => this.loadSocialVelocity()) });
     if (hasPremiumAccess() && shouldLoad('wsb-ticker-scanner')) tasks.push({ name: 'wsbTickers', task: () => runGuarded('wsbTickers', () => this.loadWsbTickers()) });
     if (shouldLoad('economic')) tasks.push({ name: 'economicStress', task: () => runGuarded('economicStress', () => this.loadEconomicStress()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.weather) tasks.push({ name: 'weather', task: () => runGuarded('weather', () => this.loadWeatherAlerts()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.canadaRoads) tasks.push({ name: 'canadaRoads', task: () => runGuarded('canadaRoads', () => this.loadCanadaRoads()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.pipelines) tasks.push({ name: 'pipelineRegistries', task: () => runGuarded('pipelineRegistries', () => this.loadPipelineRegistries()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.storageFacilities) tasks.push({ name: 'storageFacilities', task: () => runGuarded('storageFacilities', () => this.loadStorageFacilities()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.canadaAlerts) tasks.push({ name: 'canadaAlerts', task: () => runGuarded('canadaAlerts', () => this.loadCanadaAlerts()) });
-    if (SITE_VARIANT !== 'happy' && !isDesktopRuntime() && this.ctx.mapLayers.ais) tasks.push({ name: 'ais', task: () => runGuarded('ais', () => this.loadAisSignals()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.cables) tasks.push({ name: 'cables', task: () => runGuarded('cables', () => this.loadCableActivity()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.cables) tasks.push({ name: 'cableHealth', task: () => runGuarded('cableHealth', () => this.loadCableHealth()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.flights) tasks.push({ name: 'flights', task: () => runGuarded('flights', () => this.loadFlightDelays()) });
-    if (SITE_VARIANT !== 'happy' && CYBER_LAYER_ENABLED && this.ctx.mapLayers.cyberThreats) tasks.push({ name: 'cyberThreats', task: () => runGuarded('cyberThreats', () => this.loadCyberThreats()) });
-    if (IRAN_ATTACKS_ENABLED && SITE_VARIANT !== 'happy' && !isDesktopRuntime() && (this.ctx.mapLayers.iranAttacks || shouldLoadAny(['cii', 'strategic-risk', 'strategic-posture']))) tasks.push({ name: 'iranAttacks', task: () => runGuarded('iranAttacks', () => this.loadIranEvents()) });
-    if (SITE_VARIANT !== 'happy' && (this.ctx.mapLayers.techEvents || SITE_VARIANT === 'tech')) tasks.push({ name: 'techEvents', task: () => runGuarded('techEvents', () => this.loadTechEvents()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.satellites && this.ctx.map?.isGlobeMode?.()) tasks.push({ name: 'satellites', task: () => runGuarded('satellites', () => this.loadSatellites()) });
-    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.webcams) tasks.push({ name: 'webcams', task: () => runGuarded('webcams', () => this.loadWebcams()) });
-    if (SITE_VARIANT !== 'happy' && (shouldLoad('sanctions-pressure') || this.ctx.mapLayers.sanctions)) {
+    if (this.ctx.mapLayers.weather) tasks.push({ name: 'weather', task: () => runGuarded('weather', () => this.loadWeatherAlerts()) });
+    if (this.ctx.mapLayers.canadaRoads) tasks.push({ name: 'canadaRoads', task: () => runGuarded('canadaRoads', () => this.loadCanadaRoads()) });
+    if (this.ctx.mapLayers.pipelines) tasks.push({ name: 'pipelineRegistries', task: () => runGuarded('pipelineRegistries', () => this.loadPipelineRegistries()) });
+    if (this.ctx.mapLayers.storageFacilities) tasks.push({ name: 'storageFacilities', task: () => runGuarded('storageFacilities', () => this.loadStorageFacilities()) });
+    if (this.ctx.mapLayers.canadaAlerts) tasks.push({ name: 'canadaAlerts', task: () => runGuarded('canadaAlerts', () => this.loadCanadaAlerts()) });
+    if (!isDesktopRuntime() && this.ctx.mapLayers.ais) tasks.push({ name: 'ais', task: () => runGuarded('ais', () => this.loadAisSignals()) });
+    if (this.ctx.mapLayers.cables) tasks.push({ name: 'cables', task: () => runGuarded('cables', () => this.loadCableActivity()) });
+    if (this.ctx.mapLayers.cables) tasks.push({ name: 'cableHealth', task: () => runGuarded('cableHealth', () => this.loadCableHealth()) });
+    if (this.ctx.mapLayers.flights) tasks.push({ name: 'flights', task: () => runGuarded('flights', () => this.loadFlightDelays()) });
+    if (CYBER_LAYER_ENABLED && this.ctx.mapLayers.cyberThreats) tasks.push({ name: 'cyberThreats', task: () => runGuarded('cyberThreats', () => this.loadCyberThreats()) });
+    if (IRAN_ATTACKS_ENABLED && !isDesktopRuntime() && (this.ctx.mapLayers.iranAttacks || shouldLoadAny(['cii', 'strategic-risk', 'strategic-posture']))) tasks.push({ name: 'iranAttacks', task: () => runGuarded('iranAttacks', () => this.loadIranEvents()) });
+    if (this.ctx.mapLayers.techEvents) tasks.push({ name: 'techEvents', task: () => runGuarded('techEvents', () => this.loadTechEvents()) });
+    if (this.ctx.mapLayers.satellites && this.ctx.map?.isGlobeMode?.()) tasks.push({ name: 'satellites', task: () => runGuarded('satellites', () => this.loadSatellites()) });
+    if (this.ctx.mapLayers.webcams) tasks.push({ name: 'webcams', task: () => runGuarded('webcams', () => this.loadWebcams()) });
+    if ((shouldLoad('sanctions-pressure') || this.ctx.mapLayers.sanctions)) {
       tasks.push({ name: 'sanctions', task: () => runGuarded('sanctions', () => this.loadSanctionsPressure()) });
     }
     if (this.ctx.mapLayers.resilienceScore) {
@@ -1163,7 +1108,7 @@ export class DataLoaderManager implements AppModule {
         this.ctx.map?.setLayerReady('resilienceScore', false);
       }
     }
-    if (SITE_VARIANT !== 'happy' && (shouldLoad('radiation-watch') || this.ctx.mapLayers.radiationWatch)) {
+    if ((shouldLoad('radiation-watch') || this.ctx.mapLayers.radiationWatch)) {
       // Lock under the map-layer key ('radiationWatch') so a hydration load and
       // a loadDataForLayer('radiationWatch') toggle one-flight each other
       // (loadRadiationWatch has no internal guard). `name` stays 'radiation' for
@@ -1171,19 +1116,19 @@ export class DataLoaderManager implements AppModule {
       tasks.push({ name: 'radiation', task: () => runGuarded('radiationWatch', () => this.loadRadiationWatch()) });
     }
 
-    // tech-readiness is only seeded on full + tech variants (api/bootstrap.js +
-    // scripts/seed-wb-indicators.mjs); on commodity/finance/energy the 5s fetch
-    // at services/economic/index.ts:694 just times out. shouldLoad() alone is
+    // tech-readiness is only seeded on the full variant (api/bootstrap.js +
+    // scripts/seed-wb-indicators.mjs); elsewhere the 5s fetch at
+    // services/economic/index.ts:694 just times out. shouldLoad() alone is
     // not enough — loadAllData(true) on boot (App.ts:1226) bypasses the viewport
     // check via forceAll. Gate on variant defaults so this only fires where the
     // seed actually exists.
     if (isPanelInVariantDefaults('tech-readiness') && shouldLoad('tech-readiness')) {
       tasks.push({ name: 'techReadiness', task: () => runGuarded('techReadiness', () => (this.ctx.panels['tech-readiness'] as TechReadinessPanel)?.refresh()) });
     }
-    if (SITE_VARIANT !== 'happy' && shouldLoad('thermal-escalation')) {
+    if (shouldLoad('thermal-escalation')) {
       tasks.push({ name: 'thermalEscalation', task: () => runGuarded('thermalEscalation', () => this.loadThermalEscalations()) });
     }
-    if (SITE_VARIANT !== 'happy' && shouldLoad('cross-source-signals')) {
+    if (shouldLoad('cross-source-signals')) {
       tasks.push({ name: 'crossSourceSignals', task: () => runGuarded('crossSourceSignals', () => this.loadCrossSourceSignals()) });
     }
 
@@ -1265,12 +1210,6 @@ export class DataLoaderManager implements AppModule {
           console.log('[loadDataForLayer] Loading techEvents...');
           await this.loadTechEvents();
           console.log('[loadDataForLayer] techEvents loaded');
-          break;
-        case 'positiveEvents':
-          await this.loadPositiveEvents();
-          break;
-        case 'kindness':
-          this.loadKindnessData();
           break;
         case 'iranAttacks':
           await this.loadIranEvents();
@@ -2095,10 +2034,6 @@ export class DataLoaderManager implements AppModule {
 
   async loadNews(): Promise<void> {
     const generation = this.beginNewsLoad();
-    // Reset happy variant accumulator for fresh pipeline run
-    if (SITE_VARIANT === 'happy') {
-      this.ctx.happyAllItems = [];
-    }
 
     // Fire digest fetch early, but do not let a slow digest stall the category
     // first paint. Fast digests still take the optimized digest-backed path.
@@ -2118,8 +2053,7 @@ export class DataLoaderManager implements AppModule {
     // post-toggle set for a load that used the pre-toggle one.
     const disabledAtLoadStart = new Set(this.ctx.disabledSources);
 
-    const maxCategoryConcurrency = SITE_VARIANT === 'tech' ? 4 : 5;
-    const categoryConcurrency = Math.max(1, Math.min(maxCategoryConcurrency, categories.length));
+    const categoryConcurrency = Math.max(1, Math.min(5, categories.length));
     const categoryServedStale = new Map<string, boolean>();
     let intelServedStale = false;
     const newsPass = await runNewsLoadPass(
@@ -2171,14 +2105,6 @@ export class DataLoaderManager implements AppModule {
     const collectedNews: NewsItem[] = [];
     for (const { key } of categories) {
       const items = categoryItemsByKey.get(key) ?? [];
-      // Tag items with content categories for happy variant
-      if (SITE_VARIANT === 'happy') {
-        for (const item of items) {
-          item.happyCategory = classifyNewsItem(item.source, item.title);
-        }
-        // Accumulate curated items for the positive news pipeline
-        this.ctx.happyAllItems = this.ctx.happyAllItems.concat(items);
-      }
       collectedNews.push(...items);
     }
 
@@ -2277,15 +2203,6 @@ export class DataLoaderManager implements AppModule {
       if (isPanelInVariantDefaults('threat-timeline')) {
         this.callPanel('threat-timeline', 'refresh', []);
       }
-    }
-
-    // Happy variant: run multi-stage positive news pipeline + map layers
-    if (SITE_VARIANT === 'happy') {
-      await this.loadHappySupplementaryAndRender();
-      await Promise.allSettled([
-        this.ctx.mapLayers.positiveEvents ? this.loadPositiveEvents() : Promise.resolve(),
-        this.ctx.mapLayers.kindness ? Promise.resolve(this.loadKindnessData()) : Promise.resolve(),
-      ]);
     }
   }
 
@@ -2866,11 +2783,6 @@ export class DataLoaderManager implements AppModule {
           sectorContext,
           earningsContext,
           frameworkAppend: getActiveFrameworkForPanel('daily-market-brief')?.systemPromptAppend,
-          newsCategories: SITE_VARIANT === 'commodity'
-            ? ['commodity-news', 'gold-silver', 'mining-news', 'energy', 'critical-minerals']
-            : SITE_VARIANT === 'energy'
-              ? ['live-news', 'energy', 'supply-chain']
-              : undefined,
         }),
         60_000,
         'daily-brief-total-build',
@@ -3223,8 +3135,8 @@ export class DataLoaderManager implements AppModule {
 
   async loadTechEvents(): Promise<void> {
     console.log('[loadTechEvents] Called. SITE_VARIANT:', SITE_VARIANT, 'techEvents layer:', this.ctx.mapLayers.techEvents);
-    if (SITE_VARIANT !== 'tech' && !this.ctx.mapLayers.techEvents) {
-      console.log('[loadTechEvents] Skipping - not tech variant and layer disabled');
+    if (!this.ctx.mapLayers.techEvents) {
+      console.log('[loadTechEvents] Skipping - layer disabled');
       return;
     }
 
@@ -4788,170 +4700,6 @@ export class DataLoaderManager implements AppModule {
     }
     if (isOutagesConfigured() === false) {
       dataFreshness.setEnabled('outages', false);
-    }
-  }
-
-  // Bumped to v2 alongside src/services/rss.ts CACHE_PREFIX (`feed:` →
-  // `feed:v2:`). Pre-v2 entries here serialize NewsItem WITHOUT the new
-  // `pubDateMissing` flag — on hydrate they get `undefined`, which
-  // `effectivePubDateMs` treats as `false`, so items that previously had
-  // synthesized `Date.now()` stamps would fraudulently claim freshness
-  // for the 24h gate window. Pre-v2 entries are left to TTL out (no
-  // explicit invalidation needed).
-  private static readonly HAPPY_ITEMS_CACHE_KEY = 'happy-all-items:v2';
-
-  async hydrateHappyPanelsFromCache(): Promise<void> {
-    try {
-      type CachedItem = Omit<NewsItem, 'pubDate'> & { pubDate?: number };
-      const entry = await getPersistentCache<CachedItem[]>(DataLoaderManager.HAPPY_ITEMS_CACHE_KEY);
-      if (!entry || !entry.data || entry.data.length === 0) return;
-      if (Date.now() - entry.updatedAt > 24 * 60 * 60 * 1000) return;
-
-      const items: NewsItem[] = entry.data.map(item => ({
-        ...item,
-        pubDate: new Date(displayPubDateMs(item)),
-      }));
-
-      const scienceSources = ['GNN Science', 'ScienceDaily', 'Nature News', 'Live Science', 'New Scientist', 'Singularity Hub', 'Human Progress', 'Greater Good (Berkeley)'];
-      this.callPanel('breakthroughs', 'setItems',
-        items.filter(item => scienceSources.includes(item.source) || item.happyCategory === 'science-health')
-      );
-      this.callPanel('spotlight', 'setHeroStory',
-        items.filter(item => item.happyCategory === 'humanity-kindness')
-          .sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a))[0]
-      );
-      this.callPanel('digest', 'setStories',
-        [...items].sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a)).slice(0, 5)
-      );
-      this.callPanel('positive-feed', 'renderPositiveNews', items);
-    } catch (err) {
-      console.warn('[App] Happy panel cache hydration failed:', err);
-    }
-  }
-
-  private async loadHappySupplementaryAndRender(): Promise<void> {
-    const curated = [...this.ctx.happyAllItems];
-    this.callPanel('positive-feed', 'renderPositiveNews', curated);
-
-    let supplementary: NewsItem[] = [];
-    try {
-      const gdeltTopics = await fetchAllPositiveTopicIntelligence();
-      const gdeltItems: NewsItem[] = gdeltTopics.flatMap(topic =>
-        topic.articles.map(article => ({
-          source: 'GDELT',
-          title: article.title,
-          link: article.url,
-          pubDate: article.date ? new Date(article.date) : new Date(),
-          isAlert: false,
-          imageUrl: article.image || undefined,
-          happyCategory: classifyNewsItem('GDELT', article.title),
-        }))
-      );
-
-      supplementary = await filterBySentiment(gdeltItems);
-    } catch (err) {
-      console.warn('[App] Happy supplementary pipeline failed, using curated only:', err);
-    }
-
-    if (supplementary.length > 0) {
-      const merged = [...curated, ...supplementary];
-      merged.sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a));
-      this.callPanel('positive-feed', 'renderPositiveNews', merged);
-    }
-
-    const scienceSources = ['GNN Science', 'ScienceDaily', 'Nature News', 'Live Science', 'New Scientist', 'Singularity Hub', 'Human Progress', 'Greater Good (Berkeley)'];
-    const scienceItems = this.ctx.happyAllItems.filter(item =>
-      scienceSources.includes(item.source) || item.happyCategory === 'science-health'
-    );
-    this.callPanel('breakthroughs', 'setItems', scienceItems);
-
-    const heroItem = this.ctx.happyAllItems
-      .filter(item => item.happyCategory === 'humanity-kindness')
-      .sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a))[0];
-    this.callPanel('spotlight', 'setHeroStory', heroItem);
-
-    const digestItems = [...this.ctx.happyAllItems]
-      .sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a))
-      .slice(0, 5);
-    this.callPanel('digest', 'setStories', digestItems);
-
-    setPersistentCache(
-      DataLoaderManager.HAPPY_ITEMS_CACHE_KEY,
-      this.ctx.happyAllItems.map(item => ({
-        ...item,
-        pubDate: displayPubDateMs(item),
-      }))
-    ).catch(() => {});
-  }
-
-  private async loadPositiveEvents(): Promise<void> {
-    const hydrated = getHydratedData('positiveGeoEvents') as { events?: Array<{ latitude: number; longitude: number; name: string; category: string; count: number; timestamp: number }> } | undefined;
-    let gdeltEvents: PositiveGeoEvent[];
-    if (hydrated?.events?.length) {
-      gdeltEvents = hydrated.events.map(e => ({
-        lat: e.latitude, lon: e.longitude, name: e.name,
-        category: (e.category || 'humanity-kindness') as HappyContentCategory,
-        count: e.count, timestamp: e.timestamp,
-      }));
-    } else {
-      gdeltEvents = await fetchPositiveGeoEvents();
-    }
-    const rssEvents = geocodePositiveNewsItems(
-      this.ctx.happyAllItems.map(item => ({
-        title: item.title,
-        category: item.happyCategory,
-      }))
-    );
-    const seen = new Set<string>();
-    const merged = [...gdeltEvents, ...rssEvents].filter(e => {
-      if (seen.has(e.name)) return false;
-      seen.add(e.name);
-      return true;
-    });
-    this.ctx.map?.setPositiveEvents(merged);
-  }
-
-  private loadKindnessData(): void {
-    const kindnessItems = fetchKindnessData(
-      this.ctx.happyAllItems.map(item => ({
-        title: item.title,
-        happyCategory: item.happyCategory,
-      }))
-    );
-    this.ctx.map?.setKindnessData(kindnessItems);
-  }
-
-  private async loadProgressData(): Promise<void> {
-    const result = await fetchProgressData();
-    this.callPanel('progress', 'setData', result);
-  }
-
-  private async loadSpeciesData(): Promise<void> {
-    const species = await fetchConservationWins();
-    this.callPanel('species', 'setData', species);
-    this.ctx.map?.setSpeciesRecoveryZones(species);
-    if (SITE_VARIANT === 'happy' && species.length > 0) {
-      checkMilestones({
-        speciesRecoveries: species.map(s => ({ name: s.commonName, status: s.recoveryStatus })),
-        newSpeciesCount: species.length,
-      });
-    }
-  }
-
-  private async loadRenewableData(): Promise<void> {
-    const { fetchRenewableEnergyData, fetchEnergyCapacity } = await import('@/services/renewable-energy-data');
-    const result = await fetchRenewableEnergyData();
-    this.callPanel('renewable', 'setData', result);
-    if (SITE_VARIANT === 'happy' && result.state === 'live' && result.data?.globalPercentage) {
-      checkMilestones({
-        renewablePercent: result.data.globalPercentage,
-      });
-    }
-    try {
-      const capacity = await fetchEnergyCapacity();
-      this.callPanel('renewable', 'setCapacityData', capacity);
-    } catch {
-      // EIA failure does not break the existing World Bank gauge
     }
   }
 

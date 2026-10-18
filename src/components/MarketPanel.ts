@@ -4,7 +4,6 @@ import type { MarketData, CryptoData, TokenData } from '@/types';
 import { formatPrice, formatChange, getChangeClass, getHeatmapClass } from '@/utils';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { miniSparkline } from '@/utils/sparkline';
-import { SITE_VARIANT } from '@/config';
 import { createWatchlistButton } from './watchlist-modal';
 import {
   renderChinaCorporateDisclosureSignals,
@@ -600,20 +599,6 @@ interface HyperliquidFlowView {
   unavailable: boolean;
 }
 
-// CCYUSD=X (e.g. EURUSD): USD is quote, rate = USD/FC → XAU_FC = XAU_USD / rate
-// USDCCY=X (e.g. USDJPY, USDCHF): USD is base, rate = FC/USD → XAU_FC = XAU_USD * rate
-const XAU_CURRENCY_CONFIG: Array<{ symbol: string; label: string; flag: string; multiply: boolean }> = [
-  { symbol: 'EURUSD=X',  label: 'EUR', flag: '🇪🇺', multiply: false },
-  { symbol: 'GBPUSD=X',  label: 'GBP', flag: '🇬🇧', multiply: false },
-  { symbol: 'USDJPY=X',  label: 'JPY', flag: '🇯🇵', multiply: true  },
-  { symbol: 'USDCNY=X',  label: 'CNY', flag: '🇨🇳', multiply: true  },
-  { symbol: 'USDINR=X',  label: 'INR', flag: '🇮🇳', multiply: true  },
-  { symbol: 'AUDUSD=X',  label: 'AUD', flag: '🇦🇺', multiply: false },
-  { symbol: 'USDCHF=X',  label: 'CHF', flag: '🇨🇭', multiply: true  },
-  { symbol: 'USDCAD=X',  label: 'CAD', flag: '🇨🇦', multiply: true  },
-  { symbol: 'USDTRY=X',  label: 'TRY', flag: '🇹🇷', multiply: true  },
-];
-
 export class CommoditiesPanel extends Panel {
   private _tab: CommoditiesTab = 'commodities';
   private _commodityData: Array<{ display: string; price: number | null; change: number | null; sparkline?: number[]; symbol?: string }> = [];
@@ -652,12 +637,7 @@ export class CommoditiesPanel extends Panel {
     const next = tab as CommoditiesTab;
     const available = next === 'commodities'
       || (next === 'physical' && this._physicalPremiums.length > 0)
-      || (next === 'fx' && this._fxRates.length > 0)
-      || (
-        next === 'xau'
-        && SITE_VARIANT === 'commodity'
-        && this._commodityData.some((entry) => entry.symbol === 'GC=F' && entry.price !== null)
-      );
+      || (next === 'fx' && this._fxRates.length > 0);
     if (!available) {
       return { ok: false, status: 'denied', effectiveTab: this._tab, reason: 'tab_unavailable' };
     }
@@ -708,14 +688,13 @@ export class CommoditiesPanel extends Panel {
     this._render();
   }
 
-  private _buildTabBar(hasPhysical: boolean, hasFx: boolean, hasXau: boolean): string {
+  private _buildTabBar(hasPhysical: boolean, hasFx: boolean): string {
     const firstTabLabel = t('components.commodities.commodities');
     const tabs: string[] = [
       `<button class="panel-tab${this._tab === 'commodities' ? ' active' : ''}" data-tab="commodities" style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));padding:3px 10px">${firstTabLabel}</button>`,
     ];
     if (hasPhysical) tabs.push(`<button class="panel-tab${this._tab === 'physical' ? ' active' : ''}" data-tab="physical" style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));padding:3px 10px">${t('components.commodities.physicalPremiums')}</button>`);
     if (hasFx) tabs.push(`<button class="panel-tab${this._tab === 'fx' ? ' active' : ''}" data-tab="fx" style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));padding:3px 10px">EUR FX</button>`);
-    if (hasXau) tabs.push(`<button class="panel-tab${this._tab === 'xau' ? ' active' : ''}" data-tab="xau" style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));padding:3px 10px">XAU/FX</button>`);
     return tabs.length > 1 ? `<div style="display:flex;gap:4px;margin-bottom:8px">${tabs.join('')}</div>` : '';
   }
 
@@ -811,44 +790,11 @@ export class CommoditiesPanel extends Panel {
       && reading.provenance?.fxAsOf === Date.parse(this._physicalPremiumFxAsOf);
   }
 
-  private _renderXau(): string {
-    const gcf = this._commodityData.find(d => d.symbol === 'GC=F' && d.price !== null);
-    if (!gcf?.price) return `<div style="padding:8px;color:var(--text-dim);font-size:calc(12px * var(--wm-panel-effective-scale, 1))">Gold price unavailable</div>`;
-
-    const goldUsd = gcf.price;
-    const fxMap = new Map(this._commodityData.filter(d => d.symbol?.endsWith('=X')).map(d => [d.symbol!, d]));
-
-    const rows = XAU_CURRENCY_CONFIG.map(cfg => {
-      const fx = fxMap.get(cfg.symbol);
-      if (!fx?.price || !Number.isFinite(fx.price)) return null;
-      const xauPrice = cfg.multiply ? goldUsd * fx.price : goldUsd / fx.price;
-      if (!Number.isFinite(xauPrice) || xauPrice <= 0) return null;
-      const formatted = Math.round(xauPrice).toLocaleString();
-      return `<div class="commodity-item">
-        <div class="commodity-name">${escapeHtml(cfg.flag)} XAU/${escapeHtml(cfg.label)}</div>
-        <div class="commodity-price" style="font-size:calc(11px * var(--wm-panel-effective-scale, 1))">${escapeHtml(formatted)}</div>
-      </div>`;
-    }).filter(Boolean);
-
-    if (rows.length === 0) {
-      const placeholders = XAU_CURRENCY_CONFIG.map(cfg =>
-        `<div class="commodity-item">
-          <div class="commodity-name">${escapeHtml(cfg.flag)} XAU/${escapeHtml(cfg.label)}</div>
-          <div class="commodity-price" style="font-size:calc(11px * var(--wm-panel-effective-scale, 1))">--</div>
-        </div>`
-      ).join('');
-      return `<div class="commodities-grid">${placeholders}</div><div style="margin-top:6px;font-size:calc(9px * var(--wm-panel-effective-scale, 1));color:var(--text-dim)">FX rates unavailable</div>`;
-    }
-    return `<div class="commodities-grid">${rows.join('')}</div><div style="margin-top:6px;font-size:calc(9px * var(--wm-panel-effective-scale, 1));color:var(--text-dim)">Computed from GC=F + Yahoo FX</div>`;
-  }
-
   private _render(): void {
     const hasPhysical = this._physicalPremiums.length > 0;
     const hasFx = this._fxRates.length > 0;
-    const hasXau = SITE_VARIANT === 'commodity' && this._commodityData.some(d => d.symbol === 'GC=F' && d.price !== null);
-    if (this._tab === 'xau' && !hasXau) this._tab = 'commodities';
     if (this._tab === 'physical' && !hasPhysical) this._tab = 'commodities';
-    const tabBar = this._buildTabBar(hasPhysical, hasFx, hasXau);
+    const tabBar = this._buildTabBar(hasPhysical, hasFx);
 
     if (this._tab === 'physical' && hasPhysical) {
       this.setSafeContent(unsafeRawHtml(tabBar + this._renderPhysicalPremiums(), 'legacy Panel.setContent() migration'));
@@ -872,11 +818,6 @@ export class CommoditiesPanel extends Panel {
         </div>`;
       }).join('');
       this.setSafeContent(unsafeRawHtml(tabBar + `<div class="commodities-grid">${items}</div><div style="margin-top:6px;font-size:calc(9px * var(--wm-panel-effective-scale, 1));color:var(--text-dim)">Source: ECB</div>`, 'legacy Panel.setContent() migration'));
-      return;
-    }
-
-    if (this._tab === 'xau' && hasXau) {
-      this.setSafeContent(unsafeRawHtml(tabBar + this._renderXau(), 'legacy Panel.setContent() migration'));
       return;
     }
 

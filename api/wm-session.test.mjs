@@ -347,7 +347,7 @@ test('Google Translate proxy origin can mint an anonymous session (#6411)', asyn
 });
 
 test('Trailing-dot FQDN first-party origin can mint a session (#6411)', async () => {
-  const origin = 'https://tech.worldmonitor.app.';
+  const origin = 'https://nuclear.worldmonitor.app.';
   const resp = await handler(makeReq('POST', { origin }));
   assert.equal(resp.status, 200);
   assert.equal(resp.headers.get('access-control-allow-origin'), origin);

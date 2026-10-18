@@ -21,17 +21,12 @@ const PLATFORM_PATTERNS = {
 // redirect to the releases page rather than a silent success.
 //
 // This set is the in-app switcher's variants (src/config/variant.ts) plus the
-// `world` alias for `full`. tests/desktop-one-binary-model.test.mjs fails if the
+// `world` alias for `full`. tests/download-handler.test.mjs fails if the
 // two drift apart.
 export const SUPPORTED_VARIANTS = new Set([
   'full',
   'world',
-  'tech',
-  'finance',
-  'commodity',
-  'energy',
   'nuclear',
-  'happy',
 ]);
 
 const DESKTOP_ASSET_IDENTIFIER = 'worldmonitor';

@@ -29,8 +29,8 @@ const CLIENT_FEEDS_PATH = resolve(__dirname, '../src/config/feeds.ts');
 const SERVER_FEEDS_PATH = resolve(__dirname, '../server/worldmonitor/news/v1/_feeds.ts');
 
 // Map client const names to the variant string used by the server.
-// The runtime selector in src/config/feeds.ts:927-937 routes
-// SITE_VARIANT === 'X' → X_FEEDS for each X in this list.
+// The runtime selector in src/config/feeds.ts (`export const FEEDS`) routes
+// SITE_VARIANT === 'nuclear' → NUCLEAR_FEEDS and everything else → FULL_FEEDS.
 //
 // `knownGapsClientOnly` is a documented allowlist of category keys
 // that exist client-side but have no server bucket today. Listed
@@ -38,22 +38,10 @@ const SERVER_FEEDS_PATH = resolve(__dirname, '../server/worldmonitor/news/v1/_fe
 // as deferred follow-ups (todos/257 item 9), not silent drift. Any
 // client key NOT in this allowlist must have a server match.
 const VARIANTS: Array<{ clientConst: string; serverKey: string; knownGapsClientOnly: string[] }> = [
-  {
-    clientConst: 'TECH_FEEDS',
-    serverKey: 'tech',
-    knownGapsClientOnly: [
-      // No tech-variant server buckets for these. Either add them
-      // server-side with curated RSS sources, or drop the panels
-      // client-side. Tracked in todos/257 item 9.
-      'podcasts',
-      'thinktanks',
-    ],
-  },
-  { clientConst: 'FINANCE_FEEDS', serverKey: 'finance', knownGapsClientOnly: [] },
-  { clientConst: 'COMMODITY_FEEDS', serverKey: 'commodity', knownGapsClientOnly: [] },
-  // FULL_FEEDS / HAPPY_FEEDS / ENERGY_FEEDS aren't asserted yet —
-  // those variants don't have a fully-aligned server bucket map at the
-  // time this test was written. Add them as the server catches up.
+  { clientConst: 'FULL_FEEDS', serverKey: 'full', knownGapsClientOnly: [] },
+  // NUCLEAR_FEEDS is not asserted yet — server/worldmonitor/news/v1/_feeds.ts
+  // has no `nuclear` bucket map, so the nuclear hub resolves its headlines
+  // client-side. Add it here as soon as the server grows a nuclear block.
 ];
 
 // Strip line + block comments so natural-language words in JSDoc/inline
@@ -229,15 +217,10 @@ describe('news panel ↔ feed coverage (panel-layout createNewsPanel ⇔ feeds.t
   ]);
 
   // Every client-side variant feed map plus on-demand categories.
-  // CANONICAL_FEEDS is their union; nq-news lives only in ON_DEMAND_FEEDS.
+  // CANONICAL_FEEDS is their union (mergeCanonicalFeeds in feeds.ts).
   const ALL_FEED_CONSTS = [
     'FULL_FEEDS',
     'NUCLEAR_FEEDS',
-    'TECH_FEEDS',
-    'FINANCE_FEEDS',
-    'COMMODITY_FEEDS',
-    'ENERGY_FEEDS',
-    'HAPPY_FEEDS',
     'ON_DEMAND_FEEDS',
   ];
 
@@ -252,7 +235,9 @@ describe('news panel ↔ feed coverage (panel-layout createNewsPanel ⇔ feeds.t
     const canonicalKeys = new Set<string>();
     for (const constName of ALL_FEED_CONSTS) {
       const body = extractConstObjectBody(clientSrc, constName);
-      assert.ok(body, `failed to locate const ${constName} in feeds.ts`);
+      // `null` means the const is gone; an empty string is a legitimately empty
+      // registry (ON_DEMAND_FEEDS is `{}` since the variant collapse).
+      assert.notEqual(body, null, `failed to locate const ${constName} in feeds.ts`);
       for (const k of extractCategoryKeys(body)) canonicalKeys.add(k);
     }
     assert.ok(canonicalKeys.size > 0, 'parsed 0 canonical feed keys');

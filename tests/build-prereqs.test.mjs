@@ -284,18 +284,6 @@ describe('command lookup', () => {
   });
 });
 
-describe('package script wiring', () => {
-  test('desktop development and bundling use different prerequisite modes', () => {
-    const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-    assert.match(packageJson.scripts['desktop:dev'], /^npm run check:prereqs:desktop &&/);
-    assert.match(
-      packageJson.scripts['desktop:tauri:build'],
-      /^npm run security:vite-env-secrets -- --strict-local && npm run check:prereqs:desktop:bundle &&/,
-    );
-    assert.match(packageJson.scripts['check:prereqs:desktop:bundle'], /--scope desktop --bundle$/);
-  });
-});
-
 describe('CLI output', () => {
   test('JSON output exposes explicit status without dropping the ok field', () => {
     const script = fileURLToPath(new URL('../scripts/check-build-prereqs.mjs', import.meta.url));

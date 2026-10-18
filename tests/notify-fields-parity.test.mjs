@@ -165,13 +165,13 @@ const VECTORS = {
   isFirstPartyNotificationHost: [
     ['worldmonitor.app'],
     ['www.worldmonitor.app'],
-    ['tech.worldmonitor.app'],
+    ['nuclear.worldmonitor.app'],
     ['evilworldmonitor.app'],
     ['worldmonitor.app.evil.test'],
   ],
   sanitizeUserNotificationLinkUrl: [
     ['https://worldmonitor.app/world/story'],
-    ['https://tech.worldmonitor.app/'],
+    ['https://nuclear.worldmonitor.app/'],
     ['https://example.com/wm-verify-account'],
     ['javascript:alert(1)'],
     [''],

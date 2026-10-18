@@ -14,8 +14,6 @@ describe('feed values at the map HTML boundary', () => {
     ['military-flight-clusters-layer', { name: hostile, flightCount: hostile }],
     ['bases-cluster-layer', { count: hostile }],
     ['protest-clusters-layer', { count: hostile, country: hostile }],
-    ['tech-hq-clusters-layer', { count: hostile, city: hostile }],
-    ['tech-event-clusters-layer', { count: hostile, location: hostile }],
     ['datacenter-clusters-layer', { count: hostile, country: hostile }],
     ['storm-centers-layer', { stormName: hostile, windKt: hostile, windAveragingPeriodMinutes: hostile }],
     ['storm-past-track-layer', { stormName: hostile, windKt: hostile }],

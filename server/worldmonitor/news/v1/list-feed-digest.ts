@@ -92,7 +92,7 @@ import { classifyEphemeralLiveCoverage } from '../../../../shared/ephemeral-live
 import { deriveCoreStoryPhase } from '../../../../shared/story-phase.js';
 import { buildTickerDictionary, extractTickers } from '../../../../shared/ticker-extract.js';
 import stocksData from '../../../../shared/stocks.json';
-import { buildClassifyCacheKey, isValidClassifyHit } from '../../intelligence/v1/_shared';
+import { buildClassifyCacheKey, isValidClassifyHit } from '../../../_shared/classify-cache';
 import { declaredSourceTier, getSourceTier } from '../../../_shared/source-tiers';
 import {
   getSourcePropagandaRisk,
@@ -1436,7 +1436,7 @@ async function enrichWithAiCache(items: ParsedItem[]): Promise<void> {
   );
   if (candidates.length === 0) return;
 
-  // Use the canonical buildClassifyCacheKey from intelligence/v1/_shared
+  // Use the canonical buildClassifyCacheKey from server/_shared/classify-cache
   // so the cache prefix (currently classify:sebuf:v6:) lives in exactly
   // one place — bumping it again only requires touching _shared.ts and
   // the relay's independent .cjs helper. See U4 of the plan.

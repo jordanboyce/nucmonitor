@@ -13,34 +13,20 @@ import {
   type MapVariant,
   type RendererKind,
 } from '@/config/map-layer-definitions';
-import { TIER1_COUNTRIES } from '@/services/country-instability';
 import { throwIfWebMcpAborted } from '@/services/webmcp';
-import { CURATED_COUNTRIES } from '@/config/countries';
 import { getCountryMapFocus } from '@/app/country-map-focus';
-import { INTEL_HOTSPOTS, CONFLICT_ZONES } from '@/config/geo';
-import type { NewsItem, MapLayers, MilitaryBase } from '@/types';
+import type { NewsItem, MapLayers } from '@/types';
 import { UNDERSEA_CABLES, NUCLEAR_FACILITIES } from '@/config/geo-map';
 import { PIPELINES } from '@/config/pipelines';
 import { AI_DATA_CENTERS } from '@/config/ai-datacenters';
 import { GAMMA_IRRADIATORS } from '@/config/irradiators';
-import { TECH_COMPANIES } from '@/config/tech-companies';
-import { AI_RESEARCH_LABS } from '@/config/ai-research-labs';
-import { STARTUP_ECOSYSTEMS } from '@/config/startup-ecosystems';
-import { TECH_HQS, ACCELERATORS } from '@/config/tech-geo';
-import { STOCK_EXCHANGES, FINANCIAL_CENTERS, CENTRAL_BANKS, COMMODITY_HUBS } from '@/config/finance-geo';
 
 export interface SearchSelectionDispatcherBindings {
   ctx: AppContext;
   getVariant(): string;
   hasPremiumAccess(): boolean;
-  openCountryBriefByCode(
-    code: string,
-    country: string,
-    options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-  ): boolean | Promise<boolean>;
   enablePanel(panelId: string, options?: { trackDetailedAnalytics?: boolean }): boolean;
   trackSearchResultSelected(type: string, options?: { includeAttribution?: boolean }): void;
-  trackCountrySelected(code: string, name: string, source: string): void;
   runWithAgentAnalyticsSuppressed<T>(callback: () => T): T;
   suppressNextAgentPanelView(panelId: string): void;
   resolveExecutableNewsPanel(
@@ -194,28 +180,6 @@ export class SearchSelectionDispatcher {
           return true;
         }, 300, epoch);
       }
-      case 'hotspot': {
-        return this.schedule((commitMatch) => {
-          const hotspot = this.resolveScheduledResultData<typeof INTEL_HOTSPOTS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!hotspot) return false;
-          ctx.map?.setView('global');
-          ctx.map?.triggerHotspotClick(hotspot.id);
-        }, 300, epoch);
-      }
-      case 'conflict': {
-        return this.schedule((commitMatch) => {
-          const conflict = this.resolveScheduledResultData<typeof CONFLICT_ZONES[0]>(
-            result,
-            commitMatch,
-          );
-          if (!conflict) return false;
-          ctx.map?.setView('global');
-          ctx.map?.triggerConflictClick(conflict.id);
-        }, 300, epoch);
-      }
       case 'market':
         return epoch === undefined
           ? this.scrollToPanel('markets', trackDetailedAnalytics)
@@ -225,23 +189,6 @@ export class SearchSelectionDispatcher {
             epoch,
             options.signal,
           );
-      case 'prediction':
-        return epoch === undefined
-          ? this.scrollToPanel('polymarket', trackDetailedAnalytics)
-          : this.scrollToPanelWhenReady(
-            'polymarket',
-            trackDetailedAnalytics,
-            epoch,
-            options.signal,
-          );
-      case 'base': {
-        return this.schedule((commitMatch) => {
-          const base = this.resolveScheduledResultData<MilitaryBase>(result, commitMatch);
-          if (!base) return false;
-          ctx.map?.setView('global');
-          ctx.map?.triggerBaseClick(base.id);
-        }, 300, epoch);
-      }
       case 'pipeline': {
         return this.schedule((commitMatch) => {
           const pipeline = this.resolveScheduledResultData<typeof PIPELINES[0]>(
@@ -311,154 +258,6 @@ export class SearchSelectionDispatcher {
       case 'outage':
         ctx.map?.setView('global');
         break;
-      case 'techcompany': {
-        return this.schedule((commitMatch) => {
-          const company = this.resolveScheduledResultData<typeof TECH_COMPANIES[0]>(
-            result,
-            commitMatch,
-          );
-          if (!company) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('techHQs');
-          ctx.mapLayers.techHQs = true;
-          ctx.map?.setCenter(company.lat, company.lon, 4);
-        }, 300, epoch);
-      }
-      case 'ailab': {
-        return this.schedule((commitMatch) => {
-          const lab = this.resolveScheduledResultData<typeof AI_RESEARCH_LABS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!lab) return false;
-          ctx.map?.setView('global');
-          ctx.map?.setCenter(lab.lat, lab.lon, 4);
-        }, 300, epoch);
-      }
-      case 'startup': {
-        return this.schedule((commitMatch) => {
-          const ecosystem = this.resolveScheduledResultData<typeof STARTUP_ECOSYSTEMS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!ecosystem) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('startupHubs');
-          ctx.mapLayers.startupHubs = true;
-          ctx.map?.setCenter(ecosystem.lat, ecosystem.lon, 4);
-        }, 300, epoch);
-      }
-      case 'techevent': {
-        return this.schedule((commitMatch) => {
-          const event = this.resolveScheduledResultData<{ lat: number; lng: number }>(
-            result,
-            commitMatch,
-          );
-          if (!event) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('techEvents');
-          ctx.mapLayers.techEvents = true;
-          ctx.map?.setCenter(event.lat, event.lng, 5);
-        }, 300, epoch);
-      }
-      case 'techhq': {
-        return this.schedule((commitMatch) => {
-          const hq = this.resolveScheduledResultData<typeof TECH_HQS[0]>(result, commitMatch);
-          if (!hq) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('techHQs');
-          ctx.mapLayers.techHQs = true;
-          ctx.map?.setCenter(hq.lat, hq.lon, 4);
-        }, 300, epoch);
-      }
-      case 'accelerator': {
-        return this.schedule((commitMatch) => {
-          const accelerator = this.resolveScheduledResultData<typeof ACCELERATORS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!accelerator) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('accelerators');
-          ctx.mapLayers.accelerators = true;
-          ctx.map?.setCenter(accelerator.lat, accelerator.lon, 4);
-        }, 300, epoch);
-      }
-      case 'exchange': {
-        return this.schedule((commitMatch) => {
-          const exchange = this.resolveScheduledResultData<typeof STOCK_EXCHANGES[0]>(
-            result,
-            commitMatch,
-          );
-          if (!exchange) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('stockExchanges');
-          ctx.mapLayers.stockExchanges = true;
-          ctx.map?.setCenter(exchange.lat, exchange.lon, 4);
-        }, 300, epoch);
-      }
-      case 'financialcenter': {
-        return this.schedule((commitMatch) => {
-          const center = this.resolveScheduledResultData<typeof FINANCIAL_CENTERS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!center) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('financialCenters');
-          ctx.mapLayers.financialCenters = true;
-          ctx.map?.setCenter(center.lat, center.lon, 4);
-        }, 300, epoch);
-      }
-      case 'centralbank': {
-        return this.schedule((commitMatch) => {
-          const bank = this.resolveScheduledResultData<typeof CENTRAL_BANKS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!bank) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('centralBanks');
-          ctx.mapLayers.centralBanks = true;
-          ctx.map?.setCenter(bank.lat, bank.lon, 4);
-        }, 300, epoch);
-      }
-      case 'commodityhub': {
-        return this.schedule((commitMatch) => {
-          const hub = this.resolveScheduledResultData<typeof COMMODITY_HUBS[0]>(
-            result,
-            commitMatch,
-          );
-          if (!hub) return false;
-          ctx.map?.setView('global');
-          ctx.map?.enableLayer('commodityHubs');
-          ctx.mapLayers.commodityHubs = true;
-          ctx.map?.setCenter(hub.lat, hub.lon, 4);
-        }, 300, epoch);
-      }
-      case 'country': {
-        const { code, name } = result.data as { code: string; name: string };
-        if (trackDetailedAnalytics) this.bindings.trackCountrySelected(code, name, 'search');
-        return this.bindings.openCountryBriefByCode(code, name, {
-          trackDetailedAnalytics,
-          ...(options.signal ? { signal: options.signal } : {}),
-        });
-      }
-      case 'flight': {
-        return this.schedule((commitMatch) => {
-          const flight = this.resolveScheduledResultData<{
-            kind: string;
-            lat: number;
-            lon: number;
-            layer: keyof MapLayers;
-          }>(result, commitMatch);
-          if (!flight) return false;
-          const { lat, lon, layer } = flight;
-          ctx.map?.enableLayer(layer);
-          ctx.mapLayers[layer] = true;
-          ctx.map?.setCenter(lat, lon, 9);
-        }, 300, epoch);
-      }
     }
     return true;
   }
@@ -526,13 +325,11 @@ export class SearchSelectionDispatcher {
         const renderer: RendererKind = ctx.map?.isGlobeMode?.()
           ? 'globe'
           : (ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
-        const deckGL = ctx.map?.isDeckGLActive?.() ?? false;
         const current = ctx.mapLayers[layer];
         if (!isLayerCommandAllowed(layer, current, renderer, this.bindings.hasPremiumAccess())) {
           return false;
         }
-        let next = !current;
-        if (next && layer === 'resilienceScore' && !deckGL) next = false;
+        const next = !current;
         ctx.mapLayers[layer] = next;
         this.bindings.saveToStorage(STORAGE_KEYS.mapLayers, ctx.mapLayers);
         if (next) ctx.map?.enableLayer(layer);
@@ -540,22 +337,20 @@ export class SearchSelectionDispatcher {
         break;
       }
       case 'panel': {
-        const [panelId, subTab] = action.split('@');
+        const [panelId] = action.split('@');
         if (!panelId) return false;
         const config = ctx.panelSettings[panelId];
         if (config && !config.enabled) {
           if (!this.bindings.enablePanel(panelId, { trackDetailedAnalytics })) return false;
-          const scrolled = this.scrollToPanelWhenReady(
+          return this.scrollToPanelWhenReady(
             panelId,
             trackDetailedAnalytics,
             epoch,
             options.signal,
             options.cancelPanelWaitOnNextHumanSelection,
           );
-          if (!subTab) return scrolled;
-          return this.dispatchPanelTabAfterPresentation(scrolled, panelId, subTab, epoch);
         }
-        const scrolled = epoch === undefined
+        return epoch === undefined
           ? this.scrollToPanel(panelId, trackDetailedAnalytics)
           : this.scrollToPanelWhenReady(
             panelId,
@@ -563,8 +358,6 @@ export class SearchSelectionDispatcher {
             epoch,
             options.signal,
           );
-        if (!subTab) return scrolled;
-        return this.dispatchPanelTabAfterPresentation(scrolled, panelId, subTab, epoch);
       }
       case 'view':
         if (action === 'dark' || action === 'light') {
@@ -584,45 +377,11 @@ export class SearchSelectionDispatcher {
           ctx.unifiedSettings?.open();
         } else if (action === 'refresh') {
           window.location.reload();
-        } else if (action === 'resilience') {
-          const layer = 'resilienceScore' as keyof MapLayers;
-          if (!getAllowedLayerKeys(this.variant()).has(layer)) return false;
-          const current = ctx.mapLayers[layer];
-          const renderer: RendererKind = ctx.map?.isGlobeMode?.()
-            ? 'globe'
-            : (ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
-          const deckGL = ctx.map?.isDeckGLActive?.() ?? false;
-          if (!isLayerCommandAllowed(layer, current, renderer, this.bindings.hasPremiumAccess())) {
-            return false;
-          }
-          let next = !current;
-          if (next && !deckGL) next = false;
-          ctx.mapLayers[layer] = next;
-          this.bindings.saveToStorage(STORAGE_KEYS.mapLayers, ctx.mapLayers);
-          if (next) ctx.map?.enableLayer(layer);
-          else ctx.map?.setLayers(ctx.mapLayers);
-        } else if (action === 'route-explorer') {
-          void import('@/components/RouteExplorer/RouteExplorer').then((module) => {
-            const explorer = module.getRouteExplorer();
-            explorer.setMap(ctx.map);
-            explorer.open();
-          });
         }
         break;
       case 'time':
         ctx.map?.setTimeRange(action as TimeRange);
         break;
-      case 'country': {
-        const name = TIER1_COUNTRIES[action]
-          || CURATED_COUNTRIES[action]?.name
-          || new Intl.DisplayNames(['en'], { type: 'region' }).of(action)
-          || action;
-        if (trackDetailedAnalytics) this.bindings.trackCountrySelected(action, name, 'command');
-        return this.bindings.openCountryBriefByCode(action, name, {
-          trackDetailedAnalytics,
-          ...(options.signal ? { signal: options.signal } : {}),
-        });
-      }
       case 'country-map': {
         const focus = getCountryMapFocus(action);
         if (focus) {
@@ -684,25 +443,6 @@ export class SearchSelectionDispatcher {
   private cancelPendingHumanPanelWait(): void {
     this.activeHumanPanelWaitAbort?.abort();
     this.activeHumanPanelWaitAbort = null;
-  }
-
-  private dispatchPanelTabAfterPresentation(
-    presentation: boolean | Promise<boolean>,
-    panelId: string,
-    tab: string,
-    epoch?: number,
-  ): boolean | Promise<boolean> {
-    if (panelId !== 'consumer-prices') return presentation;
-    const dispatch = (): boolean => {
-      if (!this.isProgrammaticSelectionCurrent(epoch) || !this.findConnectedPanel(panelId)) {
-        return false;
-      }
-      window.dispatchEvent(new CustomEvent('wm-consumer-prices-open-tab', { detail: { tab } }));
-      return true;
-    };
-    return typeof presentation === 'boolean'
-      ? presentation && dispatch()
-      : presentation.then((presented) => presented && dispatch());
   }
 
   private findConnectedPanel(panelId: string): Element | null {

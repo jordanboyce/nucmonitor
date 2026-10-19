@@ -31,7 +31,7 @@ import {
   type EndpointRateLimitOptions,
 } from '../../server/_shared/rate-limit';
 import { readRequiredSeed } from '../../server/_shared/required-seed';
-import { drainResponseHeaders, markNoCacheResponse } from '../../server/_shared/response-headers';
+import { drainResponseHeaders } from '../../server/_shared/response-headers';
 import { BOOTSTRAP_CACHE_KEYS } from '../../shared/bootstrap-tier-keys.js';
 import {
   verifyEmbedGrant,
@@ -50,10 +50,8 @@ import {
   type EmbedMapFrameResponse,
 } from '../../shared/embed-map-frame';
 import type { EmbedLayerId } from '../../shared/embed-panels';
-import { listAcledEvents } from '../../server/worldmonitor/conflict/v1/list-acled-events';
 import { listEarthquakes } from '../../server/worldmonitor/seismology/v1/list-earthquakes';
 import { listNaturalEvents } from '../../server/worldmonitor/natural/v1/list-natural-events';
-import { listUnrestEvents } from '../../server/worldmonitor/unrest/v1/list-unrest-events';
 
 const WEATHER_CACHE_KEY = BOOTSTRAP_CACHE_KEYS.weatherAlerts;
 
@@ -69,36 +67,9 @@ function buildSources(req: Request): EmbedMapFrameSources {
   // window or page size here would hand a stolen credential the knobs this
   // endpoint exists to remove.
   return {
-    listConflicts: async () => {
-      // Isolate this source's fallback signal from the other parallel readers.
-      const conflictReq = new Request(req);
-      const response = await listAcledEvents(handlerContext(conflictReq), { start: 0, end: 0, pageSize: 0, cursor: '', country: '' });
-      if (drainResponseHeaders(conflictReq)?.['X-No-Cache']) {
-        markNoCacheResponse(req);
-        throw new Error('Conflict seed unavailable');
-      }
-      return response.events;
-    },
     listEarthquakes: async () =>
       (await listEarthquakes(ctx, { minMagnitude: 0, start: 0, end: 0, pageSize: 0, cursor: '' })).earthquakes,
     listNaturalEvents: async () => (await listNaturalEvents(ctx, { days: 30 })).events,
-    listProtests: async () =>
-      (await listUnrestEvents(ctx, {
-        country: '',
-        start: 0,
-        end: 0,
-        pageSize: 0,
-        cursor: '',
-        // The handler reads neither the bbox nor minSeverity; these are here
-        // only to satisfy the generated request type. Kept at their zero values
-        // so that if it ever starts reading them, the embed asks for no filter
-        // rather than silently inheriting one.
-        minSeverity: 'SEVERITY_LEVEL_UNSPECIFIED',
-        neLat: 0,
-        neLon: 0,
-        swLat: 0,
-        swLon: 0,
-      })).events,
     listWeatherAlerts: async () => {
       const cached = await readRequiredSeed(WEATHER_CACHE_KEY, value => {
         const data = value as { alerts?: unknown[] } | null;

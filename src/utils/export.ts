@@ -1,19 +1,10 @@
-import type { NewsItem, ClusteredEvent, MarketData, CyberThreat, Monitor } from '@/types';
-import type { PredictionMarket } from '@/services/prediction';
+import type { NewsItem, ClusteredEvent, MarketData, Monitor } from '@/types';
 import type { IntelligenceCache } from '@/app/app-context';
-import type { GpsJamData } from '@/services/gps-interference';
-import type { ConvergenceCard } from '@/services/correlation-engine';
-import { vesselTypeLabel } from '@/utils/vessel-type-label';
 import { t } from '@/services/i18n';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 import { showToast } from '@/utils/toast';
 import { buildDataReportDocument, printReportDocument, sanitizeExportData } from '@/utils/export-report';
 import { SUPPORTED_EXPORT_FORMATS, type DataExportFormat } from '@/services/gates/export-resolver';
-
-// Iran-events domain sunset (war ended 2026-07). Default OFF: omit the IRAN
-// EVENTS CSV block. Set VITE_ENABLE_IRAN_ATTACKS=true to restore. Guarded so
-// node:test never dereferences import.meta.env.
-const IRAN_ATTACKS_ENABLED = typeof window !== 'undefined' && import.meta.env.VITE_ENABLE_IRAN_ATTACKS === 'true';
 
 type ExportFormat = DataExportFormat;
 
@@ -29,11 +20,7 @@ export interface ExportData {
   newsClusters?: ClusteredEvent[];
   newsByCategory?: Record<string, NewsItem[]>;
   markets?: MarketData[];
-  predictions?: PredictionMarket[];
   intelligence?: IntelligenceCache;
-  cyberThreats?: CyberThreat[];
-  gpsJamming?: GpsJamData;
-  convergenceCards?: Omit<ConvergenceCard, 'assessment'>[];
   monitors?: Monitor[];
 }
 
@@ -92,26 +79,8 @@ export function exportToCSV(data: ExportData, filename = 'worldmonitor-export'):
     lines.push('');
   }
 
-  if (clean.predictions && clean.predictions.length > 0) {
-    lines.push('=== PREDICTIONS ===');
-    lines.push('Title,Yes Price,Volume');
-    clean.predictions.forEach(p => {
-      lines.push(csvRow([p.title, p.yesPrice, p.volume ?? '']));
-    });
-    lines.push('');
-  }
-
   const intel = clean.intelligence;
   if (intel) {
-    if (intel.protests?.events && intel.protests.events.length > 0) {
-      lines.push('=== PROTESTS ===');
-      lines.push('Title,Country,EventType,Severity,Time');
-      intel.protests.events.forEach(e => {
-        lines.push(csvRow([e.title, e.country, e.eventType, e.severity, e.time.toISOString()]));
-      });
-      lines.push('');
-    }
-
     if (intel.earthquakes && intel.earthquakes.length > 0) {
       lines.push('=== EARTHQUAKES ===');
       lines.push('Place,Magnitude,DepthKm,OccurredAt,URL');
@@ -130,58 +99,6 @@ export function exportToCSV(data: ExportData, filename = 'worldmonitor-export'):
       lines.push('');
     }
 
-    if (intel.flightDelays && intel.flightDelays.length > 0) {
-      lines.push('=== FLIGHT DELAYS ===');
-      lines.push('Airport,IATA,City,Country,DelayType,Severity,AvgDelayMin,Source');
-      intel.flightDelays.forEach(d => {
-        lines.push(csvRow([d.name, d.iata, d.city, d.country, d.delayType, d.severity, d.avgDelayMinutes, d.source]));
-      });
-      lines.push('');
-    }
-
-    if (intel.military?.flights && intel.military.flights.length > 0) {
-      lines.push('=== MILITARY FLIGHTS ===');
-      lines.push('Callsign,HexCode,AircraftType,Operator,Country,Lat,Lon');
-      intel.military.flights.forEach(f => {
-        lines.push(csvRow([f.callsign, f.hexCode, f.aircraftType, f.operator, f.operatorCountry, f.lat, f.lon]));
-      });
-      lines.push('');
-    }
-
-    if (intel.military?.vessels && intel.military.vessels.length > 0) {
-      lines.push('=== MILITARY VESSELS ===');
-      lines.push('Name,MMSI,Country,VesselType,Lat,Lon');
-      intel.military.vessels.forEach(v => {
-        lines.push(csvRow([v.name, v.mmsi, v.operatorCountry, vesselTypeLabel(v), v.lat, v.lon]));
-      });
-      lines.push('');
-    }
-
-    if (IRAN_ATTACKS_ENABLED && intel.iranEvents && intel.iranEvents.length > 0) {
-      lines.push('=== IRAN EVENTS ===');
-      lines.push('Title,Category,Location,Severity,Timestamp');
-      intel.iranEvents.forEach(e => {
-        lines.push(csvRow([e.title, e.category, e.locationName, e.severity, e.timestamp]));
-      });
-      lines.push('');
-    }
-
-    if (intel.orefAlerts) {
-      lines.push('=== OREF ALERTS ===');
-      lines.push('ActiveAlerts,History24h');
-      lines.push(csvRow([intel.orefAlerts.alertCount, intel.orefAlerts.historyCount24h]));
-      lines.push('');
-    }
-
-    if (intel.advisories && intel.advisories.length > 0) {
-      lines.push('=== SECURITY ADVISORIES ===');
-      lines.push('Title,Source,Level,Country,PubDate,Link');
-      intel.advisories.forEach(a => {
-        lines.push(csvRow([a.title, a.source, a.level ?? '', a.country ?? '', a.pubDate.toISOString(), a.link]));
-      });
-      lines.push('');
-    }
-
     if (intel.radiation?.observations && intel.radiation.observations.length > 0) {
       lines.push('=== RADIATION MONITORING ===');
       lines.push('Location,Country,Value,Unit,ObservedAt');
@@ -190,73 +107,6 @@ export function exportToCSV(data: ExportData, filename = 'worldmonitor-export'):
       });
       lines.push('');
     }
-
-    if (intel.imageryScenes && intel.imageryScenes.length > 0) {
-      lines.push('=== SATELLITE IMAGERY ===');
-      lines.push('ID,Satellite,DateTime,ResolutionM,Mode');
-      intel.imageryScenes.forEach(s => {
-        lines.push(csvRow([s.id, s.satellite, s.datetime, s.resolutionM, s.mode]));
-      });
-      lines.push('');
-    }
-
-    if (intel.sanctions) {
-      lines.push('=== SANCTIONS ===');
-      lines.push('# See JSON export for full sanctions data');
-      lines.push(`TotalCount,${intel.sanctions.totalCount}`);
-      lines.push(`SDNCount,${intel.sanctions.sdnCount}`);
-      lines.push(`SemaCount,${intel.sanctions.semaCount}`);
-      lines.push(`NewEntries,${intel.sanctions.newEntryCount}`);
-      lines.push('');
-    }
-
-    if (intel.thermalEscalation) {
-      lines.push('=== THERMAL ESCALATION ===');
-      lines.push('# See JSON export for full thermal data');
-      lines.push(`ClusterCount,${intel.thermalEscalation.summary.clusterCount}`);
-      lines.push(`ElevatedCount,${intel.thermalEscalation.summary.elevatedCount}`);
-      lines.push('');
-    }
-
-    if (intel.usniFleet) {
-      lines.push('=== USNI FLEET ===');
-      lines.push('# See JSON export for full fleet data');
-      lines.push(`Vessels,${intel.usniFleet.vessels?.length ?? 0}`);
-      lines.push('');
-    }
-
-    if (intel.aircraftPositions && intel.aircraftPositions.length > 0) {
-      lines.push('=== AIRCRAFT POSITIONS ===');
-      lines.push(`# ${intel.aircraftPositions.length} positions — see JSON for full data`);
-      lines.push('');
-    }
-  }
-
-  if (clean.cyberThreats && clean.cyberThreats.length > 0) {
-    lines.push('=== CYBER THREATS ===');
-    lines.push('Indicator,Type,Severity,Country,Source,FirstSeen');
-    clean.cyberThreats.forEach(c => {
-      lines.push(csvRow([c.indicator, c.indicatorType, String(c.severity), c.country ?? '', c.source, c.firstSeen ?? '']));
-    });
-    lines.push('');
-  }
-
-  if (clean.gpsJamming) {
-    lines.push('=== GPS JAMMING ===');
-    lines.push('FetchedAt,TotalHexes,HighCount,MediumCount');
-    const s = clean.gpsJamming.stats;
-    lines.push(csvRow([clean.gpsJamming.fetchedAt, s.totalHexes, s.highCount, s.mediumCount]));
-    lines.push('# Per-hex data available in JSON export');
-    lines.push('');
-  }
-
-  if (clean.convergenceCards && clean.convergenceCards.length > 0) {
-    lines.push('=== SIGNAL CONVERGENCE ===');
-    lines.push('Domain,Title,Score,Trend,Countries');
-    clean.convergenceCards.forEach(c => {
-      lines.push(csvRow([c.domain, c.title, c.score, c.trend, c.countries.join(';')]));
-    });
-    lines.push('');
   }
 
   if (clean.monitors && clean.monitors.length > 0) {

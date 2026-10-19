@@ -5,7 +5,6 @@
 //   the relay can render a context line without a second Redis lookup.
 //   Enforced by tests/notification-relay-payload-audit.test.mjs.
 import type { NewsItem } from '@/types';
-import type { OrefAlert } from '@/services/oref-alerts';
 import { getSourceTier } from '@/config/feeds';
 import { isDesktopRuntime, getRemoteApiBaseUrl } from '@/services/runtime';
 import { getClerkToken } from '@/services/clerk';
@@ -24,7 +23,7 @@ export interface BreakingAlert {
   link?: string;
   threatLevel: 'critical' | 'high';
   timestamp: Date;
-  origin: 'rss_alert' | 'keyword_spike' | 'hotspot_escalation' | 'military_surge' | 'oref_siren';
+  origin: 'rss_alert' | 'keyword_spike' | 'hotspot_escalation' | 'military_surge';
   importanceScore?: number;
   /**
    * ISO-3166 alpha-2 country attribution, when the producer knows it (OREF
@@ -308,37 +307,6 @@ export function checkBatchForBreakingAlerts(items: NewsItem[]): void {
   }
 
   if (best && !isGlobalCooldown(best.threatLevel)) dispatchAlert(best);
-}
-
-export function dispatchOrefBreakingAlert(alerts: OrefAlert[]): void {
-  const settings = getAlertSettings();
-  if (!settings.enabled || !alerts.length) return;
-
-  const title = alerts[0]?.title || 'Siren alert';
-  const allLocations = alerts.flatMap(a => a.data);
-  const shown = allLocations.slice(0, 3);
-  const overflow = allLocations.length - shown.length;
-  const locationSuffix = shown.length
-    ? ' — ' + shown.join(', ') + (overflow > 0 ? ` +${overflow} areas` : '')
-    : '';
-  const headline = title + locationSuffix;
-
-  const keyParts = alerts.map(a => a.id || `${a.cat}|${a.title}|${a.alertDate}`).sort();
-  const dedupeKey = 'oref:' + simpleHash(keyParts.join(','));
-
-  if (isDuplicate(dedupeKey)) return;
-
-  const source = 'OREF Pikud HaOref';
-  dispatchAlert({
-    id: dedupeKey,
-    headline,
-    source,
-    threatLevel: 'critical',
-    timestamp: new Date(),
-    origin: 'oref_siren',
-    countryCode: 'IL',
-    corroboration: assessCorroboration(evidenceFromItem({ source })),
-  });
 }
 
 export function initBreakingNewsAlerts(): void {

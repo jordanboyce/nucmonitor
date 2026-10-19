@@ -16,12 +16,11 @@ export interface CheckoutAttribution {
   panelKey?: string;
 }
 
+// Mission previews that can carry checkout attribution. The WorldMonitor
+// previews left with their domains in the NucMonitor trim; the nuclear hub
+// keeps the one surviving pairing so older stored attributions still parse.
 export const MISSION_PREVIEW_TARGETS = {
-  'crisis-desk': 'cii',
-  'supply-chain-risk': 'supply-chain',
-  'energy-security': 'pipeline-status',
-  'osint-newsroom': 'gdelt-intel',
-  'macro-market-watch': 'macro-signals',
+  'nuclear-hub': 'nuclear-reactor-status',
 } as const;
 
 export type MissionPreviewId = keyof typeof MISSION_PREVIEW_TARGETS;

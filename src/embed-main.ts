@@ -6,8 +6,6 @@ import { parseEmbedParams } from '@/embed/embed-url';
 import { waitForEmbeddingApiKey } from '@/embed/embed-credential';
 import { fetchEmbedEntitlement } from '@/embed/embed-fetch';
 import { mountEmbedMapPanel } from '@/embed/panels/map';
-import { mountEmbedChokepointStrip } from '@/embed/panels/chokepoint-strip';
-import { mountEmbedFearGreed } from '@/embed/panels/fear-greed';
 
 /**
  * Tell the partner's own console that the credential in their page HTML does
@@ -88,10 +86,6 @@ async function bootEmbed(): Promise<void> {
       // Mounts free-tier first and upgrades if `apiKeyPromise` resolves, so a
       // keyless embed never waits out the credential handshake.
       destroy = await mountEmbedMapPanel(root, params, apiKeyPromise);
-    } else if (params.panel === 'chokepoint-strip') {
-      await mountEmbedChokepointStrip(root, apiKey ?? '');
-    } else if (params.panel === 'fear-greed') {
-      await mountEmbedFearGreed(root, apiKey ?? '');
     }
 
     document.title = params.panel === 'map'

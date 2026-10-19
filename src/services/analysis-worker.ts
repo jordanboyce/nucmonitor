@@ -3,10 +3,8 @@
  * Provides typed async interface to the analysis Web Worker.
  */
 
-import type { NewsItem, ClusteredEvent, MarketData } from '@/types';
-import type { PredictionMarket } from '@/services/prediction';
-import type { CorrelationSignal } from './correlation';
-import { SOURCE_TIERS, SOURCE_TYPES, type SourceType } from '@/config/feeds';
+import type { NewsItem, ClusteredEvent } from '@/types';
+import { SOURCE_TIERS } from '@/config/feeds';
 
 // Import worker using Vite's worker syntax
 import AnalysisWorker from '@/workers/analysis.worker?worker';
@@ -23,13 +21,7 @@ interface ClusterResult {
   clusters: ClusteredEvent[];
 }
 
-interface CorrelationResult {
-  type: 'correlation-result';
-  id: string;
-  signals: CorrelationSignal[];
-}
-
-type WorkerResult = ClusterResult | CorrelationResult | { type: 'ready' };
+type WorkerResult = ClusterResult | { type: 'ready' };
 
 class AnalysisWorkerManager {
   private worker: Worker | null = null;
@@ -77,7 +69,7 @@ class AnalysisWorkerManager {
       // waitForReady's `await this.readyPromise` would await `null` and the
       // rejection would be orphaned into an unhandled promise rejection
       // (WORLDMONITOR-V2/V6). Instead latch `workerUnavailable`, resolve the
-      // ready gate, and let clusterNews/analyzeCorrelations degrade to an
+      // ready gate, and let clusterNews degrade to an
       // empty result. Mirrors ml-worker's graceful `resolve(false)` path.
       console.error('[AnalysisWorker] Failed to create worker:', error);
       this.workerUnavailable = true;
@@ -117,13 +109,6 @@ class AnalysisWorkerManager {
               })),
             }));
             pending.resolve(clusters);
-          } else if (data.type === 'correlation-result') {
-            // Deserialize dates
-            const signals = data.signals.map(signal => ({
-              ...signal,
-              timestamp: new Date(signal.timestamp),
-            }));
-            pending.resolve(signals);
           }
         }
       }
@@ -147,7 +132,7 @@ class AnalysisWorkerManager {
       }
 
       // The worker just errored after becoming ready. Terminate it and
-      // reset state so the next clusterNews/analyzeCorrelations call
+      // reset state so the next clusterNews call
       // re-initializes a fresh worker instead of posting into a dead one
       // and hanging until the request timeout on every subsequent refresh.
       this.cleanup();
@@ -189,7 +174,7 @@ class AnalysisWorkerManager {
   }
 
   private request<T>(
-    type: 'cluster' | 'correlation',
+    type: 'cluster',
     payload: Record<string, unknown>,
     timeoutMs: number,
     timeoutMessage: string
@@ -234,30 +219,6 @@ class AnalysisWorkerManager {
   }
 
   /**
-   * Run correlation analysis using Web Worker.
-   * Detects signal patterns across news, markets, and predictions.
-   */
-  async analyzeCorrelations(
-    clusters: ClusteredEvent[],
-    predictions: PredictionMarket[],
-    markets: MarketData[]
-  ): Promise<CorrelationSignal[]> {
-    await this.waitForReady();
-    if (!this.isReady) return [];
-    return this.request<CorrelationSignal[]>(
-      'correlation',
-      {
-        clusters,
-        predictions,
-        markets,
-        sourceTypes: SOURCE_TYPES as Record<string, SourceType>,
-      },
-      10000,
-      'Correlation analysis request timed out'
-    );
-  }
-
-  /**
    * Reset worker state (useful for testing)
    */
   reset(): void {
@@ -296,6 +257,3 @@ class AnalysisWorkerManager {
 
 // Singleton instance
 export const analysisWorker = new AnalysisWorkerManager();
-
-// Export types for consumers
-export type { CorrelationSignal };

@@ -6,7 +6,6 @@ import {
   CONFLICT_ZONES,
   PIPELINES,
 } from '@/config';
-import { preloadMilitaryBases } from '@/services/military-base-config';
 
 type AssetIndexEntry = { id: string; name: string; lat: number; lon: number };
 
@@ -43,9 +42,6 @@ export function preloadRelatedAssetTables(titles: string[]): Promise<boolean> {
   }
   if (types.includes('nuclear') && nuclearFacilities === null) {
     preloadTasks.push(preloadNuclearFacilities());
-  }
-  if (types.includes('base') && baseIndex === null) {
-    preloadTasks.push(preloadBaseIndex());
   }
 
   if (preloadTasks.length === 0) {
@@ -119,31 +115,6 @@ function ensureNuclearFacilities(): void {
   void preloadNuclearFacilities().catch(() => {});
 }
 
-// MILITARY_BASES (~48KB via bases-expanded) is lazy-loaded for the same reason as
-// the tables above — related-assets is reached eagerly via country-intel, so a
-// static import would pin bases-expanded to the entry chunk (#4478).
-let baseIndex: AssetIndexEntry[] | null = null;
-let baseIndexPromise: Promise<void> | null = null;
-
-export function preloadBaseIndex(): Promise<void> {
-  if (baseIndex !== null) return Promise.resolve();
-  if (!baseIndexPromise) {
-    baseIndexPromise = preloadMilitaryBases()
-      .then((bases) => {
-        baseIndex = bases.map(base => ({ id: base.id, name: base.name, lat: base.lat, lon: base.lon }));
-      })
-      .catch((error) => {
-        baseIndexPromise = null;
-        throw error;
-      });
-  }
-  return baseIndexPromise;
-}
-
-function ensureBaseIndex(): void {
-  void preloadBaseIndex().catch(() => {});
-}
-
 // Warm all lazy infrastructure tables together so a country brief re-render picks
 // up datacenters, cables, and nuclear facilities in a single refresh pass.
 export function preloadInfrastructureTables(): Promise<void> {
@@ -151,7 +122,6 @@ export function preloadInfrastructureTables(): Promise<void> {
     preloadDatacenterIndex().catch(() => {}),
     preloadCableIndex().catch(() => {}),
     preloadNuclearFacilities().catch(() => {}),
-    preloadBaseIndex().catch(() => {}),
   ]).then(() => {});
 }
 
@@ -162,7 +132,6 @@ const ASSET_KEYWORDS: Record<AssetType, string[]> = {
   pipeline: ['pipeline', 'oil pipeline', 'gas pipeline', 'fuel pipeline', 'pipeline leak', 'pipeline spill'],
   cable: ['cable', 'undersea cable', 'subsea cable', 'fiber cable', 'fiber optic', 'internet cable'],
   datacenter: ['datacenter', 'data center', 'server farm', 'colocation', 'hyperscale'],
-  base: ['military base', 'airbase', 'naval base', 'base', 'garrison'],
   nuclear: ['nuclear', 'reactor', 'uranium', 'enrichment', 'nuclear plant'],
 };
 
@@ -243,9 +212,6 @@ function buildAssetIndex(type: AssetType): Array<{ id: string; name: string; lat
     case 'datacenter':
       ensureDatacenterIndex();
       return datacenterIndex ?? [];
-    case 'base':
-      ensureBaseIndex();
-      return baseIndex ?? [];
     case 'nuclear':
       ensureNuclearFacilities();
       return (nuclearFacilities ?? []).map(site => ({ id: site.id, name: site.name, lat: site.lat, lon: site.lon }));

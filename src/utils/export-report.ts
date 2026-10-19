@@ -22,7 +22,6 @@
 
 import type { ClusteredEvent, NewsItem } from '@/types';
 import type { ExportData } from './export';
-import { vesselTypeLabel } from './vessel-type-label';
 
 // Row caps keep a print job from ballooning to hundreds of pages. JSON export
 // remains the full-fidelity path; the report says so in its footer.
@@ -150,13 +149,6 @@ function intelligenceSections(intel: ExportData['intelligence']): string {
   if (!intel) return '';
   const parts: string[] = [];
 
-  const protests = intel.protests?.events ?? [];
-  parts.push(section('Protests', ['Title', 'Country', 'Type', 'Severity', 'Time'],
-    protests.slice(0, MAX_GENERIC_ROWS).map((e) => [
-      textOrDash(e.title), textOrDash(e.country), textOrDash(e.eventType),
-      textOrDash(e.severity), textOrDash(isoOrEmpty(e.time)),
-    ])));
-
   const earthquakes = intel.earthquakes ?? [];
   parts.push(section('Earthquakes', ['Place', 'Magnitude', 'Depth (km)', 'Occurred'],
     earthquakes.slice(0, MAX_GENERIC_ROWS).map((e) => [
@@ -169,27 +161,6 @@ function intelligenceSections(intel: ExportData['intelligence']): string {
     outages.slice(0, MAX_GENERIC_ROWS).map((o) => [
       linkCell(o.title, o.link), textOrDash(o.country), textOrDash(o.severity),
       textOrDash(isoOrEmpty(o.pubDate)),
-    ])));
-
-  const advisories = intel.advisories ?? [];
-  parts.push(section('Security advisories', ['Title', 'Source', 'Level', 'Country', 'Published'],
-    advisories.slice(0, MAX_GENERIC_ROWS).map((a) => [
-      linkCell(a.title, a.link), textOrDash(a.source), textOrDash(a.level),
-      textOrDash(a.country), textOrDash(isoOrEmpty(a.pubDate)),
-    ])));
-
-  const flights = intel.military?.flights ?? [];
-  parts.push(section('Military flights', ['Callsign', 'Type', 'Operator', 'Country'],
-    flights.slice(0, MAX_GENERIC_ROWS).map((f) => [
-      textOrDash(f.callsign), textOrDash(f.aircraftType), textOrDash(f.operator),
-      textOrDash(f.operatorCountry),
-    ])));
-
-  const vessels = intel.military?.vessels ?? [];
-  parts.push(section('Military vessels', ['Name', 'MMSI', 'Type', 'Country'],
-    vessels.slice(0, MAX_GENERIC_ROWS).map((v) => [
-      textOrDash(v.name), textOrDash(v.mmsi), textOrDash(vesselTypeLabel(v)),
-      textOrDash(v.operatorCountry),
     ])));
 
   return parts.join('');
@@ -254,33 +225,12 @@ export function buildDataReportDocument(data: ExportData, options: DataReportOpt
       (clean.markets ?? []).slice(0, MAX_GENERIC_ROWS).map((m) => [
         textOrDash(m.symbol), textOrDash(m.name), textOrDash(m.price), textOrDash(m.change),
       ])),
-    section('Prediction markets', ['Market', 'Yes price', 'Volume'],
-      (clean.predictions ?? []).slice(0, MAX_GENERIC_ROWS).map((p) => [
-        textOrDash(p.title), textOrDash(p.yesPrice), textOrDash(p.volume),
-      ])),
     intelligenceSections(clean.intelligence),
-    section('Cyber threats', ['Indicator', 'Type', 'Severity', 'Country', 'Source'],
-      (clean.cyberThreats ?? []).slice(0, MAX_GENERIC_ROWS).map((c) => [
-        textOrDash(c.indicator), textOrDash(c.indicatorType), textOrDash(c.severity),
-        textOrDash(c.country), textOrDash(c.source),
-      ])),
-    section('Signal convergence', ['Domain', 'Title', 'Score', 'Trend', 'Countries'],
-      (clean.convergenceCards ?? []).slice(0, MAX_GENERIC_ROWS).map((c) => [
-        textOrDash(c.domain), textOrDash(c.title), textOrDash(c.score), textOrDash(c.trend),
-        textOrDash((c.countries ?? []).join(', ')),
-      ])),
     section('Monitors', ['Name', 'Keywords'],
       (clean.monitors ?? []).slice(0, MAX_GENERIC_ROWS).map((m) => [
         textOrDash(m.name), textOrDash((m.keywords ?? []).join(', ')),
       ])),
   ].filter(Boolean).join('');
-
-  const gps = clean.gpsJamming
-    ? `<p class="wm-meta">GPS jamming: ${escapeReportHtml(clean.gpsJamming.stats.totalHexes)} zones `
-      + `(${escapeReportHtml(clean.gpsJamming.stats.highCount)} high, `
-      + `${escapeReportHtml(clean.gpsJamming.stats.mediumCount)} medium) as of `
-      + `${escapeReportHtml(clean.gpsJamming.fetchedAt)}.</p>`
-    : '';
 
   const body = sections || '<p class="wm-empty">No dashboard data was available at export time.</p>';
 
@@ -289,7 +239,6 @@ export function buildDataReportDocument(data: ExportData, options: DataReportOpt
     + `<h1>WorldMonitor Data Report</h1>`
     + `<p class="wm-meta">Generated ${escapeReportHtml(generatedAt)}</p>`
     + (clean.meta?.note ? `<p class="wm-meta">${escapeReportHtml(clean.meta.note)}</p>` : '')
-    + gps
     + body
     + `<p class="wm-footer">Row counts are capped for print. Use the JSON export for full fidelity. `
     + `LLM-derived threat annotations are excluded from every export.</p>`

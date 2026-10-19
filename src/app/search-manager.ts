@@ -4,10 +4,9 @@ import {
   type SearchMatch,
   type SearchResult,
 } from '@/components/search-types';
-import type { NewsItem, MapLayers, MilitaryBase, MilitaryFlight } from '@/types';
+import type { NewsItem, MapLayers } from '@/types';
 import type { Command } from '@/config/commands';
 import { SearchModal } from '@/components/SearchModal';
-import type { CIIPanel } from '@/components/CIIPanel';
 import {
   SITE_VARIANT,
   ALL_PANELS,
@@ -25,23 +24,15 @@ import {
 } from '@/config/map-layer-definitions';
 import type { MapVariant, RendererKind } from '@/config/map-layer-definitions';
 import { LAYER_PRESETS, LAYER_KEY_MAP } from '@/config/commands';
-import { TIER1_COUNTRIES } from '@/services/country-instability';
-import { getCachedCountryScores } from '@/services/cached-risk-scores';
 import { getCountryBbox } from '@/services/country-geometry';
-import { INTEL_HOTSPOTS, CONFLICT_ZONES } from '@/config/geo';
-import { getCachedMilitaryBases, preloadMilitaryBases } from '@/services/military-base-config';
 import { UNDERSEA_CABLES, NUCLEAR_FACILITIES } from '@/config/geo-map';
 import { PIPELINES } from '@/config/pipelines';
 import { AI_DATA_CENTERS } from '@/config/ai-datacenters';
 import { GAMMA_IRRADIATORS } from '@/config/irradiators';
-import { COMMODITY_HUBS } from '@/config/finance-geo';
-import { trackSearchResultSelected, trackCountrySelected } from '@/services/analytics';
+import { trackSearchResultSelected } from '@/services/analytics';
 import { t } from '@/services/i18n';
 import { saveToStorage, setTheme } from '@/utils';
 import { withTimeout } from '@/utils/with-timeout';
-import { CountryIntelManager } from '@/app/country-intel';
-import type { PositionSample } from '@/services/aviation';
-import { fetchAircraftPositions } from '@/services/aviation';
 import { subscribeWidgetAccess } from '@/services/widget-store';
 import { getAuthState, subscribeAuthState } from '@/services/auth-state';
 import { hasPremiumAccess } from '@/services/panel-gating';
@@ -58,35 +49,11 @@ import type {
   DashboardSearchResponse,
   DashboardSearchScope,
 } from '@/services/webmcp';
-const FLIGHT_SEARCH_SOURCE_TTL_MS = 2 * 60 * 1000;
-
-interface FlightSearchItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  data: {
-    kind: 'adsb' | 'military';
-    lat: number;
-    lon: number;
-    layer: 'flights' | 'military';
-  };
-  expiresAt: number;
-}
-
 const LAYER_PRESET_PRIMARY_LAYERS: Record<string, (keyof MapLayers)[]> = {
-  military: ['bases', 'flights', 'military'],
-  finance: ['stockExchanges', 'financialCenters', 'centralBanks', 'commodityHubs', 'economic'],
-  infra: ['cables', 'pipelines', 'datacenters', 'spaceports', 'minerals'],
-  intel: ['conflicts', 'hotspots', 'protests', 'ucdpEvents', 'displacement'],
-  minimal: ['conflicts', 'hotspots'],
+  infra: ['cables', 'pipelines', 'datacenters'],
 };
 
 export interface SearchManagerCallbacks {
-  openCountryBriefByCode: (
-    code: string,
-    country: string,
-    options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-  ) => boolean | Promise<boolean>;
   /** Enables a currently-disabled panel (CMD+K "Add"). Returns false if blocked (unknown / free-tier cap). */
   enablePanel: (panelId: string, options?: { trackDetailedAnalytics?: boolean }) => boolean;
 }
@@ -94,107 +61,11 @@ export interface SearchManagerCallbacks {
 export class SearchManager implements AppModule {
   private static readonly SEARCH_INDEX_READY_TIMEOUT_MS = 2_000;
 
-  private static flightObservationTime(
-    value: unknown,
-    fallback: number,
-    now: number,
-  ): number {
-    const parsed = value instanceof Date
-      ? value.getTime()
-      : typeof value === 'number'
-        ? value
-        : typeof value === 'string'
-          ? Date.parse(value)
-          : Number.NaN;
-    const timestamp = Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-    // A bad upstream clock must not turn a live-position result into a
-    // capability with an arbitrarily long lifetime.
-    return Math.min(timestamp, now);
-  }
-
-  private static buildFlightSearchItems(
-    adsb: PositionSample[],
-    military: MilitaryFlight[],
-    adsbUpdatedAt: number,
-    now: number,
-  ): FlightSearchItem[] {
-    const safeAdsbUpdatedAt = SearchManager.flightObservationTime(adsbUpdatedAt, now, now);
-    return [
-      ...adsb.map((position) => {
-        const fl = Number.isFinite(position.altitudeFt)
-          ? Math.round(position.altitudeFt / 100)
-          : null;
-        const kts = Number.isFinite(position.groundSpeedKts)
-          ? Math.round(position.groundSpeedKts)
-          : null;
-        const observedAt = SearchManager.flightObservationTime(
-          position.observedAt,
-          safeAdsbUpdatedAt,
-          now,
-        );
-        return {
-          id: position.icao24,
-          title: (position.callsign || position.icao24).trim().toUpperCase(),
-          subtitle: position.onGround
-            ? t('modals.search.flightOnGround')
-            : fl !== null && kts !== null
-              ? t('modals.search.flightAirborne', { fl: String(fl), kts: String(kts) })
-              : fl !== null
-                ? `FL${fl}`
-                : t('modals.search.flightOnGround'),
-          data: {
-            kind: 'adsb' as const,
-            lat: position.lat,
-            lon: position.lon,
-            layer: 'flights' as const,
-          },
-          expiresAt: observedAt + FLIGHT_SEARCH_SOURCE_TTL_MS,
-        };
-      }),
-      ...military.map((flight) => {
-        const fl = Number.isFinite(flight.altitude)
-          ? Math.round(flight.altitude / 100)
-          : null;
-        // Military data is read from intelligenceCache when an independent
-        // ADS-B viewport callback fires. Never use that callback's timestamp as
-        // military freshness: doing so renewed a stalled military feed forever.
-        const observedAt = SearchManager.flightObservationTime(flight.lastSeen, 0, now);
-        return {
-          id: flight.hexCode,
-          title: (flight.callsign || flight.hexCode).trim().toUpperCase(),
-          subtitle: flight.onGround
-            ? t('modals.search.flightMilitaryOnGround', { type: flight.aircraftType })
-            : fl !== null
-              ? t('modals.search.flightMilitary', {
-                  type: flight.aircraftType,
-                  fl: String(fl),
-                })
-              : t('modals.search.flightMilitaryOnGround', { type: flight.aircraftType }),
-          data: {
-            kind: 'military' as const,
-            lat: flight.lat,
-            lon: flight.lon,
-            layer: 'military' as const,
-          },
-          expiresAt: observedAt + FLIGHT_SEARCH_SOURCE_TTL_MS,
-        };
-      }),
-    ].filter((item) => item.expiresAt > now);
-  }
-
   private ctx: AppContext;
   private callbacks: SearchManagerCallbacks;
   private readonly searchSelection: SearchSelectionDispatcher;
   private readonly webMcpSearch: WebMcpSearchController;
   private destroyed = false;
-  private flightSourceExpiresAt = 0;
-  private flightSearchItems: FlightSearchItem[] = [];
-  private latestAdsb: PositionSample[] = [];
-  private latestMilitary: MilitaryFlight[] = [];
-  private latestAdsbUpdatedAt = 0;
-  private liveFlightOverlay: Array<{ position: PositionSample; expiresAt: number }> = [];
-  private liveFlightLookupGeneration = 0;
-  private acceptLateBaseHydration = true;
   private searchIndexReady: Promise<void> = Promise.resolve();
 
   constructor(ctx: AppContext, callbacks: SearchManagerCallbacks) {
@@ -204,10 +75,8 @@ export class SearchManager implements AppModule {
       ctx,
       getVariant: () => SITE_VARIANT,
       hasPremiumAccess: () => hasPremiumAccess(getAuthState()),
-      openCountryBriefByCode: (...args) => this.callbacks.openCountryBriefByCode(...args),
       enablePanel: (...args) => this.callbacks.enablePanel(...args),
       trackSearchResultSelected,
-      trackCountrySelected,
       runWithAgentAnalyticsSuppressed,
       suppressNextAgentPanelView,
       resolveExecutableNewsPanel: (link) => this.resolveExecutableNewsPanel(link),
@@ -228,16 +97,6 @@ export class SearchManager implements AppModule {
       refreshIndex: () => this.updateSearchIndex({ updateVisibleMetrics: false }),
       getModal: () => this.ctx.searchModal,
       hasPremiumAccess: () => hasPremiumAccess(getAuthState()),
-      fetchLiveFlight: async (callsign, signal) => {
-        const generation = this.liveFlightLookupGeneration;
-        const completed = await SearchManager.waitWithTimeout(
-          this.fetchAndPublishLiveFlight(callsign, generation, signal),
-          SearchManager.SEARCH_INDEX_READY_TIMEOUT_MS,
-          'live-flight-search',
-        );
-        signal?.throwIfAborted();
-        if (!completed) this.liveFlightLookupGeneration += 1;
-      },
       cancelPendingSelection: () => this.searchSelection.cancelPendingProgrammaticSelection(),
       getAuthContext: () => {
         const auth = getAuthState();
@@ -255,18 +114,8 @@ export class SearchManager implements AppModule {
       subscribeEntitlement: onEntitlementChange,
       subscribeRuntimeConfig,
       subscribeWidgetAccess,
-      onPremiumAccessChanged: (premium, premiumRestored) => {
-        if (!premium) {
-          this.flightSearchItems = [];
-          this.flightSourceExpiresAt = 0;
-          this.liveFlightOverlay = [];
-          this.ctx.searchModal?.registerSource('flight', []);
-        } else if (premiumRestored) {
-          this.updateFlightSource(
-            this.latestAdsb,
-            this.latestMilitary,
-            this.latestAdsbUpdatedAt,
-          );
+      onPremiumAccessChanged: (_premium, premiumRestored) => {
+        if (premiumRestored) {
           this.ctx.searchModal?.refreshSearch();
         }
       },
@@ -290,42 +139,14 @@ export class SearchManager implements AppModule {
 
   destroy(): void {
     this.destroyed = true;
-    this.liveFlightLookupGeneration += 1;
-    this.acceptLateBaseHydration = false;
     this.ctx.searchModal?.cancelPendingWork();
     this.webMcpSearch.destroy();
     this.searchSelection.destroy();
-    this.flightSearchItems = [];
-    this.flightSourceExpiresAt = 0;
-    this.liveFlightOverlay = [];
-    this.latestAdsb = [];
-    this.latestMilitary = [];
-    this.latestAdsbUpdatedAt = 0;
   }
 
   private setupSearchModal(): void {
     const searchOptions = { placeholder: t('modals.search.placeholder') };
     this.ctx.searchModal = new SearchModal(this.ctx.container, searchOptions);
-
-    this.ctx.searchModal.registerSource('hotspot', INTEL_HOTSPOTS.map(h => ({
-      id: h.id,
-      title: h.name,
-      subtitle: h.subtext || 'Intelligence hotspot',
-      searchText: `${h.keywords?.join(' ') || ''} ${h.description || ''}`.trim(),
-      data: h,
-    })));
-
-    this.ctx.searchModal.registerSource('conflict', CONFLICT_ZONES.map(c => ({
-      id: c.id,
-      title: c.name,
-      subtitle: c.parties?.join(' ') || 'Conflict zone',
-      searchText: `${c.keywords?.join(' ') || ''} ${c.description || ''}`.trim(),
-      data: c,
-    })));
-
-    if (getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant).has('bases')) {
-      this.searchIndexReady = this.registerBaseSearchSource();
-    }
 
     this.ctx.searchModal.registerSource('pipeline', PIPELINES.map(p => ({
       id: p.id,
@@ -362,17 +183,6 @@ export class SearchManager implements AppModule {
       data: g,
     })));
 
-    if (getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant).has('commodityHubs')) {
-      this.ctx.searchModal.registerSource('commodityhub', COMMODITY_HUBS.map(h => ({
-        id: h.id,
-        title: h.name,
-        subtitle: `${h.type} • ${h.city}, ${h.country}${h.commodities ? ` • ${h.commodities.slice(0, 3).join(', ')}` : ''}`,
-        data: h,
-      })));
-    }
-
-    this.ctx.searchModal.registerSource('country', this.buildCountrySearchItems());
-
     this.syncPanelSearchIndex();
     // Filter CMD+K layer commands by (a) variant-allowed, (b) renderer-kind
     // compatibility (a deck-only layer can't run on the SVG fallback or the
@@ -403,110 +213,6 @@ export class SearchManager implements AppModule {
     this.ctx.searchModal.setOnHumanInteraction(() => this.cancelPendingProgrammaticSelection());
     this.ctx.searchModal.setOnSelect((result) => this.searchSelection.handleSearchResult(result));
     this.ctx.searchModal.setOnCommand((cmd) => this.searchSelection.handleCommand(cmd));
-    // Always wire flight search; check pro status reactively inside the callback
-    // so mid-session sign-ins get the feature without a page reload.
-    this.ctx.searchModal.setOnFlightSearch((callsign) => {
-      this.handleLiveFlightSearch(callsign);
-    });
-
-  }
-
-  private handleLiveFlightSearch(callsign: string): void {
-    if (!hasPremiumAccess(getAuthState())) return;
-    void this.fetchAndPublishLiveFlight(callsign)
-      .then(() => {
-        if (!this.destroyed) this.ctx.searchModal?.refreshSearch();
-      })
-      .catch(() => {
-        // Callsign lookup is optional enrichment. Keep the current viewport
-        // ADS-B and military index intact when that single request fails.
-      });
-  }
-
-  private static adsbIdentities(position: PositionSample): string[] {
-    return [position.icao24, position.callsign]
-      .map((value) => value.trim().toUpperCase())
-      .filter(Boolean);
-  }
-
-  private mergeLiveAdsb(
-    current: PositionSample[],
-    live: PositionSample[],
-  ): PositionSample[] {
-    const liveIdentities = new Set(live.flatMap(SearchManager.adsbIdentities));
-    return [
-      ...current.filter((position) => (
-        !SearchManager.adsbIdentities(position).some((id) => liveIdentities.has(id))
-      )),
-      ...live,
-    ];
-  }
-
-  private async fetchAndPublishLiveFlight(
-    callsign: string,
-    generation = this.liveFlightLookupGeneration,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    const positions = await fetchAircraftPositions({ callsign }, signal);
-    signal?.throwIfAborted();
-    if (this.destroyed || generation !== this.liveFlightLookupGeneration) return;
-    // Deduplicate by callsign: keep the most recently observed entry per callsign.
-    const seen = new Map<string, PositionSample>();
-    for (const p of positions) {
-      const key = (p.callsign || p.icao24).trim().toUpperCase();
-      const existing = seen.get(key);
-      if (!existing || p.observedAt > existing.observedAt) {
-        seen.set(key, p);
-      }
-    }
-    const now = Date.now();
-    this.rememberLiveFlightLookup([...seen.values()], now);
-    this.updateFlightSource(this.latestAdsb, this.latestMilitary, now);
-  }
-
-  private rememberLiveFlightLookup(positions: PositionSample[], now: number): void {
-    const incomingIdentities = new Set(positions.flatMap(SearchManager.adsbIdentities));
-    this.liveFlightOverlay = this.liveFlightOverlay.filter((entry) => (
-      entry.expiresAt > now
-      && !SearchManager.adsbIdentities(entry.position).some((id) => incomingIdentities.has(id))
-    ));
-    for (const position of positions) {
-      const expiresAt = SearchManager.flightObservationTime(position.observedAt, now, now)
-        + FLIGHT_SEARCH_SOURCE_TTL_MS;
-      if (expiresAt > now) this.liveFlightOverlay.push({ position, expiresAt });
-    }
-  }
-
-  private pruneLiveFlightOverlay(now: number): PositionSample[] {
-    this.liveFlightOverlay = this.liveFlightOverlay.filter((entry) => entry.expiresAt > now);
-    return this.liveFlightOverlay.map((entry) => entry.position);
-  }
-
-  private async registerBaseSearchSource(): Promise<void> {
-    const register = (bases: MilitaryBase[]) => {
-      if (this.destroyed || !this.acceptLateBaseHydration) return;
-      this.ctx.searchModal?.registerSource('base', bases.map(b => ({
-        id: b.id,
-        title: b.name,
-        subtitle: `${b.type} ${b.description || ''}`.trim(),
-        data: b,
-      })));
-    };
-
-    const cached = getCachedMilitaryBases();
-    if (cached.length > 0) {
-      register(cached);
-      return;
-    }
-    const hydration = Promise.resolve()
-      .then(() => preloadMilitaryBases())
-      .then(register);
-    const completed = await SearchManager.waitWithTimeout(
-      hydration,
-      SearchManager.SEARCH_INDEX_READY_TIMEOUT_MS,
-      'military-base-search-hydration',
-    );
-    if (!completed) this.acceptLateBaseHydration = false;
   }
 
   private static async waitWithTimeout(
@@ -583,9 +289,6 @@ export class SearchManager implements AppModule {
     }
     if (category === 'layer') return this.isLayerCommandExecutable(action);
     if (category === 'layers') return this.hasVisibleLayerPreset(action);
-    if (category === 'view' && action === 'resilience') {
-      return this.isLayerCommandExecutable('resilienceScore');
-    }
     if (category === 'country-map') return getCountryBbox(action) !== null;
     return ['nav', 'country', 'time', 'view'].includes(category);
   }
@@ -618,15 +321,13 @@ export class SearchManager implements AppModule {
       case 'layers':
         return this.hasExecutableLayerPreset(action);
       case 'nav':
-      case 'country':
         return true;
       case 'time':
         return !(this.ctx.map?.isGlobeMode?.() ?? false);
       case 'country-map':
         return getCountryBbox(action) !== null;
       case 'view':
-        if (action === 'resilience') return this.isLayerCommandExecutable('resilienceScore');
-        // Settings/route-explorer emit their own content-bearing or account-
+        // Settings emit their own content-bearing or account-
         // tier analytics, refresh tears down the capability response, and
         // fullscreen requires a transient user activation WebMCP cannot grant.
         // Keep those visible in CMD+K but out of agent-issued descriptors.
@@ -683,12 +384,6 @@ export class SearchManager implements AppModule {
     }
     const primaryLayers = LAYER_PRESET_PRIMARY_LAYERS[action];
     if (!primaryLayers) return false;
-    // Minimal promises both of its named layers. Larger presets may contain
-    // contextual extras (for example waterways in military); require at least
-    // one defining layer so an incidental overlap cannot advertise the preset.
-    if (action === 'minimal') {
-      return primaryLayers.every((key) => this.isLayerCommandExecutable(key));
-    }
     return primaryLayers.some((key) => this.isLayerCommandExecutable(key));
   }
 
@@ -706,15 +401,7 @@ export class SearchManager implements AppModule {
     if (requiredLayer && !this.isEntityLayerExecutable(requiredLayer)) return false;
     if (
       this.ctx.map?.isGlobeMode?.()
-      && (
-        requiredLayer === 'flights'
-        || [
-          'hotspot', 'conflict', 'base', 'pipeline', 'cable', 'datacenter', 'nuclear', 'irradiator',
-          'techcompany', 'ailab', 'startup', 'techevent', 'techhq', 'accelerator',
-          'exchange', 'financialcenter', 'centralbank', 'commodityhub',
-        ]
-          .includes(result.type)
-      )
+      && ['pipeline', 'cable', 'datacenter', 'nuclear', 'irradiator'].includes(result.type)
     ) return false;
     switch (result.type) {
       case 'news':
@@ -722,18 +409,12 @@ export class SearchManager implements AppModule {
       case 'market':
         return this.ctx.panelSettings.markets?.enabled === true
           && this.hasLivePanelTarget('markets');
-      case 'prediction':
-        return this.ctx.panelSettings.polymarket?.enabled === true
-          && this.hasLivePanelTarget('polymarket');
-      case 'flight':
-        return hasPremiumAccess(getAuthState());
       default:
         return true;
     }
   }
 
   private isSearchResultVisible(result: SearchResult): boolean {
-    if (result.type === 'flight' && !hasPremiumAccess(getAuthState())) return false;
     const requiredLayer = this.resultRequiredLayer(result);
     if (!requiredLayer) return true;
     return getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant).has(requiredLayer);
@@ -753,9 +434,6 @@ export class SearchManager implements AppModule {
 
   private resultRequiredLayer(result: SearchResult): keyof MapLayers | null {
     switch (result.type) {
-      case 'hotspot': return 'hotspots';
-      case 'conflict': return 'conflicts';
-      case 'base': return 'bases';
       case 'pipeline': return 'pipelines';
       case 'cable': return 'cables';
       case 'datacenter': return 'datacenters';
@@ -763,76 +441,15 @@ export class SearchManager implements AppModule {
       case 'irradiator': return 'irradiators';
       case 'earthquake': return 'natural';
       case 'outage': return 'outages';
-      case 'techcompany':
-      case 'techhq': return 'techHQs';
-      case 'startup': return 'startupHubs';
-      case 'techevent': return 'techEvents';
-      case 'accelerator': return 'accelerators';
-      case 'exchange': return 'stockExchanges';
-      case 'financialcenter': return 'financialCenters';
-      case 'centralbank': return 'centralBanks';
-      case 'commodityhub': return 'commodityHubs';
-      case 'flight': {
-        const layer = (result.data as { layer?: unknown }).layer;
-        return layer === 'military' ? 'military' : 'flights';
-      }
       default: return null;
     }
-  }
-
-  updateFlightSource(
-    adsb: PositionSample[],
-    military: MilitaryFlight[],
-    adsbUpdatedAt = Date.now(),
-  ): void {
-    if (this.destroyed) return;
-    this.latestAdsb = [...adsb];
-    this.latestMilitary = [...military];
-    this.latestAdsbUpdatedAt = adsbUpdatedAt;
-    if (!this.ctx.searchModal) return;
-    if (!hasPremiumAccess(getAuthState())) {
-      this.flightSearchItems = [];
-      this.flightSourceExpiresAt = 0;
-      this.liveFlightOverlay = [];
-      this.ctx.searchModal.registerSource('flight', []);
-      return;
-    }
-    const now = Date.now();
-    const mergedAdsb = this.mergeLiveAdsb(adsb, this.pruneLiveFlightOverlay(now));
-    this.flightSearchItems = SearchManager.buildFlightSearchItems(
-      mergedAdsb,
-      military,
-      adsbUpdatedAt,
-      now,
-    );
-    this.publishCurrentFlightSearchItems(now);
-  }
-
-  private publishCurrentFlightSearchItems(
-    now: number,
-    options?: { updateVisibleMetrics?: boolean },
-  ): void {
-    this.flightSearchItems = this.flightSearchItems.filter((item) => item.expiresAt > now);
-    this.flightSourceExpiresAt = this.flightSearchItems.length > 0
-      ? Math.min(...this.flightSearchItems.map((item) => item.expiresAt))
-      : 0;
-    this.ctx.searchModal?.registerSource('flight', this.flightSearchItems.map((item) => ({
-      id: item.id,
-      title: item.title,
-      subtitle: item.subtitle,
-      data: item.data,
-    })), options);
   }
 
   updateSearchIndex(options?: { updateVisibleMetrics?: boolean }): void {
     if (!this.ctx.searchModal) return;
 
     const sourceOptions = { updateVisibleMetrics: options?.updateVisibleMetrics !== false };
-    if (this.flightSourceExpiresAt > 0 && Date.now() >= this.flightSourceExpiresAt) {
-      this.publishCurrentFlightSearchItems(Date.now(), sourceOptions);
-    }
     this.syncPanelSearchIndex(sourceOptions);
-    this.ctx.searchModal.registerSource('country', this.buildCountrySearchItems(), sourceOptions);
 
     const newsItems = this.ctx.allNews.slice(0, 500).map(n => ({
       id: n.link,
@@ -842,13 +459,6 @@ export class SearchManager implements AppModule {
     }));
     console.log(`[Search] Indexing ${newsItems.length} news items (allNews total: ${this.ctx.allNews.length})`);
     this.ctx.searchModal.registerSource('news', newsItems, sourceOptions);
-
-    this.ctx.searchModal.registerSource('prediction', this.ctx.latestPredictions.map(p => ({
-      id: p.title,
-      title: p.title,
-      subtitle: `${Math.round(p.yesPrice)}% probability`,
-      data: p,
-    })), sourceOptions);
 
     this.ctx.searchModal.registerSource('market', this.ctx.latestMarkets.map(m => ({
       id: m.symbol,
@@ -882,23 +492,5 @@ export class SearchManager implements AppModule {
       }),
       options,
     );
-  }
-
-  private buildCountrySearchItems(): { id: string; title: string; subtitle: string; data: { code: string; name: string } }[] {
-    const cachedScores = getCachedCountryScores();
-    const panelScores = (this.ctx.panels.cii as CIIPanel | undefined)?.getScores() ?? [];
-    const scores = cachedScores.length > 0
-      ? cachedScores
-      : panelScores;
-    const ciiByCode = new Map(scores.map((score) => [score.code, score]));
-    return Object.entries(TIER1_COUNTRIES).map(([code, name]) => {
-      const score = ciiByCode.get(code);
-      return {
-        id: code,
-        title: `${CountryIntelManager.toFlagEmoji(code)} ${name}`,
-        subtitle: score ? `Country instability: ${score.score}/100 • ${score.level}` : 'Country Brief',
-        data: { code, name },
-      };
-    });
   }
 }

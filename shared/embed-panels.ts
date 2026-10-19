@@ -9,7 +9,7 @@
  * facts plus permalinks only. Do not add an X panel that dumps post text.
  */
 
-export const EMBED_PANEL_IDS = ['map', 'chokepoint-strip', 'fear-greed'] as const;
+export const EMBED_PANEL_IDS = ['map'] as const;
 
 export type EmbedPanelId = (typeof EMBED_PANEL_IDS)[number];
 
@@ -23,20 +23,10 @@ export type EmbedPanelId = (typeof EMBED_PANEL_IDS)[number];
  * two cannot drift.
  */
 export const EMBED_LAYER_IDS = [
-  'conflicts',
   'earthquakes',
-  'protests',
   'weather',
   'cables',
   'pipelines',
-  'waterways',
-  'tradeRoutes',
-  'economic',
-  'stockExchanges',
-  'financialCenters',
-  'centralBanks',
-  'commodityHubs',
-  'gulfInvestments',
 ] as const;
 
 export type EmbedLayerId = (typeof EMBED_LAYER_IDS)[number];
@@ -83,23 +73,11 @@ export const EMBEDDABLE_PANELS: readonly EmbedPanelDefinition[] = [
     access: {
       kind: 'tiered',
       free: {
-        layers: ['conflicts', 'earthquakes', 'weather'],
+        layers: ['earthquakes', 'weather'],
         refreshMs: EMBED_FREE_REFRESH_MS,
       },
     },
     aliases: ['live-map', 'live_map', 'livemap'],
-  },
-  {
-    id: 'chokepoint-strip',
-    label: 'Chokepoint Monitor',
-    access: { kind: 'paid-only', rpcPaths: ['/api/supply-chain/v1/get-chokepoint-status'] },
-    aliases: ['chokepoints', 'chokepoint', 'chokepoint-monitor'],
-  },
-  {
-    id: 'fear-greed',
-    label: 'Fear & Greed',
-    access: { kind: 'paid-only', rpcPaths: ['/api/market/v1/get-fear-greed-index'] },
-    aliases: ['feargreed', 'fear_greed', 'markets-fear-greed'],
   },
 ];
 

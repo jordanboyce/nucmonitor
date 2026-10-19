@@ -28,19 +28,15 @@ export type EmbedMapFrameTier = 'free' | 'keyed';
  * or a live ACLED cache. Each returns the verbatim wire array its RPC returns.
  */
 export interface EmbedMapFrameSources {
-  listConflicts: () => Promise<readonly unknown[]>;
   listEarthquakes: () => Promise<readonly unknown[]>;
   listNaturalEvents: () => Promise<readonly unknown[]>;
-  listProtests: () => Promise<readonly unknown[]>;
   listWeatherAlerts: () => Promise<readonly unknown[]>;
 }
 
 /** Which upstreams each live layer needs. Absent ⇒ the layer is static data
  *  the client already ships, and needs only an entitlement answer. */
 const SOURCES_BY_LAYER = {
-  conflicts: ['conflicts'],
   earthquakes: ['earthquakes', 'naturalEvents'],
-  protests: ['protests'],
   weather: ['weatherAlerts'],
 } as const satisfies Partial<Record<EmbedLayerId, readonly (keyof EmbedMapFrameData)[]>>;
 
@@ -48,10 +44,8 @@ type LiveLayerId = keyof typeof SOURCES_BY_LAYER;
 type SourceKey = keyof EmbedMapFrameData;
 
 const FETCHER_BY_SOURCE: Record<SourceKey, keyof EmbedMapFrameSources> = {
-  conflicts: 'listConflicts',
   earthquakes: 'listEarthquakes',
   naturalEvents: 'listNaturalEvents',
-  protests: 'listProtests',
   weatherAlerts: 'listWeatherAlerts',
 };
 

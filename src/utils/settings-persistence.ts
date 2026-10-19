@@ -86,11 +86,10 @@ function isMonitorList(value: unknown): boolean {
 }
 
 function validateSetting(key: string, raw: string, policies: {
-  MAX_IMPORTED: number; MAX_INSTRUCTIONS_LEN: number;
   MAP_THEME_OPTIONS: Record<string, { value: string }[]>;
   STREAM_QUALITY_OPTIONS: readonly { value: string }[];
 }): void {
-  const { MAX_IMPORTED, MAX_INSTRUCTIONS_LEN, MAP_THEME_OPTIONS, STREAM_QUALITY_OPTIONS } = policies;
+  const { MAP_THEME_OPTIONS, STREAM_QUALITY_OPTIONS } = policies;
   const invalid = (): never => { throw new Error(`Invalid setting: ${key}`); };
   if (key === 'worldmonitor-theme' && !['auto', 'dark', 'light'].includes(raw)) invalid();
   if (key === 'wm-map-provider' && !Object.prototype.hasOwnProperty.call(MAP_THEME_OPTIONS, raw)) invalid();
@@ -98,21 +97,6 @@ function validateSetting(key: string, raw: string, policies: {
   if (key.startsWith('wm-map-theme:')) {
     const provider = key.slice('wm-map-theme:'.length) as keyof typeof MAP_THEME_OPTIONS;
     if (!MAP_THEME_OPTIONS[provider]?.some(option => option.value === raw)) invalid();
-  }
-  if (key === 'wm-analysis-frameworks') {
-    const frameworks: unknown = JSON.parse(raw);
-    if (!Array.isArray(frameworks) || frameworks.length > MAX_IMPORTED) invalid();
-    if (!Array.isArray(frameworks)) return;
-    for (const fw of frameworks) {
-      if (!isRecord(fw) || typeof fw.id !== 'string' || typeof fw.name !== 'string'
-        || typeof fw.description !== 'string' || typeof fw.systemPromptAppend !== 'string'
-        || fw.systemPromptAppend.length > MAX_INSTRUCTIONS_LEN || fw.isBuiltIn !== false
-        || typeof fw.createdAt !== 'number' || !Number.isFinite(fw.createdAt)) invalid();
-    }
-  }
-  if (key === 'wm-panel-frameworks') {
-    const selections: unknown = JSON.parse(raw);
-    if (!isRecord(selections) || !Object.values(selections).every(value => value === null || typeof value === 'string')) invalid();
   }
   if (key === 'worldmonitor-live-channels') {
     const channels: unknown = JSON.parse(raw);
@@ -150,11 +134,11 @@ async function parseImportedEntries(parsed: unknown): Promise<Array<[string, str
     throw new Error(`Unsupported settings version: ${parsed.version}`);
   }
 
-  const [frameworks, maps, streams, tabStore] = await Promise.all([
-    import('@/services/analysis-framework-store'), import('@/config/basemap'), import('@/services/ai-flow-settings'),
+  const [maps, streams, tabStore] = await Promise.all([
+    import('@/config/basemap'), import('@/services/ai-flow-settings'),
     import('@/services/tab-store'),
   ]);
-  const policies = { ...frameworks, ...maps, ...streams };
+  const policies = { ...maps, ...streams };
   const entries: Array<[string, string]> = [];
   let decodedBytes = 0;
   const encoder = new TextEncoder();
@@ -252,7 +236,6 @@ export function importSettings(file: File): Promise<ImportResult> {
         const result = e.target?.result as string;
         const entries = await parseImportedEntries(JSON.parse(result));
         const { applyLocalPreferenceImport } = await import('./cloud-prefs-sync');
-        const { invalidateFrameworkCache } = await import('@/services/analysis-framework-store');
 
         applyLocalPreferenceImport(entries);
         const importedKeys = entries.map(([key]) => key);
@@ -262,7 +245,6 @@ export function importSettings(file: File): Promise<ImportResult> {
           if (importedKeys.some(key => persistedKeys.has(key))) exportFlushHooks.delete(flush);
         }
         invalidatePanelStorageCacheForKeys(importedKeys);
-        invalidateFrameworkCache();
         const keysImported = entries.length;
 
         resolve({ success: true, keysImported });

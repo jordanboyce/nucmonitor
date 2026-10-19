@@ -19,7 +19,6 @@
 export const LIVE_TOPIC_RPC_PATHS = Object.freeze([
   '/api/market/v1/get-fear-greed-index',
   '/api/infrastructure/v1/list-internet-outages',
-  '/api/prediction/v1/list-prediction-markets',
   '/api/economic/v1/get-national-debt',
   '/api/economic/v1/get-us-treasury-par-yield-curve',
   '/api/economic/v1/get-oil-inventories',
@@ -28,9 +27,6 @@ const LIVE_TOPIC_PUBLIC_SEARCH = 'public=1';
 
 const PUBLIC_SHARED_RPC_PATHS = new Set([
   '/api/news/v1/list-feed-digest',
-  '/api/displacement/v1/get-displacement-summary',
-  '/api/forecast/v1/get-forecasts',
-  '/api/supply-chain/v1/get-chokepoint-status',
   ...LIVE_TOPIC_RPC_PATHS,
 ]);
 
@@ -47,24 +43,6 @@ const NEWS_QUERY_KEYS = new Set(['variant', 'lang', 'public']);
 // so the CDN key space stays at one entry. Compared against the raw search string —
 // order- and encoding-sensitive by design (see stripRouterInjectedRpcEcho).
 const DISPLACEMENT_PUBLIC_SEARCH = 'flow_limit=50&public=1';
-
-// The forecast feed the dashboard refreshes every 30 minutes. The client sends no
-// filters (domain/region are empty and the generated client omits zero values), so
-// the ONE public shape is the bare marker. A caller that filters by domain/region
-// gets a per-caller response and must use the credentialed URL — keeping the CDN key
-// space at a single entry.
-//
-// This refresh is why the key is expensive: getHydratedData() is one-shot, so every
-// 30-minute tick fell through to this RPC, which had no CDN shield — ~17.5k uncached
-// origin reads/day of a 188 KB payload (#5300).
-const FORECASTS_PUBLIC_SEARCH = 'public=1';
-
-// Chokepoint status takes no request fields, and its readings are already
-// published on every /chokepoints/<slug>/ page. The routing middleware reads
-// this shape to put the current reading into those pages' HTML for crawlers,
-// which run no hydrate script and hold no session. Origin load stays bounded:
-// the handler caches in Redis for 5 minutes behind a single-flight fetch.
-const CHOKEPOINT_STATUS_PUBLIC_SEARCH = 'public=1';
 
 function hasSingleValue(params: URLSearchParams, key: string): boolean {
   return params.getAll(key).length === 1;
@@ -142,8 +120,6 @@ export function isPublicSharedRpcRequest(urlLike: string | URL, method = 'GET'):
   if (!hasSingleValue(params, 'public') || params.get('public') !== '1') return false;
 
   if (pathname === '/api/news/v1/list-feed-digest') return isNewsDigestShape(params);
-  if (pathname === '/api/forecast/v1/get-forecasts') return search === FORECASTS_PUBLIC_SEARCH;
-  if (pathname === '/api/supply-chain/v1/get-chokepoint-status') return search === CHOKEPOINT_STATUS_PUBLIC_SEARCH;
   if (LIVE_TOPIC_RPC_PATHS.includes(pathname)) return search === LIVE_TOPIC_PUBLIC_SEARCH;
   return search === DISPLACEMENT_PUBLIC_SEARCH;
 }

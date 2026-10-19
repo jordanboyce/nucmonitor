@@ -1,5 +1,4 @@
 import { SITE_VARIANT } from '@/config/variant';
-import { normalizeExclusiveChoropleths } from '@/components/resilience-choropleth-utils';
 import {
   getAllowedLayerKeys,
   isLayerEntitled,
@@ -249,7 +248,6 @@ function applySetLayers(ctx: AppContext, action: Extract<AgentBusAction, { type:
 
   const allowed = getAllowedLayerKeys(currentMapVariant(options));
   const kind = currentRendererKind(ctx, options);
-  const isDeckGLActive = Boolean(ctx.map.isDeckGLActive?.());
   const isPremium = premiumAccess(options);
   const runtimeAvailability = options.getMapLayerRuntimeAvailability?.()
     ?? ALL_MAP_LAYERS_RUNTIME_AVAILABLE;
@@ -280,10 +278,6 @@ function applySetLayers(ctx: AppContext, action: Extract<AgentBusAction, { type:
       targets.push({ target: rawKey, status: 'denied', reason: 'layer_not_entitled' });
       continue;
     }
-    if (enabled && rawKey === 'resilienceScore' && !isDeckGLActive) {
-      targets.push({ target: rawKey, status: 'denied', reason: 'layer_not_executable' });
-      continue;
-    }
     if (enabled && !isLayerExecutable(rawKey, kind)) {
       targets.push({ target: rawKey, status: 'denied', reason: 'layer_not_executable' });
       continue;
@@ -298,18 +292,7 @@ function applySetLayers(ctx: AppContext, action: Extract<AgentBusAction, { type:
     return denied('No requested layers can be applied.', 'no_allowed_layers', targets, action);
   }
 
-  const normalized = normalizeExclusiveChoropleths(nextLayers, ctx.mapLayers);
-  for (const target of targets) {
-    if (target.status !== 'applied' || !isMapLayerKey(target.target)) continue;
-    const requested = action.layers[target.target];
-    if (typeof requested === 'boolean' && normalized[target.target] !== requested) {
-      target.status = 'denied';
-      target.reason = 'exclusive_layer_conflict';
-    }
-  }
-  if (!targets.some((target) => target.status === 'applied')) {
-    return denied('No requested layers can be applied.', 'no_allowed_layers', targets, action);
-  }
+  const normalized = nextLayers;
   const changedLayers = (Object.keys(normalized) as Array<keyof MapLayers>)
     .filter((layer) => (normalized[layer] === true) !== (ctx.mapLayers[layer] === true));
   if (changedLayers.length === 0) {

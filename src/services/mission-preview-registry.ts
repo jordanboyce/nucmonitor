@@ -1,5 +1,4 @@
 import type { MissionPresetId } from './mission-presets';
-import { h } from '@/utils/dom-utils';
 
 /**
  * Release 1 of the mission conversion funnel: one contextual Pro preview per
@@ -25,63 +24,8 @@ export interface MissionPreviewSpec {
   /** Static, shape-only sample — never live premium data (KTD2). */
   renderSample: () => HTMLElement;
 }
-const sampleRow = (label: string, value: string, tone?: 'up' | 'down'): HTMLElement =>
-  h(
-    'div',
-    { className: 'pro-preview__row' },
-    h('span', { className: 'pro-preview__row-label' }, label),
-    h('span', { className: `pro-preview__row-value${tone ? ` pro-preview__row-value--${tone}` : ''}` }, value),
-  );
 
-const sample = (...rows: HTMLElement[]): HTMLElement =>
-  h('div', { className: 'pro-preview__sample', 'aria-hidden': 'true' }, ...rows);
-
-export const MISSION_PREVIEW_REGISTRY: Partial<Record<MissionPresetId, MissionPreviewSpec>> = {
-  'supply-chain-risk': {
-    panelKey: 'supply-chain',
-    previewId: 'supply-chain-depth',
-    unlockCopy: 'Pro unlocks chokepoint stress modelling and country-level cost-shock scenarios.',
-    renderSample: () =>
-      sample(
-        sampleRow('Hormuz chokepoint index', '72 · elevated', 'down'),
-        sampleRow('Cost shock · electronics, TW→US', '+4.8% landed cost'),
-        sampleRow('Bypass option', 'Cape reroute +11 days'),
-      ),
-  },
-  'energy-security': {
-    panelKey: 'pipeline-status',
-    previewId: 'energy-supply-depth',
-    unlockCopy: 'Pro unlocks supply-chain stress reads behind pipeline and grid status.',
-    renderSample: () =>
-      sample(
-        sampleRow('TurkStream utilization', '81% · 7d trend', 'up'),
-        sampleRow('LNG substitution headroom', 'moderate'),
-        sampleRow('Cascade exposure', '3 dependent corridors'),
-      ),
-  },
-  'osint-newsroom': {
-    panelKey: 'gdelt-intel',
-    previewId: 'intel-memory',
-    unlockCopy: 'Pro unlocks intel memory — historical search, timelines, and similar-event lookup.',
-    renderSample: () =>
-      sample(
-        sampleRow('Similar event · 2024-06', 'Port strike, 78% signature match'),
-        sampleRow('Similar event · 2022-11', 'Grid failure, 64% match'),
-        sampleRow('Timeline depth', '36 months of context'),
-      ),
-  },
-  'macro-market-watch': {
-    panelKey: 'macro-signals',
-    previewId: 'macro-depth',
-    unlockCopy: 'Pro unlocks sovereign debt series and deeper macro cross-signals.',
-    renderSample: () =>
-      sample(
-        sampleRow('Debt / GDP · sample', '112% · rising', 'up'),
-        sampleRow('Refinancing wall', '2027 Q2 cluster'),
-        sampleRow('Cross-signal', 'FX stress + CDS widening'),
-      ),
-  },
-};
+export const MISSION_PREVIEW_REGISTRY: Partial<Record<MissionPresetId, MissionPreviewSpec>> = {};
 
 /**
  * The single lookup the wiring seam uses: a preview exists only when the

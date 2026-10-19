@@ -6,9 +6,7 @@ import type {
 } from '@/app/app-context';
 import { applyVisibleMapDimension } from '@/app/map-dimension-control';
 import type { UnifiedSettingsConfig } from '@/components/UnifiedSettings';
-import type { AirlineIntelPanel } from '@/components/AirlineIntelPanel';
-import type { CustomWidgetPanel } from '@/components/CustomWidgetPanel';
-import { deleteWidget, getWidget, saveWidget, isProUser, isProTierResolved } from '@/services/widget-store';
+import { isProUser, isProTierResolved } from '@/services/widget-store';
 import { hasPremiumAccess } from '@/services/panel-gating';
 import {
   sanitizeLockedLayers,
@@ -25,17 +23,12 @@ import {
 } from '@/config/panels';
 import { applySetPanelEnabled } from '@/app/panel-enablement';
 import type { SetPanelEnabledResult } from '@/config/panel-enablement';
-import type { McpDataPanel } from '@/components/McpDataPanel';
-import { deleteMcpPanel, getMcpPanel, saveMcpPanel } from '@/services/mcp-store';
-import type { PanelConfig, MapLayers, MilitaryFlight } from '@/types';
+import type { PanelConfig, MapLayers } from '@/types';
 import type { MapView } from '@/components/MapContainer';
-import type { PositionSample } from '@/services/aviation';
 import type { ClusteredEvent } from '@/types';
 import type { DashboardSnapshot } from '@/services/storage';
 import { PlaybackControl } from '@/components/PlaybackControl';
-import { PizzIntIndicator } from '@/components/PizzIntIndicator';
 import { LlmStatusIndicator } from '@/components/LlmStatusIndicator';
-import type { PredictionPanel } from '@/components/PredictionPanel';
 import {
   buildMapUrl,
   withUrlFragment,
@@ -74,12 +67,7 @@ import {
   type MissionPreset,
   type MissionPresetId,
 } from '@/services/mission-presets';
-import {
-  saveSnapshot,
-  initAisStream,
-  disconnectAisStream,
-  isAisConfigured,
-} from '@/services';
+import { saveSnapshot } from '@/services';
 import {
   track,
   trackMissionPickerShown,
@@ -97,7 +85,6 @@ import {
 import { detectPlatform, allButtons, buttonsForPlatform } from '@/components/DownloadBanner';
 import type { Platform } from '@/components/DownloadBanner';
 import { isOpenableExternalUrl, openExternalUrl } from '@/services/external-navigation';
-import { getCachedGpsInterference } from '@/services/gps-interference';
 import { dataFreshness } from '@/services/data-freshness';
 import { mlWorker } from '@/services/ml-worker';
 import { WM_OPEN_NOTIFICATIONS_FOR_COUNTRY } from '@/utils/notify-country-link';
@@ -269,7 +256,6 @@ class LazyUnifiedSettings implements UnifiedSettingsController {
 export interface EventHandlerCallbacks {
   openSearch: (options?: { toggle?: boolean; replaceOverlayId?: OverlayId; historyPending?: boolean }) => void;
   updateSearchIndex: () => void;
-  updateFlightSource?: (adsb: PositionSample[], military: MilitaryFlight[]) => void;
   loadAllData: () => Promise<void>;
   /**
    * Tell the data loader that the rendered news no longer reflects the last
@@ -280,7 +266,6 @@ export interface EventHandlerCallbacks {
   flushStaleRefreshes: () => void;
   setHiddenSince: (ts: number) => void;
   loadDataForLayer: (layer: string) => void;
-  waitForAisData: () => void;
   syncDataFreshnessWithLayers: () => void;
   /**
    * Push `ctx.panelSettings` onto the live dashboard. Must route to
@@ -290,7 +275,6 @@ export interface EventHandlerCallbacks {
    */
   applyPanelSettings: () => void;
   applySavedPanelOrder?: (panelOrder?: string[]) => void;
-  stopLayerActivity?: (layer: keyof MapLayers) => void;
   mountLiveNewsIfReady?: () => void;
   isFreeTierFallbackActive?: () => boolean;
 }
@@ -324,7 +308,6 @@ export class EventHandlerManager implements AppModule {
   private boundSearchKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private readonly mobilePrimaryNav: MobilePrimaryNav;
   private boundPanelCloseHandler: ((e: Event) => void) | null = null;
-  private boundWidgetModifyHandler: ((e: Event) => void) | null = null;
   private boundUndoHandler: ((e: KeyboardEvent) => void) | null = null;
   private boundNotifyForCountryHandler: ((e: Event) => void) | null = null;
   private boundMissionOutsideHandler: ((e: MouseEvent) => void) | null = null;
@@ -562,10 +545,6 @@ export class EventHandlerManager implements AppModule {
       this.ctx.container.removeEventListener('wm:panel-close', this.boundPanelCloseHandler);
       this.boundPanelCloseHandler = null;
     }
-    if (this.boundWidgetModifyHandler) {
-      this.ctx.container.removeEventListener('wm:widget-modify', this.boundWidgetModifyHandler);
-      this.boundWidgetModifyHandler = null;
-    }
     if (this.boundUndoHandler) {
       document.removeEventListener('keydown', this.boundUndoHandler);
       this.boundUndoHandler = null;
@@ -586,8 +565,6 @@ export class EventHandlerManager implements AppModule {
     this.authStateUnsubscribers = [];
     for (const unsub of this.proGateUnsubscribers) unsub();
     this.proGateUnsubscribers = [];
-    this.ctx.tvMode?.destroy();
-    this.ctx.tvMode = null;
     this.ctx.unifiedSettings?.destroy();
     this.ctx.unifiedSettings = null;
     this.ctx.authHeaderWidget?.destroy();
@@ -680,30 +657,6 @@ export class EventHandlerManager implements AppModule {
     this.boundPanelCloseHandler = ((e: CustomEvent<{ panelId: string }>) => {
       const { panelId } = e.detail;
 
-      if (panelId.startsWith('cw-')) {
-        if (!window.confirm(t('widgets.confirmDelete'))) return;
-        deleteWidget(panelId);
-        const panel = this.ctx.panels[panelId];
-        panel?.destroy();
-        delete this.ctx.panels[panelId];
-        delete this.ctx.panelSettings[panelId];
-        saveToStorage(STORAGE_KEYS.panels, this.ctx.panelSettings);
-        panel?.getElement()?.remove();
-        return;
-      }
-
-      if (panelId.startsWith('mcp-')) {
-        if (!window.confirm(t('mcp.confirmDelete'))) return;
-        deleteMcpPanel(panelId);
-        const panel = this.ctx.panels[panelId];
-        panel?.destroy();
-        delete this.ctx.panels[panelId];
-        delete this.ctx.panelSettings[panelId];
-        saveToStorage(STORAGE_KEYS.panels, this.ctx.panelSettings);
-        panel?.getElement()?.remove();
-        return;
-      }
-
       const config = this.ctx.panelSettings[panelId];
       if (!config) return;
       userSetPanelEnabled(config, false);
@@ -719,36 +672,6 @@ export class EventHandlerManager implements AppModule {
       if (this.closedPanelStack.length > 20) this.closedPanelStack.shift();
     }) as EventListener;
     this.ctx.container.addEventListener('wm:panel-close', this.boundPanelCloseHandler);
-
-    this.boundWidgetModifyHandler = ((e: CustomEvent<{ widgetId: string }>) => {
-      const spec = getWidget(e.detail.widgetId);
-      if (!spec) return;
-      void import('@/components/WidgetChatModal').then((m) => m.openWidgetChatModal({
-        mode: 'modify',
-        existingSpec: spec,
-        onComplete: (updated) => {
-          void saveWidget(updated).then(() => {
-            (this.ctx.panels[updated.id] as CustomWidgetPanel | undefined)?.updateSpec(updated);
-          }).catch((error) => {
-            console.error('[widget-chat] failed to save widget', error);
-            showToast(t('widgets.saveFailed'));
-          });
-        },
-      })).catch((err) => console.error('[widget-chat] failed to lazy-load WidgetChatModal', err));
-    }) as EventListener;
-    this.ctx.container.addEventListener('wm:widget-modify', this.boundWidgetModifyHandler);
-
-    this.ctx.container.addEventListener('wm:mcp-configure', ((e: CustomEvent<{ panelId: string }>) => {
-      const spec = getMcpPanel(e.detail.panelId);
-      if (!spec) return;
-      void import('@/components/McpConnectModal').then((m) => m.openMcpConnectModal({
-        existingSpec: spec,
-        onComplete: (updated) => {
-          saveMcpPanel(updated);
-          (this.ctx.panels[updated.id] as McpDataPanel | undefined)?.updateSpec(updated);
-        },
-      })).catch((err) => console.error('[mcp-connect] failed to lazy-load McpConnectModal', err));
-    }) as EventListener);
 
     // undo via Ctrl/Cmd+Z
     this.boundUndoHandler = (e: KeyboardEvent) => {
@@ -1099,9 +1022,6 @@ export class EventHandlerManager implements AppModule {
   }
 
   private filterMissionLayersForAvailableServices(layers: MapLayers): MapLayers {
-    if (layers.ais && !isAisConfigured()) {
-      return { ...layers, ais: false };
-    }
     return layers;
   }
 
@@ -1151,26 +1071,8 @@ export class EventHandlerManager implements AppModule {
       }
     }
 
-    if (layer === 'ais') {
-      if (enabled) {
-        this.ctx.map?.setLayerLoading('ais', true);
-        initAisStream();
-        this.callbacks.waitForAisData();
-      } else {
-        disconnectAisStream();
-      }
-      return;
-    }
-
-    if (layer === 'flights') {
-      const airlineIntel = this.ctx.panels['airline-intel'] as AirlineIntelPanel | undefined;
-      airlineIntel?.setLiveMode(enabled);
-    }
-
     if (enabled) {
       this.callbacks.loadDataForLayer(layer);
-    } else {
-      this.callbacks.stopLayerActivity?.(layer as keyof MapLayers);
     }
   }
 
@@ -1458,26 +1360,8 @@ export class EventHandlerManager implements AppModule {
       }
     }
 
-    if (layer === 'ais') {
-      if (enabled) {
-        this.ctx.map?.setLayerLoading('ais', true);
-        initAisStream();
-        this.callbacks.waitForAisData();
-      } else {
-        disconnectAisStream();
-      }
-      return;
-    }
-
-    if (layer === 'flights') {
-      const airlineIntel = this.ctx.panels['airline-intel'] as AirlineIntelPanel | undefined;
-      airlineIntel?.setLiveMode(enabled);
-    }
-
     if (enabled) {
       this.callbacks.loadDataForLayer(layer);
-    } else {
-      this.callbacks.stopLayerActivity?.(layer);
     }
   }
 
@@ -1486,17 +1370,12 @@ export class EventHandlerManager implements AppModule {
     const state = this.ctx.map.getState();
     const center = this.ctx.map.getCenter();
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    const briefPage = this.ctx.countryBriefPage;
-    const isCountryVisible = briefPage?.isVisible() ?? false;
     return buildMapUrl(baseUrl, {
       view: state.view,
       zoom: state.zoom,
       center,
       timeRange: state.timeRange,
       layers: state.layers,
-      country: isCountryVisible ? (briefPage?.getCode() ?? undefined) : undefined,
-      expanded: isCountryVisible && briefPage?.getIsMaximized?.() ? true : undefined,
-      chokepoint: !isCountryVisible ? (this.ctx.activeChokepoint ?? undefined) : undefined,
     });
   }
 
@@ -1937,16 +1816,6 @@ export class EventHandlerManager implements AppModule {
       });
   }
 
-  setupPizzIntIndicator(): void {
-    if (SITE_VARIANT !== 'full') return;
-
-    this.ctx.pizzintIndicator = new PizzIntIndicator();
-    const headerLeft = this.ctx.container.querySelector('.header-left');
-    if (headerLeft) {
-      headerLeft.appendChild(this.ctx.pizzintIndicator.getElement());
-    }
-  }
-
   setupLlmStatusIndicator(): void {
     if (!isDesktopRuntime()) return;
     this.ctx.llmStatusIndicator = new LlmStatusIndicator();
@@ -1958,7 +1827,6 @@ export class EventHandlerManager implements AppModule {
 
   setupExportPanel(): void {
     const getExportData = () => {
-      const allCards = this.ctx.correlationEngine?.getAllCards() ?? [];
       const disabledCount = this.ctx.disabledSources.size;
       return {
         meta: {
@@ -1972,11 +1840,7 @@ export class EventHandlerManager implements AppModule {
         newsClusters: this.ctx.latestClusters.length > 0 ? this.ctx.latestClusters : undefined,
         newsByCategory: this.ctx.newsByCategory,
         markets: this.ctx.latestMarkets,
-        predictions: this.ctx.latestPredictions,
         intelligence: this.ctx.intelligenceCache,
-        cyberThreats: this.ctx.cyberThreatsCache ?? undefined,
-        gpsJamming: getCachedGpsInterference() ?? undefined,
-        convergenceCards: allCards.map(({ assessment: _a, ...card }) => card),
         monitors: this.ctx.monitors.length > 0 ? this.ctx.monitors : undefined,
       };
     };
@@ -2338,11 +2202,6 @@ export class EventHandlerManager implements AppModule {
         timestamp: Date.now(),
         events: this.ctx.latestClusters,
         marketPrices,
-        predictions: this.ctx.latestPredictions.map(p => ({
-          title: p.title,
-          yesPrice: p.yesPrice
-        })),
-        hotspotLevels: this.ctx.map?.getHotspotLevels() ?? {}
       });
     };
 
@@ -2362,33 +2221,11 @@ export class EventHandlerManager implements AppModule {
 
     const events = snapshot.events as ClusteredEvent[];
     this.ctx.latestClusters = events;
-
-    const predictions = snapshot.predictions.map((p, i) => ({
-      id: `snap-${i}`,
-      title: p.title,
-      yesPrice: p.yesPrice,
-      noPrice: 100 - p.yesPrice,
-      volume24h: 0,
-      liquidity: 0,
-    }));
-    this.ctx.latestPredictions = predictions;
-    (this.ctx.panels.polymarket as PredictionPanel | undefined)?.renderPredictions(predictions);
-
-    this.ctx.map?.setHotspotLevels(snapshot.hotspotLevels);
   }
 
   setupMapLayerHandlers(): void {
     this.ctx.map?.setOnLayerChange((layer, enabled, source) => {
       this.applyMapLayerChange(layer, enabled, source);
-    });
-
-    // Forward live aircraft positions from map to AirlineIntelPanel + cache + search index
-    this.ctx.map?.setOnAircraftPositionsUpdate((positions) => {
-      this.ctx.intelligenceCache.aircraftPositions = positions;
-      const airlineIntel = this.ctx.panels['airline-intel'] as AirlineIntelPanel | undefined;
-      airlineIntel?.updateLivePositions(positions);
-      const military = this.ctx.intelligenceCache.military?.flights ?? [];
-      this.callbacks.updateFlightSource?.(positions, military);
     });
   }
 
@@ -2423,10 +2260,6 @@ export class EventHandlerManager implements AppModule {
       const lateMounts = new MutationObserver(() => observeGridPanels());
       lateMounts.observe(grid, { childList: true });
     }
-  }
-
-  shouldShowIntelligenceNotifications(): boolean {
-    return !this.ctx.isMobile && !!this.ctx.findingsBadge?.isPopupEnabled();
   }
 
   setupMapResize(): void {

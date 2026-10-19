@@ -69,30 +69,9 @@ function persistJson(key: string, value: unknown): boolean {
   }
 }
 
-function disableIncompatibleResilienceLayer(ctx: AppContext): {
-  adjustments: MapDimensionLayerAdjustment[];
-  persisted: boolean;
-} {
-  if (!ctx.mapLayers.resilienceScore || ctx.map?.isDeckGLActive?.()) {
-    return { adjustments: [], persisted: true };
-  }
-  ctx.mapLayers = { ...ctx.mapLayers, resilienceScore: false };
-  ctx.map?.setLayers?.(ctx.mapLayers);
-  return {
-    adjustments: [{
-      layer: 'resilienceScore',
-      from: true,
-      to: false,
-      reason: 'layer_not_executable',
-    }],
-    persisted: persistJson(STORAGE_KEYS.mapLayers, ctx.mapLayers),
-  };
-}
-
 /**
  * The visible 2D/3D dashboard control. WebMCP must call this same path so
- * renderer switches, local persistence, and resilience-layer compatibility
- * stay identical to a button click.
+ * renderer switches and local persistence stay identical to a button click.
  */
 export async function applyVisibleMapDimension(
   ctx: AppContext,
@@ -146,15 +125,15 @@ export async function applyVisibleMapDimension(
   const persistPreference = dashboardMapModeToPreference(effective);
   syncMapDimensionToggle(persistPreference);
   const modePersisted = persistJson(STORAGE_KEYS.mapMode, persistPreference);
-  const layerAdjustment = disableIncompatibleResilienceLayer(ctx);
 
   return {
     requested,
     effective,
     renderer,
     alreadyActive: false,
-    adjustedLayers: layerAdjustment.adjustments,
+    // No renderer-incompatible layers remain since the resilience choropleth retired.
+    adjustedLayers: [],
     fellBack,
-    persisted: modePersisted && layerAdjustment.persisted,
+    persisted: modePersisted,
   };
 }

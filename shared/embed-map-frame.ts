@@ -37,10 +37,8 @@ export type EmbedMapFrameLayerState = 'ok' | 'partial' | 'unavailable' | 'not-en
  * them fully typed and the client narrows them at the parse boundary.
  */
 export interface EmbedMapFrameData {
-  conflicts?: readonly unknown[];
   earthquakes?: readonly unknown[];
   naturalEvents?: readonly unknown[];
-  protests?: readonly unknown[];
   weatherAlerts?: readonly unknown[];
 }
 

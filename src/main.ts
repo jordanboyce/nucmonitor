@@ -529,7 +529,6 @@ window.addEventListener('securitypolicyviolation', (e) => {
   });
 });
 
-import { debugGetCells, getCellCount } from '@/services/geo-convergence';
 import { initMetaTags } from '@/services/meta-tags';
 import { installFetchFailureAttribution } from '@/services/fetch-failure-attribution';
 import { installRuntimeFetchPatch, installWebApiRedirect } from '@/services/runtime';
@@ -675,12 +674,6 @@ if (urlParams.get('settings') === '1') {
     throw error;
   });
 }
-
-// Debug helpers for geo-convergence testing (remove in production)
-(window as unknown as Record<string, unknown>).geoDebug = {
-  cells: debugGetCells,
-  count: getCellCount,
-};
 
 installBetaConsoleToggle(window);
 

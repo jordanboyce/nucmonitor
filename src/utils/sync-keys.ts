@@ -37,8 +37,6 @@ export const CLOUD_SYNC_KEYS = [
   // the toggle as off because tech-variant localStorage is fresh.
   'wm-ai-flow-browser-model',
   'wm-headline-memory',
-  'wm-analysis-frameworks',
-  'wm-panel-frameworks',
   // Provider-specific map themes (wm-map-theme:<provider>)
   'wm-map-theme:auto',
   'wm-map-theme:pmtiles',

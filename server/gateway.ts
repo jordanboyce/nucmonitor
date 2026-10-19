@@ -261,7 +261,6 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   // 'live' tier — bbox-quantized + tanker-aware caching upstream of the
   // 60s in-handler cache, absorbing identical-bbox requests at the CDN
   // before they hit this Vercel function. Energy Atlas live-tanker layer.
-  '/api/maritime/v1/get-vessel-snapshot': 'live',
 
   '/api/market/v1/list-market-quotes': 'medium',
   '/api/market/v1/list-crypto-quotes': 'medium',
@@ -286,83 +285,29 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/infrastructure/v1/list-internet-outages': 'slow',
   '/api/infrastructure/v1/list-internet-ddos-attacks': 'slow',
   '/api/infrastructure/v1/list-internet-traffic-anomalies': 'slow',
-  '/api/forecast/v1/get-forecast-scorecard': 'fast',
-  '/api/safety/v1/get-toronto-safety': 'slow',
 
-  '/api/unrest/v1/list-unrest-events': 'slow',
-  '/api/cyber/v1/list-cyber-threats': 'static',
-  '/api/conflict/v1/list-acled-events': 'slow',
-  '/api/military/v1/get-theater-posture': 'slow',
-  '/api/military/v1/get-defense-industrial-base': 'daily',
   '/api/infrastructure/v1/get-temporal-baseline': 'slow',
-  '/api/aviation/v1/list-airport-delays': 'static',
-  '/api/aviation/v1/get-airport-ops-summary': 'static',
-  '/api/aviation/v1/list-airport-flights': 'static',
-  '/api/aviation/v1/get-carrier-ops': 'slow',
-  '/api/aviation/v1/get-flight-status': 'fast',
-  '/api/aviation/v1/track-aircraft': 'no-store',
-  '/api/aviation/v1/list-aircraft-emergencies': 'no-store',
-  '/api/aviation/v1/search-flight-prices': 'medium',
-  '/api/aviation/v1/search-google-flights': 'no-store',
-  '/api/aviation/v1/search-google-dates': 'medium',
-  '/api/aviation/v1/list-aviation-news': 'slow',
   '/api/market/v1/get-country-stock-index': 'slow',
   '/api/market/v1/get-price-history': 'static',
 
   '/api/natural/v1/list-natural-events': 'slow',
   '/api/wildfire/v1/list-fire-detections': 'static',
-  '/api/maritime/v1/list-navigational-warnings': 'static',
-  '/api/supply-chain/v1/get-china-corridor-control-towers': 'medium',
-  '/api/supply-chain/v1/get-shipping-rates': 'daily',
-  '/api/supply-chain/v1/list-pipelines': 'static',
-  '/api/supply-chain/v1/get-pipeline-detail': 'static',
-  '/api/supply-chain/v1/list-storage-facilities': 'static',
-  '/api/supply-chain/v1/get-storage-facility-detail': 'static',
-  '/api/supply-chain/v1/list-fuel-shortages': 'medium',
-  '/api/supply-chain/v1/get-fuel-shortage-detail': 'medium',
-  '/api/supply-chain/v1/list-energy-disruptions': 'medium',
   '/api/economic/v1/get-fred-series': 'static',
   '/api/economic/v1/get-bls-series': 'daily',
   '/api/economic/v1/get-energy-prices': 'static',
-  '/api/research/v1/list-arxiv-papers': 'static',
-  '/api/research/v1/list-trending-repos': 'static',
-  '/api/giving/v1/get-giving-summary': 'static',
-  '/api/intelligence/v1/get-country-intel-brief': 'static',
   // The canonical Railway projection refreshes every 15 minutes. Keep the
   // public composition route's Vercel TTL (10m on fast) inside that cadence so
   // the seeder cannot keep re-publishing a two-hour-old medium-tier response.
-  '/api/intelligence/v1/get-china-decision-signals': 'fast',
-  '/api/intelligence/v1/get-gdelt-topic-timeline': 'medium',
   '/api/climate/v1/list-climate-anomalies': 'daily',
   '/api/climate/v1/list-climate-disasters': 'daily',
   '/api/climate/v1/get-co2-monitoring': 'daily',
   '/api/climate/v1/get-ocean-ice-data': 'daily',
   '/api/climate/v1/list-air-quality-data': 'fast',
   '/api/climate/v1/list-climate-news': 'slow',
-  '/api/sanctions/v1/list-sanctions-pressure': 'daily',
-  '/api/sanctions/v1/lookup-sanction-entity': 'no-store',
   '/api/radiation/v1/list-radiation-observations': 'slow',
-  '/api/thermal/v1/list-thermal-escalations': 'slow',
-  '/api/research/v1/list-tech-events': 'daily',
-  '/api/military/v1/get-usni-fleet-report': 'daily',
-  '/api/military/v1/list-defense-patents': 'daily',
-  '/api/conflict/v1/list-ucdp-events': 'daily',
-  '/api/conflict/v1/get-humanitarian-summary': 'daily',
-  '/api/conflict/v1/list-iran-events': 'slow',
-  '/api/displacement/v1/get-displacement-summary': 'daily',
-  '/api/displacement/v1/get-internal-displacement': 'daily',
-  '/api/displacement/v1/get-population-exposure': 'daily',
   '/api/economic/v1/get-bis-policy-rates': 'daily',
   '/api/economic/v1/get-bis-exchange-rates': 'daily',
   '/api/economic/v1/get-bis-credit': 'daily',
-  '/api/trade/v1/get-tariff-trends': 'daily',
-  '/api/trade/v1/get-bilateral-tariff': 'daily',
-  '/api/trade/v1/get-us-import-duty': 'daily',
-  '/api/trade/v1/get-trade-flows': 'daily',
-  '/api/trade/v1/get-trade-barriers': 'daily',
-  '/api/trade/v1/get-trade-restrictions': 'daily',
-  '/api/trade/v1/get-customs-revenue': 'daily',
-  '/api/trade/v1/list-comtrade-flows': 'daily',
   '/api/economic/v1/list-world-bank-indicators': 'daily',
   '/api/economic/v1/get-energy-capacity': 'daily',
   '/api/economic/v1/list-grocery-basket-prices': 'daily',
@@ -381,16 +326,8 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   // Daily yield-curve bundle. A miss returns unavailable:true, which the
   // gateway already keeps out of the shared cache.
   '/api/economic/v1/get-government-yield-curve': 'daily',
-  '/api/supply-chain/v1/get-critical-minerals': 'daily',
-  '/api/supply-chain/v1/get-mineral-production': 'daily',
-  '/api/military/v1/get-aircraft-details': 'static',
-  '/api/military/v1/get-wingbits-status': 'static',
-  '/api/military/v1/get-wingbits-live-flight': 'no-store',
 
-  '/api/military/v1/list-military-flights': 'slow',
   '/api/market/v1/list-etf-flows': 'slow',
-  '/api/research/v1/list-hackernews-items': 'slow',
-  '/api/intelligence/v1/get-country-risk': 'slow',
   // get-country-coverage is premium-gated via PREMIUM_RPC_PATHS, so the gateway
   // short-circuits to 'slow-browser' before consulting this map — same as
   // get-regional-snapshot below. This entry exists to satisfy the parity
@@ -398,23 +335,10 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   // if the endpoint ever stops being premium: `medium` rather than the sibling
   // `slow`, because the response can carry degraded=true and an hour of shared
   // edge cache would pin a transient upstream failure long after it healed.
-  '/api/intelligence/v1/get-country-coverage': 'medium',
-  '/api/intelligence/v1/get-risk-scores': 'slow',
-  '/api/intelligence/v1/get-pizzint-status': 'slow',
-  '/api/intelligence/v1/classify-event': 'static',
-  '/api/intelligence/v1/search-gdelt-documents': 'slow',
   '/api/infrastructure/v1/get-cable-health': 'slow',
-  '/api/positive-events/v1/list-positive-geo-events': 'slow',
 
-  '/api/military/v1/list-military-bases': 'daily',
   '/api/economic/v1/get-macro-signals': 'medium',
   '/api/economic/v1/get-national-debt': 'daily',
-  '/api/prediction/v1/list-prediction-markets': 'medium',
-  '/api/forecast/v1/get-forecasts': 'medium',
-  '/api/forecast/v1/get-simulation-package': 'slow',
-  '/api/forecast/v1/get-simulation-outcome': 'slow',
-  '/api/supply-chain/v1/get-chokepoint-status': 'fast',
-  '/api/supply-chain/v1/get-chokepoint-history': 'slow',
   // Fast, not slow: the digest is rebuilt into Redis every 15 min, and a CDN
   // holding one body for an hour made the CDN the freshness floor.
   '/api/news/v1/list-feed-digest': 'fast',
@@ -426,21 +350,8 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/news/v1/search-fact-checks': 'slow',
   // /verify claim search over the feed caches; the CDN key includes the claim.
   '/api/news/v1/search-claim-headlines': 'fast',
-  '/api/intelligence/v1/get-country-facts': 'daily',
-  '/api/intelligence/v1/list-security-advisories': 'slow',
-  '/api/intelligence/v1/list-satellites': 'static',
-  '/api/intelligence/v1/list-gps-interference': 'slow',
-  '/api/intelligence/v1/list-cross-source-signals': 'medium',
-  '/api/intelligence/v1/list-oref-alerts': 'fast',
-  '/api/intelligence/v1/list-telegram-feed': 'fast',
-  '/api/intelligence/v1/list-x-feed': 'fast',
-  '/api/intelligence/v1/get-company-enrichment': 'slow',
-  '/api/intelligence/v1/list-company-signals': 'slow',
-  '/api/intelligence/v1/search-sec-filings': 'medium',
-  '/api/intelligence/v1/list-material-events': 'medium',
   '/api/news/v1/summarize-article-cache': 'slow',
 
-  '/api/imagery/v1/search-imagery': 'static',
 
   '/api/infrastructure/v1/list-temporal-anomalies': 'medium',
   '/api/infrastructure/v1/get-ip-geo': 'no-store',
@@ -449,14 +360,7 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/webcam/v1/get-webcam-image': 'no-store',
   '/api/webcam/v1/list-webcams': 'no-store',
 
-  '/api/consumer-prices/v1/get-consumer-price-overview': 'slow',
-  '/api/consumer-prices/v1/get-consumer-price-basket-series': 'slow',
-  '/api/consumer-prices/v1/list-consumer-price-categories': 'slow',
-  '/api/consumer-prices/v1/list-consumer-price-movers': 'slow',
-  '/api/consumer-prices/v1/list-retailer-price-spreads': 'slow',
-  '/api/consumer-prices/v1/get-consumer-price-freshness': 'slow',
 
-  '/api/aviation/v1/get-youtube-live-stream-info': 'fast',
 
   '/api/market/v1/list-earnings-calendar': 'slow',
   '/api/market/v1/get-cot-positioning': 'slow',
@@ -466,8 +370,6 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/economic/v1/get-economic-calendar': 'slow',
   '/api/economic/v1/get-china-macro-snapshot': 'slow',
   '/api/economic/v1/get-china-activity-nowcast': 'medium',
-  '/api/intelligence/v1/list-market-implications': 'slow',
-  '/api/intelligence/v1/list-wsb-tickers': 'no-store',
   '/api/economic/v1/get-ecb-fx-rates': 'slow',
   '/api/economic/v1/get-eurostat-country-data': 'slow',
   '/api/economic/v1/get-eu-gas-storage': 'slow',
@@ -477,57 +379,26 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/economic/v1/list-global-tenders': 'medium',
   '/api/economic/v1/get-eu-fsi': 'slow',
   '/api/economic/v1/get-economic-stress': 'slow',
-  '/api/supply-chain/v1/get-shipping-stress': 'medium',
-  '/api/supply-chain/v1/get-country-chokepoint-index': 'slow-browser',
-  '/api/supply-chain/v1/get-bypass-options': 'slow-browser',
-  '/api/supply-chain/v1/get-country-cost-shock': 'slow-browser',
-  '/api/supply-chain/v1/get-country-products': 'slow-browser',
   // These responses differ by caller redistribution rights. The gateway cache
   // key does not vary on session/API-key audience, so they must never be stored.
-  '/api/supply-chain/v1/get-country-vulnerabilities': 'no-store',
-  '/api/supply-chain/v1/get-chokepoint-dependencies': 'no-store',
-  '/api/supply-chain/v1/list-vulnerability-rankings': 'no-store',
-  '/api/supply-chain/v1/get-multi-sector-cost-shock': 'slow-browser',
-  '/api/supply-chain/v1/get-sector-dependency': 'slow-browser',
-  '/api/supply-chain/v1/get-route-explorer-lane': 'slow-browser',
-  '/api/supply-chain/v1/get-route-impact': 'slow-browser',
   // Scenario engine: list-scenario-templates is a compile-time constant catalog;
   // daily tier gives browser max-age=3600 matching the legacy /api/scenario/v1/templates
   // endpoint header. get-scenario-status is premium-gated — gateway short-circuits
   // to 'slow-browser' but the entry is still required by tests/route-cache-tier.test.mjs.
-  '/api/scenario/v1/list-scenario-templates': 'daily',
-  '/api/scenario/v1/get-scenario-status': 'slow-browser',
   '/api/health/v1/list-disease-outbreaks': 'slow',
   '/api/health/v1/list-air-quality-alerts': 'fast',
-  '/api/intelligence/v1/get-social-velocity': 'fast',
-  '/api/intelligence/v1/get-country-energy-profile': 'slow',
-  '/api/intelligence/v1/compute-energy-shock': 'fast',
-  '/api/intelligence/v1/get-country-port-activity': 'slow',
   // NOTE: get-regional-snapshot is premium-gated via PREMIUM_RPC_PATHS; the
   // gateway short-circuits to 'slow-browser' before consulting this map. The
   // entry below exists to satisfy the parity contract enforced by
   // tests/route-cache-tier.test.mjs (every generated GET route needs a tier)
   // and documents the intended tier if the endpoint ever becomes non-premium.
-  '/api/intelligence/v1/get-regional-snapshot': 'slow',
   // get-regime-history is premium-gated same as get-regional-snapshot; this
   // entry is required by tests/route-cache-tier.test.mjs even though the
   // gateway short-circuits premium paths to slow-browser.
-  '/api/intelligence/v1/get-regime-history': 'slow',
   // get-regional-brief is premium-gated; slow-browser in practice, slow entry for route-parity.
-  '/api/intelligence/v1/get-regional-brief': 'slow',
   // Historical intelligence memory (#5694) — the timeline is a generated GET
   // and therefore requires an explicit gateway cache tier. The two semantic
   // reads are POSTs and cache successful results inside their handlers.
-  '/api/intelligence/v1/get-intel-timeline': 'slow',
-  '/api/resilience/v1/get-resilience-score': 'slow',
-  '/api/resilience/v1/get-resilience-indicators': 'slow',
-  '/api/resilience/v1/get-resilience-ranking': 'slow',
-  '/api/resilience/v1/get-food-stocks': 'slow',
-  '/api/resilience/v1/get-demographics-capability': 'slow',
-  '/api/resilience/v1/get-runtime-manifest': 'no-store',
-  '/api/scorecard/v1/get-five-factor-scorecard': 'slow',
-  '/api/scorecard/v1/list-five-factor-scorecards': 'slow',
-  '/api/scorecard/v1/get-bloc-scorecard': 'slow',
 
   // Partner-facing shipping/v2. route-intelligence is premium-gated; gateway
   // short-circuits to slow-browser. Entry required by tests/route-cache-tier.test.mjs.
@@ -539,19 +410,11 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   // Company Monitoring is account-private and remains unrouted until #6003.
   // Keep every generated read no-store so future activation cannot inherit a
   // shared CDN tier before its account isolation is proven end to end.
-  '/api/company-monitoring/v1/get-company-coverage': 'no-store',
-  '/api/company-monitoring/v1/get-company-material-event': 'no-store',
-  '/api/company-monitoring/v1/get-company-monitoring-status': 'no-store',
-  '/api/company-monitoring/v1/list-company-event-changes': 'no-store',
-  '/api/company-monitoring/v1/list-company-event-impacts': 'no-store',
-  '/api/company-monitoring/v1/list-monitored-companies': 'no-store',
 };
 
 import { PREMIUM_RPC_PATHS } from '../src/shared/premium-paths';
 
 export const PUBLIC_NO_AUTH_RPC_PATHS = new Set<string>([
-  '/api/intelligence/v1/get-china-decision-signals',
-  '/api/resilience/v1/get-runtime-manifest',
   // Lead-capture RPCs serve ANONYMOUS prospects by definition: the /pro
   // marketing page contact form and the waitlist/desktop signup both POST
   // without a wms_ session or API key (see pro-test/src/App.tsx onSubmit and
@@ -561,8 +424,6 @@ export const PUBLIC_NO_AUTH_RPC_PATHS = new Set<string>([
   // honeypot, free-email-domain rejection, per-IP endpoint rate limits
   // (server/_shared/rate-limit.ts: 3/h and 5/h), and the Convex per-email
   // throttle. Pinned by tests/leads-gateway-public.test.mts.
-  '/api/leads/v1/submit-contact',
-  '/api/leads/v1/register-interest',
   // #9093 "Report an error": readers report without an account by design. The
   // gates are the handler's honeypot and validation, a fail-closed per-IP
   // endpoint limit (server/_shared/rate-limit.ts), and a bounded review queue
@@ -600,14 +461,12 @@ export const PUBLIC_NO_AUTH_RPC_PATHS = new Set<string>([
 // key. It unlocks ONLY a cache-warm on these specific free endpoints — exactly
 // what any session holder could already trigger — so the blast radius of the
 // secret is a recompute on public data: no premium access, no entitlement bypass
-// beyond anonymous-equivalent. Mirrors the isResilienceRankingSeedRefreshRequest
+// beyond anonymous-equivalent. Mirrors the retired resilience seed-refresh
 // internal-auth path below.
 export const RELAY_WARM_PING_PATHS = new Set<string>([
   '/api/infrastructure/v1/list-service-statuses',
   '/api/infrastructure/v1/get-cable-health',
   '/api/infrastructure/v1/list-temporal-anomalies',
-  '/api/intelligence/v1/get-risk-scores',
-  '/api/supply-chain/v1/get-chokepoint-status',
   // Classify reads the same public digest a session holder can already trigger
   // so self-host / Railway can send WORLDMONITOR_RELAY_KEY instead of an
   // enterprise key (#7437).
@@ -630,8 +489,6 @@ export const REQUIRED_BBOX_QUERY_PARAMS = ['sw_lat', 'sw_lon', 'ne_lat', 'ne_lon
 // Issue #4595 is scoped to military RPCs whose handlers require bbox.
 // Other bbox-capable RPCs support lookup/global modes and must not emit this diagnostic.
 export const REQUIRED_BBOX_RPC_PATHS = [
-  '/api/military/v1/list-military-bases',
-  '/api/military/v1/list-military-flights',
 ] as const;
 
 const REQUIRED_BBOX_RPC_PATH_SET = new Set<string>(REQUIRED_BBOX_RPC_PATHS);
@@ -890,14 +747,10 @@ function createGatewayAuthErrorResponse(
 }
 
 const GATEWAY_DIRECT_LLM_QUOTA_METHODS: Record<string, string> = {
-  '/api/intelligence/v1/classify-event': 'GET',
-  '/api/intelligence/v1/deduct-situation': 'POST',
-  '/api/intelligence/v1/get-country-intel-brief': 'GET',
   '/api/market/v1/analyze-stock': 'GET',
   '/api/news/v1/summarize-article': 'POST',
 };
 
-const COUNTRY_INTEL_BRIEF_PATH = '/api/intelligence/v1/get-country-intel-brief';
 
 // A direct-LLM reservation that dispatch() has charged but not yet settled,
 // keyed by the request it was charged for. dispatch() releases it itself on
@@ -1010,25 +863,12 @@ function stripTrailingSlashes(value: string): string {
   return end === value.length ? value : value.slice(0, end);
 }
 
-async function isResilienceRankingSeedRefreshRequest(request: Request, pathname: string): Promise<boolean> {
-  if (pathname !== '/api/resilience/v1/get-resilience-ranking') return false;
-  const expected = process.env.WORLDMONITOR_SEED_REFRESH_KEY?.trim() ?? '';
-  if (!expected) return false;
-  try {
-    const url = new URL(request.url);
-    if (url.searchParams.get('refresh') !== '1') return false;
-  } catch {
-    return false;
-  }
-  const candidate = request.headers.get('X-WorldMonitor-Key') ?? '';
-  return timingSafeEqual(candidate, expected);
-}
 
 // Authenticate a relay warm-ping as a trusted internal caller. True only when
 // the path is an explicit warm-ping target AND the request carries the dedicated
 // relay secret in X-WorldMonitor-Key (timing-safe compared). Returns false when
 // the secret is unset so a misconfigured deploy fails CLOSED (no bypass) rather
-// than silently opening these paths. Mirrors isResilienceRankingSeedRefreshRequest.
+// than silently opening these paths.
 export async function isRelayWarmPingRequest(request: Request, pathname: string): Promise<boolean> {
   if (!RELAY_WARM_PING_PATHS.has(pathname)) return false;
   const expected = process.env.WORLDMONITOR_RELAY_KEY?.trim() ?? '';
@@ -1516,7 +1356,8 @@ export function createDomainGateway(
     // have one response contract for every caller.
     const isPublicNoAuthRpc = PUBLIC_NO_AUTH_RPC_PATHS.has(pathname)
       || isPublicSharedRpcRequest(request.url, request.method);
-    const seedRefreshVerified = await isResilienceRankingSeedRefreshRequest(request, pathname);
+    // The resilience ranking seed-refresh bypass retired with the resilience domain.
+    const seedRefreshVerified = false;
     const relayWarmPingVerified = await isRelayWarmPingRequest(request, pathname);
     // Resolve the quota policy against the route POST compatibility will use.
     // Keep body validation after auth and abuse limiting; invalid bodies still
@@ -1538,10 +1379,8 @@ export function createDomainGateway(
     // proof remains the gateway authentication boundary on this one route.
     // Cloud deployments do not set LOCAL_API_MODE=docker, and every other
     // premium route retains forceKey + entitlement enforcement below.
-    const isDockerSelfHostCountryBrief =
-      (request.method === 'GET' || request.method === 'HEAD') &&
-      pathname === COUNTRY_INTEL_BRIEF_PATH &&
-      process.env.LOCAL_API_MODE === 'docker';
+    // The country intel brief route retired with the intelligence domain.
+    const isDockerSelfHostCountryBrief = false;
     const needsLegacyProBearerGate = !internalMcpVerified && !isPublicNoAuthRpc && PREMIUM_RPC_PATHS.has(pathname) && !isTierGated;
     const isProFreshCacheRpc = PRO_FRESH_CACHE_RPC_PATHS.has(pathname);
     const needsProFreshnessResolution =
@@ -2175,20 +2014,6 @@ export function createDomainGateway(
       return response;
     }
     const isServerSubRequest = subRequestAdmission === 'admitted';
-    // Google searches need their tighter upstream budget even after MCP admission.
-    if (!isServerSubRequest && internalMcpVerified && (pathname === '/api/aviation/v1/search-google-flights'
-      || pathname === '/api/aviation/v1/search-google-dates')) {
-      const endpointRlResponse = await checkEndpointRateLimit(request, pathname, corsHeaders, {
-        principalUserId: request.headers.get(TRUSTED_USER_ID_HEADER)!,
-        principalScope: 'session',
-      });
-      if (endpointRlResponse) {
-        const reason = getRateLimitTelemetryReason(endpointRlResponse, 'rate_limit_429_endpoint');
-        emitRequest(endpointRlResponse.status, reason, null);
-        return endpointRlResponse;
-      }
-    }
-
     // Internal-MCP verified requests skip the remaining gateway layer: the MCP edge
     // already enforced 50/day + 60/min per userId in api/mcp.ts. A second
     // limiter here would create misleading double-counting and could 429
@@ -2198,10 +2023,7 @@ export function createDomainGateway(
       // These local provider lookups use the sidecar cache without Upstash.
       // Keep these exceptions exact-path; cloud requests retain the provider cap.
       const isSidecarProviderLookup = process.env.LOCAL_API_MODE === 'tauri-sidecar'
-        && (pathname === '/api/aviation/v1/track-aircraft'
-          || pathname === '/api/military/v1/get-wingbits-live-flight'
-          || pathname === '/api/imagery/v1/search-imagery'
-          || pathname === '/api/webcam/v1/get-webcam-image');
+        && pathname === '/api/webcam/v1/get-webcam-image';
       const endpointRlResponse = isServerSubRequest || isSidecarProviderLookup ? null : rateLimitPrincipalUserId
         ? await checkEndpointRateLimit(request, pathname, corsHeaders, {
             principalUserId: rateLimitPrincipalUserId,

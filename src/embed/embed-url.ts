@@ -12,20 +12,10 @@ export type { EmbedLayerId };
 // present there but missing here would silently render nothing; pinned by
 // tests/embed-url.test.mts.
 export const EMBEDDABLE_LAYERS = [
-  { id: 'conflicts', mapLayer: 'conflicts', label: 'Conflicts' },
   { id: 'earthquakes', mapLayer: 'natural', label: 'Earthquakes' },
-  { id: 'protests', mapLayer: 'protests', label: 'Protests' },
   { id: 'weather', mapLayer: 'weather', label: 'Weather' },
   { id: 'cables', mapLayer: 'cables', label: 'Undersea Cables' },
   { id: 'pipelines', mapLayer: 'pipelines', label: 'Pipelines' },
-  { id: 'waterways', mapLayer: 'waterways', label: 'Chokepoints' },
-  { id: 'tradeRoutes', mapLayer: 'tradeRoutes', label: 'Trade Routes' },
-  { id: 'economic', mapLayer: 'economic', label: 'Economic Centers' },
-  { id: 'stockExchanges', mapLayer: 'stockExchanges', label: 'Stock Exchanges' },
-  { id: 'financialCenters', mapLayer: 'financialCenters', label: 'Financial Centers' },
-  { id: 'centralBanks', mapLayer: 'centralBanks', label: 'Central Banks' },
-  { id: 'commodityHubs', mapLayer: 'commodityHubs', label: 'Commodity Hubs' },
-  { id: 'gulfInvestments', mapLayer: 'gulfInvestments', label: 'GCC Investments' },
 ] as const;
 
 export type EmbedTheme = 'dark' | 'light';
@@ -47,7 +37,7 @@ export interface EmbedMapState {
   requestedPanel: string;
 }
 
-export const DEFAULT_EMBED_LAYER_IDS: EmbedLayerId[] = ['conflicts', 'earthquakes', 'weather'];
+export const DEFAULT_EMBED_LAYER_IDS: EmbedLayerId[] = ['earthquakes', 'weather'];
 export const DEFAULT_EMBED_CENTER: EmbedCenter = { lat: 20, lon: 0 };
 export const DEFAULT_EMBED_ZOOM = 1;
 export const DEFAULT_EMBED_THEME: EmbedTheme = 'dark';
@@ -60,34 +50,8 @@ const EMBED_LAYER_BY_ID = new Map<string, (typeof EMBEDDABLE_LAYERS)[number]>(
 const EMBED_LAYER_ALIASES = new Map<string, EmbedLayerId>(([
   ['natural', 'earthquakes'],
   ['earthquake', 'earthquakes'],
-  ['conflict', 'conflicts'],
-  ['protest', 'protests'],
   ['cable', 'cables'],
   ['pipeline', 'pipelines'],
-  ['chokepoints', 'waterways'],
-  ['chokepoint', 'waterways'],
-  ['waterway', 'waterways'],
-  ['trade-routes', 'tradeRoutes'],
-  ['trade-routes-layer', 'tradeRoutes'],
-  ['tradeRoute', 'tradeRoutes'],
-  ['trade-route', 'tradeRoutes'],
-  ['economy', 'economic'],
-  ['stock-exchanges', 'stockExchanges'],
-  ['stockExchange', 'stockExchanges'],
-  ['stock-exchange', 'stockExchanges'],
-  ['financial-centers', 'financialCenters'],
-  ['financialCenter', 'financialCenters'],
-  ['financial-center', 'financialCenters'],
-  ['central-banks', 'centralBanks'],
-  ['centralBank', 'centralBanks'],
-  ['central-bank', 'centralBanks'],
-  ['commodity-hubs', 'commodityHubs'],
-  ['commodityHub', 'commodityHubs'],
-  ['commodity-hub', 'commodityHubs'],
-  ['gcc-investments', 'gulfInvestments'],
-  ['gulf-investments', 'gulfInvestments'],
-  ['gulfInvestment', 'gulfInvestments'],
-  ['gulf-investment', 'gulfInvestments'],
 ] as const).map(([alias, id]) => [alias.toLowerCase(), id]));
 
 const VALID_THEMES = new Set<EmbedTheme>(['dark', 'light']);
@@ -95,64 +59,20 @@ const VALID_VARIANTS = new Set<EmbedVariant>(['full', 'nuclear']);
 
 export function createBlankMapLayers(): MapLayers {
   return {
-    conflicts: false,
-    bases: false,
-    cables: false,
-    pipelines: false,
-    hotspots: false,
-    ais: false,
     nuclear: false,
     irradiators: false,
     radiationWatch: false,
-    sanctions: false,
-    weather: false,
-    canadaRoads: false,
-    canadaAlerts: false,
-    economic: false,
-    waterways: false,
-    outages: false,
-    cyberThreats: false,
+    cables: false,
+    pipelines: false,
     datacenters: false,
-    protests: false,
-    flights: false,
-    military: false,
-    natural: false,
-    spaceports: false,
-    minerals: false,
-    fires: false,
-    ucdpEvents: false,
-    displacement: false,
     climate: false,
-    startupHubs: false,
-    cloudRegions: false,
-    accelerators: false,
-    techHQs: false,
-    techEvents: false,
-    stockExchanges: false,
-    financialCenters: false,
-    centralBanks: false,
-    commodityHubs: false,
-    gulfInvestments: false,
-    positiveEvents: false,
-    kindness: false,
-    happiness: false,
-    speciesRecovery: false,
-    renewableInstallations: false,
-    tradeRoutes: false,
-    iranAttacks: false,
-    gpsJamming: false,
-    satellites: false,
-    ciiChoropleth: false,
-    resilienceScore: false,
+    weather: false,
+    outages: false,
+    natural: false,
+    fires: false,
     dayNight: false,
-    miningSites: false,
-    processingPlants: false,
-    commodityPorts: false,
     webcams: false,
     diseaseOutbreaks: false,
-    storageFacilities: false,
-    fuelShortages: false,
-    liveTankers: false,
   };
 }
 

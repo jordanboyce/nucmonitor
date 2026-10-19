@@ -1,15 +1,13 @@
 import type { Feed, NewsItem } from '@/types';
 import { SITE_VARIANT } from '@/config';
 import { chunkArray, fetchWithProxy, hasNoStoreCacheDirective, isMobileDevice } from '@/utils';
-import { classifyByKeyword, classifyWithAI } from './threat-classifier';
-import { inferGeoHubsFromTitle } from './geo-hub-index';
+import { classifyByKeyword } from './threat-classifier';
 import { getPersistentCache, setPersistentCache } from './persistent-cache';
 import { dataFreshness } from './data-freshness';
 import { ingestHeadlines } from './trending-keywords';
 import { getCurrentLanguage } from './i18n';
 import { filterFeedsByLanguage } from './feed-language';
 import { parseFeedDate, effectivePubDateMs } from './feed-date';
-import { canQueueAiClassification, AI_CLASSIFY_MAX_PER_FEED } from './ai-classify-queue';
 import { mlWorker } from './ml-worker';
 import { isHeadlineMemoryEnabled } from './ai-flow-settings';
 import { yieldToMain } from '@/utils/after-paint';
@@ -18,19 +16,16 @@ import { createYieldingWorkQueue } from '@/utils/yielding-work-queue';
 export interface RssFetchPolicy {
   ingestGlobalTrends: boolean;
   ingestVectorMemory: boolean;
-  classifyWithAi: boolean;
 }
 
 export const DEFAULT_RSS_FETCH_POLICY: RssFetchPolicy = Object.freeze({
   ingestGlobalTrends: true,
   ingestVectorMemory: true,
-  classifyWithAi: true,
 });
 
 export const BRIEF_ONLY_RSS_FETCH_POLICY: RssFetchPolicy = Object.freeze({
   ingestGlobalTrends: false,
   ingestVectorMemory: false,
-  classifyWithAi: false,
 });
 
 export interface FetchFeedOptions {
@@ -269,8 +264,6 @@ export async function fetchFeed(feed: Feed, options: FetchFeedOptions = {}): Pro
       const { date: pubDate, missing: pubDateMissing } = parseFeedDate(pubDateStr);
       const threat = classifyByKeyword(title, SITE_VARIANT);
       const isAlert = threat.level === 'critical' || threat.level === 'high';
-      const geoMatches = inferGeoHubsFromTitle(title);
-      const topGeo = geoMatches[0];
 
       parsed.push({
         source: feed.name,
@@ -280,13 +273,12 @@ export async function fetchFeed(feed: Feed, options: FetchFeedOptions = {}): Pro
         pubDateMissing,
         isAlert,
         threat,
-        ...(topGeo && { lat: topGeo.hub.lat, lon: topGeo.hub.lon, locationName: topGeo.hub.name }),
         lang: feed.lang,
       });
 
-      // Each item performs DOM queries, date normalization, classification,
-      // and geo inference. Let paint/input run before the next item instead
-      // of concatenating all five into the same task on mobile. (#5165)
+      // Each item performs DOM queries, date normalization, and
+      // classification. Let paint/input run before the next item instead
+      // of concatenating all of them into the same task on mobile. (#5165)
       if (isMobile && index < itemNodes.length - 1) await yieldToMain();
     }
 
@@ -320,23 +312,6 @@ export async function fetchFeed(feed: Feed, options: FetchFeedOptions = {}): Pro
         url: item.link,
         tags: item.locationName ? [item.locationName] : undefined,
       }))).catch(() => {});
-    }
-
-    if (policy.classifyWithAi) {
-      const aiCandidates = parsed
-        .filter(item => item.threat.source === 'keyword')
-        .sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a))
-        .slice(0, AI_CLASSIFY_MAX_PER_FEED);
-
-      for (const item of aiCandidates) {
-        if (!canQueueAiClassification({ link: item.link, title: item.title })) continue;
-        classifyWithAI(item.title, SITE_VARIANT).then((aiResult) => {
-          if (aiResult && aiResult.confidence > item.threat.confidence) {
-            item.threat = aiResult;
-            item.isAlert = aiResult.level === 'critical' || aiResult.level === 'high';
-          }
-        }).catch(() => { });
-      }
     }
 
     return parsed;

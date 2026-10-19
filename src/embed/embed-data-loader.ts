@@ -1,12 +1,10 @@
-import type { MapLayers, NaturalEvent, SocialUnrestEvent } from '@/types';
+import type { MapLayers, NaturalEvent } from '@/types';
 // The map consumes the seismology service's Earthquake, which carries fields
 // the `@/types` one does not — importing the wrong one silently narrows it.
 import type { Earthquake } from '@/services/earthquakes';
-import type { AcledConflictEvent } from '@/generated/client/worldmonitor/conflict/v1/service_client';
 import type { WeatherAlert } from '@/services/weather';
 import { mapAlert } from '@/services/weather';
 import { toNaturalEvent } from '@/services/eonet';
-import { toSocialUnrestEvent } from '@/services/unrest';
 
 import { startSmartPollLoop, type SmartPollLoopHandle } from '@/services/smart-poll-loop';
 import {
@@ -24,11 +22,8 @@ import type { EmbedMapFrameLayerState, EmbedMapFrameResponse } from '../../share
  * called so the loader can be exercised without a DOM.
  */
 export interface EmbedMapSurface {
-  supportsLiveConflictEvents(): boolean;
-  setConflictEvents(events: AcledConflictEvent[]): void;
   setEarthquakes(earthquakes: Earthquake[]): void;
   setNaturalEvents(events: NaturalEvent[]): void;
-  setProtests(events: SocialUnrestEvent[]): void;
   setWeatherAlerts(alerts: WeatherAlert[]): void;
   setLayerLoading(layer: keyof MapLayers, loading: boolean): void;
   setLayerReady(layer: keyof MapLayers, ready: boolean): void;
@@ -38,20 +33,10 @@ export interface EmbedMapSurface {
 
 /** Every embeddable layer's corresponding map layer. */
 const MAP_LAYER_BY_EMBED_ID: Record<EmbedLayerId, keyof MapLayers> = {
-  conflicts: 'conflicts',
   earthquakes: 'natural',
-  protests: 'protests',
   weather: 'weather',
   cables: 'cables',
   pipelines: 'pipelines',
-  waterways: 'waterways',
-  tradeRoutes: 'tradeRoutes',
-  economic: 'economic',
-  stockExchanges: 'stockExchanges',
-  financialCenters: 'financialCenters',
-  centralBanks: 'centralBanks',
-  commodityHubs: 'commodityHubs',
-  gulfInvestments: 'gulfInvestments',
 };
 
 export type EmbedFrameFetcher = (
@@ -209,20 +194,12 @@ export class EmbedDataLoader {
 
   private applyFrame(frame: EmbedMapFrameResponse): void {
     const data = frame.data;
-    if (data.conflicts && isLayerRendered(frame.layers.conflicts) && this.map.supportsLiveConflictEvents()) {
-      this.map.setConflictEvents(data.conflicts as AcledConflictEvent[]);
-    }
     if (data.earthquakes && isLayerRendered(frame.layers.earthquakes)) {
       this.map.setEarthquakes(data.earthquakes as Earthquake[]);
     }
     if (data.naturalEvents && isLayerRendered(frame.layers.earthquakes)) {
       this.map.setNaturalEvents(
         (data.naturalEvents as Parameters<typeof toNaturalEvent>[0][]).map(toNaturalEvent),
-      );
-    }
-    if (data.protests && isLayerRendered(frame.layers.protests)) {
-      this.map.setProtests(
-        (data.protests as Parameters<typeof toSocialUnrestEvent>[0][]).map(toSocialUnrestEvent),
       );
     }
     if (data.weatherAlerts && isLayerRendered(frame.layers.weather)) {
@@ -245,12 +222,10 @@ export class EmbedDataLoader {
   }
 
   private clearLayerData(id: EmbedLayerId): void {
-    if (id === 'conflicts') this.map.setConflictEvents([]);
     if (id === 'earthquakes') {
       this.map.setEarthquakes([]);
       this.map.setNaturalEvents([]);
     }
-    if (id === 'protests') this.map.setProtests([]);
     if (id === 'weather') this.map.setWeatherAlerts([]);
   }
 
@@ -291,7 +266,7 @@ export class EmbedDataLoader {
 
 /** Layers backed by an upstream read; the rest ship with the client. */
 function isLiveLayer(id: EmbedLayerId): boolean {
-  return id === 'conflicts' || id === 'earthquakes' || id === 'protests' || id === 'weather';
+  return id === 'earthquakes' || id === 'weather';
 }
 
 /**

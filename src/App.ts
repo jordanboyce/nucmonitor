@@ -6,7 +6,6 @@ import {
 } from '@/features/stock-research/stock-research-route';
 import { openStockResearchOverlay } from '@/features/stock-research/stock-research-overlay';
 import { openExternalUrl } from '@/services/external-navigation';
-import { normalizeExclusiveChoropleths } from '@/components/resilience-choropleth-utils';
 import type { AppContext } from '@/app/app-context';
 import { applyVisibleMapDimension } from '@/app/map-dimension-control';
 import {
@@ -39,22 +38,14 @@ import {
 } from '@/config/map-layer-definitions';
 import type { MapVariant } from '@/config/map-layer-definitions';
 import { getStoredMapModePreference } from '@/services/map-mode-preference';
-import { applyCanadaRoadsOptInMigration } from '@/services/canada-roads-opt-in';
 import {
   initDB,
   cleanOldSnapshots,
-  isAisConfigured,
-  initAisStream,
   isOutagesConfigured,
-  disconnectAisStream,
-  startFlightHistoryCleanup,
-  stopFlightHistoryCleanup,
 } from '@/services';
-import { enableVesselRuntime, stopLoadedVesselHistoryCleanup } from '@/services/military-vessels-lazy';
 import { isProUser, isProTierResolved, loadWidgets } from '@/services/widget-store';
 import { mlWorker } from '@/services/ml-worker';
 import { getAiFlowSettings, subscribeAiFlowChange, isHeadlineMemoryEnabled } from '@/services/ai-flow-settings';
-import { startLearning } from '@/services/country-instability';
 import {
   isMobileDevice,
   isQuotaError,
@@ -72,51 +63,14 @@ import { BreakingNewsBanner } from '@/components/BreakingNewsBanner';
 import { initBreakingNewsAlerts, destroyBreakingNewsAlerts } from '@/services/breaking-news-alerts';
 import { markLcpDebug } from '@/utils/lcp-debug';
 import { safeStorageGet, safeStorageSet } from '@/utils/safe-storage';
-import type { ServiceStatusPanel } from '@/components/ServiceStatusPanel';
 import type { MonitorPanel } from '@/components/MonitorPanel';
-import type { StablecoinPanel } from '@/components/StablecoinPanel';
-import type { EnergyCrisisPanel } from '@/components/EnergyCrisisPanel';
-import type { ETFFlowsPanel } from '@/components/ETFFlowsPanel';
-import type { MacroSignalsPanel } from '@/components/MacroSignalsPanel';
-import type { FearGreedPanel } from '@/components/FearGreedPanel';
-import type { HormuzPanel } from '@/components/HormuzPanel';
-import type { StrategicPosturePanel } from '@/components/StrategicPosturePanel';
-import type { StrategicRiskPanel } from '@/components/StrategicRiskPanel';
-import type { GulfEconomiesPanel } from '@/components/GulfEconomiesPanel';
-import type { GroceryBasketPanel } from '@/components/GroceryBasketPanel';
-import type { BigMacPanel } from '@/components/BigMacPanel';
-import type { FuelPricesPanel } from '@/components/FuelPricesPanel';
-import type { FxPanel } from '@/components/FxPanel';
-import type { FaoFoodPriceIndexPanel } from '@/components/FaoFoodPriceIndexPanel';
-import type { OilInventoriesPanel } from '@/components/OilInventoriesPanel';
-import type { PipelineStatusPanel } from '@/components/PipelineStatusPanel';
-import type { StorageFacilityMapPanel } from '@/components/StorageFacilityMapPanel';
-import type { FuelShortagePanel } from '@/components/FuelShortagePanel';
-import type { EnergyDisruptionsPanel } from '@/components/EnergyDisruptionsPanel';
-import type { EnergyRiskOverviewPanel } from '@/components/EnergyRiskOverviewPanel';
 import type { NuclearReactorStatusPanel } from '@/components/NuclearReactorStatusPanel';
-import type { ChokepointStripPanel } from '@/components/ChokepointStripPanel';
 import type { ClimateNewsPanel } from '@/components/ClimateNewsPanel';
-import type { ConsumerPricesPanel } from '@/components/ConsumerPricesPanel';
-import type { DefensePatentsPanel } from '@/components/DefensePatentsPanel';
-import type { MacroTilesPanel } from '@/components/MacroTilesPanel';
-import type { FSIPanel } from '@/components/FSIPanel';
-import type { NqPulsePanel } from '@/components/NqPulsePanel';
-import type { NqCatalystsPanel } from '@/components/NqCatalystsPanel';
-import type { YieldCurvePanel } from '@/components/YieldCurvePanel';
-import type { EarningsCalendarPanel } from '@/components/EarningsCalendarPanel';
-import type { MaterialEventsPanel } from '@/components/MaterialEventsPanel';
-import type { EconomicCalendarPanel } from '@/components/EconomicCalendarPanel';
-import type { CotPositioningPanel } from '@/components/CotPositioningPanel';
-import type { LiquidityShiftsPanel } from '@/components/LiquidityShiftsPanel';
-import type { NewsMarketCorrelationPanel } from '@/components/NewsMarketCorrelationPanel';
-import type { PositioningPanel } from '@/components/PositioningPanel';
-import type { GoldIntelligencePanel } from '@/components/GoldIntelligencePanel';
 import { isDesktopRuntime, waitForSidecarReady } from '@/services/runtime';
 import { hasPremiumAccess } from '@/services/panel-gating';
 import { BETA_MODE } from '@/config/beta';
 import { track, trackEvent, trackDeeplinkOpened, initAuthAnalytics, trackMapViewChange } from '@/services/analytics';
-import { preloadCountryGeometry, isCountryGeometryLoaded, getCountryNameByCode } from '@/services/country-geometry';
+import { preloadCountryGeometry } from '@/services/country-geometry';
 import { initI18n, t, I18N_RESOURCES_LOADED_EVENT, type I18nResourcesLoadedDetail } from '@/services/i18n';
 import { initDeferredDashboardFonts } from '@/bootstrap/secondary-startup';
 import { applyFontScale, FONT_SCALE_STORAGE_KEY } from '@/services/font-scale-settings';
@@ -166,14 +120,11 @@ import { ensureWmSession, installWmSessionFetchInterceptor, WM_SESSION_DEGRADED_
 import { describeWmSessionDegradation, WM_SESSION_DEGRADED_FALLBACK_COPY } from '@/services/wm-session-copy';
 import { describeFreshness } from '@/services/persistent-cache';
 import { DesktopUpdater } from '@/app/desktop-updater';
-import { CountryIntelManager } from '@/app/country-intel';
 import {
   DashboardBindingError,
-  isWebMcpAbortError,
   raceWebMcpAbort,
   throwIfWebMcpAborted,
   type WebMcpAppBindings,
-  type WebMcpExecutionOptions,
 } from '@/services/webmcp';
 import {
   applyWebMcpMissionPreset,
@@ -288,20 +239,10 @@ import { nextPrimeRetryDelayMs } from '@/utils/prime-retry';
 
 /** Look-ahead margin for viewport-gated panel priming and refresh scheduling. */
 const DEFAULT_VIEWPORT_MARGIN_PX = 400;
-// CorrelationEngine + its 4 adapters are dynamic-imported at the post-loadAllData
-// run site (#4486) so the engine bytes stay off the eager boot graph. The TYPE is
-// referenced via the inline `import(...)` type in app-context.ts (erased at build).
-import type { CorrelationPanel } from '@/components/CorrelationPanel';
-import { CORRELATION_DOMAINS } from '@/types/correlation';
-
-const CYBER_LAYER_ENABLED = import.meta.env.VITE_ENABLE_CYBER_LAYER === 'true';
 const FREE_MAP_PANEL_ACCESS_KEY = 'worldmonitor-free-map-panel-access-v1';
 const CW_PRO_GATE_RECOVERY_KEY = 'worldmonitor-cw-pro-gate-recovery-v1';
 const CW_PRO_GATE_CLOUD_RECOVERY_BASELINE_KEY = 'worldmonitor-cw-pro-gate-cloud-recovery-baseline-v1';
 const CW_PRO_GATE_CLOUD_RECOVERY_APPLIED_KEY = 'worldmonitor-cw-pro-gate-cloud-recovery-applied-v1';
-type SignalModalInstance = import('@/components/SignalModal').SignalModal;
-
-export type { CountryBriefSignals } from '@/app/app-context';
 
 export class App {
   private state: AppContext;
@@ -314,12 +255,7 @@ export class App {
     }, capturedThisLoad);
   }
 
-  private pendingDeepLinkCountry: string | null = null;
-  private pendingDeepLinkExpanded = false;
-  private pendingDeepLinkStoryCode: string | null = null;
-  private pendingDeepLinkChokepoint: string | null = null;
   private pendingDeepLinkSearchQuery: string | null = null;
-  private chokepointDeepLinkTimer: number | null = null;
   private stockDeepLinkTimer: number | null = null;
   // At most one automatic precise mobile recenter per startup (#7778). Set
   // when the late position callback fires; cleared on destroy/re-init so a new
@@ -331,16 +267,11 @@ export class App {
   private eventHandlers: EventHandlerManager;
   private searchManager: SearchManager | null = null;
   private searchManagerLoad: Promise<SearchManager> | null = null;
-  private signalModalLoad: Promise<SignalModalInstance> | null = null;
   // Monotonic epoch: every openSearch() call supersedes earlier in-flight ones.
   // searchToggleDesiredOpen accumulates the net intent of rapid Cmd+K presses
   // while the lazy chunk loads (XOR: odd → open, even → cancel). (#4403 review)
   private openSearchEpoch = 0;
   private searchToggleDesiredOpen = false;
-  private latestSearchAdsb: Parameters<SearchManager['updateFlightSource']>[0] = [];
-  private latestSearchMilitary: Parameters<SearchManager['updateFlightSource']>[1] = [];
-  private latestSearchAdsbUpdatedAt = 0;
-  private countryIntel: CountryIntelManager;
   private refreshScheduler: RefreshScheduler;
   private desktopUpdater: DesktopUpdater;
 
@@ -462,8 +393,6 @@ export class App {
     this.applyCloudSyncedPrefsToRuntime(detail?.keys ?? [], detail?.syncVersion);
   };
   private readonly getMapLayerRuntimeAvailability = (): MapLayerRuntimeAvailability => ({
-    cyberLayerEnabled: CYBER_LAYER_ENABLED,
-    aisConfigured: isAisConfigured(),
     outagesAvailable: isOutagesConfigured() !== false,
   });
   private readonly handleCloudPrefsSignInTerminal = (ev: Event): void => {
@@ -539,12 +468,9 @@ export class App {
       (keySet.has(STORAGE_KEYS.mapLayers) || keySet.has(STORAGE_KEYS.mapLayerGateOwnership))
       && !this.state.initialUrlState?.layers
     ) {
-      let nextLayers = normalizeExclusiveChoropleths(
-        sanitizeLayersForVariant(
-          loadFromStorage<MapLayers>(STORAGE_KEYS.mapLayers, this.state.mapLayers),
-          SITE_VARIANT as MapVariant,
-        ),
-        this.state.mapLayers,
+      let nextLayers = sanitizeLayersForVariant(
+        loadFromStorage<MapLayers>(STORAGE_KEYS.mapLayers, this.state.mapLayers),
+        SITE_VARIANT as MapVariant,
       );
       // #6045 — clear locked premium layers once free-tier is settled.
       // Skip while entitlement is still resolving so Pro users don't lose
@@ -552,7 +478,6 @@ export class App {
       if (!tierReconciliationDeferred) {
         nextLayers = this.sanitizeMapLayersForTier(nextLayers);
       }
-      if (!CYBER_LAYER_ENABLED) nextLayers.cyberThreats = false;
       if (!mapLayerStatesEqual(this.state.mapLayers, nextLayers)) {
         this.state.mapLayers = nextLayers;
         this.state.map?.setLayers(nextLayers);
@@ -624,17 +549,8 @@ export class App {
     return panelIds.some((panelId) => this.isPanelNearViewport(panelId, marginPx));
   }
 
-  private shouldRefreshIntelligence(): boolean {
-    return this.isAnyPanelNearViewport(['cii', 'strategic-risk', 'strategic-posture'])
-      || !!this.state.countryBriefPage?.isVisible();
-  }
-
   private shouldRefreshFirms(): boolean {
     return this.isPanelNearViewport('satellite-fires');
-  }
-
-  private shouldRefreshCorrelation(): boolean {
-    return this.isAnyPanelNearViewport(['military-correlation', 'escalation-correlation', 'economic-correlation', 'disaster-correlation']);
   }
 
   private getCachedBootstrapUpdatedAt(): number | null {
@@ -763,228 +679,20 @@ export class App {
     // reads at all.
     if (!forceAll) this.primeViewportNearCache();
 
-    if (shouldPrime('service-status')) {
-      const panel = this.state.panels['service-status'] as ServiceStatusPanel | undefined;
-      if (panel) primeTask('service-status', () => panel.fetchStatus());
+    if (shouldPrimeAny(['markets', 'commodities', 'energy-complex'])) {
+      primeTask('markets', () => this.dataLoader.loadMarkets());
     }
-    if (shouldPrime('macro-signals')) {
-      const panel = this.state.panels['macro-signals'] as MacroSignalsPanel | undefined;
-      if (panel) primeTask('macro-signals', () => panel.fetchData());
-    }
-    if (shouldPrime('fear-greed')) {
-      const panel = this.state.panels['fear-greed'] as FearGreedPanel | undefined;
-      if (panel) primeTask('fear-greed', () => panel.fetchData());
-    }
-    if (shouldPrime('hormuz-tracker')) {
-      const panel = this.state.panels['hormuz-tracker'] as HormuzPanel | undefined;
-      if (panel) primeTask('hormuz-tracker', () => panel.fetchData());
-    }
-    if (shouldPrime('etf-flows')) {
-      const panel = this.state.panels['etf-flows'] as ETFFlowsPanel | undefined;
-      if (panel) primeTask('etf-flows', () => panel.fetchData());
-    }
-    if (shouldPrime('stablecoins')) {
-      const panel = this.state.panels.stablecoins as StablecoinPanel | undefined;
-      if (panel) primeTask('stablecoins', () => panel.fetchData());
-    }
-    if (shouldPrime('energy-crisis')) {
-      const panel = this.state.panels['energy-crisis'] as EnergyCrisisPanel | undefined;
-      if (panel) primeTask('energy-crisis', () => panel.fetchData());
-    }
-    if (shouldPrime('telegram-intel')) {
-      primeTask('telegram-intel', () => this.dataLoader.loadTelegramIntel());
-    }
-    if (shouldPrime('x-intel')) {
-      primeTask('x-intel', () => this.dataLoader.loadXIntel());
-    }
-    if (shouldPrime('gulf-economies')) {
-      const panel = this.state.panels['gulf-economies'] as GulfEconomiesPanel | undefined;
-      if (panel) primeTask('gulf-economies', () => panel.fetchData());
-    }
-    if (shouldPrime('grocery-basket')) {
-      const panel = this.state.panels['grocery-basket'] as GroceryBasketPanel | undefined;
-      if (panel) primeTask('grocery-basket', () => panel.fetchData());
-    }
-    if (shouldPrime('bigmac')) {
-      const panel = this.state.panels['bigmac'] as BigMacPanel | undefined;
-      if (panel) primeTask('bigmac', () => panel.fetchData());
-    }
-    if (shouldPrime('fuel-prices')) {
-      const panel = this.state.panels['fuel-prices'] as FuelPricesPanel | undefined;
-      if (panel) primeTask('fuel-prices', () => panel.fetchData());
-    }
-    if (shouldPrime('fx')) {
-      const panel = this.state.panels['fx'] as FxPanel | undefined;
-      if (panel) primeTask('fx', () => panel.fetchData());
-    }
-    if (shouldPrime('fao-food-price-index')) {
-      const panel = this.state.panels['fao-food-price-index'] as FaoFoodPriceIndexPanel | undefined;
-      if (panel) primeTask('fao-food-price-index', () => panel.fetchData());
-    }
-    if (shouldPrime('oil-inventories')) {
-      const panel = this.state.panels['oil-inventories'] as OilInventoriesPanel | undefined;
-      if (panel) primeTask('oil-inventories', () => panel.fetchData());
-    }
-    // Energy Atlas panels — each self-fetches via bootstrap cache + RPC fallback
-    // (scripts/seed-pipelines-{gas,oil}.mjs, seed-storage-facilities.mjs,
-    // seed-fuel-shortages.mjs, seed-energy-disruptions.mjs). Without these
-    // primeTask wires the panels sit at showLoading() forever because
-    // Panel's constructor calls showLoading() but nothing else triggers
-    // fetchData() on attach — App.ts's primeTask table is the sole
-    // near-viewport kickoff path.
-    if (shouldPrime('pipeline-status')) {
-      const panel = this.state.panels['pipeline-status'] as PipelineStatusPanel | undefined;
-      if (panel) primeTask('pipeline-status', () => panel.fetchData());
-    }
-    if (shouldPrime('storage-facility-map')) {
-      const panel = this.state.panels['storage-facility-map'] as StorageFacilityMapPanel | undefined;
-      if (panel) primeTask('storage-facility-map', () => panel.fetchData());
-    }
-    if (shouldPrime('fuel-shortages')) {
-      const panel = this.state.panels['fuel-shortages'] as FuelShortagePanel | undefined;
-      if (panel) primeTask('fuel-shortages', () => panel.fetchData());
-    }
-    if (shouldPrime('energy-disruptions')) {
-      const panel = this.state.panels['energy-disruptions'] as EnergyDisruptionsPanel | undefined;
-      if (panel) primeTask('energy-disruptions', () => panel.fetchData());
+    if (shouldPrime('energy-complex')) {
+      primeTask('oil', () => this.dataLoader.loadOilAnalytics());
     }
     // NucMonitor — NRC reactor status self-fetches through the edge proxy.
     if (shouldPrime('nuclear-reactor-status')) {
       const panel = this.state.panels['nuclear-reactor-status'] as NuclearReactorStatusPanel | undefined;
       if (panel) primeTask('nuclear-reactor-status', () => panel.fetchData());
     }
-    if (shouldPrime('energy-risk-overview')) {
-      const panel = this.state.panels['energy-risk-overview'] as EnergyRiskOverviewPanel | undefined;
-      if (panel) primeTask('energy-risk-overview', () => panel.fetchData());
-    }
-    if (shouldPrime('chokepoint-strip')) {
-      // Without this primeTask entry the panel mounts via panel-layout.ts and
-      // ENERGY_PANELS but its constructor only calls showLoading() — fetchData()
-      // never fires, so the panel sits at "Loading..." forever. Hard-learned in
-      // PR #3386; tracked as skill panel-stuck-loading-means-missing-primetask.
-      const panel = this.state.panels['chokepoint-strip'] as ChokepointStripPanel | undefined;
-      if (panel) primeTask('chokepoint-strip', () => panel.fetchData());
-    }
     if (shouldPrime('climate-news')) {
       const panel = this.state.panels['climate-news'] as ClimateNewsPanel | undefined;
       if (panel) primeTask('climate-news', () => panel.fetchData());
-    }
-    if (shouldPrime('consumer-prices')) {
-      const panel = this.state.panels['consumer-prices'] as ConsumerPricesPanel | undefined;
-      if (panel) primeTask('consumer-prices', () => panel.fetchData());
-    }
-    if (shouldPrime('defense-patents')) {
-      const panel = this.state.panels['defense-patents'] as DefensePatentsPanel | undefined;
-      if (panel) primeTask('defense-patents', () => { panel.refresh(); return Promise.resolve(); });
-    }
-    if (shouldPrime('macro-tiles')) {
-      const panel = this.state.panels['macro-tiles'] as MacroTilesPanel | undefined;
-      if (panel) primeTask('macro-tiles', () => panel.fetchData());
-    }
-    if (shouldPrime('fsi')) {
-      const panel = this.state.panels['fsi'] as FSIPanel | undefined;
-      if (panel) primeTask('fsi', () => panel.fetchData());
-    }
-    if (shouldPrime('nq-pulse')) {
-      const panel = this.state.panels['nq-pulse'] as NqPulsePanel | undefined;
-      if (panel) primeTask('nq-pulse', () => panel.fetchData());
-    }
-    if (shouldPrime('nq-catalysts')) {
-      const panel = this.state.panels['nq-catalysts'] as NqCatalystsPanel | undefined;
-      if (panel) primeTask('nq-catalysts', () => panel.fetchData());
-    }
-    if (shouldPrime('yield-curve')) {
-      const panel = this.state.panels['yield-curve'] as YieldCurvePanel | undefined;
-      if (panel) primeTask('yield-curve', () => panel.fetchData());
-    }
-    if (shouldPrime('earnings-calendar')) {
-      const panel = this.state.panels['earnings-calendar'] as EarningsCalendarPanel | undefined;
-      if (panel) primeTask('earnings-calendar', () => panel.fetchData());
-    }
-    if (shouldPrime('material-events')) {
-      const panel = this.state.panels['material-events'] as MaterialEventsPanel | undefined;
-      if (panel) primeTask('material-events', () => panel.fetchData());
-    }
-    if (shouldPrime('economic-calendar')) {
-      const panel = this.state.panels['economic-calendar'] as EconomicCalendarPanel | undefined;
-      if (panel) primeTask('economic-calendar', () => panel.fetchData());
-    }
-    if (shouldPrime('cot-positioning')) {
-      const panel = this.state.panels['cot-positioning'] as CotPositioningPanel | undefined;
-      if (panel) primeTask('cot-positioning', () => panel.fetchData());
-    }
-    if (shouldPrime('liquidity-shifts')) {
-      const panel = this.state.panels['liquidity-shifts'] as LiquidityShiftsPanel | undefined;
-      if (panel) primeTask('liquidity-shifts', () => panel.fetchData());
-    }
-    if (shouldPrime('positioning-247')) {
-      const panel = this.state.panels['positioning-247'] as PositioningPanel | undefined;
-      if (panel) primeTask('positioning-247', () => panel.fetchData());
-    }
-    if (shouldPrime('gold-intelligence')) {
-      const panel = this.state.panels['gold-intelligence'] as GoldIntelligencePanel | undefined;
-      if (panel) primeTask('gold-intelligence', () => panel.fetchData());
-    }
-    if (shouldPrime('aaii-sentiment')) {
-      primeTask('aaiiSentiment', () => this.dataLoader.loadAaiiSentiment());
-    }
-    if (shouldPrime('market-breadth')) {
-      primeTask('marketBreadth', () => this.dataLoader.loadMarketBreadth());
-    }
-    if (shouldPrime('news-market-correlation')) {
-      const panel = this.state.panels['news-market-correlation'] as NewsMarketCorrelationPanel | undefined;
-      if (panel) primeTask('news-market-correlation', () => panel.fetchData());
-    }
-    if (shouldPrimeAny(['markets', 'heatmap', 'commodities', 'crypto', 'energy-complex'])) {
-      primeTask('markets', () => this.dataLoader.loadMarkets());
-    }
-    if (shouldPrime('polymarket')) {
-      primeTask('predictions', () => this.dataLoader.loadPredictions());
-    }
-    if (shouldPrime('economic')) {
-      primeTask('fred', () => this.dataLoader.loadFredData());
-      primeTask('spending', () => this.dataLoader.loadGovernmentSpending());
-      primeTask('bis', () => this.dataLoader.loadBisData());
-    }
-    if (shouldPrime('global-procurement') && hasPremiumAccess()) {
-      primeTask('global-tenders', () => this.dataLoader.loadGlobalTenders());
-    }
-    if (shouldPrime('energy-complex')) {
-      primeTask('oil', () => this.dataLoader.loadOilAnalytics());
-    }
-    // trade-policy moved into the _wmAccess block below — see fix for
-    // anonymous 401 bug where loadTradePolicy fired 6 PRO-gated RPCs
-    // unconditionally on every page load.
-    if (shouldPrime('supply-chain')) {
-      primeTask('supplyChain', () => this.dataLoader.loadSupplyChain());
-    }
-    if (shouldPrime('china-corridors')) {
-      primeTask('chinaCorridors', () => this.dataLoader.loadChinaCorridors({ skipIfPopulated: true }));
-    }
-    if (shouldPrime('china-activity-nowcast')) {
-      primeTask('chinaActivityNowcast', () => this.dataLoader.loadChinaActivityNowcast({ skipIfPopulated: true }));
-    }
-    if (shouldPrime('cross-source-signals')) {
-      primeTask('crossSourceSignals', () => this.dataLoader.loadCrossSourceSignals());
-    }
-
-    const _wmAccess = hasPremiumAccess();
-    if (_wmAccess) {
-      if (shouldPrime('trade-policy')) {
-        primeTask('tradePolicy', () => this.dataLoader.loadTradePolicy());
-      }
-      if (shouldPrime('stock-analysis')) {
-        primeTask('stockAnalysis', () => this.dataLoader.loadStockAnalysis());
-      }
-      if (shouldPrime('stock-backtest')) {
-        primeTask('stockBacktest', () => this.dataLoader.loadStockBacktest());
-      }
-      if (shouldPrime('daily-market-brief')) {
-        primeTask('dailyMarketBrief', () => this.dataLoader.loadDailyMarketBrief());
-      }
-      if (shouldPrime('market-implications')) {
-        primeTask('marketImplications', () => this.dataLoader.loadMarketImplications());
-      }
     }
 
     // Gates are done; the cached geometry must not outlive the synchronous pass
@@ -1049,9 +757,7 @@ export class App {
     // Blocked storage is a supported no-persistence mode. Seed the same
     // defaults as a first visit and skip migrations that only mutate storage.
     if (!storageAvailable) {
-      mapLayers = normalizeExclusiveChoropleths(
-        sanitizeLayersForVariant({ ...defaultLayers }, currentVariant as MapVariant), null,
-      );
+      mapLayers = sanitizeLayersForVariant({ ...defaultLayers }, currentVariant as MapVariant);
       panelSettings = getInitialPanelSettingsForVariant(currentVariant);
     } else if (appliedPanelLayoutVariant !== currentVariant) {
       // Variant changed - reset all settings to variant defaults.
@@ -1065,9 +771,7 @@ export class App {
       // not delete local ownership), so a genuine variant-reset clear only
       // propagates cross-device when it is an explicit value.
       localStorage.setItem(STORAGE_KEYS.mapLayerGateOwnership, '[]');
-      mapLayers = normalizeExclusiveChoropleths(
-        sanitizeLayersForVariant({ ...defaultLayers }, currentVariant as MapVariant), null,
-      );
+      mapLayers = sanitizeLayersForVariant({ ...defaultLayers }, currentVariant as MapVariant);
       // Load existing panel prefs (if any), disable panels not belonging to the new variant
       const newVariantKeys = new Set(VARIANT_DEFAULTS[currentVariant] ?? []);
       const hadLegacyPanelLayoutState = localStorage.getItem(PANEL_ORDER_KEY) !== null
@@ -1108,22 +812,14 @@ export class App {
         }
       }
     } else {
-      mapLayers = normalizeExclusiveChoropleths(
-        sanitizeLayersForVariant(
-          loadFromStorage<MapLayers>(STORAGE_KEYS.mapLayers, defaultLayers),
-          currentVariant as MapVariant,
-        ), null,
+      mapLayers = sanitizeLayersForVariant(
+        loadFromStorage<MapLayers>(STORAGE_KEYS.mapLayers, defaultLayers),
+        currentVariant as MapVariant,
       );
       // #6045 — heal stuck locked layers from pre-gate localStorage once free
       // tier is settled. Do not run while Pro status is still resolving.
       // Persist immediately so dirty storage doesn't reintroduce the layer.
       mapLayers = this.sanitizeMapLayersForTier(mapLayers);
-
-      mapLayers = applyCanadaRoadsOptInMigration(
-        mapLayers,
-        localStorage,
-        (layers) => saveToStorage(STORAGE_KEYS.mapLayers, layers),
-      );
 
       panelSettings = loadFromStorage<Record<string, PanelConfig>>(
         STORAGE_KEYS.panels,
@@ -1273,17 +969,12 @@ export class App {
 
     const initialUrlState: ParsedMapUrlState | null = parseMapUrlState(window.location.search, mapLayers);
     if (initialUrlState.layers) {
-      mapLayers = normalizeExclusiveChoropleths(
-        sanitizeLayersForVariant(initialUrlState.layers, currentVariant as MapVariant), null,
-      );
+      mapLayers = sanitizeLayersForVariant(initialUrlState.layers, currentVariant as MapVariant);
       // #6045 — URL layer deep-links also cannot force locked layers on for free users.
       // Ephemeral: the link is a view, so it must not overwrite the stored
       // preference or touch gate ownership in either direction.
       mapLayers = this.sanitizeMapLayersForTier(mapLayers, undefined, { ephemeralSnapshot: true });
       initialUrlState.layers = mapLayers;
-    }
-    if (!CYBER_LAYER_ENABLED) {
-      mapLayers.cyberThreats = false;
     }
     // One-time migration: reduce default-enabled sources (full variant only)
     if (currentVariant === 'full' && storageAvailable) {
@@ -1503,48 +1194,28 @@ export class App {
       allNews: [],
       newsByCategory: {},
       latestMarkets: [],
-      latestPredictions: [],
-      latestTechEvents: [],
       latestClusters: [],
       intelligenceCache: {},
-      cyberThreatsCache: null,
       disabledSources,
       currentTimeRange: '7d',
       inFlight: new Set(),
       seenGeoAlerts: new Set(),
       monitors,
-      signalModal: null,
-      ensureSignalModal: () => this.ensureSignalModal(),
       statusPanel: null,
       searchModal: null,
-      findingsBadge: null,
       breakingBanner: null,
       playbackControl: null,
       exportPanel: null,
       unifiedSettings: null,
-      pizzintIndicator: null,
-      correlationEngine: null,
       llmStatusIndicator: null,
-      countryBriefPage: null,
-      countryTimeline: null,
-      positivePanel: null,
-      countersPanel: null,
-      progressPanel: null,
-      breakthroughsPanel: null,
-      heroPanel: null,
-      digestPanel: null,
-      speciesPanel: null,
       authModal: null,
       authHeaderWidget: null,
-      tvMode: null,
-      happyAllItems: [],
       isDestroyed: false,
       isPlaybackMode: false,
       isIdle: false,
       initialLoadComplete: false,
       clustersSettled: false,
       resolvedLocation: 'global',
-      activeChokepoint: initialUrlState.chokepoint ?? null,
       initialUrlState,
       PANEL_ORDER_KEY,
       PANEL_SPANS_KEY,
@@ -1552,31 +1223,11 @@ export class App {
 
     // Instantiate modules (callbacks wired after all modules exist)
     this.refreshScheduler = new RefreshScheduler(this.state);
-    this.countryIntel = new CountryIntelManager(this.state);
     this.desktopUpdater = new DesktopUpdater(this.state);
 
-    this.dataLoader = new DataLoaderManager(this.state, {
-      renderCriticalBanner: (postures) => this.panelLayout.renderCriticalBanner(postures),
-      refreshOpenCountryBrief: () => this.countryIntel.refreshOpenBrief(),
-      refreshOpenCountryMilitary: () => this.countryIntel.refreshOpenMilitaryActivity(),
-      refreshOpenCountryTimeline: () => this.countryIntel.refreshOpenTimeline(),
-    });
+    this.dataLoader = new DataLoaderManager(this.state);
 
     this.panelLayout = new PanelLayoutManager(this.state, {
-      openCountryStory: (code, name) => {
-        void this.countryIntel.openCountryStory(code, name).catch((err) => {
-          console.error('[CountryStory] Failed to open story:', err);
-          showToast('Country story failed to open. Please try again.');
-        });
-      },
-      openCountryBrief: (code) => {
-        const name = CountryIntelManager.resolveCountryName(code);
-        void this.countryIntel.openCountryBriefByCode(code, name).catch((err) => {
-          console.error('[CountryBrief] Failed to open country brief:', err);
-          this.state.map?.setRenderPaused(false);
-          showToast('Country brief failed to open. Please try again.');
-        });
-      },
       openSearch: () => {
         track('search-open', { source: 'pro-onboarding' });
         void this.openSearch();
@@ -1587,8 +1238,6 @@ export class App {
         void this.primeVisiblePanelData();
       },
       updateMonitorResults: () => this.dataLoader.updateMonitorResults(),
-      loadSecurityAdvisories: () => this.dataLoader.loadSecurityAdvisories(),
-      loadTelegramIntel: () => this.dataLoader.loadTelegramIntel(),
       applyMapLayerChange: (layer, enabled, source) => this.eventHandlers.applyMapLayerChange(layer, enabled, source),
       isFreeTierFallbackActive: () => this.freeTierGate.authSettleDeadlineExceeded,
     });
@@ -1601,13 +1250,10 @@ export class App {
       flushStaleRefreshes: () => this.refreshScheduler.flushStaleRefreshes(),
       setHiddenSince: (ts) => this.refreshScheduler.setHiddenSince(ts),
       loadDataForLayer: (layer) => { void this.dataLoader.loadDataForLayer(layer as keyof MapLayers); },
-      waitForAisData: () => this.dataLoader.waitForAisData(),
       syncDataFreshnessWithLayers: () => this.dataLoader.syncDataFreshnessWithLayers(),
       applyPanelSettings: () => this.panelLayout.applyPanelSettings(),
       applySavedPanelOrder: (panelOrder?: string[]) => this.panelLayout.applySavedPanelOrder(panelOrder),
-      stopLayerActivity: (layer) => this.dataLoader.stopLayerActivity(layer),
       mountLiveNewsIfReady: () => this.panelLayout.mountLiveNewsIfReady(),
-      updateFlightSource: (adsb, military) => this.updateFlightSourceIfReady(adsb, military),
       isFreeTierFallbackActive: () => this.freeTierGate.authSettleDeadlineExceeded,
     });
 
@@ -1618,35 +1264,10 @@ export class App {
     this.modules = [
       this.desktopUpdater,
       this.panelLayout,
-      this.countryIntel,
       this.dataLoader,
       this.refreshScheduler,
       this.eventHandlers,
     ];
-  }
-
-  private ensureSignalModal(): Promise<SignalModalInstance> {
-    if (this.state.signalModal) return Promise.resolve(this.state.signalModal);
-    if (this.signalModalLoad) return this.signalModalLoad;
-
-    this.signalModalLoad = import('@/components/SignalModal')
-      .then(({ SignalModal }) => {
-        if (this.state.isDestroyed) {
-          throw new Error('App destroyed before signal modal loaded');
-        }
-        const signalModal = new SignalModal();
-        signalModal.setLocationClickHandler((lat, lon) => {
-          this.state.map?.setCenter(lat, lon, 4);
-        });
-        this.state.signalModal = signalModal;
-        return signalModal;
-      })
-      .catch((err) => {
-        this.signalModalLoad = null;
-        throw err;
-      });
-
-    return this.signalModalLoad;
   }
 
   private ensureSearchManager(): Promise<SearchManager> {
@@ -1660,12 +1281,6 @@ export class App {
         }
 
         const manager = new SearchManager(this.state, {
-          openCountryBriefByCode: (code, country, options) => (
-            this.openCountryBriefWithAcknowledgement(code, country, {
-              trackAnalytics: options?.trackDetailedAnalytics !== false,
-              signal: options?.signal,
-            })
-          ),
           enablePanel: (panelId, options) => this.eventHandlers.enablePanelById(panelId, {
             trackAnalytics: options?.trackDetailedAnalytics !== false,
           }),
@@ -1675,11 +1290,6 @@ export class App {
           manager.destroy();
           throw new Error('App destroyed while search manager loaded');
         }
-        manager.updateFlightSource(
-          this.latestSearchAdsb,
-          this.latestSearchMilitary,
-          this.latestSearchAdsbUpdatedAt,
-        );
         this.searchManager = manager;
         this.modules.push(manager);
         return manager;
@@ -1691,102 +1301,8 @@ export class App {
     return this.searchManagerLoad;
   }
 
-  private openCountryBriefWithAcknowledgement(
-    code: string,
-    country: string,
-    options: { trackAnalytics: boolean; signal?: AbortSignal; owner?: 'agent' | 'human' },
-  ): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      let acknowledged = false;
-      const cleanup = (): void => {
-        options.signal?.removeEventListener('abort', handleAbort);
-      };
-      const finish = (opened: boolean): void => {
-        if (acknowledged) return;
-        acknowledged = true;
-        cleanup();
-        resolve(opened);
-      };
-      const fail = (error: unknown): void => {
-        if (acknowledged) return;
-        acknowledged = true;
-        cleanup();
-        if (
-          options.signal?.aborted
-          || isWebMcpAbortError(error)
-        ) {
-          reject(error);
-          return;
-        }
-        console.error('[CountryBrief] Failed to open country brief:', error);
-        this.state.map?.setRenderPaused(false);
-        showToast('Country brief failed to open. Please try again.');
-        resolve(false);
-      };
-      const handleAbort = (): void => {
-        try {
-          throwIfWebMcpAborted(options.signal);
-        } catch (error) {
-          fail(error);
-        }
-      };
-
-      try {
-        throwIfWebMcpAborted(options.signal);
-      } catch (error) {
-        fail(error);
-        return;
-      }
-      options.signal?.addEventListener('abort', handleAbort, { once: true });
-      void this.countryIntel.openCountryBriefByCode(code, country, {
-        trackAnalytics: options.trackAnalytics,
-        signal: options.signal,
-        owner: options.owner,
-        onPresented: () => {
-          const page = this.state.countryBriefPage;
-          finish(page?.isVisible() === true && page.getCode() === code);
-        },
-      }).then(() => {
-        // A superseded, destroyed, or failed open can settle without ever
-        // presenting the requested page.
-        finish(false);
-      }).catch(fail);
-    });
-  }
-
-  private async openWebMcpCountryBrief(
-    code: string,
-    country: string,
-    execution?: WebMcpExecutionOptions,
-  ): Promise<boolean> {
-    await this.waitForUiReady(execution?.signal);
-    throwIfWebMcpAborted(execution?.signal);
-    return this.openCountryBriefWithAcknowledgement(code, country, {
-      trackAnalytics: false,
-      signal: execution?.signal,
-      // No shipping browser hands WebMCP tools a target-side AbortSignal, so
-      // ownership must be stated rather than inferred from execution.signal —
-      // otherwise this agent open claims 'human' and skips the arbitration
-      // that keeps it from evicting an in-flight human request.
-      owner: 'agent',
-    });
-  }
-
   private updateSearchIndexIfReady(): void {
     this.searchManager?.updateSearchIndex();
-  }
-
-  private updateFlightSourceIfReady(
-    adsb: Parameters<SearchManager['updateFlightSource']>[0],
-    military: Parameters<SearchManager['updateFlightSource']>[1],
-  ): void {
-    this.latestSearchAdsb = adsb;
-    this.latestSearchMilitary = military;
-    // This callback is driven by the DeckGL ADS-B viewport feed. Military
-    // tracks are copied from their independent cache and retain freshness via
-    // each track's lastSeen; never stamp them with this ADS-B observation time.
-    this.latestSearchAdsbUpdatedAt = Date.now();
-    this.searchManager?.updateFlightSource(adsb, military, this.latestSearchAdsbUpdatedAt);
   }
 
   private async openSearch(options: {
@@ -1922,82 +1438,8 @@ export class App {
     }
   }
 
-  private startPostLcpIntelligence(countryGeometryReady: Promise<void>, geometryAlreadyApplied: boolean): void {
-    void countryGeometryReady.finally(() => {
-      if (this.state.isDestroyed) return;
-      // Replay geometry-dependent country-detail data only when the fan-out ingested before
-      // precision geometry was ready; otherwise the first-pass attribution is
-      // already correct and a replay is a redundant compute + repaint (#4512).
-      if (!geometryAlreadyApplied) {
-        this.dataLoader.refreshGeometryDependentCountryData();
-      }
-      // Correlation and country-learning use precision geometry/name matching,
-      // but they are post-initial-data work and should not hold the LCP path.
-      void this.loadInitialCorrelationEngine();
-      startLearning();
-    });
-  }
-
-  private async loadInitialCorrelationEngine(): Promise<void> {
-    try {
-      const {
-        CorrelationEngine,
-        militaryAdapter,
-        escalationAdapter,
-        economicAdapter,
-        disasterAdapter,
-      } = await import('@/services/correlation-engine');
-
-      if (this.state.isDestroyed) return;
-      const engine = new CorrelationEngine();
-      engine.registerAdapter(militaryAdapter);
-      engine.registerAdapter(escalationAdapter);
-      engine.registerAdapter(economicAdapter);
-      engine.registerAdapter(disasterAdapter);
-      this.state.correlationEngine = engine;
-      this.connectCorrelationAssessments();
-
-      await this.runCorrelationEngine();
-    } catch (error) {
-      console.warn('[CorrelationEngine] Initial lazy load/run failed:', error);
-    }
-  }
-
-  private connectCorrelationAssessments(): void {
-    const engine = this.state.correlationEngine;
-    if (!engine) return;
-    for (const domain of CORRELATION_DOMAINS) {
-      const panel = this.state.panels[`${domain}-correlation`] as CorrelationPanel | undefined;
-      panel?.setAssessmentHandler(cards => engine.assessCards(domain, cards));
-    }
-  }
-
-  private async runCorrelationEngine(): Promise<void> {
-    const engine = this.state.correlationEngine;
-    if (!engine || this.state.isDestroyed) return;
-
-    const { fetchCorrelationRuntimeMode } = await import('@/services/correlation-runtime-mode');
-    const runtimeMode = await fetchCorrelationRuntimeMode();
-    if (this.state.isDestroyed) return;
-
-    // run() reports false when it skipped because a run was already in flight.
-    // Not reachable today (run() never yields), but this diff put two awaits in
-    // front of it, so honour the contract rather than publishing getCards() —
-    // which on a first-run overlap would write empty cards into live panels.
-    const didRun = await engine.run(this.state, runtimeMode);
-    if (!didRun || this.state.isDestroyed) return;
-    for (const domain of CORRELATION_DOMAINS) {
-      const panel = this.state.panels[`${domain}-correlation`] as CorrelationPanel | undefined;
-      panel?.updateCards(engine.getCards(domain));
-    }
-  }
-
   public getWebMcpBindings(): WebMcpAppBindings {
     return {
-      openCountryBriefByCode: (code, country, execution) => (
-        this.openWebMcpCountryBrief(code, country, execution)
-      ),
-      resolveCountryName: (code) => CountryIntelManager.resolveCountryName(code),
       openSearch: async (execution) => {
         // openSearch() awaits UI readiness internally and throws on failure when
         // throwOnFailure is set, so the agent receives a real success/failure.
@@ -2385,11 +1827,6 @@ export class App {
     window.addEventListener(I18N_RESOURCES_LOADED_EVENT, this.handleI18nResourcesLoaded);
 
     await initDB();
-    startFlightHistoryCleanup();
-    // Re-arm the lazy vessel runtime (a no-op on first boot; matters on a
-    // same-document re-init after a prior App.destroy() disarmed it). The
-    // history-cleanup interval itself still starts lazily on first vessel use.
-    enableVesselRuntime();
     await initI18n();
     markLcpDebug('wm:boot:i18n-ready');
     initDeferredDashboardFonts();
@@ -2524,13 +1961,6 @@ export class App {
       }
     });
 
-    // Check AIS configuration before init
-    if (!isAisConfigured()) {
-      this.state.mapLayers.ais = false;
-    } else if (this.state.mapLayers.ais) {
-      initAisStream();
-    }
-
     // Wait for sidecar readiness on desktop so bootstrap hits a live server.
     // Consume the result: a sidecar that never answered its own health probe
     // should leave a signal rather than being silently treated as ready (#6779).
@@ -2628,23 +2058,10 @@ export class App {
         // every premium gate in data-loader.ts
         // has a matching call here.
         void this.dataLoader.loadPhysicalPremiumComparison();
-        void this.dataLoader.loadMineralProduction();
-        void this.dataLoader.loadTradePolicy();
-        void this.dataLoader.loadStockAnalysis();
-        void this.dataLoader.loadStockBacktest();
-        void this.dataLoader.loadDailyMarketBrief();
-        void this.dataLoader.loadMarketImplications();
-        void this.dataLoader.loadWsbTickers();
-        void this.dataLoader.loadResilienceRanking();
-        void this.dataLoader.loadGlobalTenders();
-        this.connectCorrelationAssessments();
       } else if (!nowPremium && hadPremium) {
         // Pro data must not remain visible or available from the client cache
         // after sign-out, expiry, or downgrade.
         this.dataLoader.clearPhysicalPremiumComparison();
-        this.dataLoader.clearMineralProduction();
-        void this.dataLoader.clearGlobalTenders();
-        this.state.correlationEngine?.clearAssessments();
       }
       _prevHadPremium = nowPremium;
     };
@@ -2887,10 +2304,6 @@ export class App {
     });
 
     // Phase 2: Shared UI components
-    if (!this.state.isMobile) {
-      void this.initFindingsBadge();
-    }
-
     initBreakingNewsAlerts();
     this.state.breakingBanner = new BreakingNewsBanner();
 
@@ -2898,7 +2311,6 @@ export class App {
     this.eventHandlers.startHeaderClock();
     this.eventHandlers.setupPlaybackControl();
     this.eventHandlers.setupStatusPanel();
-    this.eventHandlers.setupPizzIntIndicator();
     this.eventHandlers.setupLlmStatusIndicator();
     this.eventHandlers.setupExportPanel();
     this.eventHandlers.setupSearchControls();
@@ -2937,10 +2349,9 @@ export class App {
       void this.resumeBillingPortal(true);
     }
 
-    // Phase 4: MapLayerHandlers, CountryIntel. SearchManager is lazy-loaded
+    // Phase 4: MapLayerHandlers. SearchManager is lazy-loaded
     // on first CMD+K/search-button open so its modal catalog stays off startup.
     this.eventHandlers.setupMapLayerHandlers();
-    await this.countryIntel.init();
     // Unblock any WebMCP tool invocations that arrived during startup.
     this.resolveUiReady();
     markLcpDebug('wm:boot:webmcp-ui-ready');
@@ -2948,24 +2359,15 @@ export class App {
     // Phase 5: Event listeners + URL sync
     this.eventHandlers.init();
     // Capture deep link params BEFORE URL sync overwrites them
-    const initState = parseMapUrlState(window.location.search, this.state.mapLayers);
-    this.pendingDeepLinkCountry = initState.country ?? null;
-    this.pendingDeepLinkExpanded = initState.expanded === true;
-    this.pendingDeepLinkChokepoint = initState.chokepoint ?? null;
     const earlyParams = new URLSearchParams(window.location.search);
     if (earlyParams.get('settings') === 'notifications') {
       void this.state.unifiedSettings?.open('notifications');
     }
-    this.pendingDeepLinkStoryCode = earlyParams.get('c') ?? null;
     this.pendingDeepLinkSearchQuery = readDashboardSearchQuery(window.location.search);
     this.eventHandlers.setupUrlStateSync();
     if (import.meta.env.VITE_E2E === '1') {
       document.documentElement.dataset.wmEventHandlersReady = 'true';
     }
-
-    this.state.countryBriefPage?.onStateChange?.(() => {
-      this.eventHandlers.syncUrlState();
-    });
 
     // Start deep link handling early — its retry loop polls hasSufficientData()
     // independently, so it must not be gated behind loadAllData() which can hang.
@@ -2991,12 +2393,6 @@ export class App {
     // (3.5 s browser / 8.5 s desktop). (#4512)
     const settled = await slowTierReady;
     if (this.state.isDestroyed) return;
-    // Snapshot whether precision geometry was already loaded BEFORE the fan-out
-    // (the map renderer triggers the memoized fetch early). If so, the fan-out's
-    // geometry-dependent CII ingests already attributed correctly and the
-    // post-LCP replay would just be a redundant second CII compute + choropleth
-    // repaint, so we skip it below. (#4512)
-    const geometryReadyBeforeFanout = isCountryGeometryLoaded();
     if (!settled) {
       this.slowTierWaitTimedOut = true;
       // No fan-out mark here: the deferred runVisibleDataFanout() emits the paired
@@ -3005,26 +2401,16 @@ export class App {
     } else {
       await this.runVisibleDataFanout();
     }
-    const countryGeometryReady = this.preloadCountryGeometryForPostLcpWork();
+    void this.preloadCountryGeometryForPostLcpWork();
 
     // If bootstrap was served from cache but live data just loaded, promote the status indicator
     markBootstrapAsLive();
     this.bootstrapHydrationState = getBootstrapHydrationState();
     this.updateConnectivityUi();
 
-    // Initial correlation engine run is post-LCP background work. Wait for
-    // precision country geometry there instead of before visible data fan-out.
-    this.startPostLcpIntelligence(countryGeometryReady, geometryReadyBeforeFanout);
-
     // Hide unconfigured layers after first data load
-    if (!isAisConfigured()) {
-      this.state.map?.hideLayerToggle('ais');
-    }
     if (isOutagesConfigured() === false) {
       this.state.map?.hideLayerToggle('outages');
-    }
-    if (!CYBER_LAYER_ENABLED) {
-      this.state.map?.hideLayerToggle('cyberThreats');
     }
 
     // Phase 7: Refresh scheduling
@@ -3056,7 +2442,6 @@ export class App {
     if (!region || region === 'global') return;
     if (region === this.state.resolvedLocation) return;
     this.state.resolvedLocation = region as AppContext['resolvedLocation'];
-    this.dataLoader.reprioritizeLateRegionPredictions(region);
   }
 
   private shouldDeferTierPreferenceReconciliation(): boolean {
@@ -3526,9 +2911,6 @@ export class App {
     // downloading models or restarting for a destroyed app (#7779).
     this.localAiInitEpoch += 1;
     this.state.isDestroyed = true;
-    this.latestSearchAdsb = [];
-    this.latestSearchMilitary = [];
-    this.latestSearchAdsbUpdatedAt = 0;
     this.autoGeoRecenterApplied = false;
     this.resolveAppDestroyed();
     // Cancel in-flight App-owned waits before DOM teardown can mutate the
@@ -3561,10 +2943,6 @@ export class App {
       window.cancelAnimationFrame(this.visiblePanelPrimeRaf);
       this.visiblePanelPrimeRaf = null;
     }
-    if (this.chokepointDeepLinkTimer !== null) {
-      window.clearTimeout(this.chokepointDeepLinkTimer);
-      this.chokepointDeepLinkTimer = null;
-    }
     if (this.stockDeepLinkTimer !== null) {
       window.clearTimeout(this.stockDeepLinkTimer);
       this.stockDeepLinkTimer = null;
@@ -3587,8 +2965,6 @@ export class App {
       this.unsubEntitlementPremiumLoaders?.();
       this.freeTierGate.cancelFallback();
       mlWorker.terminate();
-      this.state.findingsBadge?.destroy();
-      this.state.findingsBadge = null;
       this.state.breakingBanner?.destroy();
       destroyBreakingNewsAlerts();
       this.cachedModeBannerEl?.remove();
@@ -3599,41 +2975,6 @@ export class App {
         this.followedCountriesCapDropToastTimer = null;
       }
       this.state.map?.destroy();
-      disconnectAisStream();
-      stopFlightHistoryCleanup();
-      stopLoadedVesselHistoryCleanup();
-    }
-  }
-
-  private async initFindingsBadge(): Promise<void> {
-    try {
-      const { IntelligenceGapBadge } = await import('@/components/IntelligenceGapBadge');
-      if (this.state.isDestroyed) return;
-      this.state.findingsBadge = new IntelligenceGapBadge();
-      this.state.findingsBadge.setOnSignalClick((signal) => {
-        if (this.state.countryBriefPage?.isVisible()) return;
-        if (safeStorageGet('wm-settings-open') === '1') return;
-        void this.state.ensureSignalModal()
-          .then((signalModal) => {
-            if (!this.state.isDestroyed) signalModal.showSignal(signal);
-          })
-          .catch((err) => {
-            console.warn('[SignalModal] Failed to show signal:', err);
-          });
-      });
-      this.state.findingsBadge.setOnAlertClick((alert) => {
-        if (this.state.countryBriefPage?.isVisible()) return;
-        if (safeStorageGet('wm-settings-open') === '1') return;
-        void this.state.ensureSignalModal()
-          .then((signalModal) => {
-            if (!this.state.isDestroyed) signalModal.showAlert(alert);
-          })
-          .catch((err) => {
-            console.warn('[SignalModal] Failed to show alert:', err);
-          });
-      });
-    } catch (error) {
-      console.warn('[IntelligenceGapBadge] Lazy init failed:', error);
     }
   }
 
@@ -3763,15 +3104,8 @@ export class App {
       return;
     }
 
-    // Check for country brief deep link: ?c=IR (captured early before URL sync)
-    const storyCode = this.pendingDeepLinkStoryCode ?? url.searchParams.get('c');
-    this.pendingDeepLinkStoryCode = null;
     if (isStockResearchPath(url.pathname)) {
       const stockSymbol = stockResearchSymbolFromPath(url.pathname);
-      // Return only when the overlay actually takes the navigation. The path
-      // regex accepts a leading digit that the symbol pattern rejects, so
-      // /stocks/0700.HK parses to null — returning there would open nothing
-      // AND cancel the ?c= / ?country= / ?chokepoint= deep links below.
       if (stockSymbol) {
         trackDeeplinkOpened('stock', stockSymbol);
         this.stockDeepLinkTimer = window.setTimeout(() => {
@@ -3779,65 +3113,7 @@ export class App {
           if (this.state.isDestroyed) return;
           void openStockResearchOverlay(stockSymbol);
         }, DEEP_LINK_INITIAL_DELAY_MS);
-        return;
       }
-    }
-
-    if (url.pathname === '/story' || storyCode) {
-      const countryCode = storyCode;
-      if (countryCode) {
-        trackDeeplinkOpened('country', countryCode);
-        const countryName = getCountryNameByCode(countryCode.toUpperCase()) || countryCode;
-        setTimeout(() => {
-          void this.countryIntel.openCountryBriefByCode(countryCode.toUpperCase(), countryName, {
-            maximize: true,
-          }).catch((err) => {
-            console.error('[CountryBrief] Failed to open country brief:', err);
-            this.state.map?.setRenderPaused(false);
-            showToast('Country brief failed to open. Please try again.');
-          });
-          this.eventHandlers.syncUrlState();
-        }, DEEP_LINK_INITIAL_DELAY_MS);
-        return;
-      }
-    }
-
-    // Check for country brief deep link: ?country=UA or ?country=UA&expanded=1
-    const deepLinkCountry = this.pendingDeepLinkCountry;
-    const deepLinkExpanded = this.pendingDeepLinkExpanded;
-    this.pendingDeepLinkCountry = null;
-    this.pendingDeepLinkExpanded = false;
-    if (deepLinkCountry) {
-      trackDeeplinkOpened('country', deepLinkCountry);
-      const cName = CountryIntelManager.resolveCountryName(deepLinkCountry);
-      setTimeout(() => {
-        void this.countryIntel.openCountryBriefByCode(deepLinkCountry, cName, {
-          maximize: deepLinkExpanded,
-        }).catch((err) => {
-          console.error('[CountryBrief] Failed to open country brief:', err);
-          this.state.map?.setRenderPaused(false);
-          showToast('Country brief failed to open. Please try again.');
-        });
-        this.eventHandlers.syncUrlState();
-      }, DEEP_LINK_INITIAL_DELAY_MS);
-    }
-
-    // Check for chokepoint deep link: ?chokepoint=bab_el_mandeb — pans the map to
-    // the waterway and opens its popup (the chokepoint equivalent of the country
-    // brief deep link). openChokepoint no-ops on an unknown id.
-    const deepLinkChokepoint = this.pendingDeepLinkChokepoint;
-    this.pendingDeepLinkChokepoint = null;
-    if (deepLinkChokepoint) {
-      trackDeeplinkOpened('chokepoint', deepLinkChokepoint);
-      this.state.activeChokepoint = deepLinkChokepoint;
-      this.chokepointDeepLinkTimer = window.setTimeout(() => {
-        this.chokepointDeepLinkTimer = null;
-        if (this.state.isDestroyed) return;
-        this.state.mapLayers.waterways = true;
-        this.state.map?.enableLayer('waterways');
-        this.state.map?.openChokepoint(deepLinkChokepoint);
-        this.eventHandlers.syncUrlState();
-      }, DEEP_LINK_INITIAL_DELAY_MS);
     }
   }
 
@@ -3857,264 +3133,25 @@ export class App {
       );
     });
 
-    this.refreshScheduler.scheduleRefresh(
-      // inFlight lock key matches the hydration loader's runGuarded key so
-      // boot and refresh one-flight each other (loadStockAnalysis has no
-      // internal guard). The panel/viewport key stays kebab below (#6770).
-      'stockAnalysis',
-      () => this.dataLoader.loadStockAnalysis(),
-      REFRESH_INTERVALS.stockAnalysis,
-      () => hasPremiumAccess() && this.isPanelNearViewport('stock-analysis'),
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'daily-market-brief',
-      () => this.dataLoader.loadDailyMarketBrief(),
-      REFRESH_INTERVALS.dailyMarketBrief,
-      () => hasPremiumAccess() && this.isPanelNearViewport('daily-market-brief'),
-    );
-    this.refreshScheduler.scheduleRefresh(
-      // inFlight lock key matches the hydration loader's runGuarded key
-      // (loadStockBacktest has no internal guard); panel key stays kebab (#6770).
-      'stockBacktest',
-      () => this.dataLoader.loadStockBacktest(),
-      REFRESH_INTERVALS.stockBacktest,
-      () => hasPremiumAccess() && this.isPanelNearViewport('stock-backtest'),
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'market-implications',
-      () => this.dataLoader.loadMarketImplications(),
-      REFRESH_INTERVALS.marketImplications,
-      () => hasPremiumAccess() && this.isPanelNearViewport('market-implications'),
-    );
-
     this.refreshScheduler.registerAll([
       {
         name: 'markets',
         fn: () => this.dataLoader.loadMarkets(),
         intervalMs: REFRESH_INTERVALS.markets,
-        condition: () => this.isAnyPanelNearViewport(['markets', 'heatmap', 'commodities', 'crypto', 'crypto-heatmap', 'defi-tokens', 'ai-tokens', 'other-tokens']),
+        condition: () => this.isAnyPanelNearViewport(['markets', 'commodities']),
       },
-      {
-        name: 'predictions',
-        fn: () => this.dataLoader.loadPredictions(),
-        intervalMs: REFRESH_INTERVALS.predictions,
-        condition: () => this.isPanelNearViewport('polymarket'),
-      },
-      {
-        name: 'forecasts',
-        fn: () => this.dataLoader.loadForecasts(),
-        intervalMs: REFRESH_INTERVALS.forecasts,
-        condition: () => this.isPanelNearViewport('forecast'),
-      },
-      { name: 'pizzint', fn: () => this.dataLoader.loadPizzInt(), intervalMs: REFRESH_INTERVALS.pizzint, condition: () => SITE_VARIANT === 'full' },
       { name: 'natural', fn: () => this.dataLoader.loadNatural(), intervalMs: REFRESH_INTERVALS.natural, condition: () => this.state.mapLayers.natural },
       { name: 'weather', fn: () => this.dataLoader.loadWeatherAlerts(), intervalMs: REFRESH_INTERVALS.weather, condition: () => this.state.mapLayers.weather },
-      { name: 'canadaRoads', fn: () => this.dataLoader.loadCanadaRoads(), intervalMs: REFRESH_INTERVALS.canadaRoads, condition: () => !!this.state.mapLayers.canadaRoads },
       { name: 'pipelineRegistries', fn: () => this.dataLoader.loadPipelineRegistries({ refresh: true }), intervalMs: REFRESH_INTERVALS.pipelineStatus, condition: () => !!this.state.mapLayers.pipelines },
-      { name: 'storageFacilities', fn: () => this.dataLoader.loadStorageFacilities({ refresh: true }), intervalMs: REFRESH_INTERVALS.storageFacilityMap, condition: () => !!this.state.mapLayers.storageFacilities },
-      { name: 'canadaAlerts', fn: () => this.dataLoader.loadCanadaAlerts(), intervalMs: REFRESH_INTERVALS.canadaAlerts, condition: () => !!this.state.mapLayers.canadaAlerts },
-      { name: 'fred', fn: () => this.dataLoader.loadFredData(), intervalMs: REFRESH_INTERVALS.fred, condition: () => this.isPanelNearViewport('economic') },
-      { name: 'spending', fn: () => this.dataLoader.loadGovernmentSpending(), intervalMs: REFRESH_INTERVALS.spending, condition: () => this.isPanelNearViewport('economic') },
-      { name: 'global-tenders', fn: () => this.dataLoader.loadGlobalTenders(), intervalMs: REFRESH_INTERVALS.spending, condition: () => hasPremiumAccess() && this.isPanelNearViewport('global-procurement') },
-      { name: 'bis', fn: () => this.dataLoader.loadBisData(), intervalMs: REFRESH_INTERVALS.bis, condition: () => this.isPanelNearViewport('economic') },
       { name: 'oil', fn: () => this.dataLoader.loadOilAnalytics(), intervalMs: REFRESH_INTERVALS.oil, condition: () => this.isPanelNearViewport('energy-complex') },
       // inFlight key 'fires' matches the hydration loader and loadDataForLayer
       // (the map-layer key), like every other layer refresh here — so all three
       // firms call sites one-flight the guard-less loadFirmsData (#6770).
       { name: 'fires', fn: () => this.dataLoader.loadFirmsData(), intervalMs: REFRESH_INTERVALS.firms, condition: () => this.shouldRefreshFirms() },
-      { name: 'ais', fn: () => this.dataLoader.loadAisSignals(), intervalMs: REFRESH_INTERVALS.ais, condition: () => this.state.mapLayers.ais },
-      { name: 'cables', fn: () => this.dataLoader.loadCableActivity(), intervalMs: REFRESH_INTERVALS.cables, condition: () => this.state.mapLayers.cables },
       { name: 'cableHealth', fn: () => this.dataLoader.loadCableHealth(), intervalMs: REFRESH_INTERVALS.cableHealth, condition: () => this.state.mapLayers.cables },
-      { name: 'flights', fn: () => this.dataLoader.loadFlightDelays(), intervalMs: REFRESH_INTERVALS.flights, condition: () => this.state.mapLayers.flights },
-      {
-        name: 'cyberThreats', fn: () => {
-          this.state.cyberThreatsCache = null;
-          return this.dataLoader.loadCyberThreats();
-        }, intervalMs: REFRESH_INTERVALS.cyberThreats, condition: () => CYBER_LAYER_ENABLED && this.state.mapLayers.cyberThreats
-      },
     ]);
 
     // Panel-level refreshes (moved from panel constructors into scheduler for hidden-tab awareness + jitter)
-    this.refreshScheduler.scheduleRefresh(
-      'service-status',
-      () => (this.state.panels['service-status'] as ServiceStatusPanel).fetchStatus(),
-      REFRESH_INTERVALS.serviceStatus,
-      () => this.isPanelNearViewport('service-status')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'stablecoins',
-      () => (this.state.panels.stablecoins as StablecoinPanel).fetchData(),
-      REFRESH_INTERVALS.stablecoins,
-      () => this.isPanelNearViewport('stablecoins')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'energy-crisis',
-      () => (this.state.panels['energy-crisis'] as EnergyCrisisPanel).fetchData(),
-      REFRESH_INTERVALS.energyCrisis,
-      () => this.isPanelNearViewport('energy-crisis')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'etf-flows',
-      () => (this.state.panels['etf-flows'] as ETFFlowsPanel).fetchData(),
-      REFRESH_INTERVALS.etfFlows,
-      () => this.isPanelNearViewport('etf-flows')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'macro-signals',
-      () => (this.state.panels['macro-signals'] as MacroSignalsPanel).fetchData(),
-      REFRESH_INTERVALS.macroSignals,
-      () => this.isPanelNearViewport('macro-signals')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'defense-patents',
-      () => { (this.state.panels['defense-patents'] as DefensePatentsPanel).refresh(); return Promise.resolve(); },
-      REFRESH_INTERVALS.defensePatents,
-      () => this.isPanelNearViewport('defense-patents')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'fear-greed',
-      () => (this.state.panels['fear-greed'] as FearGreedPanel).fetchData(),
-      REFRESH_INTERVALS.fearGreed,
-      () => this.isPanelNearViewport('fear-greed')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'hormuz-tracker',
-      () => (this.state.panels['hormuz-tracker'] as HormuzPanel).fetchData(),
-      REFRESH_INTERVALS.hormuzTracker,
-      () => this.isPanelNearViewport('hormuz-tracker')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'positioning-247',
-      () => (this.state.panels['positioning-247'] as PositioningPanel).fetchData(),
-      REFRESH_INTERVALS.hyperliquidFlow,
-      () => this.isPanelNearViewport('positioning-247')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'strategic-posture',
-      () => (this.state.panels['strategic-posture'] as StrategicPosturePanel).refresh(),
-      REFRESH_INTERVALS.strategicPosture,
-      () => this.isPanelNearViewport('strategic-posture')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'strategic-risk',
-      () => (this.state.panels['strategic-risk'] as StrategicRiskPanel).refresh(),
-      REFRESH_INTERVALS.strategicRisk,
-      () => this.isPanelNearViewport('strategic-risk')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'wsb-tickers',
-      () => this.dataLoader.loadWsbTickers(),
-      REFRESH_INTERVALS.wsbTickers,
-      () => hasPremiumAccess() && this.isPanelNearViewport('wsb-ticker-scanner'),
-    );
-
-    // Server-side temporal anomalies (news + satellite_fires)
-    this.refreshScheduler.scheduleRefresh('temporalBaseline', () => this.dataLoader.refreshTemporalBaseline(), REFRESH_INTERVALS.temporalBaseline, () => this.shouldRefreshIntelligence());
-
-    // WTO trade policy data — annual data, poll every 10 min to avoid hammering upstream.
-    // PRO-gated: the isNearViewport check is a visibility gate, not an entitlement gate,
-    // so without hasPremiumAccess() here we'd still hit the 6 WTO RPCs every poll for
-    // free users once the panel scrolled into view.
-    if (SITE_VARIANT === 'full') {
-      this.refreshScheduler.scheduleRefresh('tradePolicy', () => this.dataLoader.loadTradePolicy(), REFRESH_INTERVALS.tradePolicy, () => hasPremiumAccess() && this.isPanelNearViewport('trade-policy'));
-      this.refreshScheduler.scheduleRefresh('supplyChain', () => this.dataLoader.loadSupplyChain(), REFRESH_INTERVALS.supplyChain, () => this.isPanelNearViewport('supply-chain'));
-      this.refreshScheduler.scheduleRefresh('chinaCorridors', () => this.dataLoader.loadChinaCorridors(), REFRESH_INTERVALS.chinaCorridors, () => this.isPanelNearViewport('china-corridors'));
-      this.refreshScheduler.scheduleRefresh('chinaActivityNowcast', () => this.dataLoader.loadChinaActivityNowcast(), REFRESH_INTERVALS.chinaActivityNowcast, () => this.isPanelNearViewport('china-activity-nowcast'));
-    }
-
-    this.refreshScheduler.scheduleRefresh(
-      'cross-source-signals',
-      () => this.dataLoader.loadCrossSourceSignals(),
-      REFRESH_INTERVALS.crossSourceSignals,
-      () => this.isPanelNearViewport('cross-source-signals'),
-    );
-
-    // Telegram Intel (near real-time, 60s refresh)
-    this.refreshScheduler.scheduleRefresh(
-      'telegram-intel',
-      () => this.dataLoader.loadTelegramIntel(),
-      REFRESH_INTERVALS.telegramIntel,
-      () => this.isPanelNearViewport('telegram-intel')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'x-intel',
-      () => this.dataLoader.loadXIntel(),
-      REFRESH_INTERVALS.xIntel,
-      () => this.isPanelNearViewport('x-intel')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'gulf-economies',
-      () => (this.state.panels['gulf-economies'] as GulfEconomiesPanel).fetchData(),
-      REFRESH_INTERVALS.gulfEconomies,
-      () => this.isPanelNearViewport('gulf-economies')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'grocery-basket',
-      () => (this.state.panels['grocery-basket'] as GroceryBasketPanel).fetchData(),
-      REFRESH_INTERVALS.groceryBasket,
-      () => this.isPanelNearViewport('grocery-basket')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'bigmac',
-      () => (this.state.panels['bigmac'] as BigMacPanel).fetchData(),
-      REFRESH_INTERVALS.groceryBasket,
-      () => this.isPanelNearViewport('bigmac')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'fuel-prices',
-      () => (this.state.panels['fuel-prices'] as FuelPricesPanel).fetchData(),
-      REFRESH_INTERVALS.fuelPrices,
-      () => this.isPanelNearViewport('fuel-prices')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'fx',
-      () => (this.state.panels['fx'] as FxPanel).fetchData(),
-      REFRESH_INTERVALS.fx,
-      () => this.isPanelNearViewport('fx')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'fao-food-price-index',
-      () => (this.state.panels['fao-food-price-index'] as FaoFoodPriceIndexPanel).fetchData(),
-      REFRESH_INTERVALS.faoFoodPriceIndex,
-      () => this.isPanelNearViewport('fao-food-price-index')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'oil-inventories',
-      () => (this.state.panels['oil-inventories'] as OilInventoriesPanel).fetchData(),
-      REFRESH_INTERVALS.oilInventories,
-      () => this.isPanelNearViewport('oil-inventories')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'pipeline-status',
-      () => (this.state.panels['pipeline-status'] as PipelineStatusPanel).fetchData(),
-      REFRESH_INTERVALS.pipelineStatus,
-      () => this.isPanelNearViewport('pipeline-status')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'storage-facility-map',
-      () => (this.state.panels['storage-facility-map'] as StorageFacilityMapPanel).fetchData(),
-      REFRESH_INTERVALS.storageFacilityMap,
-      () => this.isPanelNearViewport('storage-facility-map')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'fuel-shortages',
-      () => (this.state.panels['fuel-shortages'] as FuelShortagePanel).fetchData(),
-      REFRESH_INTERVALS.fuelShortages,
-      () => this.isPanelNearViewport('fuel-shortages')
-    );
-
     this.refreshScheduler.scheduleRefresh(
       'nuclear-reactor-status',
       () => (this.state.panels['nuclear-reactor-status'] as NuclearReactorStatusPanel).fetchData(),
@@ -4123,131 +3160,10 @@ export class App {
     );
 
     this.refreshScheduler.scheduleRefresh(
-      'energy-disruptions',
-      () => (this.state.panels['energy-disruptions'] as EnergyDisruptionsPanel).fetchData(),
-      REFRESH_INTERVALS.energyDisruptions,
-      () => this.isPanelNearViewport('energy-disruptions')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'energy-risk-overview',
-      () => (this.state.panels['energy-risk-overview'] as EnergyRiskOverviewPanel).fetchData(),
-      REFRESH_INTERVALS.energyRiskOverview,
-      () => this.isPanelNearViewport('energy-risk-overview')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'chokepoint-strip',
-      () => (this.state.panels['chokepoint-strip'] as ChokepointStripPanel).fetchData(),
-      REFRESH_INTERVALS.chokepointStrip,
-      () => this.isPanelNearViewport('chokepoint-strip')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
       'climate-news',
       () => (this.state.panels['climate-news'] as ClimateNewsPanel).fetchData(),
       REFRESH_INTERVALS.climateNews,
       () => this.isPanelNearViewport('climate-news')
-    );
-
-    this.refreshScheduler.scheduleRefresh(
-      'macro-tiles',
-      () => (this.state.panels['macro-tiles'] as MacroTilesPanel).fetchData(),
-      REFRESH_INTERVALS.macroTiles,
-      () => this.isPanelNearViewport('macro-tiles')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'fsi',
-      () => (this.state.panels['fsi'] as FSIPanel).fetchData(),
-      REFRESH_INTERVALS.fsi,
-      () => this.isPanelNearViewport('fsi')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'nq-pulse',
-      () => (this.state.panels['nq-pulse'] as NqPulsePanel).fetchData(),
-      REFRESH_INTERVALS.nqPulse,
-      () => this.isPanelNearViewport('nq-pulse')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'nq-catalysts',
-      () => (this.state.panels['nq-catalysts'] as NqCatalystsPanel).fetchData(),
-      REFRESH_INTERVALS.nqCatalysts,
-      () => this.isPanelNearViewport('nq-catalysts')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'yield-curve',
-      () => (this.state.panels['yield-curve'] as YieldCurvePanel).fetchData(),
-      REFRESH_INTERVALS.yieldCurve,
-      () => this.isPanelNearViewport('yield-curve')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'earnings-calendar',
-      () => (this.state.panels['earnings-calendar'] as EarningsCalendarPanel).fetchData(),
-      REFRESH_INTERVALS.earningsCalendar,
-      () => this.isPanelNearViewport('earnings-calendar')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'material-events',
-      () => (this.state.panels['material-events'] as MaterialEventsPanel).fetchData(),
-      REFRESH_INTERVALS.materialEvents,
-      () => this.isPanelNearViewport('material-events')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'economic-calendar',
-      () => (this.state.panels['economic-calendar'] as EconomicCalendarPanel).fetchData(),
-      REFRESH_INTERVALS.economicCalendar,
-      () => this.isPanelNearViewport('economic-calendar')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'cot-positioning',
-      () => (this.state.panels['cot-positioning'] as CotPositioningPanel).fetchData(),
-      REFRESH_INTERVALS.cotPositioning,
-      () => this.isPanelNearViewport('cot-positioning')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'gold-intelligence',
-      () => (this.state.panels['gold-intelligence'] as GoldIntelligencePanel).fetchData(),
-      REFRESH_INTERVALS.goldIntelligence,
-      () => this.isPanelNearViewport('gold-intelligence')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'aaii-sentiment',
-      () => this.dataLoader.loadAaiiSentiment(),
-      REFRESH_INTERVALS.aaiiSentiment,
-      () => this.isPanelNearViewport('aaii-sentiment')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'market-breadth',
-      () => this.dataLoader.loadMarketBreadth(),
-      REFRESH_INTERVALS.marketBreadth,
-      () => this.isPanelNearViewport('market-breadth')
-    );
-    this.refreshScheduler.scheduleRefresh(
-      'news-market-correlation',
-      () => (this.state.panels['news-market-correlation'] as NewsMarketCorrelationPanel).fetchData(),
-      REFRESH_INTERVALS.newsMarketCorrelation,
-      () => this.isPanelNearViewport('news-market-correlation')
-    );
-
-    // Refresh intelligence signals for CII (geopolitical variant only)
-    if (SITE_VARIANT === 'full') {
-      this.refreshScheduler.scheduleRefresh('intelligence', () => {
-        const { military, iranEvents } = this.state.intelligenceCache;
-        this.state.intelligenceCache = {};
-        if (military) this.state.intelligenceCache.military = military;
-        if (iranEvents) this.state.intelligenceCache.iranEvents = iranEvents;
-        return this.dataLoader.loadIntelligenceSignals();
-      }, REFRESH_INTERVALS.intelligence, () => this.shouldRefreshIntelligence());
-    }
-
-    // Correlation engine refresh
-    this.refreshScheduler.scheduleRefresh(
-      'correlation-engine',
-      async () => {
-        await this.runCorrelationEngine();
-      },
-      REFRESH_INTERVALS.correlationEngine,
-      () => this.shouldRefreshCorrelation(),
     );
   }
 }

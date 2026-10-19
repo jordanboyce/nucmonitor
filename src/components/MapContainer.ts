@@ -10,7 +10,6 @@ import {
   isLayerToggleAllowed,
   isLayerEntitled,
   sanitizeLockedLayers,
-  sanitizeResilienceScoreForRenderer,
   shouldSanitizeLockedLayers,
   type RendererKind,
 } from '@/config/map-layer-definitions';
@@ -21,58 +20,24 @@ import type { DeckGLMap, DeckMapView, CountryClickPayload } from './DeckGLMap';
 import type { GlobeMap } from './GlobeMap';
 import type {
   MapLayers,
-  Hotspot,
-  NewsItem,
   NewsLocationMarker,
   InternetOutage,
   RelatedAsset,
   AssetType,
-  AisDisruptionEvent,
-  AisDensityZone,
   CableAdvisory,
   RepairShip,
-  SocialUnrestEvent,
-  MilitaryFlight,
-  MilitaryVessel,
-  MilitaryFlightCluster,
-  MilitaryVesselCluster,
   NaturalEvent,
-  UcdpGeoEvent,
-  CyberThreat,
   CableHealthRecord,
 } from '@/types';
-import type { AirportDelayAlert, PositionSample } from '@/services/aviation';
-import type { CrossBorderData, DisplacementFlow, InternalDisplacementData } from '@/services/displacement';
 import type { Earthquake } from '@/services/earthquakes';
 import type { ClimateAnomaly } from '@/services/climate';
 import type { WeatherAlert } from '@/services/weather';
-import type { CanadaRoadRecord } from '@/services/canada-roads';
-import type { CanadaAlert } from '@/services/canada-alerts';
-import type { PositiveGeoEvent } from '@/services/positive-events-geo';
-import type { KindnessPoint } from '@/services/kindness-data';
-import type { HappinessData } from '@/services/happiness-data';
-import type { SpeciesRecovery } from '@/services/conservation-data';
-import type { RenewableInstallation } from '@/services/renewable-installations';
-import type { ResilienceRankingItem } from '@/services/resilience';
 import type { RadiationObservation } from '@/services/radiation';
-import type { GpsJamHex } from '@/services/gps-interference';
-import type { SatellitePosition } from '@/services/satellites';
-import type { IranEvent } from '@/services/conflict';
-import type { ImageryScene } from '@/generated/server/worldmonitor/imagery/v1/service_server';
 import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
 import type { TrafficAnomaly as ProtoTrafficAnomaly, DdosLocationHit } from '@/generated/client/worldmonitor/infrastructure/v1/service_client';
-import type { AcledConflictEvent } from '@/generated/client/worldmonitor/conflict/v1/service_client';
 import type { DiseaseOutbreakItem } from '@/services/disease-outbreaks';
-import type { GetChokepointStatusResponse } from '@/services/supply-chain';
-import type { ChinaCorridorControlTower } from '../../shared/china-corridor-control-towers';
-import { projectChinaCorridorOverlay } from './map/china-corridor-overlay';
-import { AircraftEmergencyLayer } from './AircraftEmergencyLayer';
-import type { ScenarioVisualState, ScenarioResult } from '@/config/scenario-templates';
 import { getAuthState } from '@/services/auth-state';
 import { hasPremiumAccess } from '@/services/panel-gating';
-import { trackGateHit } from '@/services/analytics';
-
-export type { ScenarioVisualState, ScenarioResult };
 
 export type TimeRange = '1h' | '6h' | '24h' | '48h' | '7d' | 'all';
 export type MapView = 'global' | 'america' | 'mena' | 'eu' | 'asia' | 'latam' | 'africa' | 'oceania';
@@ -147,21 +112,7 @@ export class ViewportTransitionError extends Error {
   }
 }
 
-interface TechEventMarker {
-  id: string;
-  title: string;
-  location: string;
-  lat: number;
-  lng: number;
-  country: string;
-  startDate: string;
-  endDate: string;
-  url: string | null;
-  daysUntil: number;
-}
-
 type FireMarker = { lat: number; lon: number; brightness: number; frp: number; confidence: number; region: string; acq_date: string; daynight: string };
-type CIIScore = { code: string; score: number; level: string };
 
 /**
  * Unified map interface that delegates to either DeckGLMap or MapComponent
@@ -174,7 +125,6 @@ export class MapContainer {
   private deckGLMap: DeckGLMap | null = null;
   private svgMap: MapComponent | null = null;
   private globeMap: GlobeMap | null = null;
-  private supplyChainPanel: import('@/components/SupplyChainPanel').SupplyChainPanel | null = null;
   private initialState: MapContainerState;
   private useDeckGL: boolean;
   private useGlobe: boolean;
@@ -203,12 +153,9 @@ export class MapContainer {
   private destroyed = false;
   private pendingCenter: PendingCenter | null = null;
   private pendingViewportActions: PendingViewportAction[] = [];
-  private pendingChokepointOpen: string | null = null;
   private hiddenLayerToggles = new Set<keyof MapLayers>();
   private layerLoadingState = new Map<keyof MapLayers, boolean>();
   private layerReadyState = new Map<keyof MapLayers, boolean>();
-  private cachedScenarioState: ScenarioVisualState | null | undefined;
-  private escalationGettersRequested = false;
 
   // ─── Callback cache (survives map mode switches) ───────────────────────────
   private cachedOnStateChanged: ((state: MapContainerState) => void) | null = null;
@@ -216,70 +163,27 @@ export class MapContainer {
   private cachedOnTimeRangeChanged: ((range: TimeRange) => void) | null = null;
   private cachedOnNewsClicked: ((item: Pick<NewsLocationMarker, 'article' | 'title'>) => void) | null = null;
   private cachedOnCountryClicked: ((country: CountryClickPayload) => void) | null = null;
-  private cachedOnHotspotClicked: ((hotspot: Hotspot) => void) | null = null;
-  private cachedOnAircraftPositionsUpdate: ((positions: PositionSample[]) => void) | null = null;
   private cachedOnMapContextMenu: ((payload: { lat: number; lon: number; screenX: number; screenY: number; countryCode?: string; countryName?: string }) => void) | null = null;
-  private cachedOnChinaCorridorRendererCapabilityChange: ((supported: boolean) => void) | null = null;
 
   // ─── Data cache (survives map mode switches) ───────────────────────────────
   private cachedEarthquakes: Earthquake[] | null = null;
-  private cachedConflictEvents: AcledConflictEvent[] | null = null;
   private cachedWeatherAlerts: WeatherAlert[] | null = null;
-  private cachedCanadaRoads: CanadaRoadRecord[] | null = null;
-  private cachedCanadaAlerts: CanadaAlert[] | null = null;
   private cachedOutages: InternetOutage[] | null = null;
-  private cachedAisDisruptions: AisDisruptionEvent[] | null = null;
-  private cachedAisDensity: AisDensityZone[] | null = null;
   private cachedCableAdvisories: CableAdvisory[] | null = null;
   private cachedRepairShips: RepairShip[] | null = null;
   private cachedCableHealth: Record<string, CableHealthRecord> | null = null;
-  private cachedProtests: SocialUnrestEvent[] | null = null;
-  private cachedFlightDelays: AirportDelayAlert[] | null = null;
-  private cachedAircraftPositions: PositionSample[] | null = null;
-  private cachedMilitaryFlights: MilitaryFlight[] | null = null;
-  private cachedMilitaryFlightClusters: MilitaryFlightCluster[] | null = null;
-  private cachedMilitaryVessels: MilitaryVessel[] | null = null;
-  private cachedMilitaryVesselClusters: MilitaryVesselCluster[] | null = null;
   private cachedNaturalEvents: NaturalEvent[] | null = null;
   private cachedFires: FireMarker[] | null = null;
-  private cachedTechEvents: TechEventMarker[] | null = null;
-  private cachedUcdpEvents: UcdpGeoEvent[] | null = null;
-  private cachedDisplacementFlows: DisplacementFlow[] | null = null;
-  private cachedInternalDisplacement: InternalDisplacementData | null = null;
-  private cachedCrossBorderArrivals: CrossBorderData | null = null;
   private cachedClimateAnomalies: ClimateAnomaly[] | null = null;
   private cachedRadiationObservations: RadiationObservation[] | null = null;
-  private cachedGpsJamming: GpsJamHex[] | null = null;
-  private cachedSatellites: SatellitePosition[] | null = null;
   private cachedDiseaseOutbreaks: DiseaseOutbreakItem[] | null = null;
-  private cachedCyberThreats: CyberThreat[] | null = null;
-  private cachedIranEvents: IranEvent[] | null = null;
   private cachedNewsLocations: NewsLocationMarker[] | null = null;
-  private cachedPositiveEvents: PositiveGeoEvent[] | null = null;
-  private cachedKindnessData: KindnessPoint[] | null = null;
-  private cachedHappinessScores: HappinessData | null = null;
-  private cachedCIIScores: CIIScore[] | null = null;
-  private cachedResilienceRanking: ResilienceRankingItem[] | null = null;
-  private cachedResilienceGreyedOut: ResilienceRankingItem[] = [];
-  private cachedSpeciesRecovery: SpeciesRecovery[] | null = null;
-  private cachedRenewableInstallations: RenewableInstallation[] | null = null;
-  private cachedHotspotActivity: NewsItem[] | null = null;
-  private cachedEscalationFlights: MilitaryFlight[] | null = null;
-  private cachedEscalationVessels: MilitaryVessel[] | null = null;
-  private cachedImageryScenes: ImageryScene[] | null = null;
   private cachedWebcams: Array<WebcamEntry | WebcamCluster> | null = null;
   private cachedTrafficAnomalies: ProtoTrafficAnomaly[] | null = null;
   private cachedDdosLocations: DdosLocationHit[] | null = null;
-  private cachedChokepointData: GetChokepointStatusResponse | null | undefined;
-  private cachedChinaCorridorSelection: ChinaCorridorControlTower | null = null;
-  private emergencyLayer: AircraftEmergencyLayer;
 
   constructor(container: HTMLElement, initialState: MapContainerState, preferGlobe = false, options: MapContainerOptions = {}) {
     this.container = container;
-    this.emergencyLayer = new AircraftEmergencyLayer(container, markers => {
-      if (this.useDeckGL) this.deckGLMap?.setAircraftEmergencies(markers);
-      else this.svgMap?.setAircraftEmergencies(markers);
-    });
     this.initialState = initialState;
     this.chrome = options.chrome ?? true;
     this.mapLibreWorkerUrl = options.mapLibreWorkerUrl;
@@ -302,13 +206,6 @@ export class MapContainer {
     this.container.addEventListener('wheel', this.invalidateViewportAuthority, { passive: true });
     this.container.addEventListener('touchstart', this.invalidateViewportAuthority, { passive: true });
     this.container.addEventListener('keydown', this.invalidateViewportAuthority);
-
-    if (this.initialState.layers) {
-      const layers = sanitizeResilienceScoreForRenderer(this.initialState.layers, this.useDeckGL);
-      if (layers !== this.initialState.layers) {
-        this.initialState = { ...this.initialState, layers };
-      }
-    }
 
     // init() attaches the resize observer synchronously (before its first await),
     // so the constructor does not need to start it separately.
@@ -386,25 +283,12 @@ export class MapContainer {
     this.container.classList.add(modeClass);
   }
 
-  private sanitizeNonDeckLayers(): void {
-    if (this.initialState.layers) {
-      const layers = sanitizeResilienceScoreForRenderer(this.initialState.layers, false);
-      if (layers !== this.initialState.layers) {
-        this.initialState = { ...this.initialState, layers };
-      }
-    }
-  }
-
   private isCurrentRendererInit(token: number): boolean {
     return !this.destroyed && token === this.rendererInitToken;
   }
 
   private hasActiveRenderer(): boolean {
     return Boolean(this.globeMap || this.deckGLMap || this.svgMap);
-  }
-
-  private isChokepointRendererReady(): boolean {
-    return this.rendererReady && this.hasActiveRenderer();
   }
 
   private isViewportRendererReady(): boolean {
@@ -441,17 +325,9 @@ export class MapContainer {
     // Replay viewport commands before resolving readiness so callers waiting to
     // observe settlement attach to the transition that was actually started.
     this.replayPendingViewportActions();
-    this.replayPendingChokepointOpen();
     const waiters = Array.from(this.rendererReadyWaiters);
     this.rendererReadyWaiters.clear();
     for (const waiter of waiters) waiter.resolve();
-  }
-
-  private replayPendingChokepointOpen(): void {
-    if (this.pendingChokepointOpen === null) return;
-    const pendingChokepointOpen = this.pendingChokepointOpen;
-    this.pendingChokepointOpen = null;
-    this.openChokepoint(pendingChokepointOpen);
   }
 
   private startResizeObserver(): void {
@@ -603,7 +479,6 @@ export class MapContainer {
     markLcpDebug('wm:map:svg-init-start');
     this.useDeckGL = false;
     this.deckGLMap = null;
-    this.sanitizeNonDeckLayers();
     const { MapComponent } = await import('./Map');
     if (!this.isCurrentRendererInit(token)) return;
     this.prepareRendererDom('svg-mode');
@@ -804,63 +679,22 @@ export class MapContainer {
     if (this.cachedOnTimeRangeChanged) this.onTimeRangeChanged(this.cachedOnTimeRangeChanged);
     if (this.cachedOnCountryClicked) this.onCountryClicked(this.cachedOnCountryClicked);
     if (this.cachedOnNewsClicked) this.onNewsClicked(this.cachedOnNewsClicked);
-    if (this.cachedOnHotspotClicked) this.onHotspotClicked(this.cachedOnHotspotClicked);
-    if (this.cachedOnAircraftPositionsUpdate) this.setOnAircraftPositionsUpdate(this.cachedOnAircraftPositionsUpdate);
     if (this.cachedOnMapContextMenu) this.onMapContextMenu(this.cachedOnMapContextMenu);
-    if (this.escalationGettersRequested) this.applyEscalationGetters();
 
     // 2. Re-push all cached data
     if (this.cachedEarthquakes) this.setEarthquakes(this.cachedEarthquakes);
-    if (this.cachedConflictEvents) this.setConflictEvents(this.cachedConflictEvents);
     if (this.cachedWeatherAlerts) this.setWeatherAlerts(this.cachedWeatherAlerts);
-    if (this.cachedCanadaRoads) this.setCanadaRoads(this.cachedCanadaRoads);
-    if (this.cachedCanadaAlerts) this.setCanadaAlerts(this.cachedCanadaAlerts);
     if (this.cachedOutages) this.setOutages(this.cachedOutages);
-    if (this.cachedAisDisruptions != null && this.cachedAisDensity != null) this.setAisData(this.cachedAisDisruptions, this.cachedAisDensity);
     if (this.cachedCableAdvisories != null && this.cachedRepairShips != null) this.setCableActivity(this.cachedCableAdvisories, this.cachedRepairShips);
     if (this.cachedCableHealth) this.setCableHealth(this.cachedCableHealth);
-    if (this.cachedProtests) this.setProtests(this.cachedProtests);
-    if (this.cachedFlightDelays) this.setFlightDelays(this.cachedFlightDelays);
-    if (this.cachedAircraftPositions) this.setAircraftPositions(this.cachedAircraftPositions);
-    if (this.cachedMilitaryFlights) this.setMilitaryFlights(this.cachedMilitaryFlights, this.cachedMilitaryFlightClusters ?? []);
-    this.emergencyLayer.setEnabled(!this.useGlobe && this.getState().layers.aircraftEmergencies === true);
-    if (this.cachedMilitaryVessels) this.setMilitaryVessels(this.cachedMilitaryVessels, this.cachedMilitaryVesselClusters ?? []);
     if (this.cachedNaturalEvents) this.setNaturalEvents(this.cachedNaturalEvents);
     if (this.cachedFires) this.setFires(this.cachedFires);
-    if (this.cachedTechEvents) this.setTechEvents(this.cachedTechEvents);
-    if (this.cachedUcdpEvents) this.setUcdpEvents(this.cachedUcdpEvents);
-    if (this.cachedDisplacementFlows) this.setDisplacementFlows(this.cachedDisplacementFlows);
-    if (this.cachedInternalDisplacement) this.setInternalDisplacement(this.cachedInternalDisplacement);
-    if (this.cachedCrossBorderArrivals) this.setCrossBorderArrivals(this.cachedCrossBorderArrivals);
     if (this.cachedClimateAnomalies) this.setClimateAnomalies(this.cachedClimateAnomalies);
     if (this.cachedRadiationObservations) this.setRadiationObservations(this.cachedRadiationObservations);
-    if (this.cachedGpsJamming) {
-      void this.setGpsJamming(this.cachedGpsJamming).catch(err => {
-        console.warn('[MapContainer] GPS jamming re-init failed:', (err as Error)?.message);
-      });
-    }
-    if (this.cachedSatellites) this.setSatellites(this.cachedSatellites);
     if (this.cachedDiseaseOutbreaks) this.setDiseaseOutbreaks(this.cachedDiseaseOutbreaks);
-    if (this.cachedCyberThreats) this.setCyberThreats(this.cachedCyberThreats);
-    if (this.cachedIranEvents) this.setIranEvents(this.cachedIranEvents);
     if (this.cachedNewsLocations) this.setNewsLocations(this.cachedNewsLocations);
-    if (this.cachedPositiveEvents) this.setPositiveEvents(this.cachedPositiveEvents);
-    if (this.cachedKindnessData) this.setKindnessData(this.cachedKindnessData);
-    if (this.cachedHappinessScores) this.setHappinessScores(this.cachedHappinessScores);
-    if (this.cachedCIIScores) this.setCIIScores(this.cachedCIIScores);
-    if (this.cachedResilienceRanking) this.setResilienceRanking(this.cachedResilienceRanking, this.cachedResilienceGreyedOut);
-    if (this.cachedSpeciesRecovery) this.setSpeciesRecoveryZones(this.cachedSpeciesRecovery);
-    if (this.cachedRenewableInstallations) this.setRenewableInstallations(this.cachedRenewableInstallations);
-    if (this.cachedHotspotActivity) this.updateHotspotActivity(this.cachedHotspotActivity);
-    if (this.cachedEscalationFlights && this.cachedEscalationVessels) this.updateMilitaryForEscalation(this.cachedEscalationFlights, this.cachedEscalationVessels);
-    if (this.cachedImageryScenes) this.setImageryScenes(this.cachedImageryScenes);
     if (this.cachedTrafficAnomalies) this.setTrafficAnomalies(this.cachedTrafficAnomalies);
     if (this.cachedDdosLocations) this.setDdosLocations(this.cachedDdosLocations);
-    if (this.cachedChokepointData !== undefined) this.setChokepointData(this.cachedChokepointData);
-    if (this.cachedChinaCorridorSelection) {
-      const supported = this.applyChinaCorridorSelection(this.cachedChinaCorridorSelection);
-      this.cachedOnChinaCorridorRendererCapabilityChange?.(supported);
-    }
     if (this.cachedWebcams) {
       if (this.useGlobe) this.globeMap?.setWebcams(this.cachedWebcams);
       else if (this.useDeckGL) this.deckGLMap?.setWebcams(this.cachedWebcams);
@@ -868,7 +702,6 @@ export class MapContainer {
     }
     for (const [layer, loading] of this.layerLoadingState) this.setLayerLoading(layer, loading);
     for (const [layer, hasData] of this.layerReadyState) this.setLayerReady(layer, hasData);
-    if (this.cachedScenarioState !== undefined) this.applyScenarioState(this.cachedScenarioState);
     for (const layer of this.hiddenLayerToggles) this.hideLayerToggle(layer);
   }
 
@@ -938,10 +771,6 @@ export class MapContainer {
     if (!completed) {
       throw new ViewportTransitionError('viewport_interrupted');
     }
-  }
-
-  public supportsLiveConflictEvents(): boolean {
-    return !this.useGlobe && !this.useDeckGL;
   }
 
   private destroyFlatMap(): void {
@@ -1059,9 +888,9 @@ export class MapContainer {
   }
 
   public setLayers(layers: MapLayers, options: { bypassEntitlementSanitization?: boolean } = {}): void {
-    // Strip resilience on non-DeckGL, then locked premium layers for settled free users (#6045).
-    // Wait for isProTierResolved so Pro users don't lose resilienceScore during Clerk/Convex boot.
-    let sanitized = sanitizeResilienceScoreForRenderer(layers, this.useDeckGL);
+    // Strip locked premium layers for settled free users (#6045).
+    // Wait for isProTierResolved so Pro users don't lose premium layers during Clerk/Convex boot.
+    let sanitized = layers;
     if (!options.bypassEntitlementSanitization && shouldSanitizeLockedLayers(
       hasPremiumAccess(getAuthState()),
       isProTierResolved(),
@@ -1070,7 +899,6 @@ export class MapContainer {
       sanitized = sanitizeLockedLayers(sanitized, false);
     }
     this.initialState = { ...this.initialState, layers: sanitized };
-    this.emergencyLayer.setEnabled(!this.useGlobe && sanitized.aircraftEmergencies === true);
     if (this.useGlobe) { this.globeMap?.setLayers(sanitized); return; }
     if (this.useDeckGL) { this.deckGLMap?.setLayers(sanitized); } else { this.svgMap?.setLayers(sanitized); }
   }
@@ -1092,19 +920,6 @@ export class MapContainer {
     if (this.useDeckGL) { this.deckGLMap?.setEarthquakes(earthquakes); } else { this.svgMap?.setEarthquakes(earthquakes, options); }
   }
 
-  public setConflictEvents(events: AcledConflictEvent[]): void {
-    this.cachedConflictEvents = events;
-    if (!this.useGlobe && !this.useDeckGL) {
-      this.svgMap?.setConflictEvents(events);
-    }
-  }
-
-  public setImageryScenes(scenes: ImageryScene[]): void {
-    this.cachedImageryScenes = scenes;
-    if (this.useGlobe) { this.globeMap?.setImageryScenes(scenes); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setImageryScenes(scenes); }
-  }
-
   public setWebcams(markers: Array<WebcamEntry | WebcamCluster>): void {
     this.cachedWebcams = markers;
     if (this.useGlobe) { this.globeMap?.setWebcams(markers); return; }
@@ -1116,15 +931,6 @@ export class MapContainer {
     this.cachedWeatherAlerts = alerts;
     if (this.useGlobe) { this.globeMap?.setWeatherAlerts(alerts); return; }
     if (this.useDeckGL) { this.deckGLMap?.setWeatherAlerts(alerts); } else { this.svgMap?.setWeatherAlerts(alerts); }
-  }
-
-  public setCanadaRoads(records: CanadaRoadRecord[]): void {
-    this.cachedCanadaRoads = records;
-    if (this.useDeckGL) { this.deckGLMap?.setCanadaRoads(records); }
-  }
-  public setCanadaAlerts(alerts: CanadaAlert[]): void {
-    this.cachedCanadaAlerts = alerts;
-    if (this.useDeckGL) { this.deckGLMap?.setCanadaAlerts(alerts); }
   }
 
   public setOutages(outages: InternetOutage[]): void {
@@ -1143,17 +949,6 @@ export class MapContainer {
     this.cachedDdosLocations = hits;
     if (this.useGlobe) { this.globeMap?.setDdosLocations(hits); return; }
     if (this.useDeckGL) { this.deckGLMap?.setDdosLocations(hits); }
-  }
-
-  public setAisData(disruptions: AisDisruptionEvent[], density: AisDensityZone[]): void {
-    this.cachedAisDisruptions = disruptions;
-    this.cachedAisDensity = density;
-    if (this.useGlobe) { this.globeMap?.setAisData(disruptions, density); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setAisData(disruptions, density);
-    } else {
-      this.svgMap?.setAisData(disruptions, density);
-    }
   }
 
   public setCableActivity(advisories: CableAdvisory[], repairShips: RepairShip[]): void {
@@ -1177,49 +972,6 @@ export class MapContainer {
     }
   }
 
-  public setProtests(events: SocialUnrestEvent[]): void {
-    this.cachedProtests = events;
-    if (this.useGlobe) { this.globeMap?.setProtests(events); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setProtests(events);
-    } else {
-      this.svgMap?.setProtests(events);
-    }
-  }
-
-  public setFlightDelays(delays: AirportDelayAlert[]): void {
-    this.cachedFlightDelays = delays;
-    if (this.useGlobe) { this.globeMap?.setFlightDelays(delays); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setFlightDelays(delays);
-    } else {
-      this.svgMap?.setFlightDelays(delays);
-    }
-  }
-
-  public setAircraftPositions(positions: PositionSample[]): void {
-    this.cachedAircraftPositions = positions;
-    if (this.useDeckGL) {
-      this.deckGLMap?.setAircraftPositions(positions);
-    } else {
-      this.svgMap?.setAircraftPositions(positions);
-    }
-  }
-
-  public setMilitaryFlights(flights: MilitaryFlight[], clusters: MilitaryFlightCluster[] = []): void {
-    this.cachedMilitaryFlights = flights;
-    this.cachedMilitaryFlightClusters = clusters;
-    if (this.useGlobe) { this.globeMap?.setMilitaryFlights(flights); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setMilitaryFlights(flights, clusters); } else { this.svgMap?.setMilitaryFlights(flights, clusters); }
-  }
-
-  public setMilitaryVessels(vessels: MilitaryVessel[], clusters: MilitaryVesselCluster[] = []): void {
-    this.cachedMilitaryVessels = vessels;
-    this.cachedMilitaryVesselClusters = clusters;
-    if (this.useGlobe) { this.globeMap?.setMilitaryVessels(vessels, clusters); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setMilitaryVessels(vessels, clusters); } else { this.svgMap?.setMilitaryVessels(vessels, clusters); }
-  }
-
   public setNaturalEvents(events: NaturalEvent[]): void {
     this.cachedNaturalEvents = events;
     if (this.useGlobe) { this.globeMap?.setNaturalEvents(events); return; }
@@ -1233,50 +985,6 @@ export class MapContainer {
       this.deckGLMap?.setFires(fires);
     } else {
       this.svgMap?.setFires(fires);
-    }
-  }
-
-  public setTechEvents(events: TechEventMarker[]): void {
-    this.cachedTechEvents = events;
-    if (this.useGlobe) { this.globeMap?.setTechEvents(events); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setTechEvents(events);
-    } else {
-      this.svgMap?.setTechEvents(events);
-    }
-  }
-
-  public setUcdpEvents(events: UcdpGeoEvent[]): void {
-    this.cachedUcdpEvents = events;
-    if (this.useGlobe) { this.globeMap?.setUcdpEvents(events); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setUcdpEvents(events);
-    }
-  }
-
-  public setDisplacementFlows(flows: DisplacementFlow[]): void {
-    this.cachedDisplacementFlows = flows;
-    if (this.useGlobe) { this.globeMap?.setDisplacementFlows(flows); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setDisplacementFlows(flows);
-    }
-  }
-
-  // Like the DTM layer, cross-border points are drawn by deck.gl only.
-  public setCrossBorderArrivals(data: CrossBorderData): void {
-    this.cachedCrossBorderArrivals = data;
-    if (this.useGlobe) return;
-    if (this.useDeckGL) {
-      this.deckGLMap?.setCrossBorderArrivals(data);
-    }
-  }
-
-  // The globe has no region layer yet; it keeps the country-level UNHCR arcs.
-  public setInternalDisplacement(data: InternalDisplacementData): void {
-    this.cachedInternalDisplacement = data;
-    if (this.useGlobe) return;
-    if (this.useDeckGL) {
-      this.deckGLMap?.setInternalDisplacement(data);
     }
   }
 
@@ -1298,43 +1006,10 @@ export class MapContainer {
     }
   }
 
-  public async setGpsJamming(hexes: GpsJamHex[]): Promise<void> {
-    this.cachedGpsJamming = hexes;
-    if (this.useGlobe) { this.globeMap?.setGpsJamming(hexes); return; }
-    if (this.useDeckGL) {
-      await this.deckGLMap?.setGpsJamming(hexes);
-    }
-  }
-
-  public setSatellites(positions: SatellitePosition[]): void {
-    this.cachedSatellites = positions;
-    if (this.useGlobe) { this.globeMap?.setSatellites(positions); return; }
-  }
-
   public setDiseaseOutbreaks(outbreaks: DiseaseOutbreakItem[]): void {
     this.cachedDiseaseOutbreaks = outbreaks;
     if (this.useGlobe) return; // TODO: add globe support for disease outbreaks layer
     if (this.useDeckGL) this.deckGLMap?.setDiseaseOutbreaks(outbreaks);
-  }
-
-  public setCyberThreats(threats: CyberThreat[]): void {
-    this.cachedCyberThreats = threats;
-    if (this.useGlobe) { this.globeMap?.setCyberThreats(threats); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setCyberThreats(threats);
-    } else {
-      this.svgMap?.setCyberThreats(threats);
-    }
-  }
-
-  public setIranEvents(events: IranEvent[]): void {
-    this.cachedIranEvents = events;
-    if (this.useGlobe) { this.globeMap?.setIranEvents(events); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setIranEvents(events);
-    } else {
-      this.svgMap?.setIranEvents(events);
-    }
   }
 
   public setNewsLocations(data: NewsLocationMarker[]): void {
@@ -1347,123 +1022,6 @@ export class MapContainer {
     }
   }
 
-  public setPositiveEvents(events: PositiveGeoEvent[]): void {
-    this.cachedPositiveEvents = events;
-    if (this.useGlobe) { this.globeMap?.setPositiveEvents(events); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setPositiveEvents(events);
-    }
-    // SVG map does not support positive events layer
-  }
-
-  public setKindnessData(points: KindnessPoint[]): void {
-    this.cachedKindnessData = points;
-    if (this.useGlobe) { this.globeMap?.setKindnessData(points); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setKindnessData(points);
-    }
-    // SVG map does not support kindness layer
-  }
-
-  public setHappinessScores(data: HappinessData): void {
-    this.cachedHappinessScores = data;
-    if (this.useGlobe) { this.globeMap?.setHappinessScores(data); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setHappinessScores(data);
-    }
-    // SVG map does not support choropleth overlay
-  }
-
-  public setChokepointData(data: GetChokepointStatusResponse | null): void {
-    this.cachedChokepointData = data;
-    if (this.useGlobe) { this.globeMap?.setChokepointData(data); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setChokepointData(data); return; }
-    this.svgMap?.setChokepointData(data);
-  }
-
-  private applyChinaCorridorSelection(corridor: ChinaCorridorControlTower): boolean {
-    if (this.useDeckGL) {
-      this.deckGLMap?.setChinaCorridorSelection(corridor);
-      return true;
-    }
-    const { center, bounds } = projectChinaCorridorOverlay(corridor);
-    const span = Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]);
-    this.setCenter(center.lat, center.lon, span > 25 ? 3 : span > 8 ? 4 : 5);
-    return false;
-  }
-
-  public setChinaCorridorSelection(
-    corridor: ChinaCorridorControlTower,
-  ): boolean | undefined {
-    this.cachedChinaCorridorSelection = corridor;
-    if (!this.hasActiveRenderer()) return undefined;
-    return this.applyChinaCorridorSelection(corridor);
-  }
-
-  public setOnChinaCorridorRendererCapabilityChange(
-    callback: (supported: boolean) => void,
-  ): void {
-    this.cachedOnChinaCorridorRendererCapabilityChange = callback;
-  }
-
-  public setCIIScores(scores: CIIScore[]): void {
-    this.cachedCIIScores = scores;
-    if (this.useGlobe) { this.globeMap?.setCIIScores(scores); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setCIIScores(scores); }
-  }
-
-  public setResilienceRanking(items: ResilienceRankingItem[], greyedOut: ResilienceRankingItem[] = []): void {
-    this.cachedResilienceRanking = items;
-    this.cachedResilienceGreyedOut = greyedOut;
-    if (this.useDeckGL) {
-      this.deckGLMap?.setResilienceRanking(items, greyedOut);
-    }
-  }
-
-  public setSpeciesRecoveryZones(species: SpeciesRecovery[]): void {
-    this.cachedSpeciesRecovery = species;
-    if (this.useGlobe) { this.globeMap?.setSpeciesRecoveryZones(species); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setSpeciesRecoveryZones(species);
-    }
-    // SVG map does not support species recovery layer
-  }
-
-  public setRenewableInstallations(installations: RenewableInstallation[]): void {
-    this.cachedRenewableInstallations = installations;
-    if (this.useGlobe) { this.globeMap?.setRenewableInstallations(installations); return; }
-    if (this.useDeckGL) {
-      this.deckGLMap?.setRenewableInstallations(installations);
-    }
-    // SVG map does not support renewable installations layer
-  }
-
-  public updateHotspotActivity(news: NewsItem[]): void {
-    this.cachedHotspotActivity = news;
-    if (this.useDeckGL) {
-      this.deckGLMap?.updateHotspotActivity(news);
-    } else {
-      this.svgMap?.updateHotspotActivity(news);
-    }
-  }
-
-  public updateMilitaryForEscalation(flights: MilitaryFlight[], vessels: MilitaryVessel[]): void {
-    this.cachedEscalationFlights = flights;
-    this.cachedEscalationVessels = vessels;
-    if (this.useDeckGL) {
-      this.deckGLMap?.updateMilitaryForEscalation(flights, vessels);
-    } else {
-      this.svgMap?.updateMilitaryForEscalation(flights, vessels);
-    }
-  }
-
-  public getHotspotDynamicScore(hotspotId: string) {
-    if (this.useDeckGL) {
-      return this.deckGLMap?.getHotspotDynamicScore(hotspotId);
-    }
-    return this.svgMap?.getHotspotDynamicScore(hotspotId);
-  }
-
   public highlightAssets(assets: RelatedAsset[] | null): void {
     if (this.useDeckGL) {
       this.deckGLMap?.highlightAssets(assets);
@@ -1473,12 +1031,6 @@ export class MapContainer {
   }
 
   // ─── Callback setters ────────────────────────────────────────────────────────
-
-  public onHotspotClicked(callback: (hotspot: Hotspot) => void): void {
-    this.cachedOnHotspotClicked = callback;
-    if (this.useGlobe) { this.globeMap?.setOnHotspotClick(callback); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setOnHotspotClick(callback); } else { this.svgMap?.onHotspotClicked(callback); }
-  }
 
   public onTimeRangeChanged(callback: (range: TimeRange) => void): void {
     this.cachedOnTimeRangeChanged = callback;
@@ -1496,13 +1048,6 @@ export class MapContainer {
     if (this.useDeckGL) { this.deckGLMap?.setOnLayerChange(notify); } else { this.svgMap?.setOnLayerChange(notify); }
   }
 
-  public setOnAircraftPositionsUpdate(callback: (positions: PositionSample[]) => void): void {
-    this.cachedOnAircraftPositionsUpdate = callback;
-    if (this.useDeckGL) {
-      this.deckGLMap?.setOnAircraftPositionsUpdate(callback);
-    }
-  }
-
   public getBbox(): string | null {
     if (this.useDeckGL) return this.deckGLMap?.getBbox() ?? null;
     if (this.useGlobe) return this.globeMap?.getBbox() ?? null;
@@ -1518,34 +1063,6 @@ export class MapContainer {
       });
     } else {
       this.svgMap?.onStateChanged(callback);
-    }
-  }
-
-  public getHotspotLevels(): Record<string, string> {
-    if (this.useDeckGL) {
-      return this.deckGLMap?.getHotspotLevels() ?? {};
-    }
-    return this.svgMap?.getHotspotLevels() ?? {};
-  }
-
-  public setHotspotLevels(levels: Record<string, string>): void {
-    if (this.useDeckGL) {
-      this.deckGLMap?.setHotspotLevels(levels);
-    } else {
-      this.svgMap?.setHotspotLevels(levels);
-    }
-  }
-
-  public initEscalationGetters(): void {
-    this.escalationGettersRequested = true;
-    this.applyEscalationGetters();
-  }
-
-  private applyEscalationGetters(): void {
-    if (this.useDeckGL) {
-      this.deckGLMap?.initEscalationGetters();
-    } else {
-      this.svgMap?.initEscalationGetters();
     }
   }
 
@@ -1608,30 +1125,6 @@ export class MapContainer {
     if (layer === 'aircraftEmergencies') this.emergencyLayer.setEnabled(this.getState().layers.aircraftEmergencies === true);
   }
 
-  public triggerHotspotClick(id: string): void {
-    if (this.useDeckGL) {
-      this.deckGLMap?.triggerHotspotClick(id);
-    } else {
-      this.svgMap?.triggerHotspotClick(id);
-    }
-  }
-
-  public triggerConflictClick(id: string): void {
-    if (this.useDeckGL) {
-      this.deckGLMap?.triggerConflictClick(id);
-    } else {
-      this.svgMap?.triggerConflictClick(id);
-    }
-  }
-
-  public triggerBaseClick(id: string): void {
-    if (this.useDeckGL) {
-      this.deckGLMap?.triggerBaseClick(id);
-    } else {
-      this.svgMap?.triggerBaseClick(id);
-    }
-  }
-
   public triggerPipelineClick(id: string): void {
     if (this.useDeckGL) {
       this.deckGLMap?.triggerPipelineClick(id);
@@ -1669,23 +1162,6 @@ export class MapContainer {
       this.deckGLMap?.triggerIrradiatorClick(id);
     } else {
       this.svgMap?.triggerIrradiatorClick(id);
-    }
-  }
-
-  // Pan/rotate to a chokepoint and open its waterway popup. Unlike the trigger*
-  // clicks above, globe is a real target here (it pans the point to front-centre).
-  public openChokepoint(id: string): void {
-    if (!this.isChokepointRendererReady()) {
-      this.pendingChokepointOpen = id;
-      return;
-    }
-    this.pendingChokepointOpen = null;
-    if (this.useGlobe) {
-      this.globeMap?.openChokepoint(id);
-    } else if (this.useDeckGL) {
-      this.deckGLMap?.openChokepoint(id);
-    } else {
-      this.svgMap?.openChokepoint(id);
     }
   }
 
@@ -1745,68 +1221,7 @@ export class MapContainer {
 
   // ─── Route Highlight ─────────────────────────────────────────────────────────
 
-  public highlightRoute(routeIds: string[]): void {
-    this.deckGLMap?.highlightRoute(routeIds);
-  }
-
-  public clearHighlightedRoute(): void {
-    this.deckGLMap?.clearHighlightedRoute();
-  }
-
-  public setBypassRoutes(corridors: Array<{fromPort: [number, number]; toPort: [number, number]}>): void {
-    this.deckGLMap?.setBypassRoutes(corridors);
-  }
-
-  public clearBypassRoutes(): void {
-    this.deckGLMap?.clearBypassRoutes();
-  }
-
-  public zoomToRoutes(routeIds: string[]): void {
-    this.deckGLMap?.zoomToRoutes(routeIds);
-  }
-
   // ─── Scenario Engine ─────────────────────────────────────────────────────────
-
-  public setSupplyChainPanel(panel: import('@/components/SupplyChainPanel').SupplyChainPanel): void {
-    this.supplyChainPanel = panel;
-  }
-
-  /**
-   * Activate a scenario across all active renderers.
-   * PRO-gated — free users trigger `trackGateHit('scenario-engine')` only.
-   *
-   * @param scenarioId  Template ID from scenario-templates.ts
-   * @param result      Computed result from the scenario worker
-   */
-  private applyScenarioState(state: ScenarioVisualState | null): void {
-    this.deckGLMap?.setScenarioState(state);
-    this.svgMap?.setScenarioState(state);
-    this.globeMap?.setScenarioState(state);
-  }
-
-  public activateScenario(scenarioId: string, result: ScenarioResult): void {
-    if (!hasPremiumAccess(getAuthState())) {
-      trackGateHit('scenario-engine');
-      return;
-    }
-    const state: ScenarioVisualState = {
-      scenarioId,
-      disruptedChokepointIds: result.template?.disruptionPct === 0 ? [] : result.affectedChokepointIds,
-      affectedIso2s: result.topImpactCountries.filter(c => c.totalImpact > 0).map(c => c.iso2),
-    };
-    this.cachedScenarioState = state;
-    this.applyScenarioState(state);
-    this.supplyChainPanel?.showScenarioSummary(scenarioId, result);
-  }
-
-  /**
-   * Deactivate the current scenario and restore normal visual state.
-   */
-  public deactivateScenario(): void {
-    this.cachedScenarioState = null;
-    this.applyScenarioState(null);
-    this.supplyChainPanel?.hideScenarioSummary();
-  }
 
   // Utility methods
   public isDeckGLMode(): boolean {
@@ -1818,7 +1233,6 @@ export class MapContainer {
   }
 
   public destroy(): void {
-    this.emergencyLayer.destroy();
     this.destroyed = true;
     this.container.removeEventListener('pointerdown', this.invalidateViewportAuthority);
     this.container.removeEventListener('wheel', this.invalidateViewportAuthority);
@@ -1848,62 +1262,25 @@ export class MapContainer {
     this.cachedOnTimeRangeChanged = null;
     this.cachedOnCountryClicked = null;
     this.cachedOnNewsClicked = null;
-    this.cachedOnHotspotClicked = null;
-    this.cachedOnAircraftPositionsUpdate = null;
     this.cachedOnMapContextMenu = null;
-    this.cachedOnChinaCorridorRendererCapabilityChange = null;
     this.cachedEarthquakes = null;
-    this.cachedConflictEvents = null;
     this.cachedWeatherAlerts = null;
-    this.cachedCanadaRoads = null;
-    this.cachedCanadaAlerts = null;
     this.cachedOutages = null;
-    this.cachedAisDisruptions = null;
-    this.cachedAisDensity = null;
     this.cachedCableAdvisories = null;
     this.cachedRepairShips = null;
     this.cachedCableHealth = null;
-    this.cachedProtests = null;
-    this.cachedFlightDelays = null;
-    this.cachedAircraftPositions = null;
-    this.cachedMilitaryFlights = null;
-    this.cachedMilitaryFlightClusters = null;
-    this.cachedMilitaryVessels = null;
-    this.cachedMilitaryVesselClusters = null;
     this.cachedNaturalEvents = null;
     this.cachedFires = null;
-    this.cachedTechEvents = null;
-    this.cachedUcdpEvents = null;
-    this.cachedDisplacementFlows = null;
     this.cachedClimateAnomalies = null;
     this.cachedRadiationObservations = null;
-    this.cachedGpsJamming = null;
-    this.cachedSatellites = null;
     this.cachedDiseaseOutbreaks = null;
-    this.cachedCyberThreats = null;
-    this.cachedIranEvents = null;
     this.cachedNewsLocations = null;
-    this.cachedPositiveEvents = null;
-    this.cachedKindnessData = null;
-    this.cachedHappinessScores = null;
-    this.cachedCIIScores = null;
-    this.cachedSpeciesRecovery = null;
-    this.cachedRenewableInstallations = null;
-    this.cachedHotspotActivity = null;
-    this.cachedEscalationFlights = null;
-    this.cachedEscalationVessels = null;
-    this.cachedImageryScenes = null;
     this.cachedTrafficAnomalies = null;
     this.cachedDdosLocations = null;
-    this.cachedChokepointData = undefined;
-    this.cachedChinaCorridorSelection = null;
     this.pendingCenter = null;
     this.pendingViewportActions = [];
-    this.pendingChokepointOpen = null;
     this.hiddenLayerToggles.clear();
     this.layerLoadingState.clear();
     this.layerReadyState.clear();
-    this.cachedScenarioState = undefined;
-    this.escalationGettersRequested = false;
   }
 }

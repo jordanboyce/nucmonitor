@@ -1,4 +1,4 @@
-import type { CorrelationSignal } from './correlation';
+import type { CorrelationSignalCore as CorrelationSignal } from './analysis-core';
 import { effectivePubDateMs } from './feed-date';
 import { mlWorker } from './ml-worker';
 import { generateSummary } from './summarization';

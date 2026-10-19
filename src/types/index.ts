@@ -216,7 +216,7 @@ export interface ClusteredEvent {
   lang?: string;
 }
 
-export type AssetType = 'pipeline' | 'cable' | 'datacenter' | 'base' | 'nuclear';
+export type AssetType = 'pipeline' | 'cable' | 'datacenter' | 'nuclear';
 
 export interface RelatedAsset {
   id: string;

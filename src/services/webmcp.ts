@@ -8,7 +8,6 @@
 //
 // Current tools mirror the static Agent Skills set (#3310) and add bounded
 // live-dashboard context/actions through the existing agent-bus seam (#6211):
-//   1. openCountryBrief({ iso2 }) — opens the country deep-dive panel.
 //   2. openSearch()               — opens the global command palette.
 //   3. get_dashboard_context()    — reads bounded visible dashboard state.
 //   4. list_map_layers()          — pages the canonical map-layer catalog.
@@ -127,12 +126,6 @@ import {
 } from './panel-layout-actions';
 
 export interface WebMcpAppBindings {
-  openCountryBriefByCode(
-    code: string,
-    country: string,
-    options?: WebMcpExecutionOptions,
-  ): boolean | Promise<boolean>;
-  resolveCountryName(code: string): string;
   // Returns a Promise because implementations may await a readiness signal
   // (e.g. waiting for the search modal to exist during startup) before
   // dispatching. Tool executes must `await` it so rejections surface to
@@ -552,7 +545,6 @@ export const WEBMCP_TOOL_CANCELLATION_POLICY: Readonly<
   [WEBMCP_SPA_TOOL.setMapView]: 'view-state',
   [WEBMCP_SPA_TOOL.setTimeRange]: 'view-state',
   [WEBMCP_SPA_TOOL.focusCountry]: 'view-state',
-  [WEBMCP_SPA_TOOL.openCountryBrief]: 'cancellation-required',
   [WEBMCP_SPA_TOOL.setMapLayers]: 'cancellation-required',
   [WEBMCP_SPA_TOOL.setMapMode]: 'cancellation-required',
   [WEBMCP_SPA_TOOL.openSearchResult]: 'result-dependent',
@@ -616,7 +608,6 @@ const SEARCH_RESULT_TYPE_BUCKETS = new Set([
   'flight',
 ]);
 const TOOL_FAILURE_MESSAGES: Record<WebMcpSpaToolName, string> = {
-  openCountryBrief: 'World Monitor could not open that country brief.',
   openSearch: 'World Monitor could not open search.',
   get_dashboard_context: 'World Monitor could not read dashboard context.',
   list_map_layers: 'World Monitor could not list map layers.',
@@ -1856,43 +1847,6 @@ export function buildWebMcpTools(
   );
   const tools: DashboardWebMcpTool[] = [
     {
-      name: WEBMCP_SPA_TOOL.openCountryBrief,
-      title: 'Open Country Brief',
-      description:
-        'Open the intelligence brief panel for a country by ISO 3166-1 alpha-2 code (e.g. "DE", "IR"). Routes the user to the country deep-dive view; the brief itself is fetched by the same path a click would take. This can consume daily briefing quota. To only pan the map, use focus_country.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          iso2: {
-            type: 'string',
-            description: 'ISO 3166-1 alpha-2 country code, uppercase.',
-            pattern: '^[A-Z]{2}$',
-          },
-        },
-        required: ['iso2'],
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: false },
-      execute: withBindings(WEBMCP_SPA_TOOL.openCountryBrief, async (args, extra) => {
-        const iso2 = typeof args.iso2 === 'string' ? args.iso2.toUpperCase() : '';
-        if (!ISO2.test(iso2)) {
-          throw new SafeWebMcpError(
-            'iso2 must be an ISO 3166-1 alpha-2 code, such as "DE" or "IR".',
-            'validation',
-          );
-        }
-        const name = boundedText(app.resolveCountryName(iso2), 160) || iso2;
-        const opened = await app.openCountryBriefByCode(iso2, name, extra);
-        if (opened !== true) {
-          throw new SafeWebMcpError(
-            'The requested country brief did not become visible.',
-            'unavailable',
-          );
-        }
-        return `Opened intelligence brief for ${name} (${iso2}).`;
-      }, trackEvent),
-    },
-    {
       name: WEBMCP_SPA_TOOL.openSearch,
       title: 'Open Search',
       description:
@@ -2762,7 +2716,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.selectDashboardTab,
       title: 'Select Dashboard Tab',
       description:
-        'Activate a dashboard tab by stable tab id from list_dashboard_tabs. Selecting the already-active tab is a successful no-op. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as openCountryBrief/set_map_layers).',
+        'Activate a dashboard tab by stable tab id from list_dashboard_tabs. Selecting the already-active tab is a successful no-op. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as set_map_layers).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2797,7 +2751,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.createDashboardTab,
       title: 'Create Dashboard Tab',
       description:
-        'Create a dashboard tab as a named persistent panel workspace, then activate it. Omit name to use the dashboard default. Creating a tab whose trimmed name already exists returns that tab without duplicating it. Honors the same tab cap and entitlement lock as the dashboard tab bar. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as openCountryBrief/set_map_layers).',
+        'Create a dashboard tab as a named persistent panel workspace, then activate it. Omit name to use the dashboard default. Creating a tab whose trimmed name already exists returns that tab without duplicating it. Honors the same tab cap and entitlement lock as the dashboard tab bar. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as set_map_layers).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2834,7 +2788,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.renameDashboardTab,
       title: 'Rename Dashboard Tab',
       description:
-        'Rename a dashboard tab by stable tab id. Names are trimmed and capped at 40 characters, matching the dashboard tab bar. Renaming to the current name is a successful no-op. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as openCountryBrief/set_map_layers).',
+        'Rename a dashboard tab by stable tab id. Names are trimmed and capped at 40 characters, matching the dashboard tab bar. Renaming to the current name is a successful no-op. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as set_map_layers).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2879,7 +2833,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.deleteDashboardTab,
       title: 'Delete Dashboard Tab',
       description:
-        'Delete a dashboard tab by stable tab id. Requires confirm=true. Refuses to delete the last remaining tab. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as openCountryBrief/set_map_layers).',
+        'Delete a dashboard tab by stable tab id. Requires confirm=true. Refuses to delete the last remaining tab. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as set_map_layers).',
       inputSchema: {
         type: 'object',
         properties: {

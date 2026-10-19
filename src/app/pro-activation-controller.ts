@@ -139,8 +139,6 @@ export function markProActivationPending(productId: string | null, now = Date.no
 export interface ProActivationControllerOptions {
   /** Checkout-return boot reloads immediately; evaluate only on the next boot. */
   reloadPending: boolean;
-  /** Panel-owned surface opener that cannot be implemented outside the layout. */
-  openAiAnalyst: () => void;
   /** App-owned global command-search opener. */
   openSearch?: () => void;
 }
@@ -593,7 +591,6 @@ export class ProActivationController implements AppModule {
       openChannelSettings: () => ctx.unifiedSettings?.open('notifications'),
       openWidgetBuilder: () =>
         ctx.container.dispatchEvent(new CustomEvent('wm:open-widget-creator', { detail: {} })),
-      openAiAnalyst: this.options.openAiAnalyst,
       openSearch: this.options.openSearch,
       onEvent: (event, stepId, exit) =>
         trackProActivation(event, {

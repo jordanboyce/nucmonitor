@@ -14,7 +14,6 @@ export const WEBMCP_HOMEPAGE_TOOL_NAMES = [
 ] as const;
 
 export const WEBMCP_SPA_TOOL = Object.freeze({
-  openCountryBrief: 'openCountryBrief',
   openSearch: 'openSearch',
   getDashboardContext: 'get_dashboard_context',
   listMapLayers: 'list_map_layers',
@@ -50,7 +49,6 @@ export const WEBMCP_SPA_TOOL = Object.freeze({
 } as const);
 
 export const WEBMCP_SPA_TOOL_NAMES = [
-  WEBMCP_SPA_TOOL.openCountryBrief,
   WEBMCP_SPA_TOOL.openSearch,
   WEBMCP_SPA_TOOL.getDashboardContext,
   WEBMCP_SPA_TOOL.listMapLayers,

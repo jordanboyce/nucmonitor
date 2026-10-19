@@ -46,7 +46,6 @@ export interface WebMcpSearchControllerBindings {
   refreshIndex(): void;
   getModal(): SearchModal | null | undefined;
   hasPremiumAccess(): boolean;
-  fetchLiveFlight(callsign: string, signal?: AbortSignal): Promise<void>;
   getAuthContext(): string;
   getVariant(): string;
   isMatchExecutable(match: SearchMatch): boolean;
@@ -128,28 +127,7 @@ export class WebMcpSearchController {
     const modal = this.bindings.getModal();
     if (!modal) throw new Error('Search index is not initialised');
 
-    let searchResult = modal.search(query, scope as SearchScope);
-    if (
-      searchResult.flightCallsign
-      && searchResult.orderedMatches.length === 0
-      && this.bindings.hasPremiumAccess()
-    ) {
-      try {
-        await raceWebMcpAbort(
-          this.bindings.fetchLiveFlight(searchResult.flightCallsign, signal),
-          signal,
-        );
-        throwIfWebMcpAborted(signal);
-        if (this.bindings.isDestroyed()) throw new Error('Search manager destroyed');
-        this.bindings.refreshIndex();
-        searchResult = modal.search(query, scope as SearchScope);
-      } catch (error) {
-        throwIfWebMcpAborted(signal);
-        if (this.bindings.isDestroyed()) throw error;
-        // Live enrichment is optional. A failed lookup is an empty result.
-      }
-    }
-
+    const searchResult = modal.search(query, scope as SearchScope);
     const matches = searchResult.orderedMatches;
     const targetCancellationSupported = Boolean(signal);
     const candidates = matches.slice(0, limit).map((match) => ({

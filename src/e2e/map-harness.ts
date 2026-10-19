@@ -2,60 +2,30 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import '../styles/main.css';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { DeckGLMap } from '../components/DeckGLMap';
-import { MILITARY_BASES } from '@/config/military-bases';
 import {
   SITE_VARIANT,
-  INTEL_HOTSPOTS,
-  CONFLICT_ZONES,
   GAMMA_IRRADIATORS,
   PIPELINES,
-  STRATEGIC_WATERWAYS,
-  PORTS,
-  APT_GROUPS,
 } from '../config';
 // ai-datacenters + geo-map tables imported directly so they stay off the eager @/config barrel (#4404).
 import { AI_DATA_CENTERS } from '../config/ai-datacenters';
-import { UNDERSEA_CABLES, NUCLEAR_FACILITIES, ECONOMIC_CENTERS, SPACEPORTS, CRITICAL_MINERALS } from '../config/geo-map';
-import type { PositiveGeoEvent } from '../services/positive-events-geo';
-import type { KindnessPoint } from '../services/kindness-data';
-import type { SpeciesRecovery } from '../services/conservation-data';
-import type { RenewableInstallation } from '../services/renewable-installations';
+import { UNDERSEA_CABLES, NUCLEAR_FACILITIES } from '../config/geo-map';
 import type {
-  AisDensityZone,
-  AisDisruptionEvent,
   CableAdvisory,
-  CyberThreat,
   InternetOutage,
   MapLayers,
-  MilitaryBaseEnriched,
-  MilitaryFlight,
-  MilitaryFlightCluster,
-  MilitaryVessel,
-  MilitaryVesselCluster,
   NaturalEvent,
-  NewsItem,
   RepairShip,
-  SocialUnrestEvent,
 } from '../types';
-import type { AirportDelayAlert } from '../services/aviation';
 import type { ClimateAnomaly } from '../services/climate';
 import type { Earthquake } from '../services/earthquakes';
 import type { DiseaseOutbreakItem } from '../services/disease-outbreaks';
 import { I18N_RESOURCES_LOADED_EVENT, initI18n, t } from '../services/i18n';
-import { setCachedFuelShortageRegistry } from '../shared/fuel-shortage-registry-store';
 import { setCachedPipelineRegistries } from '../shared/pipeline-registry-store';
-import { setCachedStorageFacilityRegistry } from '../shared/storage-facility-registry-store';
 import type { WeatherAlert } from '../services/weather';
-import { CHINA_LOGISTICS_CORRIDORS } from '../../shared/china-logistics-corridors';
 
-type Scenario = 'alpha' | 'beta';
 type HarnessVariant = 'full' | 'nuclear';
 type HarnessLayerKey = keyof MapLayers;
-type PulseProtestScenario =
-  | 'none'
-  | 'recent-acled-riot'
-  | 'recent-gdelt-riot'
-  | 'recent-protest';
 type NewsPulseScenario = 'none' | 'recent' | 'stale';
 
 type LayerSnapshot = {
@@ -64,26 +34,13 @@ type LayerSnapshot = {
 };
 
 type OverlaySnapshot = {
-  protestMarkers: number;
   datacenterMarkers: number;
-  techEventMarkers: number;
-  techHQMarkers: number;
-  hotspotMarkers: number;
 };
 
 type CameraState = {
   lon: number;
   lat: number;
   zoom: number;
-};
-
-type LiveTankerFixture = {
-  mmsi: string;
-  lat: number;
-  lon: number;
-  speed: number;
-  shipType: number;
-  name: string;
 };
 
 type VisualScenario = {
@@ -101,79 +58,11 @@ type VisualScenarioSummary = {
   variant: 'both' | HarnessVariant;
 };
 
-type TradeAnimationProfileOptions = {
-  displayFrames?: number;
-  warmupFrames?: number;
-  zoom?: number;
-  enabledLayers?: HarnessLayerKey[];
-  includeNews?: boolean;
-};
-
-type TradeAnimationProfileSample = {
-  totalMs: number;
-  jsBuildMs: number;
-  updateLayersMs: number;
-  deckCommitMs: number;
-  layerCount: number;
-  nuclearIdentityChanged: boolean;
-  tripsIdentityChanged: boolean;
-};
-
-type TradeAnimationProfileResult = {
-  displayFrames: number;
-  warmupFrames: number;
-  zoom: number;
-  enabledLayers: HarnessLayerKey[];
-  buildCount: number;
-  hintCallCount: number;
-  hintScanCount: number;
-  samples: TradeAnimationProfileSample[];
-  rafIntervalsMs: number[];
-  longTasks: Array<{ name: string; duration: number; startTime: number }>;
-  fixture: {
-    nuclearCount: number;
-    datacenterCount: number;
-    routeSegments: number;
-    trips: number;
-    chokepoints: number;
-    newsMarkers: number;
-    layerIds: string[];
-  };
-  glRenderer: string | null;
-};
-
-type DeckLayerManager = {
-  updateLayers: () => void;
-};
-
-type MapInternal = {
-  updateLayers: (deferred?: boolean) => void;
-  buildLayers: (deferHeavy?: boolean) => Array<{ id: string }>;
-  updateZoomHints: () => void;
-  container: HTMLElement;
-  state: { layers: MapLayers };
-  maplibreMap?: MapLibreMap;
-  deckOverlay?: {
-    setProps: (props: { layers?: unknown }) => void;
-    _deck?: { layerManager?: DeckLayerManager };
-  };
-  tradeTrips: unknown[];
-  tradeRouteSegments: unknown[];
-  zoomHintGuard?: {
-    shouldScan: (inputs: { zoom: number; layers: MapLayers }, toggleList: Element) => boolean;
-  };
-  stopPulseAnimation?: () => void;
-  stopTradeAnimation: () => void;
-};
-
 type MapHarness = {
   ready: boolean;
   variant: HarnessVariant;
   seedAllDynamicData: () => void;
-  setProtestsScenario: (scenario: Scenario) => void;
-  setPulseProtestsScenario: (scenario: PulseProtestScenario) => void;
   setNewsPulseScenario: (scenario: NewsPulseScenario) => void;
-  setHotspotActivityScenario: (scenario: 'none' | 'breaking') => void;
   forcePulseStartupElapsed: () => void;
   resetPulseStartupTime: () => void;
   isPulseAnimationRunning: () => boolean;
@@ -187,14 +76,7 @@ type MapHarness = {
   getDeckLayerSnapshot: () => LayerSnapshot[];
   getLayerDataCount: (layerId: string) => number;
   getLayerFirstScreenTransform: (layerId: string) => string | null;
-  getFirstProtestTitle: () => string | null;
-  getProtestClusterCount: () => number;
   getOverlaySnapshot: () => OverlaySnapshot;
-  getCyberTooltipHtml: (indicator: string) => string;
-  showChinaCorridor: (index?: number) => void;
-  runTradeAnimationProfile: (
-    options?: TradeAnimationProfileOptions,
-  ) => Promise<TradeAnimationProfileResult>;
   destroy: () => void;
 };
 
@@ -223,127 +105,35 @@ app.style.position = 'relative';
 app.style.margin = '0 auto';
 
 const allLayersEnabled: MapLayers = {
-  gpsJamming: true,
-  satellites: false,
-
-
-  conflicts: true,
-  bases: true,
   cables: true,
   pipelines: true,
-  hotspots: true,
-  ais: true,
   nuclear: true,
   irradiators: true,
-  sanctions: true,
   weather: true,
-  canadaRoads: true,
-  canadaAlerts: true,
-  economic: true,
-  waterways: true,
   outages: true,
-  cyberThreats: true,
   datacenters: true,
-  protests: true,
-  flights: true,
-  military: true,
   natural: true,
-  spaceports: true,
-  minerals: true,
   fires: true,
-  ucdpEvents: true,
-  displacement: true,
   climate: true,
-  startupHubs: true,
-  cloudRegions: true,
-  accelerators: true,
-  techHQs: true,
-  techEvents: true,
-  stockExchanges: true,
-  financialCenters: true,
-  centralBanks: true,
-  commodityHubs: true,
-  gulfInvestments: true,
-  positiveEvents: true,
-  kindness: true,
-  happiness: false,
-  speciesRecovery: false,
-  renewableInstallations: false,
-  tradeRoutes: true,
-  iranAttacks: false,
-  ciiChoropleth: false,
-  resilienceScore: false,
   dayNight: true,
-  miningSites: false,
-  processingPlants: false,
-  commodityPorts: false,
   webcams: false,
   diseaseOutbreaks: true,
-  storageFacilities: false,
-  fuelShortages: false,
-  liveTankers: false,
 };
 
 const allLayersDisabled: MapLayers = {
-  gpsJamming: false,
-  satellites: false,
-
-
-  conflicts: false,
-  bases: false,
   cables: false,
   pipelines: false,
-  hotspots: false,
-  ais: false,
   nuclear: false,
   irradiators: false,
-  sanctions: false,
   weather: false,
-  canadaRoads: false,
-  canadaAlerts: false,
-  economic: false,
-  waterways: false,
   outages: false,
-  cyberThreats: false,
   datacenters: false,
-  protests: false,
-  flights: false,
-  military: false,
   natural: false,
-  spaceports: false,
-  minerals: false,
   fires: false,
-  ucdpEvents: false,
-  displacement: false,
   climate: false,
-  startupHubs: false,
-  cloudRegions: false,
-  accelerators: false,
-  techHQs: false,
-  techEvents: false,
-  stockExchanges: false,
-  financialCenters: false,
-  centralBanks: false,
-  commodityHubs: false,
-  gulfInvestments: false,
-  positiveEvents: false,
-  kindness: false,
-  happiness: false,
-  speciesRecovery: false,
-  renewableInstallations: false,
-  tradeRoutes: false,
-  iranAttacks: false,
-  ciiChoropleth: false,
-  resilienceScore: false,
   dayNight: false,
-  miningSites: false,
-  processingPlants: false,
-  commodityPorts: false,
   webcams: false,
   diseaseOutbreaks: false,
-  storageFacilities: false,
-  fuelShortages: false,
-  liveTankers: false,
 };
 
 const SEEDED_NEWS_LOCATIONS: Array<{
@@ -357,87 +147,6 @@ const SEEDED_NEWS_LOCATIONS: Array<{
     lon: 2.35,
     title: 'Harness News Item',
     threatLevel: 'high',
-  },
-];
-
-const SEEDED_LIVE_TANKERS: LiveTankerFixture[] = [
-  {
-    mmsi: '111000111',
-    lat: 26.45,
-    lon: 56.22,
-    speed: 0.2,
-    shipType: 80,
-    name: 'Harness VLCC Alpha',
-  },
-  {
-    mmsi: '222000222',
-    lat: 12.72,
-    lon: 43.5,
-    speed: 12.4,
-    shipType: 82,
-    name: 'Harness Aframax Beta',
-  },
-];
-
-const SEEDED_POSITIVE_EVENTS: PositiveGeoEvent[] = [
-  {
-    lat: 37.77,
-    lon: -122.42,
-    name: 'Harness breakthrough expands clean water access',
-    category: 'humanity-kindness',
-    count: 12,
-    timestamp: Date.now(),
-  },
-];
-
-const SEEDED_KINDNESS_POINTS: KindnessPoint[] = [
-  {
-    lat: 51.5,
-    lon: -0.12,
-    name: 'Harness community aid network',
-    description: 'Local volunteers coordinated emergency support.',
-    intensity: 0.9,
-    type: 'real',
-    timestamp: Date.now(),
-  },
-];
-
-const SEEDED_SPECIES_RECOVERY: SpeciesRecovery[] = [
-  {
-    id: 'e2e-species-recovery',
-    commonName: 'Harness Falcon',
-    scientificName: 'Falco harnessus',
-    photoUrl: 'https://example.com/falcon.jpg',
-    iucnCategory: 'Least Concern',
-    populationTrend: 'increasing',
-    recoveryStatus: 'recovering',
-    populationData: [
-      { year: 2015, value: 120 },
-      { year: 2025, value: 420 },
-    ],
-    summaryText: 'Harness conservation recovery fixture.',
-    source: 'e2e',
-    region: 'Harness Reserve',
-    lastUpdated: '2026-02-01',
-    recoveryZone: {
-      name: 'Harness Reserve',
-      lat: -1.29,
-      lon: 36.82,
-    },
-  },
-];
-
-const SEEDED_RENEWABLE_INSTALLATIONS: RenewableInstallation[] = [
-  {
-    id: 'e2e-renewable-installation',
-    name: 'Harness Solar Park',
-    type: 'solar',
-    capacityMW: 500,
-    country: 'US',
-    lat: 34.05,
-    lon: -117.2,
-    status: 'operational',
-    year: 2026,
   },
 ];
 
@@ -458,15 +167,9 @@ const SEEDED_DISEASE_OUTBREAKS: DiseaseOutbreakItem[] = [
   },
 ];
 
-const SEEDED_MILITARY_BASES: MilitaryBaseEnriched[] = (MILITARY_BASES as MilitaryBaseEnriched[])
-  .map((base) => ({ ...base }));
-
 const seededAllLayers: MapLayers = allLayersEnabled;
 
-const initialLayers: MapLayers = {
-  ...seededAllLayers,
-  liveTankers: false,
-};
+const initialLayers: MapLayers = { ...seededAllLayers };
 
 const map = new DeckGLMap(app, {
   zoom: 5,
@@ -487,42 +190,7 @@ const internals = map as unknown as {
   newsPulseIntervalId?: ReturnType<typeof setInterval> | null;
   startupTime?: number;
   stopPulseAnimation?: () => void;
-  liveTankers?: LiveTankerFixture[];
-  loadLiveTankers?: () => Promise<void>;
-  serverBases?: MilitaryBaseEnriched[];
-  serverBaseClusters?: unknown[];
-  serverBasesLoaded?: boolean;
-  fetchServerBases?: () => void;
-  aptGroups?: typeof APT_GROUPS;
-  aptGroupsLoaded?: boolean;
 };
-
-internals.loadLiveTankers = async (): Promise<void> => {
-  internals.liveTankers = SEEDED_LIVE_TANKERS.map((tanker) => ({ ...tanker }));
-};
-
-const seedHarnessBases = (): void => {
-  internals.serverBases = SEEDED_MILITARY_BASES.map((base) => ({ ...base }));
-  internals.serverBaseClusters = [];
-  internals.serverBasesLoaded = true;
-};
-
-const seedHarnessAptGroups = (): void => {
-  internals.aptGroups = APT_GROUPS;
-  internals.aptGroupsLoaded = true;
-};
-
-// Keep the harness deterministic: the live RPC path can legitimately return an
-// empty viewport payload in local/dev runs, which would wipe the shared
-// `bases-layer` snapshot even though the harness is meant to exercise the
-// renderer with seeded fixture data.
-if (new URLSearchParams(window.location.search).get('serverBases') !== '1') {
-  internals.fetchServerBases = (): void => {
-    seedHarnessBases();
-  };
-  seedHarnessBases();
-}
-seedHarnessAptGroups();
 
 const buildLayerState = (enabledLayers: HarnessLayerKey[]): MapLayers => {
   const next: MapLayers = { ...allLayersDisabled };
@@ -569,17 +237,12 @@ const getDataCount = (data: unknown): number => {
   return data ? 1 : 0;
 };
 
-const normalizeLayerSnapshotId = (layerId: string): string =>
-  layerId === 'conflict-zones-layer-country-geometry'
-    ? 'conflict-zones-layer'
-    : layerId;
-
 const getDeckLayerSnapshot = (): LayerSnapshot[] => {
   const layers = internals.buildLayers?.() ?? [];
   const counts = new Map<string, number>();
 
   for (const layer of layers) {
-    const layerId = normalizeLayerSnapshotId(layer.id);
+    const layerId = layer.id;
     const dataCount = getDataCount(layer.props?.data);
     const previous = counts.get(layerId) ?? 0;
     if (dataCount > previous) {
@@ -594,235 +257,12 @@ const getLayerDataCount = (layerId: string): number => {
   return getDeckLayerSnapshot().find((layer) => layer.id === layerId)?.dataCount ?? 0;
 };
 
-const waitAnimationFrames = (count: number, onFrame?: (now: number) => void): Promise<void> => {
-  return new Promise((resolve) => {
-    let seen = 0;
-    const tick = (now: number) => {
-      onFrame?.(now);
-      seen += 1;
-      if (seen >= count) {
-        resolve();
-        return;
-      }
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
-};
-
-const readGlRenderer = (): string | null => {
-  const canvas = document.querySelector('#deckgl-basemap canvas') as HTMLCanvasElement | null;
-  const gl = canvas?.getContext('webgl2') ?? canvas?.getContext('webgl');
-  if (!gl) return null;
-  const ext = gl.getExtension('WEBGL_debug_renderer_info');
-  if (!ext) return gl.getParameter(gl.RENDERER);
-  return gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
-};
-
-const TRADE_ANIMATION_PROFILE_LAYERS: HarnessLayerKey[] = ['nuclear', 'datacenters', 'tradeRoutes'];
-
-const runTradeAnimationProfile = async (
-  options: TradeAnimationProfileOptions = {},
-): Promise<TradeAnimationProfileResult> => {
-  const displayFrames = options.displayFrames ?? 61;
-  const warmupFrames = options.warmupFrames ?? 20;
-  const zoom = options.zoom ?? 5;
-  const enabledLayers = options.enabledLayers ?? TRADE_ANIMATION_PROFILE_LAYERS;
-  const includeNews = options.includeNews ?? true;
-
-  const mapInternal = map as unknown as MapInternal;
-  mapInternal.stopPulseAnimation?.();
-  map.setProtests([]);
-  map.updateHotspotActivity([]);
-  setLayersForSnapshot(enabledLayers);
-  map.setNewsLocations(includeNews ? SEEDED_NEWS_LOCATIONS : []);
-  if (includeNews) makeNewsLocationsNonRecent();
-  else internals.newsLocationFirstSeen?.clear();
-  mapInternal.stopPulseAnimation?.();
-  // Europe/Mediterranean keeps facilities, a news marker and trade routes in view.
-  setCamera({ lon: 15, lat: 42, zoom });
-  map.setRenderPaused(false);
-  map.render();
-
-  const origUpdate = mapInternal.updateLayers;
-  const origBuild = mapInternal.buildLayers;
-  const origHints = mapInternal.updateZoomHints;
-  const overlay = mapInternal.deckOverlay;
-  const layerManager = overlay?._deck?.layerManager;
-  const origLayerUpdate = layerManager?.updateLayers;
-  if (!layerManager || !origLayerUpdate) throw new Error('deck.gl layer manager unavailable: profile is not valid');
-  const layerManagerPrototype = Object.getPrototypeOf(layerManager) as DeckLayerManager;
-  const hintGuard = mapInternal.zoomHintGuard;
-  const origShouldScan = hintGuard?.shouldScan;
-  if (!hintGuard || !origShouldScan) throw new Error('Zoom hint guard unavailable: profile is not valid');
-
-  let inUpdate = false;
-  let lastJsBuild = 0;
-  let lastDeckCommit = 0;
-  let lastLayerCount = 0;
-  let lastNuclear: { id: string } | null = null;
-  let lastTrips: { id: string } | null = null;
-  let buildCount = 0;
-  let hintCallCount = 0;
-  let hintScanCount = 0;
-  const samples: TradeAnimationProfileSample[] = [];
-  const rafIntervalsMs: number[] = [];
-  const longTasks: Array<{ name: string; duration: number; startTime: number }> = [];
-
-  let observer: PerformanceObserver | null = null;
-  try {
-    observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        longTasks.push({
-          name: entry.name,
-          duration: entry.duration,
-          startTime: entry.startTime,
-        });
-      }
-    });
-    observer.observe({ type: 'longtask', buffered: true });
-  } catch {
-    observer = null;
-  }
-
-  mapInternal.buildLayers = function wrappedBuildLayers(deferHeavy?: boolean) {
-    const started = performance.now();
-    const layers = origBuild.call(this, deferHeavy);
-    if (inUpdate) {
-      lastJsBuild = performance.now() - started;
-      lastLayerCount = layers.length;
-      buildCount += 1;
-      const nuclear = layers.find((layer) => layer.id === 'nuclear-layer') ?? null;
-      const trips = layers.find((layer) => layer.id === 'trade-route-trips-layer') ?? null;
-      lastNuclear = nuclear;
-      lastTrips = trips;
-    }
-    return layers;
-  };
-
-  const applyDeckCommit = (elapsed: number): void => {
-    const last = samples[samples.length - 1];
-    if (last) {
-      last.deckCommitMs += elapsed;
-      last.totalMs = last.updateLayersMs + last.deckCommitMs;
-      return;
-    }
-    lastDeckCommit += elapsed;
-  };
-
-  if (layerManager && origLayerUpdate) {
-    // deck.gl queues layers in setProps; matching, lifecycle, and attribute
-    // rebuilds run later in LayerManager.updateLayers during the map render.
-    layerManagerPrototype.updateLayers = function wrappedLayerManagerUpdate() {
-      if (this !== layerManager) return origLayerUpdate.call(this);
-      const started = performance.now();
-      origLayerUpdate.call(layerManager);
-      applyDeckCommit(performance.now() - started);
-    };
-  }
-
-  hintGuard.shouldScan = function wrappedShouldScan(inputs, toggleList) {
-    const shouldScan = origShouldScan.call(this, inputs, toggleList);
-    if (shouldScan) hintScanCount += 1;
-    return shouldScan;
-  };
-  mapInternal.updateZoomHints = function wrappedUpdateZoomHints() {
-    hintCallCount += 1;
-    origHints.call(this);
-  };
-
-  mapInternal.updateLayers = function wrappedUpdateLayers(deferred?: boolean) {
-    inUpdate = true;
-    const previousNuclear = lastNuclear;
-    const previousTrips = lastTrips;
-    lastJsBuild = 0;
-    lastLayerCount = 0;
-    const sample: TradeAnimationProfileSample = {
-      totalMs: 0,
-      jsBuildMs: 0,
-      updateLayersMs: 0,
-      deckCommitMs: lastDeckCommit,
-      layerCount: 0,
-      nuclearIdentityChanged: false,
-      tripsIdentityChanged: false,
-    };
-    lastDeckCommit = 0;
-    samples.push(sample);
-    const updateStarted = performance.now();
-    try {
-      origUpdate.call(this, deferred);
-    } finally {
-      inUpdate = false;
-    }
-    sample.updateLayersMs = performance.now() - updateStarted;
-    sample.jsBuildMs = lastJsBuild;
-    sample.layerCount = lastLayerCount;
-    sample.nuclearIdentityChanged = Boolean(lastNuclear) && lastNuclear !== previousNuclear;
-    sample.tripsIdentityChanged = Boolean(lastTrips) && lastTrips !== previousTrips;
-    sample.totalMs = sample.updateLayersMs + sample.deckCommitMs;
-  };
-
-  try {
-    await waitAnimationFrames(warmupFrames);
-    buildCount = 0;
-    hintCallCount = 0;
-    hintScanCount = 0;
-    samples.length = 0;
-    longTasks.length = 0;
-    lastDeckCommit = 0;
-    lastJsBuild = 0;
-    lastNuclear = null;
-    lastTrips = null;
-
-    let previousRaf = 0;
-    await waitAnimationFrames(displayFrames, (now) => {
-      if (previousRaf > 0) rafIntervalsMs.push(now - previousRaf);
-      previousRaf = now;
-    });
-    mapInternal.stopTradeAnimation();
-    // Flush a deferred LayerManager.updateLayers that is still queued after
-    // the last animation-driven setProps.
-    await waitAnimationFrames(2);
-
-    const snapshot = getDeckLayerSnapshot();
-    return {
-      displayFrames,
-      warmupFrames,
-      zoom,
-      enabledLayers,
-      buildCount,
-      hintCallCount,
-      hintScanCount,
-      samples,
-      rafIntervalsMs,
-      longTasks,
-      fixture: {
-        nuclearCount: getLayerDataCount('nuclear-layer'),
-        datacenterCount: getLayerDataCount('datacenters-layer'),
-        routeSegments: enabledLayers.includes('tradeRoutes') ? mapInternal.tradeRouteSegments.length : 0,
-        trips: enabledLayers.includes('tradeRoutes') ? mapInternal.tradeTrips.length : 0,
-        chokepoints: getLayerDataCount('trade-chokepoints-layer'),
-        newsMarkers: getLayerDataCount('news-locations-layer'),
-        layerIds: snapshot.map((layer) => layer.id),
-      },
-      glRenderer: readGlRenderer(),
-    };
-  } finally {
-    observer?.disconnect();
-    mapInternal.updateLayers = origUpdate;
-    mapInternal.buildLayers = origBuild;
-    mapInternal.updateZoomHints = origHints;
-    hintGuard.shouldScan = origShouldScan;
-    layerManagerPrototype.updateLayers = origLayerUpdate;
-  }
-};
-
 const getLayerFirstScreenTransform = (layerId: string): string | null => {
   const maplibreMap = internals.maplibreMap;
   if (!maplibreMap) return null;
 
   const layers = internals.buildLayers?.() ?? [];
-  const target = layers.find((layer) => normalizeLayerSnapshotId(layer.id) === layerId);
+  const target = layers.find((layer) => layer.id === layerId);
   const data = target?.props?.data;
   if (!Array.isArray(data) || data.length === 0) return null;
 
@@ -842,27 +282,8 @@ const getLayerFirstScreenTransform = (layerId: string): string | null => {
   return `translate(${point.x.toFixed(2)}px, ${point.y.toFixed(2)}px)`;
 };
 
-const getFirstProtestTitle = (): string | null => {
-  const layers = internals.buildLayers?.() ?? [];
-  const protestLayer = layers.find((layer) => layer.id === 'protest-clusters-layer');
-  const data = protestLayer?.props?.data;
-  if (!Array.isArray(data) || data.length === 0) return null;
-
-  const first = data[0] as { items?: Array<{ title?: string }> };
-  const title = first.items?.[0]?.title;
-  return typeof title === 'string' ? title : null;
-};
-
-const getProtestClusterCount = (): number => {
-  return getLayerDataCount('protest-clusters-layer');
-};
-
 const getOverlaySnapshot = (): OverlaySnapshot => ({
-  protestMarkers: document.querySelectorAll('.protest-marker').length,
   datacenterMarkers: document.querySelectorAll('.datacenter-marker').length,
-  techEventMarkers: document.querySelectorAll('.tech-event-marker').length,
-  techHQMarkers: document.querySelectorAll('.tech-hq-marker').length,
-  hotspotMarkers: document.querySelectorAll('.hotspot').length,
 });
 
 const toCamera = (lon: number, lat: number, zoom: number): CameraState => ({
@@ -889,63 +310,22 @@ const firstPathPoint = <T extends { points: [number, number][] }>(
   return [firstPoint[0], firstPoint[1]];
 };
 
-const firstConflictPoint = (fallback: [number, number]): [number, number] => {
-  const coords = CONFLICT_ZONES[0]?.coords?.[0];
-  if (!coords || coords.length < 2) return fallback;
-  return [coords[0], coords[1]];
-};
-
 const seededCameras = {
-  ais: toCamera(55.0, 25.0, 5.2),
   weather: toCamera(-80.2, 25.7, 5.2),
   outages: toCamera(-0.1, 51.5, 5.2),
-  cyber: toCamera(-0.12, 51.5, 5.2),
-  protests: toCamera(0.2, 20.1, 5.2),
-  flights: toCamera(-73.9, 40.4, 5.2),
-  military: toCamera(56.3, 26.1, 5.2),
   natural: toCamera(-118.2, 34.1, 4.8),
   fires: toCamera(-60.1, -5.4, 5.0),
-  techEvents: toCamera(-122.42, 37.77, 5.2),
   news: toCamera(2.35, 48.85, 5.0),
-  positiveEvents: toCamera(-122.42, 37.77, 5.2),
-  kindness: toCamera(-0.12, 51.5, 5.2),
-  speciesRecovery: toCamera(36.82, -1.29, 5.2),
-  renewableInstallations: toCamera(-117.2, 34.05, 5.2),
   diseaseOutbreaks: toCamera(36.82, -1.29, 5.2),
 };
 
-const [conflictLon, conflictLat] = firstConflictPoint([36.0, 35.0]);
-const [baseLon, baseLat] = firstLatLon(MILITARY_BASES, [44.0, 33.0]);
 const [cableLon, cableLat] = firstPathPoint(UNDERSEA_CABLES, [38.0, 20.0]);
 const [pipelineLon, pipelineLat] = firstPathPoint(PIPELINES, [45.0, 30.0]);
-const [hotspotLon, hotspotLat] = firstLatLon(INTEL_HOTSPOTS, [0.0, 20.0]);
 const [nuclearLon, nuclearLat] = firstLatLon(NUCLEAR_FACILITIES, [14.0, 50.0]);
 const [irradiatorLon, irradiatorLat] = firstLatLon(GAMMA_IRRADIATORS, [12.0, 50.0]);
-const [waterwayLon, waterwayLat] = firstLatLon(STRATEGIC_WATERWAYS, [32.0, 30.0]);
-const [economicLon, economicLat] = firstLatLon(ECONOMIC_CENTERS, [-74.0, 40.7]);
 const [datacenterLon, datacenterLat] = firstLatLon(AI_DATA_CENTERS, [-121.9, 37.3]);
-const [spaceportLon, spaceportLat] = firstLatLon(SPACEPORTS, [-80.6, 28.6]);
-const [mineralLon, mineralLat] = firstLatLon(CRITICAL_MINERALS, [135.0, -27.0]);
-const [aptLon, aptLat] = firstLatLon(APT_GROUPS, [116.4, 39.9]);
-const [portLon, portLat] = firstLatLon(PORTS, [32.5, 29.9]);
 
 const VISUAL_SCENARIOS: VisualScenario[] = [
-  {
-    id: 'conflicts-z4',
-    variant: 'both',
-    enabledLayers: ['conflicts'],
-    camera: toCamera(conflictLon, conflictLat, 4.0),
-    expectedDeckLayers: ['conflict-zones-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'bases-z5',
-    variant: 'both',
-    enabledLayers: ['bases'],
-    camera: toCamera(baseLon, baseLat, 5.2),
-    expectedDeckLayers: ['bases-layer'],
-    expectedSelectors: [],
-  },
   {
     id: 'cables-z4',
     variant: 'both',
@@ -960,30 +340,6 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     enabledLayers: ['pipelines'],
     camera: toCamera(pipelineLon, pipelineLat, 4.2),
     expectedDeckLayers: ['pipelines-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'hotspots-z4',
-    variant: 'both',
-    enabledLayers: ['hotspots'],
-    camera: toCamera(hotspotLon, hotspotLat, 4.2),
-    expectedDeckLayers: ['hotspots-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'ais-z5',
-    variant: 'both',
-    enabledLayers: ['ais'],
-    camera: seededCameras.ais,
-    expectedDeckLayers: ['ais-density-layer', 'ais-disruptions-layer', 'ports-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'ports-z5',
-    variant: 'both',
-    enabledLayers: ['ais'],
-    camera: toCamera(portLon, portLat, 5.2),
-    expectedDeckLayers: ['ports-layer'],
     expectedSelectors: [],
   },
   {
@@ -1011,35 +367,11 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     expectedSelectors: [],
   },
   {
-    id: 'economic-z5',
-    variant: 'both',
-    enabledLayers: ['economic'],
-    camera: toCamera(economicLon, economicLat, 5.1),
-    expectedDeckLayers: ['economic-centers-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'waterways-z5',
-    variant: 'both',
-    enabledLayers: ['waterways'],
-    camera: toCamera(waterwayLon, waterwayLat, 5.1),
-    expectedDeckLayers: ['waterways-layer'],
-    expectedSelectors: [],
-  },
-  {
     id: 'outages-z5',
     variant: 'both',
     enabledLayers: ['outages'],
     camera: seededCameras.outages,
     expectedDeckLayers: ['outages-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'cyber-z5',
-    variant: 'both',
-    enabledLayers: ['cyberThreats'],
-    camera: seededCameras.cyber,
-    expectedDeckLayers: ['cyber-threats-layer'],
     expectedSelectors: [],
   },
   {
@@ -1059,56 +391,11 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     expectedSelectors: [],
   },
   {
-    id: 'protests-z5',
-    variant: 'both',
-    enabledLayers: ['protests'],
-    camera: seededCameras.protests,
-    expectedDeckLayers: ['protest-clusters-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'flights-z5',
-    variant: 'both',
-    enabledLayers: ['flights'],
-    camera: seededCameras.flights,
-    expectedDeckLayers: ['flight-delays-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'military-z5',
-    variant: 'both',
-    enabledLayers: ['military'],
-    camera: seededCameras.military,
-    expectedDeckLayers: [
-      'military-vessels-layer',
-      'military-vessel-clusters-layer',
-      'military-flights-layer',
-      'military-flight-clusters-layer',
-    ],
-    expectedSelectors: [],
-  },
-  {
     id: 'natural-z5',
     variant: 'both',
     enabledLayers: ['natural'],
     camera: seededCameras.natural,
     expectedDeckLayers: ['earthquakes-layer', 'natural-events-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'spaceports-z5',
-    variant: 'both',
-    enabledLayers: ['spaceports'],
-    camera: toCamera(spaceportLon, spaceportLat, 5.1),
-    expectedDeckLayers: ['spaceports-layer'],
-    expectedSelectors: [],
-  },
-  {
-    id: 'minerals-z5',
-    variant: 'both',
-    enabledLayers: ['minerals'],
-    camera: toCamera(mineralLon, mineralLat, 5.1),
-    expectedDeckLayers: ['minerals-layer'],
     expectedSelectors: [],
   },
   {
@@ -1129,15 +416,6 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     includeNewsLocation: true,
   },
   {
-    id: 'apt-groups-z5',
-    variant: 'full',
-    // APT markers are gated on cyberThreats in DeckGLMap (lazy-loaded).
-    enabledLayers: ['cyberThreats'],
-    camera: toCamera(aptLon, aptLat, 5.1),
-    expectedDeckLayers: ['apt-groups-layer'],
-    expectedSelectors: [],
-  },
-  {
     id: 'disease-outbreaks-z5',
     variant: 'full',
     enabledLayers: ['diseaseOutbreaks'],
@@ -1145,7 +423,6 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     expectedDeckLayers: ['disease-outbreaks-layer'],
     expectedSelectors: [],
   },
-  // Note: `sanctions` has no map renderer in DeckGLMap today; excluded from visual scenarios.
 ];
 
 const visualScenarioMap = new Map(VISUAL_SCENARIOS.map((scenario) => [scenario.id, scenario]));
@@ -1157,85 +434,6 @@ const filterScenariosForVariant = (variant: HarnessVariant): VisualScenario[] =>
 };
 
 const currentHarnessVariant: HarnessVariant = SITE_VARIANT === 'nuclear' ? 'nuclear' : 'full';
-
-const buildProtests = (scenario: Scenario): SocialUnrestEvent[] => {
-  const title =
-    scenario === 'alpha' ? 'Scenario Alpha Protest' : 'Scenario Beta Protest';
-  const baseTime =
-    scenario === 'alpha'
-      ? new Date('2026-02-01T12:00:00.000Z')
-      : new Date('2026-02-01T13:00:00.000Z');
-
-  return [
-    {
-      id: `e2e-protest-${scenario}`,
-      title,
-      summary: `${title} summary`,
-      eventType: 'riot',
-      city: 'Harness City',
-      country: 'Harnessland',
-      lat: 20.1,
-      lon: 0.2,
-      time: baseTime,
-      severity: 'high',
-      fatalities: scenario === 'alpha' ? 1 : 2,
-      sources: ['e2e'],
-      sourceType: 'rss',
-      tags: ['e2e'],
-      actors: ['Harness Group'],
-      relatedHotspots: [],
-      confidence: 'high',
-      validated: true,
-    },
-  ];
-};
-
-const buildPulseProtests = (scenario: PulseProtestScenario): SocialUnrestEvent[] => {
-  if (scenario === 'none') return [];
-
-  const now = new Date();
-  const isRiot = scenario !== 'recent-protest';
-  const sourceType = scenario === 'recent-gdelt-riot' ? 'gdelt' : 'acled';
-
-  return [
-    {
-      id: `e2e-pulse-protest-${scenario}`,
-      title: `Pulse Protest ${scenario}`,
-      summary: `Pulse protest fixture: ${scenario}`,
-      eventType: isRiot ? 'riot' : 'protest',
-      city: 'Harness City',
-      country: 'Harnessland',
-      lat: 20.1,
-      lon: 0.2,
-      time: now,
-      severity: isRiot ? 'high' : 'medium',
-      fatalities: isRiot ? 1 : 0,
-      sources: ['e2e'],
-      sourceType,
-      tags: ['e2e', 'pulse'],
-      actors: ['Harness Group'],
-      relatedHotspots: [],
-      confidence: 'high',
-      validated: true,
-    },
-  ];
-};
-
-const buildHotspotActivityNews = (
-  scenario: 'none' | 'breaking'
-): NewsItem[] => {
-  if (scenario === 'none') return [];
-
-  return [
-    {
-      source: 'e2e-harness',
-      title: 'Sahel alert: mali coup activity intensifies',
-      link: 'https://example.com/hotspot-breaking',
-      pubDate: new Date(),
-      isAlert: true,
-    },
-  ];
-};
 
 const seedAllDynamicData = (): void => {
   setCachedPipelineRegistries({
@@ -1267,37 +465,6 @@ const seedAllDynamicData = (): void => {
       classifierVersion: 'e2e-harness-v1',
       updatedAt: '2026-02-01T12:00:00.000Z',
     },
-  });
-
-  setCachedStorageFacilityRegistry({
-    facilities: {
-      'e2e-storage-facility': {
-        id: 'e2e-storage-facility',
-        name: 'Harness LNG Export Terminal',
-        operator: 'Harness LNG',
-        facilityType: 'lng_export',
-        country: 'QA',
-        location: { lat: 25.98, lon: 51.61 },
-        capacityMtpa: 32.5,
-      },
-    },
-    classifierVersion: 'e2e-harness-v1',
-    updatedAt: '2026-02-01T12:00:00.000Z',
-  });
-
-  setCachedFuelShortageRegistry({
-    shortages: {
-      'e2e-fuel-shortage': {
-        id: 'e2e-fuel-shortage',
-        country: 'EG',
-        product: 'diesel',
-        severity: 'confirmed',
-        shortDescription: 'Harness shortage alert',
-        resolvedAt: null,
-      },
-    },
-    classifierVersion: 'e2e-harness-v1',
-    updatedAt: '2026-02-01T12:00:00.000Z',
   });
 
   const earthquakes: Earthquake[] = [
@@ -1348,51 +515,6 @@ const seedAllDynamicData = (): void => {
     },
   ];
 
-  const cyberThreats: CyberThreat[] = [
-    {
-      id: 'e2e-cyber-1',
-      type: 'c2_server',
-      source: 'feodo',
-      indicator: '1.2.3.4',
-      indicatorType: 'ip',
-      lat: 51.5,
-      lon: -0.12,
-      country: 'GB',
-      severity: 'high',
-      malwareFamily: 'QakBot',
-      tags: ['botnet', 'c2'],
-      firstSeen: '2026-02-01T09:00:00.000Z',
-      lastSeen: '2026-02-01T10:00:00.000Z',
-    },
-  ];
-
-  const aisDisruptions: AisDisruptionEvent[] = [
-    {
-      id: 'e2e-ais-disruption-1',
-      name: 'Harness Chokepoint',
-      type: 'chokepoint_congestion',
-      lat: 25.0,
-      lon: 55.0,
-      severity: 'high',
-      changePct: 34,
-      windowHours: 6,
-      vesselCount: 61,
-      description: 'High congestion detected for coverage.',
-    },
-  ];
-
-  const aisDensity: AisDensityZone[] = [
-    {
-      id: 'e2e-ais-density-1',
-      name: 'Harness Density Zone',
-      lat: 24.8,
-      lon: 54.9,
-      intensity: 0.8,
-      deltaPct: 22,
-      shipsPerDay: 230,
-    },
-  ];
-
   const cableAdvisories: CableAdvisory[] = [
     {
       id: 'e2e-cable-adv-1',
@@ -1418,86 +540,6 @@ const seedAllDynamicData = (): void => {
       lon: 45.1,
       eta: '2026-02-02T00:00:00Z',
       note: 'En route to suspected break location.',
-    },
-  ];
-
-  const flightDelays: AirportDelayAlert[] = [
-    {
-      id: 'e2e-flight-1',
-      iata: 'HNS',
-      icao: 'EHNS',
-      name: 'Harness International',
-      city: 'Harness City',
-      country: 'Harnessland',
-      lat: 40.4,
-      lon: -73.9,
-      region: 'americas',
-      delayType: 'ground_delay',
-      severity: 'major',
-      avgDelayMinutes: 48,
-      reason: 'Severe weather',
-      source: 'aviationstack',
-      updatedAt: new Date('2026-02-01T11:00:00.000Z'),
-    },
-  ];
-
-  const militaryFlights: MilitaryFlight[] = [
-    {
-      id: 'e2e-mil-flight-1',
-      callsign: 'HARN01',
-      hexCode: 'abc123',
-      aircraftType: 'fighter',
-      operator: 'usaf',
-      operatorCountry: 'US',
-      lat: 33.9,
-      lon: -117.9,
-      altitude: 30000,
-      heading: 92,
-      speed: 430,
-      onGround: false,
-      lastSeen: new Date('2026-02-01T11:00:00.000Z'),
-      confidence: 'high',
-    },
-  ];
-
-  const militaryFlightClusters: MilitaryFlightCluster[] = [
-    {
-      id: 'e2e-mil-flight-cluster-1',
-      name: 'Harness Air Cluster',
-      lat: 34.0,
-      lon: -118.0,
-      flightCount: 3,
-      flights: militaryFlights,
-      activityType: 'exercise',
-    },
-  ];
-
-  const militaryVessels: MilitaryVessel[] = [
-    {
-      id: 'e2e-mil-vessel-1',
-      mmsi: '123456789',
-      name: 'Harness Destroyer',
-      vesselType: 'destroyer',
-      operator: 'usn',
-      operatorCountry: 'US',
-      lat: 26.2,
-      lon: 56.4,
-      heading: 145,
-      speed: 18,
-      lastAisUpdate: new Date('2026-02-01T11:00:00.000Z'),
-      confidence: 'high',
-    },
-  ];
-
-  const militaryVesselClusters: MilitaryVesselCluster[] = [
-    {
-      id: 'e2e-mil-vessel-cluster-1',
-      name: 'Harness Naval Group',
-      lat: 26.1,
-      lon: 56.3,
-      vesselCount: 4,
-      vessels: militaryVessels,
-      activityType: 'deployment',
     },
   ];
 
@@ -1533,20 +575,10 @@ const seedAllDynamicData = (): void => {
   map.setEarthquakes(earthquakes);
   map.setWeatherAlerts(weather);
   map.setOutages(outages);
-  map.setCyberThreats(cyberThreats);
-  map.setAisData(aisDisruptions, aisDensity);
   map.setCableActivity(cableAdvisories, repairShips);
-  map.setProtests(buildProtests('alpha'));
-  map.setFlightDelays(flightDelays);
-  map.setMilitaryFlights(militaryFlights, militaryFlightClusters);
-  map.setMilitaryVessels(militaryVessels, militaryVesselClusters);
   map.setNaturalEvents(naturalEvents);
   map.setClimateAnomalies(climateAnomalies);
   map.setDiseaseOutbreaks(SEEDED_DISEASE_OUTBREAKS);
-  map.setPositiveEvents(SEEDED_POSITIVE_EVENTS);
-  map.setKindnessData(SEEDED_KINDNESS_POINTS);
-  map.setSpeciesRecoveryZones(SEEDED_SPECIES_RECOVERY);
-  map.setRenewableInstallations(SEEDED_RENEWABLE_INSTALLATIONS);
   map.setFires([
     {
       lat: -5.4,
@@ -1559,34 +591,7 @@ const seedAllDynamicData = (): void => {
       daynight: 'D',
     },
   ]);
-  map.setTechEvents([
-    {
-      id: 'e2e-tech-event-1',
-      title: 'Harness Summit Alpha',
-      location: 'Harness City',
-      lat: 37.77,
-      lng: -122.42,
-      country: 'US',
-      startDate: '2026-03-10',
-      endDate: '2026-03-12',
-      url: 'https://example.com/alpha',
-      daysUntil: 20,
-    },
-    {
-      id: 'e2e-tech-event-2',
-      title: 'Harness Summit Beta',
-      location: 'Harness City',
-      lat: 37.77,
-      lng: -122.42,
-      country: 'US',
-      startDate: '2026-04-01',
-      endDate: '2026-04-02',
-      url: 'https://example.com/beta',
-      daysUntil: 42,
-    },
-  ]);
   map.setNewsLocations(SEEDED_NEWS_LOCATIONS);
-  seedHarnessAptGroups();
   map.setRenderPaused(false);
   map.render();
 };
@@ -1717,18 +722,6 @@ const isVisualScenarioReady = (scenarioId: string): boolean => {
   return true;
 };
 
-const getCyberTooltipHtml = (indicator: string): string => {
-  const tooltip = internals.getTooltip?.({
-    object: {
-      country: indicator,
-      severity: 'high',
-      source: 'feodo',
-    },
-    layer: { id: 'cyber-threats-layer' },
-  });
-  return typeof tooltip?.html === 'string' ? tooltip.html : '';
-};
-
 seedAllDynamicData();
 
 let ready = false;
@@ -1761,16 +754,7 @@ window.__mapHarness = {
   },
   variant: currentHarnessVariant,
   seedAllDynamicData,
-  setProtestsScenario: (scenario: Scenario): void => {
-    map.setProtests(buildProtests(scenario));
-  },
-  setPulseProtestsScenario: (scenario: PulseProtestScenario): void => {
-    map.setProtests(buildPulseProtests(scenario));
-  },
   setNewsPulseScenario,
-  setHotspotActivityScenario: (scenario: 'none' | 'breaking'): void => {
-    map.updateHotspotActivity(buildHotspotActivityNews(scenario));
-  },
   forcePulseStartupElapsed: (): void => {
     internals.startupTime = Date.now() - 61_000;
   },
@@ -1798,19 +782,7 @@ window.__mapHarness = {
   getDeckLayerSnapshot,
   getLayerDataCount,
   getLayerFirstScreenTransform,
-  getFirstProtestTitle,
-  getProtestClusterCount,
   getOverlaySnapshot,
-  getCyberTooltipHtml,
-  runTradeAnimationProfile,
-  showChinaCorridor: (index = 0): void => {
-    const definition = CHINA_LOGISTICS_CORRIDORS[index] ?? CHINA_LOGISTICS_CORRIDORS[0]!;
-    map.setChinaCorridorSelection({
-      ...definition,
-      availability: 'partial',
-      conditions: [],
-    });
-  },
   destroy: (): void => {
     map.destroy();
   },

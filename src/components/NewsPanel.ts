@@ -915,7 +915,6 @@ export class NewsPanel extends Panel {
       pipeline: 'modals.countryBrief.infra.pipeline',
       cable: 'modals.countryBrief.infra.cable',
       datacenter: 'modals.countryBrief.infra.datacenter',
-      base: 'modals.countryBrief.infra.base',
       nuclear: 'modals.countryBrief.infra.nuclear',
     };
     return t(keyMap[type]);

@@ -838,8 +838,6 @@ export interface ProActivationFlowOptions {
   accountEmail: string;
   /** Injectable owner check for the browser harness; production uses live auth. */
   isAccountCurrent?: () => boolean;
-  /** Reveal the AI analyst / researcher panel. Boot hook: mount + scroll the `chat-analyst` panel into view. */
-  openAiAnalyst?: () => void;
   /** Open the custom-widget builder. Boot hook: dispatch `wm:open-widget-creator` on `ctx.container`. */
   openWidgetBuilder?: () => void;
   /** Open the global command search. Boot hook: `App.openSearch()`. */
@@ -1234,7 +1232,6 @@ function buildPowerExtra(options: ProActivationFlowOptions): ProActivationStepEx
     commandSearchShortcut(),
   );
   add('widgets', 'components.proActivation.steps.power.pointers.widgets', 'Build a custom widget', options.openWidgetBuilder);
-  add('analyst', 'components.proActivation.steps.power.pointers.analyst', 'Ask the AI analyst', options.openAiAnalyst);
 
   const pointerButtons = pointers
     .map((p) => {

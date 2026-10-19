@@ -634,8 +634,7 @@ export class MapContainer {
       this.destroyFlatMap();
       this.useGlobe = true;
       this.useDeckGL = false;
-      const layers = sanitizeResilienceScoreForRenderer(snapshot.layers, false);
-      this.initialState = layers === snapshot.layers ? snapshot : { ...snapshot, layers };
+      this.initialState = snapshot;
       this.pendingCenter = center ? { ...center, zoom: snapshot.zoom } : null;
       void this.init();
     }
@@ -659,8 +658,7 @@ export class MapContainer {
       this.globeMap = null;
       this.useGlobe = false;
       this.useDeckGL = this.shouldUseDeckGL();
-      const layers = sanitizeResilienceScoreForRenderer(snapshot.layers, this.useDeckGL);
-      this.initialState = layers === snapshot.layers ? snapshot : { ...snapshot, layers };
+      this.initialState = snapshot;
       this.pendingCenter = center ? { ...center, zoom: snapshot.zoom } : null;
       // Cancel any pending deck demand gate from a prior flat init before
       // re-initializing, mirroring destroyFlatMap(), so a stale gate can't abort
@@ -1040,12 +1038,8 @@ export class MapContainer {
 
   public setOnLayerChange(callback: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void {
     this.cachedOnLayerChange = callback;
-    const notify = (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic'): void => {
-      if (layer === 'aircraftEmergencies') this.emergencyLayer.setEnabled(!this.useGlobe && enabled);
-      callback(layer, enabled, source);
-    };
-    if (this.useGlobe) { this.globeMap?.setOnLayerChange(notify); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setOnLayerChange(notify); } else { this.svgMap?.setOnLayerChange(notify); }
+    if (this.useGlobe) { this.globeMap?.setOnLayerChange(callback); return; }
+    if (this.useDeckGL) { this.deckGLMap?.setOnLayerChange(callback); } else { this.svgMap?.setOnLayerChange(callback); }
   }
 
   public getBbox(): string | null {
@@ -1106,7 +1100,6 @@ export class MapContainer {
 
   // Layer enable/disable and trigger methods
   public enableLayer(layer: keyof MapLayers): void {
-    if (layer === 'resilienceScore' && !this.useDeckGL) return;
     // #6045 — don't stamp initialState or enable locked premium layers for free users.
     if (!isLayerEntitled(layer, hasPremiumAccess(getAuthState()))) return;
     this.initialState = {
@@ -1120,9 +1113,6 @@ export class MapContainer {
     } else {
       this.svgMap?.enableLayer(layer);
     }
-    // The renderer reports the change through onLayerChange, which also starts
-    // the emergency feed. Start it here too in case no listener is attached yet.
-    if (layer === 'aircraftEmergencies') this.emergencyLayer.setEnabled(this.getState().layers.aircraftEmergencies === true);
   }
 
   public triggerPipelineClick(id: string): void {

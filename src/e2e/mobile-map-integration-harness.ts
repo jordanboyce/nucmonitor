@@ -295,33 +295,6 @@ window.__mobileMapIntegrationHarness = {
       lat: ((index * 7) % 170) - 85,
       lon: ((index * 13) % 358) - 179,
     });
-    const vessels = Array.from({ length: perFeed }, (_, index) => ({
-      id: `stress-vessel-${index}`,
-      mmsi: String(200000000 + index),
-      name: `Stress Vessel ${index}`,
-      vesselType: index % 100 === 0 ? 'carrier' : 'destroyer',
-      operator: 'usn',
-      operatorCountry: 'US',
-      ...spread(index),
-      heading: index % 360,
-      speed: 12,
-      lastAisUpdate: new Date(0),
-      confidence: 'high',
-    }));
-    const flights = Array.from({ length: perFeed }, (_, index) => ({
-      id: `stress-flight-${index}`,
-      callsign: `STRESS${index}`,
-      hexCode: (index + 0x100000).toString(16),
-      aircraftType: 'fighter',
-      operator: 'usaf',
-      operatorCountry: 'US',
-      ...spread(index + 3),
-      altitude: 30000,
-      heading: index % 360,
-      speed: 400,
-      onGround: false,
-      lastSeen: new Date(0),
-    }));
     const quakes = Array.from({ length: perFeed }, (_, index) => ({
       id: `stress-quake-${index}`,
       magnitude: 1 + (index % 60) / 10,
@@ -333,10 +306,7 @@ window.__mobileMapIntegrationHarness = {
     const mapInternals = map as unknown as {
       state: { layers: Record<string, boolean> };
     };
-    mapInternals.state.layers.military = true;
     mapInternals.state.layers.natural = true;
-    map.setMilitaryVessels(vessels as never, []);
-    map.setMilitaryFlights(flights as never, []);
     map.setEarthquakes(quakes as never);
     map.render();
   },
@@ -442,7 +412,7 @@ window.__mobileMapIntegrationHarness = {
   // #7112: renderOverlays() passes, so a test can assert that a settled view does
   // NOT trigger another full rebuild.
   // Stands in for the data setters that call render() continuously in production
-  // (setEarthquakes, setMilitaryVessels, ...), so a test can land a render inside
+  // (setEarthquakes, setWeatherAlerts, ...), so a test can land a render inside
   // the budget replan's settle window.
   forceRender: () => map.render(),
   // #7112: news flashes are #mapOverlays children created outside the marker
@@ -461,11 +431,8 @@ window.__mobileMapIntegrationHarness = {
       state: { layers: Record<string, boolean> };
     };
     internals.hotspots = [];
-    map.setMilitaryVessels([] as never, []);
-    map.setMilitaryFlights([] as never, []);
     map.setEarthquakes([] as never);
     map.setWeatherAlerts([] as never);
-    internals.state.layers.military = false;
     internals.state.layers.natural = false;
     map.render();
   },

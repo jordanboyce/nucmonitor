@@ -1449,8 +1449,6 @@ export class DataLoaderManager implements AppModule {
     if (landed) this.loadedNewsSignature = newsWorkListSignature(categories, disabledAtLoadStart);
     this.ctx.initialLoadComplete = true;
 
-    this.ctx.map?.updateHotspotActivity(this.ctx.allNews);
-
     this.updateMonitorResults();
 
     try {

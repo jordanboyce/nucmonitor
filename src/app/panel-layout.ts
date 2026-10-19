@@ -2626,7 +2626,6 @@ export class PanelLayoutManager implements AppModule {
       isFreeTierFallbackActive: this.callbacks.isFreeTierFallbackActive,
     });
 
-    this.ctx.map.initEscalationGetters();
     this.ctx.currentTimeRange = this.ctx.map.getTimeRange();
     markLcpDebug('wm:map:container-ready');
 

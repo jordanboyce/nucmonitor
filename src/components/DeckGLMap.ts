@@ -451,7 +451,6 @@ export class DeckGLMap {
     pipeline: new Set(),
     cable: new Set(),
     datacenter: new Set(),
-    base: new Set(),
     nuclear: new Set(),
   };
 

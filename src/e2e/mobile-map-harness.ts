@@ -1,6 +1,6 @@
 import '../styles/main.css';
 import { MapPopup } from '../components/MapPopup';
-import type { Hotspot } from '../types';
+import type { NuclearFacility } from '../types';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 
 
@@ -46,17 +46,15 @@ const overlays = document.createElement('div');
 overlays.id = 'mapOverlays';
 app.appendChild(overlays);
 
-const sampleHotspot: Hotspot = {
-  id: 'e2e-hotspot',
-  name: 'E2E Hotspot',
+const sampleFacility: NuclearFacility = {
+  id: 'e2e-facility',
+  name: 'E2E Facility',
   lat: 33.0,
   lon: 36.0,
-  keywords: ['e2e', 'hotspot'],
-  level: 'high',
-  location: 'E2E Zone',
-  description: 'Deterministic hotspot used for mobile popup QA.',
-  agencies: ['E2E Agency'],
-  status: 'monitoring',
+  type: 'plant',
+  status: 'active',
+  operator: 'E2E Operator',
+  keyEvents: ['Deterministic facility used for mobile popup QA.'],
 };
 
 const popup = new MapPopup(app);
@@ -70,9 +68,8 @@ hotspot.addEventListener('click', (e) => {
   e.stopPropagation();
   const rect = app.getBoundingClientRect();
   popup.show({
-    type: 'hotspot',
-    data: sampleHotspot,
-    relatedNews: [],
+    type: 'nuclear',
+    data: sampleFacility,
     x: e.clientX - rect.left,
     y: e.clientY - rect.top,
   });

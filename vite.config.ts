@@ -2,7 +2,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { OutputBundle } from 'rollup';
-import { resolve, dirname, extname, basename } from 'path';
+import { resolve, dirname, extname } from 'path';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { brotliCompress } from 'zlib';
 import { promisify } from 'util';
@@ -229,15 +229,11 @@ function brotliPrecompressPlugin(): Plugin {
   };
 }
 
-// Public pages whose title, description and canonical are their own; the
-// dashboard brand meta below would otherwise mark them duplicates of /dashboard.
-const PAGES_WITH_OWN_HEAD_META = new Set(['verify.html']);
-
 function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDesktopBuild: boolean): Plugin {
   return {
     name: 'html-variant',
-    transformIndexHtml(html, ctx) {
-      let result = PAGES_WITH_OWN_HEAD_META.has(basename(ctx.filename)) ? html : html
+    transformIndexHtml(html) {
+      let result = html
         .replace(/<title>.*?<\/title>/, `<title>${activeMeta.title}</title>`)
         .replace(/<meta name="title" content=".*?" \/>/, `<meta name="title" content="${activeMeta.title}" />`)
         .replace(/<meta name="description" content=".*?" \/>/, `<meta name="description" content="${activeMeta.description}" />`)
@@ -514,29 +510,11 @@ function sebufApiPlugin(): Plugin {
       seismologyServerMod, seismologyHandlerMod,
       wildfireServerMod, wildfireHandlerMod,
       climateServerMod, climateHandlerMod,
-      predictionServerMod, predictionHandlerMod,
-      displacementServerMod, displacementHandlerMod,
-      aviationServerMod, aviationHandlerMod,
-      researchServerMod, researchHandlerMod,
-      unrestServerMod, unrestHandlerMod,
-      conflictServerMod, conflictHandlerMod,
-      maritimeServerMod, maritimeHandlerMod,
-      cyberServerMod, cyberHandlerMod,
       economicServerMod, economicHandlerMod,
       infrastructureServerMod, infrastructureHandlerMod,
       marketServerMod, marketHandlerMod,
       newsServerMod, newsHandlerMod,
-      intelligenceServerMod, intelligenceHandlerMod,
-      militaryServerMod, militaryHandlerMod,
-      positiveEventsServerMod, positiveEventsHandlerMod,
-      givingServerMod, givingHandlerMod,
-      tradeServerMod, tradeHandlerMod,
-      supplyChainServerMod, supplyChainHandlerMod,
       naturalServerMod, naturalHandlerMod,
-      resilienceServerMod, resilienceHandlerMod,
-      leadsServerMod, leadsHandlerMod,
-      scenarioServerMod, scenarioHandlerMod,
-      shippingV2ServerMod, shippingV2HandlerMod,
     ] = await Promise.all([
         import('./server/router'),
         import('./server/cors'),
@@ -547,22 +525,6 @@ function sebufApiPlugin(): Plugin {
         import('./server/worldmonitor/wildfire/v1/handler'),
         import('./src/generated/server/worldmonitor/climate/v1/service_server'),
         import('./server/worldmonitor/climate/v1/handler'),
-        import('./src/generated/server/worldmonitor/prediction/v1/service_server'),
-        import('./server/worldmonitor/prediction/v1/handler'),
-        import('./src/generated/server/worldmonitor/displacement/v1/service_server'),
-        import('./server/worldmonitor/displacement/v1/handler'),
-        import('./src/generated/server/worldmonitor/aviation/v1/service_server'),
-        import('./server/worldmonitor/aviation/v1/handler'),
-        import('./src/generated/server/worldmonitor/research/v1/service_server'),
-        import('./server/worldmonitor/research/v1/handler'),
-        import('./src/generated/server/worldmonitor/unrest/v1/service_server'),
-        import('./server/worldmonitor/unrest/v1/handler'),
-        import('./src/generated/server/worldmonitor/conflict/v1/service_server'),
-        import('./server/worldmonitor/conflict/v1/handler'),
-        import('./src/generated/server/worldmonitor/maritime/v1/service_server'),
-        import('./server/worldmonitor/maritime/v1/handler'),
-        import('./src/generated/server/worldmonitor/cyber/v1/service_server'),
-        import('./server/worldmonitor/cyber/v1/handler'),
         import('./src/generated/server/worldmonitor/economic/v1/service_server'),
         import('./server/worldmonitor/economic/v1/handler'),
         import('./src/generated/server/worldmonitor/infrastructure/v1/service_server'),
@@ -571,28 +533,8 @@ function sebufApiPlugin(): Plugin {
         import('./server/worldmonitor/market/v1/handler'),
         import('./src/generated/server/worldmonitor/news/v1/service_server'),
         import('./server/worldmonitor/news/v1/handler'),
-        import('./src/generated/server/worldmonitor/intelligence/v1/service_server'),
-        import('./server/worldmonitor/intelligence/v1/handler'),
-        import('./src/generated/server/worldmonitor/military/v1/service_server'),
-        import('./server/worldmonitor/military/v1/handler'),
-        import('./src/generated/server/worldmonitor/positive_events/v1/service_server'),
-        import('./server/worldmonitor/positive-events/v1/handler'),
-        import('./src/generated/server/worldmonitor/giving/v1/service_server'),
-        import('./server/worldmonitor/giving/v1/handler'),
-        import('./src/generated/server/worldmonitor/trade/v1/service_server'),
-        import('./server/worldmonitor/trade/v1/handler'),
-        import('./src/generated/server/worldmonitor/supply_chain/v1/service_server'),
-        import('./server/worldmonitor/supply-chain/v1/handler'),
         import('./src/generated/server/worldmonitor/natural/v1/service_server'),
         import('./server/worldmonitor/natural/v1/handler'),
-        import('./src/generated/server/worldmonitor/resilience/v1/service_server'),
-        import('./server/worldmonitor/resilience/v1/handler'),
-        import('./src/generated/server/worldmonitor/leads/v1/service_server'),
-        import('./server/worldmonitor/leads/v1/handler'),
-        import('./src/generated/server/worldmonitor/scenario/v1/service_server'),
-        import('./server/worldmonitor/scenario/v1/handler'),
-        import('./src/generated/server/worldmonitor/shipping/v2/service_server'),
-        import('./server/worldmonitor/shipping/v2/handler'),
       ]);
 
     const serverOptions = {
@@ -603,29 +545,11 @@ function sebufApiPlugin(): Plugin {
       ...seismologyServerMod.createSeismologyServiceRoutes(seismologyHandlerMod.seismologyHandler, serverOptions),
       ...wildfireServerMod.createWildfireServiceRoutes(wildfireHandlerMod.wildfireHandler, serverOptions),
       ...climateServerMod.createClimateServiceRoutes(climateHandlerMod.climateHandler, serverOptions),
-      ...predictionServerMod.createPredictionServiceRoutes(predictionHandlerMod.predictionHandler, serverOptions),
-      ...displacementServerMod.createDisplacementServiceRoutes(displacementHandlerMod.displacementHandler, serverOptions),
-      ...aviationServerMod.createAviationServiceRoutes(aviationHandlerMod.aviationHandler, serverOptions),
-      ...researchServerMod.createResearchServiceRoutes(researchHandlerMod.researchHandler, serverOptions),
-      ...unrestServerMod.createUnrestServiceRoutes(unrestHandlerMod.unrestHandler, serverOptions),
-      ...conflictServerMod.createConflictServiceRoutes(conflictHandlerMod.conflictHandler, serverOptions),
-      ...maritimeServerMod.createMaritimeServiceRoutes(maritimeHandlerMod.maritimeHandler, serverOptions),
-      ...cyberServerMod.createCyberServiceRoutes(cyberHandlerMod.cyberHandler, serverOptions),
       ...economicServerMod.createEconomicServiceRoutes(economicHandlerMod.economicHandler, serverOptions),
       ...infrastructureServerMod.createInfrastructureServiceRoutes(infrastructureHandlerMod.infrastructureHandler, serverOptions),
       ...marketServerMod.createMarketServiceRoutes(marketHandlerMod.marketHandler, serverOptions),
       ...newsServerMod.createNewsServiceRoutes(newsHandlerMod.newsHandler, serverOptions),
-      ...intelligenceServerMod.createIntelligenceServiceRoutes(intelligenceHandlerMod.intelligenceHandler, serverOptions),
-      ...militaryServerMod.createMilitaryServiceRoutes(militaryHandlerMod.militaryHandler, serverOptions),
-      ...positiveEventsServerMod.createPositiveEventsServiceRoutes(positiveEventsHandlerMod.positiveEventsHandler, serverOptions),
-      ...givingServerMod.createGivingServiceRoutes(givingHandlerMod.givingHandler, serverOptions),
-      ...tradeServerMod.createTradeServiceRoutes(tradeHandlerMod.tradeHandler, serverOptions),
-      ...supplyChainServerMod.createSupplyChainServiceRoutes(supplyChainHandlerMod.supplyChainHandler, serverOptions),
       ...naturalServerMod.createNaturalServiceRoutes(naturalHandlerMod.naturalHandler, serverOptions),
-      ...resilienceServerMod.createResilienceServiceRoutes(resilienceHandlerMod.resilienceHandler, serverOptions),
-      ...leadsServerMod.createLeadsServiceRoutes(leadsHandlerMod.leadsHandler, serverOptions),
-      ...scenarioServerMod.createScenarioServiceRoutes(scenarioHandlerMod.scenarioHandler, serverOptions),
-      ...shippingV2ServerMod.createShippingV2ServiceRoutes(shippingV2HandlerMod.shippingV2Handler, serverOptions),
     ];
     cachedCorsMod = corsMod;
     return routerMod.createRouter(allRoutes);
@@ -641,18 +565,6 @@ function sebufApiPlugin(): Plugin {
         }
       });
 
-      // Legacy v1 URL aliases → new sebuf RPC paths (mirror of the alias files
-      // in api/scenario/v1/ + api/supply-chain/v1/). Vercel serves the alias
-      // files directly; vite dev has no file-based routing for api/, so we
-      // rewrite the pathname here before the router lookup.
-      const V1_ALIASES: Record<string, string> = {
-        '/api/scenario/v1/run': '/api/scenario/v1/run-scenario',
-        '/api/scenario/v1/status': '/api/scenario/v1/get-scenario-status',
-        '/api/scenario/v1/templates': '/api/scenario/v1/list-scenario-templates',
-        '/api/supply-chain/v1/country-products': '/api/supply-chain/v1/get-country-products',
-        '/api/supply-chain/v1/multi-sector-cost-shock': '/api/supply-chain/v1/get-multi-sector-cost-shock',
-      };
-
       server.middlewares.use(async (req, res, next) => {
         // Intercept sebuf routes in two forms:
         //  - standard /api/{domain}/v{N}/* (domain-first, e.g. /api/market/v1/...)
@@ -661,13 +573,6 @@ function sebufApiPlugin(): Plugin {
         //    external contract already uses a reversed layout.
         if (!req.url || !/^\/api\/(?:[a-z][a-z0-9-]*\/v\d+|v\d+\/[a-z][a-z0-9-]*)\//.test(req.url)) {
           return next();
-        }
-
-        // Rewrite documented v1 URL → new sebuf path if this is an alias.
-        const [pathOnly, queryOnly] = req.url.split('?', 2);
-        const aliasTarget = pathOnly ? V1_ALIASES[pathOnly] : undefined;
-        if (aliasTarget) {
-          req.url = queryOnly ? `${aliasTarget}?${queryOnly}` : aliasTarget;
         }
 
         try {
@@ -1217,8 +1122,6 @@ export default defineConfig(({ mode }) => {
           embed: resolve(__dirname, 'embed.html'),
           settings: resolve(__dirname, 'settings.html'),
           liveChannels: resolve(__dirname, 'live-channels.html'),
-          mcpGrant: resolve(__dirname, 'mcp-grant.html'),
-          verify: resolve(__dirname, 'verify.html'),
         },
         output: {
           // onlyExplicitManualChunks keeps the panel clusters from forming

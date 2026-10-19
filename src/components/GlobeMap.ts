@@ -18,9 +18,7 @@ import Globe from 'globe.gl';
 import { isDesktopRuntime } from '@/services/runtime';
 import type { NewsLocationMarker as NewsLocationInput } from '@/types';
 import type { GlobeInstance, ConfigOptions } from 'globe.gl';
-import { INTEL_HOTSPOTS, CONFLICT_ZONES, STRATEGIC_WATERWAYS } from '@/config/geo';
-import { getCachedMilitaryBases, preloadMilitaryBases } from '@/services/military-base-config';
-import { NUCLEAR_FACILITIES, SPACEPORTS, ECONOMIC_CENTERS, CRITICAL_MINERALS, UNDERSEA_CABLES } from '@/config/geo-map';
+import { NUCLEAR_FACILITIES, UNDERSEA_CABLES } from '@/config/geo-map';
 import { PIPELINES } from '@/config/pipelines';
 import { t } from '@/services/i18n';
 import { SITE_VARIANT } from '@/config/variant';
@@ -36,10 +34,9 @@ import {
 import { renderLayerExplanationCard } from '@/utils/layer-explanation-card';
 import { guardOrbitControlsPointerTracking } from '@/utils/orbit-controls-pointer-guard';
 import { getAuthState } from '@/services/auth-state';
-import { resolveTradeRouteSegments, type TradeRouteSegment } from '@/config/trade-routes';
 import { GAMMA_IRRADIATORS } from '@/config/irradiators';
 import { AI_DATA_CENTERS } from '@/config/ai-datacenters';
-import { getCountryBbox, getCountriesGeoJson, getCountryAtCoordinates, getCountryNameByCode } from '@/services/country-geometry';
+import { getCountryBbox } from '@/services/country-geometry';
 import { escapeHtml } from '@/utils/sanitize';
 import { corroborationLabelHtml } from '@/utils/corroboration-flag';
 import { showLayerWarning } from '@/utils/layer-warning';
@@ -54,48 +51,31 @@ import {
   type GlobeMarkerGroup,
 } from '@/utils/globe-marker-budget';
 import { renderLayerTruncationBadges } from '@/utils/layer-truncation-badge';
-import type { FeatureCollection, Geometry } from 'geojson';
-import type { MapLayers, Hotspot, MilitaryFlight, MilitaryVessel, MilitaryVesselCluster, NaturalEvent, InternetOutage, CyberThreat, SocialUnrestEvent, UcdpGeoEvent, MilitaryBase, GammaIrradiator, Spaceport, EconomicCenter, StrategicWaterway, CriticalMineralProject, AIDataCenter, UnderseaCable, Pipeline, CableAdvisory, RepairShip, AisDisruptionEvent, AisDensityZone, AisDisruptionType } from '@/types';
+import type { MapLayers, NaturalEvent, InternetOutage, GammaIrradiator, AIDataCenter, UnderseaCable, Pipeline, CableAdvisory, RepairShip } from '@/types';
 import type { Earthquake } from '@/services/earthquakes';
-import type { AirportDelayAlert } from '@/services/aviation';
 import { MapPopup } from './MapPopup';
-import type { GetChokepointStatusResponse } from '@/services/supply-chain';
 import type { MapContainerState, MapView, TimeRange } from './MapContainer';
 import type { CountryClickPayload } from './DeckGLMap';
 import type { WeatherAlert } from '@/services/weather';
-import { type IranEvent, getIranEventHexColor } from '@/services/conflict';
-import type { DisplacementFlow } from '@/services/displacement';
 import type { ClimateAnomaly } from '@/services/climate';
-import type { GpsJamHex } from '@/services/gps-interference';
-import type { SatellitePosition } from '@/services/satellites';
-import type { ImageryScene } from '@/generated/server/worldmonitor/imagery/v1/service_server';
-import { isAllowedPreviewUrl } from '@/utils/imagery-preview';
 import { getCategoryStyle } from '@/services/webcams';
 import { pinWebcam, isPinned } from '@/services/webcams/pinned-store';
 import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
 import type { TrafficAnomaly as ProtoTrafficAnomaly, DdosLocationHit } from '@/generated/client/worldmonitor/infrastructure/v1/service_client';
 import type { RadiationObservation } from '@/services/radiation';
-import type { ScenarioVisualState } from '@/config/scenario-templates';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
-import { renderPopupSourceLinks } from './map-popup-source-links';
 import {
   applyPremiumLayerPresentation,
   getPremiumLayerPresentation,
   PremiumLayerGate,
 } from './premium-layer-gate';
 import { globeAltitudeToMapZoom, mapZoomToGlobeAltitude } from '@/utils/globe-zoom';
-import { headingToCompass } from '@/utils/heading-to-compass';
-import { vesselTypeLabel } from '@/utils/vessel-type-label';
 
 export interface GlobeMapOptions {
   onInitError?: (error: unknown) => void;
   chrome?: boolean;
 }
 
-const SAT_COUNTRY_COLORS: Record<string, string> = { CN: '#ff2020', RU: '#ff8800', US: '#4488ff', EU: '#44cc44', KR: '#aa66ff', IN: '#ff66aa', TR: '#ff4466', OTHER: '#ccccff' };
-const SAT_TYPE_EMOJI: Record<string, string> = { sar: '\u{1F4E1}', optical: '\u{1F4F7}', military: '\u{1F396}', sigint: '\u{1F4FB}' };
-const SAT_TYPE_LABEL: Record<string, string> = { sar: 'SAR Imaging', optical: 'Optical Imaging', military: 'Military', sigint: 'SIGINT' };
-const SAT_OPERATOR_NAME: Record<string, string> = { CN: 'China', RU: 'Russia', US: 'United States', EU: 'ESA / EU', KR: 'South Korea', IN: 'India', TR: 'Turkey', OTHER: 'Other' };
 
 function saveWebcamMarkerMode(mode: string): void {
   try {
@@ -110,52 +90,6 @@ interface BaseMarker {
   _lat: number;
   _lng: number;
 }
-interface ConflictMarker extends BaseMarker {
-  _kind: 'conflict';
-  id: string;
-  fatalities: number;
-  eventType: string;
-  location: string;
-}
-interface HotspotMarker extends BaseMarker {
-  _kind: 'hotspot';
-  id: string;
-  name: string;
-  escalationScore: number;
-}
-interface FlightMarker extends BaseMarker {
-  _kind: 'flight';
-  id: string;
-  callsign: string;
-  type: string;
-  heading: number;
-}
-interface VesselMarker extends BaseMarker {
-  _kind: 'vessel';
-  id: string;
-  name: string;
-  type: string;       // raw enum key: 'carrier'|'destroyer' etc — color/icon lookup
-  typeLabel: string;  // human-readable: 'Aircraft Carrier' etc — display only
-  hullNumber?: string;
-  operator?: string;
-  operatorCountry?: string;
-  isDark?: boolean;
-  usniStrikeGroup?: string;
-  usniRegion?: string;
-  usniDeploymentStatus?: string;
-  usniHomePort?: string;
-  usniActivityDescription?: string;
-  usniArticleDate?: string;
-  usniSource?: boolean;
-}
-interface ClusterMarker extends BaseMarker {
-  _kind: 'cluster';
-  id: string;
-  name: string;
-  vesselCount: number;
-  activityType?: string;
-  region?: string;
-}
 interface WeatherMarker extends BaseMarker {
   _kind: 'weather';
   id: string;
@@ -167,14 +101,6 @@ interface NaturalMarker extends BaseMarker {
   id: string;
   category: string;
   title: string;
-}
-interface IranMarker extends BaseMarker {
-  _kind: 'iran';
-  id: string;
-  title: string;
-  category: string;
-  severity: string;
-  location: string;
 }
 interface OutageMarker extends BaseMarker {
   _kind: 'outage';
@@ -195,41 +121,11 @@ interface DdosHitMarker extends BaseMarker {
   countryName: string;
   percentage: number;
 }
-interface CyberMarker extends BaseMarker {
-  _kind: 'cyber';
-  id: string;
-  indicator: string;
-  severity: string;
-  type: string;
-}
 interface FireMarker extends BaseMarker {
   _kind: 'fire';
   id: string;
   region: string;
   brightness: number;
-}
-interface ProtestMarker extends BaseMarker {
-  _kind: 'protest';
-  id: string;
-  title: string;
-  eventType: string;
-  country: string;
-  sourceUrls?: string[];
-}
-interface UcdpMarker extends BaseMarker {
-  _kind: 'ucdp';
-  id: string;
-  sideA: string;
-  sideB: string;
-  deaths: number;
-  country: string;
-}
-interface DisplacementMarker extends BaseMarker {
-  _kind: 'displacement';
-  id: string;
-  origin: string;
-  asylum: string;
-  refugees: number;
 }
 interface ClimateMarker extends BaseMarker {
   _kind: 'climate';
@@ -238,38 +134,6 @@ interface ClimateMarker extends BaseMarker {
   type: string;
   severity: string;
   tempDelta: number;
-}
-interface GpsJamMarker extends BaseMarker {
-  _kind: 'gpsjam';
-  id: string;
-  level: string;
-  pct: number;
-}
-interface TechMarker extends BaseMarker {
-  _kind: 'tech';
-  id: string;
-  title: string;
-  country: string;
-  daysUntil: number;
-}
-interface ConflictZoneMarker extends BaseMarker {
-  _kind: 'conflictZone';
-  id: string;
-  name: string;
-  intensity: string;
-  parties: string[];
-  casualties?: string;
-  center: [number, number];
-  startDate?: string;
-  peaceAgreements?: string[];
-  totalFatalities?: string;
-}
-interface MilBaseMarker extends BaseMarker {
-  _kind: 'milbase';
-  id: string;
-  name: string;
-  type: string;
-  country: string;
 }
 interface NuclearSiteMarker extends BaseMarker {
   _kind: 'nuclearSite';
@@ -287,14 +151,6 @@ interface IrradiatorSiteMarker extends BaseMarker {
   id: string;
   city: string;
   country: string;
-}
-interface SpaceportSiteMarker extends BaseMarker {
-  _kind: 'spaceport';
-  id: string;
-  name: string;
-  country: string;
-  operator: string;
-  launches: string;
 }
 interface EarthquakeMarker extends BaseMarker {
   _kind: 'earthquake';
@@ -323,14 +179,6 @@ interface RadiationMarker extends BaseMarker {
   convertedFromCpm: boolean;
   sourceCount: number;
 }
-interface EconomicMarker extends BaseMarker {
-  _kind: 'economic';
-  id: string;
-  name: string;
-  type: string;
-  country: string;
-  description: string;
-}
 interface DatacenterMarker extends BaseMarker {
   _kind: 'datacenter';
   id: string;
@@ -338,37 +186,6 @@ interface DatacenterMarker extends BaseMarker {
   owner: string;
   country: string;
   chipType: string;
-}
-interface WaterwayMarker extends BaseMarker {
-  _kind: 'waterway';
-  id: string;
-  name: string;
-  description: string;
-}
-interface MineralMarker extends BaseMarker {
-  _kind: 'mineral';
-  id: string;
-  name: string;
-  mineral: string;
-  country: string;
-  status: string;
-}
-interface FlightDelayMarker extends BaseMarker {
-  _kind: 'flightDelay';
-  id: string;
-  iata: string;
-  name: string;
-  city: string;
-  country: string;
-  severity: string;
-  delayType: string;
-  avgDelayMinutes: number;
-  reason: string;
-}
-interface NotamRingMarker extends BaseMarker {
-  _kind: 'notamRing';
-  name: string;
-  reason: string;
 }
 interface NewsLocationMarker extends BaseMarker {
   _kind: 'newsLocation';
@@ -399,37 +216,6 @@ interface RepairShipMarker extends BaseMarker {
   eta: string;
   operator: string;
 }
-interface AisDisruptionMarker extends BaseMarker {
-  _kind: 'aisDisruption';
-  id: string;
-  name: string;
-  type: AisDisruptionType;
-  severity: AisDisruptionEvent['severity'];
-  description: string;
-}
-interface SatelliteMarker extends BaseMarker {
-  _kind: 'satellite';
-  id: string;
-  name: string;
-  country: string;
-  type: string;
-  alt: number;
-  velocity: number;
-  inclination: number;
-}
-interface SatFootprintMarker extends BaseMarker {
-  _kind: 'satFootprint';
-  country: string;
-  noradId: string;
-}
-interface ImagerySceneMarker extends BaseMarker {
-  _kind: 'imageryScene';
-  satellite: string;
-  datetime: string;
-  resolutionM: number;
-  mode: string;
-  previewUrl: string;
-}
 interface WebcamMarkerData extends BaseMarker {
   _kind: 'webcam';
   webcamId: string;
@@ -446,37 +232,21 @@ interface GlobePath {
   id: string;
   name: string;
   points: number[][];
-  pathType: 'cable' | 'oil' | 'gas' | 'products' | 'orbit' | 'stormTrack' | 'stormHistory';
+  pathType: 'cable' | 'oil' | 'gas' | 'products' | 'stormTrack' | 'stormHistory';
   status: string;
-  country?: string;
   windKt?: number;
 }
 interface GlobePolygon {
   coords: number[][][];
   name: string;
-  _kind: 'cii' | 'conflict' | 'imageryFootprint' | 'forecastCone' | 'scenario';
-  level?: string;
-  score?: number;
-
-  intensity?: string;
-  parties?: string[];
-  casualties?: string;
-
-  satellite?: string;
-  datetime?: string;
-  resolutionM?: number;
-  mode?: string;
-  previewUrl?: string;
+  _kind: 'forecastCone';
 }
 type GlobeMarker =
-  | ConflictMarker | HotspotMarker | FlightMarker | VesselMarker | ClusterMarker
-  | WeatherMarker | NaturalMarker | IranMarker | OutageMarker | TrafficAnomalyMarker | DdosHitMarker
-  | CyberMarker | FireMarker | ProtestMarker
-  | UcdpMarker | DisplacementMarker | ClimateMarker | GpsJamMarker | TechMarker
-  | ConflictZoneMarker | MilBaseMarker | NuclearSiteMarker | IrradiatorSiteMarker | SpaceportSiteMarker
-  | EarthquakeMarker | RadiationMarker | EconomicMarker | DatacenterMarker | WaterwayMarker | MineralMarker
-  | FlightDelayMarker | NotamRingMarker | CableAdvisoryMarker | RepairShipMarker | AisDisruptionMarker
-  | NewsLocationMarker | FlashMarker | SatelliteMarker | SatFootprintMarker | ImagerySceneMarker
+  | WeatherMarker | NaturalMarker | OutageMarker | TrafficAnomalyMarker | DdosHitMarker
+  | FireMarker | ClimateMarker | NuclearSiteMarker | IrradiatorSiteMarker
+  | EarthquakeMarker | RadiationMarker | DatacenterMarker
+  | CableAdvisoryMarker | RepairShipMarker
+  | NewsLocationMarker | FlashMarker
   | WebcamMarkerData | WebcamClusterData;
 
 interface GlobeControlsLike {
@@ -494,8 +264,8 @@ interface GlobeControlsLike {
 }
 
 // Duration (ms) of the globe.gl pointOfView rotation used by programmatic
-// viewport moves. Shared so settlement callers and openChokepoint stay in
-// lockstep with the animation.
+// viewport moves. Shared so settlement callers stay in lockstep with the
+// animation.
 const SET_CENTER_ROTATION_MS = 1200;
 
 export class GlobeMap {
@@ -525,7 +295,6 @@ export class GlobeMap {
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private flushMaxTimer: ReturnType<typeof setTimeout> | null = null;
   private _pulseEnabled = true;
-  private reversedRingCache = new Map<string, number[][][]>();
 
   // Idle rendering: pause globe animation when nothing changes
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -533,53 +302,25 @@ export class GlobeMap {
   private visibilityHandler: (() => void) | null = null;
 
   // Current data
-  private hotspots: HotspotMarker[] = [];
-  private flights: FlightMarker[] = [];
-  private vessels: VesselMarker[] = [];
-  private vesselData: Map<string, MilitaryVessel> = new Map();
-  private flightData: Map<string, MilitaryFlight> = new Map();
-  private clusterMarkers: ClusterMarker[] = [];
-  private clusterData: Map<string, MilitaryVesselCluster> = new Map();
   private popup: MapPopup | null = null;
   private weatherMarkers: WeatherMarker[] = [];
   private naturalMarkers: NaturalMarker[] = [];
-  private iranMarkers: IranMarker[] = [];
   private outageMarkers: OutageMarker[] = [];
   private trafficAnomalyMarkers: TrafficAnomalyMarker[] = [];
   private ddosMarkers: DdosHitMarker[] = [];
-  private cyberMarkers: CyberMarker[] = [];
   private fireMarkers: FireMarker[] = [];
-  private protestMarkers: ProtestMarker[] = [];
-  private ucdpMarkers: UcdpMarker[] = [];
-  private displacementMarkers: DisplacementMarker[] = [];
   private climateMarkers: ClimateMarker[] = [];
-  private gpsJamMarkers: GpsJamMarker[] = [];
-  private techMarkers: TechMarker[] = [];
-  private conflictZoneMarkers: ConflictZoneMarker[] = [];
-  private milBaseMarkers: MilBaseMarker[] = [];
-  private milBaseMarkersLoadPending = false;
   private nuclearSiteMarkers: NuclearSiteMarker[] = [];
   private irradiatorSiteMarkers: IrradiatorSiteMarker[] = [];
-  private spaceportSiteMarkers: SpaceportSiteMarker[] = [];
   private earthquakeMarkers: EarthquakeMarker[] = [];
   private radiationMarkers: RadiationMarker[] = [];
-  private economicMarkers: EconomicMarker[] = [];
   private datacenterMarkers: DatacenterMarker[] = [];
-  private waterwayMarkers: WaterwayMarker[] = [];
-  private mineralMarkers: MineralMarker[] = [];
-  private flightDelayMarkers: FlightDelayMarker[] = [];
-  private notamRingMarkers: NotamRingMarker[] = [];
   private newsLocationMarkers: NewsLocationMarker[] = [];
   private flashMarkers: FlashMarker[] = [];
   private cableAdvisoryMarkers: CableAdvisoryMarker[] = [];
   private repairShipMarkers: RepairShipMarker[] = [];
-  private aisMarkers: AisDisruptionMarker[] = [];
-  private satelliteMarkers: SatelliteMarker[] = [];
-  private satelliteTrailPaths: GlobePath[] = [];
   private stormTrackPaths: GlobePath[] = [];
   private stormConePolygons: GlobePolygon[] = [];
-  private satelliteFootprintMarkers: SatFootprintMarker[] = [];
-  private imagerySceneMarkers: ImagerySceneMarker[] = [];
   private webcamMarkers: (WebcamMarkerData | WebcamClusterData)[] = [];
   /** Layers the marker budget is currently withholding markers from (#5368). */
   private markerTruncation: Record<string, GlobeLayerTruncation> = {};
@@ -593,20 +334,11 @@ export class GlobeMap {
       return 'icon';
     }
   })();
-  private imageryFootprintPolygons: GlobePolygon[] = [];
-  private lastImageryCenter: { lat: number; lon: number } | null = null;
-  private imageryFetchTimer: ReturnType<typeof setTimeout> | null = null;
-  private imageryFetchVersion = 0;
   private controlsEndHandler: (() => void) | null = null;
   private controlsStartHandler: (() => void) | null = null;
-  private satBeamGroup: any = null;
-  private tradeRouteSegments: TradeRouteSegment[] = [];
   private globePaths: GlobePath[] = [];
   private cableFaultIds = new Set<string>();
   private cableDegradedIds = new Set<string>();
-  private ciiScoresMap: Map<string, { score: number; level: string }> = new Map();
-  private countriesGeoData: FeatureCollection<Geometry> | null = null;
-  private scenarioPolygons: GlobePolygon[] = [];
 
   // Current layers state
   private layers: MapLayers;
@@ -615,7 +347,6 @@ export class GlobeMap {
 
   // Click callbacks
   private onNewsClick?: (item: Pick<NewsLocationInput, 'article' | 'title'>) => void;
-  private onHotspotClickCb: ((h: Hotspot) => void) | null = null;
 
   // Auto-rotate timer (like Sentinel: resume after 60 s idle)
   private autoRotateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -624,7 +355,6 @@ export class GlobeMap {
   private layerTogglesEl: HTMLElement | null = null;
   private tooltipEl: HTMLElement | null = null;
   private tooltipHideTimer: ReturnType<typeof setTimeout> | null = null;
-  private satHoverStyle: HTMLStyleElement | null = null;
   private readonly chrome: boolean;
 
   // Callbacks
@@ -669,8 +399,8 @@ export class GlobeMap {
   }
 
   // Resolves once initGlobe() has finished (this.globe is set on success). Lets
-  // callers defer work that needs the globe — e.g. a replayed chokepoint deep
-  // link — instead of dropping it during the async init window.
+  // callers defer work that needs the globe — e.g. a replayed deep link —
+  // instead of dropping it during the async init window.
   public whenReady(): Promise<void> {
     return this.initPromise;
   }
@@ -700,11 +430,6 @@ export class GlobeMap {
       globe._destructor();
       return;
     }
-
-    const satStyle = document.createElement('style');
-    satStyle.textContent = `.sat-hit:hover .sat-dot { transform: scale(2.5); box-shadow: 0 0 10px 4px currentColor; }`;
-    document.head.appendChild(satStyle);
-    this.satHoverStyle = satStyle;
 
     this.unsubscribeGlobeQuality?.();
     this.unsubscribeGlobeQuality = subscribeGlobeRenderScaleChange((scale) => {
@@ -763,9 +488,6 @@ export class GlobeMap {
           this.trySettleViewportMovement(true, viewportMovementGeneration);
         });
       }
-      if (!this.layers.satellites) return;
-      if (this.imageryFetchTimer) clearTimeout(this.imageryFetchTimer);
-      this.imageryFetchTimer = setTimeout(() => this.fetchImageryForViewport(), 800);
     };
     controls.addEventListener('end', this.controlsEndHandler);
 
@@ -860,51 +582,17 @@ export class GlobeMap {
       .htmlElementsData([])
       .htmlLat((d: object) => (d as GlobeMarker)._lat)
       .htmlLng((d: object) => (d as GlobeMarker)._lng)
-      .htmlAltitude((d: object) => {
-        const m = d as GlobeMarker;
-        if (m._kind === 'satFootprint') return 0;
-        if (m._kind === 'satellite') return (m as SatelliteMarker).alt / 6371;
-        if (m._kind === 'flight' || m._kind === 'vessel' || m._kind === 'cluster') return 0.012;
-        if (m._kind === 'hotspot') return 0.005;
-        return 0.003;
-      })
+      .htmlAltitude(() => 0.003)
       .htmlElement((d: object) => this.buildMarkerElement(d as GlobeMarker));
-
-    // Arc accessors — set once, only data changes on flush
-
-    (globe as any)
-      .arcStartLat((d: TradeRouteSegment) => d.sourcePosition[1])
-      .arcStartLng((d: TradeRouteSegment) => d.sourcePosition[0])
-      .arcEndLat((d: TradeRouteSegment) => d.targetPosition[1])
-      .arcEndLng((d: TradeRouteSegment) => d.targetPosition[0])
-      .arcColor((d: TradeRouteSegment) => {
-        if (d.status === 'disrupted') return ['rgba(255,32,32,0.1)', 'rgba(255,32,32,0.8)', 'rgba(255,32,32,0.1)'];
-        if (d.status === 'high_risk') return ['rgba(255,180,0,0.1)', 'rgba(255,180,0,0.7)', 'rgba(255,180,0,0.1)'];
-        if (d.category === 'energy')    return ['rgba(255,140,0,0.05)', 'rgba(255,140,0,0.6)', 'rgba(255,140,0,0.05)'];
-        if (d.category === 'container') return ['rgba(68,136,255,0.05)', 'rgba(68,136,255,0.6)', 'rgba(68,136,255,0.05)'];
-        return ['rgba(68,204,136,0.05)', 'rgba(68,204,136,0.6)', 'rgba(68,204,136,0.05)'];
-      })
-      .arcAltitudeAutoScale(0.3)
-      .arcStroke(0.5)
-      .arcDashLength(0.9)
-      .arcDashGap(4)
-      .arcDashAnimateTime(5000)
-      .arcLabel((d: TradeRouteSegment) => escapeHtml(`${d.routeName} · ${d.volumeDesc}`));
 
     // Path accessors — set once
     (globe as any)
       .pathPoints((d: GlobePath) => d?.points ?? [])
       .pathPointLat((p: number[]) => p[1])
       .pathPointLng((p: number[]) => p[0])
-      .pathPointAlt((p: number[], _idx: number, path: object) =>
-        (path as GlobePath)?.pathType === 'orbit' && p.length > 2 ? (p[2] ?? 0) / 6371 : 0
-      )
+      .pathPointAlt(() => 0)
       .pathColor((d: GlobePath) => {
         if (!d) return 'rgba(180,160,255,0.6)';
-        if (d.pathType === 'orbit') {
-          const colors: Record<string, string> = { CN: 'rgba(255,32,32,0.4)', RU: 'rgba(255,136,0,0.4)', US: 'rgba(68,136,255,0.4)', EU: 'rgba(68,204,68,0.4)' };
-          return colors[d.country || ''] || 'rgba(200,200,255,0.3)';
-        }
         if (d.pathType === 'cable') {
           if (this.cableFaultIds.has(d.id))    return '#ff3030';
           if (this.cableDegradedIds.has(d.id)) return '#ff8800';
@@ -925,14 +613,12 @@ export class GlobeMap {
       })
       .pathStroke((d: GlobePath) => {
         if (!d) return 0.6;
-        if (d.pathType === 'orbit') return 0.3;
         if (d.pathType === 'cable') return 0.3;
         if (d.pathType === 'stormTrack' || d.pathType === 'stormHistory') return 1.2;
         return 0.6;
       })
       .pathDashLength((d: GlobePath) => {
         if (!d) return 0.6;
-        if (d.pathType === 'orbit') return 0.4;
         if (d.pathType === 'cable') return 1;
         if (d.pathType === 'stormTrack') return 0.8;
         if (d.pathType === 'stormHistory') return 1;
@@ -940,7 +626,6 @@ export class GlobeMap {
       })
       .pathDashGap((d: GlobePath) => {
         if (!d) return 0.25;
-        if (d.pathType === 'orbit') return 0.15;
         if (d.pathType === 'cable') return 0;
         if (d.pathType === 'stormTrack') return 0.4;
         if (d.pathType === 'stormHistory') return 0;
@@ -948,7 +633,6 @@ export class GlobeMap {
       })
       .pathDashAnimateTime((d: GlobePath) => {
         if (!d) return 5000;
-        if (d.pathType === 'orbit') return 0;
         if (d.pathType === 'cable') return 0;
         if (d.pathType === 'stormTrack') return 3000;
         if (d.pathType === 'stormHistory') return 0;
@@ -959,60 +643,11 @@ export class GlobeMap {
     // Polygon accessors — set once
     (globe as any)
       .polygonGeoJsonGeometry((d: GlobePolygon) => ({ type: 'Polygon', coordinates: d.coords }))
-      .polygonCapColor((d: GlobePolygon) => {
-        if (d._kind === 'cii') return GlobeMap.CII_GLOBE_COLORS[d.level!] ?? 'rgba(0,0,0,0)';
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_CAP[d.intensity!] ?? GlobeMap.CONFLICT_CAP.low;
-        if (d._kind === 'imageryFootprint') return 'rgba(0,0,0,0)';
-        if (d._kind === 'forecastCone') return 'rgba(255,140,60,0.2)';
-        if (d._kind === 'scenario') return 'rgba(220,60,40,0.3)';
-        return 'rgba(255,60,60,0.15)';
-      })
-      .polygonSideColor((d: GlobePolygon) => {
-        if (d._kind === 'cii') return 'rgba(0,0,0,0)';
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_SIDE[d.intensity!] ?? GlobeMap.CONFLICT_SIDE.low;
-        if (d._kind === 'imageryFootprint') return 'rgba(0,0,0,0)';
-        if (d._kind === 'forecastCone') return 'rgba(255,140,60,0.1)';
-        if (d._kind === 'scenario') return 'rgba(0,0,0,0)';
-        return 'rgba(255,60,60,0.08)';
-      })
-      .polygonStrokeColor((d: GlobePolygon) => {
-        if (d._kind === 'cii') return 'rgba(80,80,80,0.3)';
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_STROKE[d.intensity!] ?? GlobeMap.CONFLICT_STROKE.low;
-        if (d._kind === 'imageryFootprint') return '#00b4ff';
-        if (d._kind === 'forecastCone') return 'rgba(255,140,60,0.5)';
-        if (d._kind === 'scenario') return 'transparent';
-        return '#ff4444';
-      })
-      .polygonAltitude((d: GlobePolygon) => {
-        if (d._kind === 'cii') return 0.002;
-        if (d._kind === 'conflict') return GlobeMap.CONFLICT_ALT[d.intensity!] ?? GlobeMap.CONFLICT_ALT.low;
-        return 0.005;
-      })
-      .polygonLabel((d: GlobePolygon) => {
-        if (d._kind === 'cii') return `<b>${escapeHtml(d.name)}</b><br/>Country instability: ${Number.isFinite(Number(d.score)) ? Number(d.score) : '—'}/100 (${escapeHtml(d.level ?? '')})`;
-        if (d._kind === 'conflict') {
-          let label = `<b>${escapeHtml(d.name)}</b>`;
-          if (d.parties?.length) label += `<br/>Parties: ${d.parties.map(p => escapeHtml(p)).join(', ')}`;
-          if (d.casualties) label += `<br/>Casualties: ${escapeHtml(d.casualties)}`;
-          return label;
-        }
-        if (d._kind === 'imageryFootprint') {
-          let label = `<span style="color:#00b4ff;font-weight:bold;">&#128752; ${escapeHtml(d.satellite ?? '')}</span>`;
-          if (d.datetime) label += `<br><span style="opacity:.7;">${escapeHtml(d.datetime)}</span>`;
-          if (d.resolutionM != null || d.mode) {
-            const parts: string[] = [];
-            if (d.resolutionM != null) parts.push(`${Number.isFinite(Number(d.resolutionM)) ? Number(d.resolutionM) : '—'}m`);
-            if (d.mode) parts.push(escapeHtml(d.mode));
-            label += `<br><span style="opacity:.5;">Res: ${parts.join(' \u00B7 ')}</span>`;
-          }
-          if (isAllowedPreviewUrl(d.previewUrl)) {
-            const safeHref = escapeHtml(new URL(d.previewUrl!).href);
-            label += `<br><img src="${safeHref}" referrerpolicy="no-referrer" style="max-width:180px;max-height:120px;margin-top:4px;border-radius:4px;" class="imagery-preview" alt="">`;
-          }
-          return label;
-        }
-        return escapeHtml(d.name);
-      });
+      .polygonCapColor(() => 'rgba(255,140,60,0.2)')
+      .polygonSideColor(() => 'rgba(255,140,60,0.1)')
+      .polygonStrokeColor(() => 'rgba(255,140,60,0.5)')
+      .polygonAltitude(() => 0.005)
+      .polygonLabel((d: GlobePolygon) => escapeHtml(d.name));
 
     this.globe = globe;
     this.initialized = true;
@@ -1028,9 +663,7 @@ export class GlobeMap {
     }
 
     // Load static datasets
-    this.setHotspots(INTEL_HOTSPOTS);
     this.initStaticLayers();
-    this.setConflictZones();
 
     // Navigate to initial view
     this.setView(this.currentView);
@@ -1040,27 +673,12 @@ export class GlobeMap {
 
     // Flush any data that arrived before init completed
     this.flushMarkers();
-    this.flushArcs();
     this.flushPaths();
     this.flushPolygons();
-
-    // Initial imagery fetch if satellites layer is already enabled
-    if (this.layers.satellites) {
-      this.fetchImageryForViewport();
-    }
 
     // Idle rendering: pause animation when nothing is happening
     this.setupVisibilityHandler();
     this.scheduleIdlePause();
-
-    // Load countries GeoJSON for CII choropleth
-    getCountriesGeoJson().then(geojson => {
-      if (geojson && !this.destroyed) {
-        this.countriesGeoData = geojson;
-        this.reversedRingCache.clear();
-        this.flushPolygons();
-      }
-    }).catch(err => { if (import.meta.env.DEV) console.warn('[GlobeMap] Failed to load countries GeoJSON', err); });
   }
 
   // ─── Marker element builder ────────────────────────────────────────────────
@@ -1078,74 +696,7 @@ export class GlobeMap {
     const el = document.createElement('div');
     el.style.cssText = 'pointer-events:auto;cursor:pointer;user-select:none;';
 
-    if (d._kind === 'conflict') {
-      const size = Math.min(12, 6 + (d.fatalities ?? 0) * 0.4);
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`
-        <div style="position:relative;width:${size}px;height:${size}px;">
-          <div style="
-            position:absolute;inset:0;border-radius:50%;
-            background:rgba(255,50,50,0.85);
-            border:1.5px solid rgba(255,120,120,0.9);
-            box-shadow:0 0 6px 2px rgba(255,50,50,0.5);
-          "></div>
-          <div style="
-            position:absolute;inset:-4px;border-radius:50%;
-            background:rgba(255,50,50,0.2);
-            ${this.pulseStyle('2s')}
-          "></div>
-        </div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.location}`;
-    } else if (d._kind === 'hotspot') {
-      const colors: Record<number, string> = { 5: '#ff2020', 4: '#ff6600', 3: '#ffaa00', 2: '#ffdd00', 1: '#88ff44' };
-      const c = colors[d.escalationScore] ?? '#ffaa00';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`
-        <div style="
-          width:10px;height:10px;
-          background:${c};
-          border:1.5px solid rgba(255,255,255,0.6);
-          clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
-          box-shadow:0 0 8px 2px ${c}88;
-        "></div>`), "legacy direct innerHTML migration"));
-      el.title = d.name;
-    } else if (d._kind === 'flight') {
-      const heading = d.heading ?? 0;
-      const color = GlobeMap.FLIGHT_TYPE_COLORS[d.type] ?? '#cccccc';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`
-        <div style="transform:rotate(${heading}deg);font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:${color};text-shadow:0 0 4px ${color}88;line-height:1;">
-          ✈
-        </div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.callsign} (${d.type})`;
-    } else if (d._kind === 'vessel') {
-      const c = GlobeMap.VESSEL_TYPE_COLORS[d.type] ?? '#44aaff';
-      const icon = GlobeMap.VESSEL_TYPE_ICONS[d.type] ?? '\u26f4';
-      const isCarrier = d.type === 'carrier';
-      const sz = isCarrier ? 15 : 10;
-      const glow = isCarrier ? `0 0 10px 4px ${c}bb` : `0 0 4px ${c}88`;
-      const darkRing = d.isDark
-        ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid #ff444499;${this.pulseStyle('1.5s')}"></div>`
-        : '';
-      const usniRing = d.usniSource
-        ? `<div style="position:absolute;inset:-4px;border-radius:50%;border:2px dashed #ffaa4466;"></div>`
-        : '';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(
-        `<div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">` +
-        darkRing +
-        usniRing +
-        `<div style="font-size:${sz}px;color:${c};text-shadow:${glow};line-height:1;${d.usniSource ? 'opacity:0.8;' : ''}">${icon}</div>` +
-        `</div>`
-      ), "legacy direct innerHTML migration"));
-      el.title = `${d.name}${d.hullNumber ? ` (${d.hullNumber})` : ''} \u00b7 ${d.typeLabel} \u00b7 ${d.usniSource ? 'EST. POSITION' : 'AIS LIVE'}`;
-    } else if (d._kind === 'cluster') {
-      const cc = GlobeMap.CLUSTER_ACTIVITY_COLORS[d.activityType ?? 'unknown'] ?? '#6688aa';
-      const sz = Math.max(14, Math.min(26, 12 + d.vesselCount * 2));
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(
-        `<div style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:${sz}px;height:${sz}px;">` +
-        `<div style="position:absolute;inset:0;border-radius:50%;background:${cc}22;border:2px solid ${cc}bb;${this.pulseStyle('2.5s')}"></div>` +
-        `<span style="position:relative;font-size:calc(9px * var(--wm-panel-effective-scale, 1));color:${cc};font-weight:bold;line-height:1;">${d.vesselCount}</span>` +
-        `</div>`
-      ), "legacy direct innerHTML migration"));
-      el.title = `${d.name} \u00b7 ${d.vesselCount} vessel${d.vesselCount !== 1 ? 's' : ''}`;
-    } else if (d._kind === 'weather') {
+    if (d._kind === 'weather') {
       const severityColors: Record<string, string> = {
         Extreme: '#ff0044', Severe: '#ff6600', Moderate: '#ffaa00', Minor: '#88aaff',
       };
@@ -1172,14 +723,6 @@ export class GlobeMap {
       const icon = typeIcons[d.category] ?? '⚠';
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));">${icon}</div>`), "legacy direct innerHTML migration"));
       el.title = d.title;
-    } else if (d._kind === 'iran') {
-      const sc = getIranEventHexColor(d);
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`
-        <div style="position:relative;width:9px;height:9px;">
-          <div style="position:absolute;inset:0;border-radius:50%;background:${sc};border:1.5px solid rgba(255,255,255,0.5);box-shadow:0 0 5px 2px ${sc}88;"></div>
-          <div style="position:absolute;inset:-4px;border-radius:50%;background:${sc}33;${this.pulseStyle('2s')}"></div>
-        </div>`), "legacy direct innerHTML migration"));
-      el.title = d.title;
     } else if (d._kind === 'outage') {
       const sc = d.severity === 'total' ? '#ff2020' : d.severity === 'major' ? '#ff8800' : '#ffcc00';
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(12px * var(--wm-panel-effective-scale, 1));color:${sc};text-shadow:0 0 4px ${sc}88;">📡</div>`), "legacy direct innerHTML migration"));
@@ -1190,116 +733,29 @@ export class GlobeMap {
     } else if (d._kind === 'ddosHit') {
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:#b400ff;text-shadow:0 0 4px #b400ff88;font-weight:bold;">⚔</div>`), "legacy direct innerHTML migration"));
       el.title = `DDoS: ${d.countryName} (${d.percentage.toFixed(1)}%)`;
-    } else if (d._kind === 'cyber') {
-      const sc = d.severity === 'critical' ? '#ff0044' : d.severity === 'high' ? '#ff4400' : d.severity === 'medium' ? '#ffaa00' : '#44aaff';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:${sc};text-shadow:0 0 4px ${sc}88;font-weight:bold;">🛡</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.type}: ${d.indicator}`;
     } else if (d._kind === 'fire') {
       const intensity = d.brightness > 400 ? '#ff2020' : d.brightness > 330 ? '#ff6600' : '#ffaa00';
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:${intensity};text-shadow:0 0 4px ${intensity}88;">🔥</div>`), "legacy direct innerHTML migration"));
       el.title = `Fire — ${d.region}`;
-    } else if (d._kind === 'protest') {
-      const typeColors: Record<string, string> = {
-        riot: '#ff3030', protest: '#ffaa00', strike: '#44aaff',
-        demonstration: '#88ff44', civil_unrest: '#ff6600',
-      };
-      const c = typeColors[d.eventType] ?? '#ffaa00';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:${c};text-shadow:0 0 4px ${c}88;">📢</div>`), "legacy direct innerHTML migration"));
-      el.title = d.title;
-    } else if (d._kind === 'ucdp') {
-      const size = Math.min(10, 5 + (d.deaths || 0) * 0.3);
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`
-        <div style="position:relative;width:${size}px;height:${size}px;">
-          <div style="position:absolute;inset:0;border-radius:50%;background:rgba(255,100,0,0.85);border:1.5px solid rgba(255,160,80,0.9);box-shadow:0 0 5px 2px rgba(255,100,0,0.5);"></div>
-        </div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.sideA} vs ${d.sideB}`;
-    } else if (d._kind === 'displacement') {
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:#88bbff;text-shadow:0 0 4px #88bbff88;">👥</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.origin} → ${d.asylum}`;
     } else if (d._kind === 'climate') {
       const typeColors: Record<string, string> = { warm: '#ff4400', cold: '#44aaff', wet: '#00ccff', dry: '#ff8800', mixed: '#88ff88' };
       const c = typeColors[d.type] ?? '#88ff88';
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:${c};text-shadow:0 0 4px ${c}88;">🌡</div>`), "legacy direct innerHTML migration"));
       el.title = `${d.zone} (${d.type})`;
-    } else if (d._kind === 'gpsjam') {
-      const c = d.level === 'high' ? '#ff2020' : '#ff8800';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:${c};text-shadow:0 0 4px ${c}88;">📡</div>`), "legacy direct innerHTML migration"));
-      el.title = `GPS Jamming (${d.level})`;
-    } else if (d._kind === 'tech') {
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:#44aaff;text-shadow:0 0 4px #44aaff88;">💻</div>`), "legacy direct innerHTML migration"));
-      el.title = d.title;
-    } else if (d._kind === 'conflictZone') {
-      const intColor = d.intensity === 'high' ? '#ff2020' : d.intensity === 'medium' ? '#ff8800' : '#ffcc00';
-      setTrustedHtml(el, trustedHtml(`
-        <div style="position:relative;width:20px;height:20px;">
-          <div style="
-            position:absolute;inset:0;border-radius:50%;
-            background:${intColor}33;
-            border:1.5px solid ${intColor}99;
-            box-shadow:0 0 6px 2px ${intColor}44;
-          "></div>
-          <div style="
-            position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-            font-size:calc(9px * var(--wm-panel-effective-scale, 1));line-height:1;color:${intColor};
-          ">⚔</div>
-        </div>`, "legacy direct innerHTML migration"));
-      el.title = d.name;
-    } else if (d._kind === 'milbase') {
-      const typeColors: Record<string, string> = {
-        'us-nato': '#4488ff', uk: '#4488ff', france: '#4488ff',
-        russia: '#ff4444', china: '#ff8844', india: '#ff8844',
-        other: '#aaaaaa',
-      };
-      const c = typeColors[d.type] ?? '#aaaaaa';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`
-        <div style="
-          width:0;height:0;
-          border-left:5px solid transparent;
-          border-right:5px solid transparent;
-          border-bottom:9px solid ${c};
-          filter:drop-shadow(0 0 3px ${c}88);
-        "></div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.name}${d.country ? ' · ' + d.country : ''}`;
     } else if (d._kind === 'nuclearSite') {
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:#ffd700;text-shadow:0 0 4px #ffd70088;">☢</div>`), "legacy direct innerHTML migration"));
       el.title = `${d.name} (${d.type})`;
     } else if (d._kind === 'irradiator') {
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:#ff8800;text-shadow:0 0 3px #ff880088;">⚠</div>`), "legacy direct innerHTML migration"));
       el.title = `${d.city}, ${d.country}`;
-    } else if (d._kind === 'spaceport') {
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:#88ddff;text-shadow:0 0 4px #88ddff88;">🚀</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.name} (${d.operator})`;
     } else if (d._kind === 'earthquake') {
       const mc = d.magnitude >= 6 ? '#ff2020' : d.magnitude >= 4 ? '#ff8800' : '#ffcc00';
       const sz = Math.max(8, Math.min(18, Math.round(d.magnitude * 2.5)));
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${mc}44;border:2px solid ${mc};box-shadow:0 0 6px 2px ${mc}55;"></div>`), "legacy direct innerHTML migration"));
       el.title = `M${d.magnitude.toFixed(1)} — ${d.place}`;
-    } else if (d._kind === 'economic') {
-      const ec = d.type === 'exchange' ? '#ffd700' : d.type === 'central-bank' ? '#4488ff' : '#44cc88';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:${ec};text-shadow:0 0 4px ${ec}88;">💰</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.name} · ${d.country}`;
     } else if (d._kind === 'datacenter') {
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:#88aaff;text-shadow:0 0 3px #88aaff88;">🖥</div>`), "legacy direct innerHTML migration"));
       el.title = `${d.name} (${d.owner})`;
-    } else if (d._kind === 'waterway') {
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:#44aadd;text-shadow:0 0 3px #44aadd88;">⚓</div>`), "legacy direct innerHTML migration"));
-      el.title = d.name;
-    } else if (d._kind === 'mineral') {
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));color:#cc88ff;text-shadow:0 0 3px #cc88ff88;">💎</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.mineral} — ${d.name}`;
-    } else if (d._kind === 'flightDelay') {
-      // 'unknown' = no telemetry (#3707). Render desaturated grey so users
-      // don't conflate "no data" with the green/yellow "minor / normal" tier.
-      const sc = d.severity === 'severe' ? '#ff2020'
-               : d.severity === 'major' ? '#ff6600'
-               : d.severity === 'moderate' ? '#ffaa00'
-               : d.severity === 'unknown' ? '#7d7d8a'
-               : '#ffee44';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:${sc};text-shadow:0 0 4px ${sc}88;">✈</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.iata} — ${d.severity}`;
-    } else if (d._kind === 'notamRing') {
-      setTrustedHtml(el, trustedHtml(`<div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center;"><div style="position:absolute;inset:-3px;border-radius:50%;border:2px solid #ff282888;${this.pulseStyle('2s')}"></div><div style="font-size:calc(12px * var(--wm-panel-effective-scale, 1));color:#ff2828;text-shadow:0 0 6px #ff282888;">⚠</div></div>`, "legacy direct innerHTML migration"));
-      el.title = `NOTAM: ${d.name}`;
     } else if (d._kind === 'cableAdvisory') {
       const sc = d.severity === 'fault' ? '#ff2020' : '#ff8800';
       setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:${sc};text-shadow:0 0 4px ${sc}88;">🔌</div>`), "legacy direct innerHTML migration"));
@@ -1319,22 +775,6 @@ export class GlobeMap {
           <div style="position:absolute;inset:-5px;border-radius:50%;background:${tc}22;${this.pulseStyle('1.8s')}"></div>
         </div>`, "legacy direct innerHTML migration"));
       el.title = d.title;
-    } else if (d._kind === 'aisDisruption') {
-      const sc = d.severity === 'high' ? '#ff2020' : d.severity === 'elevated' ? '#ff8800' : '#44aaff';
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:${sc};text-shadow:0 0 4px ${sc}88;">⛴</div>`), "legacy direct innerHTML migration"));
-      el.title = d.name;
-    } else if (d._kind === 'satellite') {
-      const c = SAT_COUNTRY_COLORS[(d as SatelliteMarker).country] || '#ccccff';
-      setTrustedHtml(el, trustedHtml(`<div class="sat-hit" style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin:-8px 0 0 -8px;color:${c}"><div class="sat-dot" style="width:5px;height:5px;border-radius:50%;background:${c};box-shadow:0 0 6px 2px ${c}88;transition:transform .15s,box-shadow .15s;"></div></div>`, "legacy direct innerHTML migration"));
-      el.title = `${(d as SatelliteMarker).name}`;
-    } else if (d._kind === 'satFootprint') {
-      const colors: Record<string, string> = { CN: '#ff2020', RU: '#ff8800', US: '#4488ff', EU: '#44cc44' };
-      const c = colors[(d as SatFootprintMarker).country] || '#ccccff';
-      setTrustedHtml(el, trustedHtml(`<div style="width:12px;height:12px;border-radius:50%;border:1px solid ${c}66;background:${c}15;margin:-6px 0 0 -6px"></div>`, "legacy direct innerHTML migration"));
-      el.style.pointerEvents = 'none';
-    } else if (d._kind === 'imageryScene') {
-      setTrustedHtml(el, trustedHtml(GlobeMap.wrapHit(`<div style="font-size:calc(11px * var(--wm-panel-effective-scale, 1));color:#00b4ff;text-shadow:0 0 4px #00b4ff88;">&#128752;</div>`), "legacy direct innerHTML migration"));
-      el.title = `${d.satellite} ${d.datetime}`;
     } else if (d._kind === 'webcam') {
       const style = getCategoryStyle(d.category);
       const emoji = this.webcamMarkerMode === 'emoji' ? style.emoji : '\u{1F4F7}';
@@ -1363,57 +803,6 @@ export class GlobeMap {
   }
 
   private handleMarkerClick(d: GlobeMarker, anchor: HTMLElement): void {
-    if (d._kind === 'hotspot' && this.onHotspotClickCb) {
-      this.onHotspotClickCb({
-        id: d.id,
-        name: d.name,
-        lat: d._lat,
-        lon: d._lng,
-        keywords: [],
-        escalationScore: d.escalationScore as Hotspot['escalationScore'],
-      });
-    }
-
-    if (d._kind === 'flight' && this.popup) {
-      const flight = this.flightData.get(d.id);
-      if (flight) {
-        const aRect = anchor.getBoundingClientRect();
-        const cRect = this.container.getBoundingClientRect();
-        const x = aRect.left - cRect.left + aRect.width / 2;
-        const y = aRect.top - cRect.top;
-        this.hideTooltip();
-        this.popup.show({ type: 'militaryFlight', data: flight, x, y });
-        this.popup.loadWingbitsLiveFlight(flight.hexCode);
-        return;
-      }
-    }
-
-    if (d._kind === 'vessel' && this.popup) {
-      const vessel = this.vesselData.get(d.id);
-      if (vessel) {
-        const aRect = anchor.getBoundingClientRect();
-        const cRect = this.container.getBoundingClientRect();
-        const x = aRect.left - cRect.left + aRect.width / 2;
-        const y = aRect.top  - cRect.top;
-        this.hideTooltip();
-        this.popup.show({ type: 'militaryVessel', data: vessel, x, y });
-        return;
-      }
-    }
-
-    if (d._kind === 'cluster' && this.popup) {
-      const cluster = this.clusterData.get(d.id);
-      if (cluster) {
-        const aRect = anchor.getBoundingClientRect();
-        const cRect = this.container.getBoundingClientRect();
-        const x = aRect.left - cRect.left + aRect.width / 2;
-        const y = aRect.top  - cRect.top;
-        this.hideTooltip();
-        this.popup.show({ type: 'militaryVesselCluster', data: cluster, x, y });
-        return;
-      }
-    }
-
     if (d._kind === 'webcam-cluster' && this.globe) {
       const pov = this.globe.pointOfView();
       // Fly to cluster and zoom in (reduce altitude by 60%)
@@ -1484,59 +873,7 @@ export class GlobeMap {
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     let html = '';
-    if (d._kind === 'conflict') {
-      html = `<span style="color:#ff5050;font-weight:bold;">⚔ ${esc(d.location)}</span>` +
-             (d.eventType ? `<br><span style="opacity:.7;">${esc(d.eventType)}</span>` : '') +
-             (d.fatalities ? `<br><span style="opacity:.5;">Casualties: ${d.fatalities}</span>` : '');
-    } else if (d._kind === 'hotspot') {
-      const sc = ['', '#88ff44', '#ffdd00', '#ffaa00', '#ff6600', '#ff2020'][d.escalationScore] ?? '#ffaa00';
-      html = `<span style="color:${sc};font-weight:bold;">🎯 ${esc(d.name)}</span>` +
-             `<br><span style="opacity:.7;">Escalation: ${d.escalationScore}/5</span>`;
-    } else if (d._kind === 'flight') {
-      const compass = headingToCompass(d.heading);
-      html = `<span style="font-weight:bold;">✈ ${esc(d.callsign)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.type)}</span>` +
-             `<br><span style="opacity:.5;">Heading: ${compass} (${Math.round(d.heading ?? 0)}°)</span>`;
-    } else if (d._kind === 'vessel') {
-      const deployStatus = d.usniDeploymentStatus && d.usniDeploymentStatus !== 'unknown'
-        ? ` <span style="opacity:.6;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">[${esc(d.usniDeploymentStatus.toUpperCase().replace('-', ' '))}]</span>`
-        : '';
-      const darkWarning = d.isDark
-        ? `<br><span style="color:#ff4444;font-size:calc(10px * var(--wm-panel-effective-scale, 1));font-weight:bold;">⚠ AIS DARK</span>`
-        : '';
-      const operatorLine = d.operatorCountry || d.operator
-        ? `<br><span style="opacity:.6;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">${esc(d.operatorCountry || d.operator || '')}</span>`
-        : '';
-      const hullLine = d.hullNumber
-        ? ` <span style="opacity:.5;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">(${esc(d.hullNumber)})</span>`
-        : '';
-      const articleDate = d.usniArticleDate
-        ? ` · ${new Date(d.usniArticleDate).toLocaleDateString()}`
-        : '';
-      const inPort = d.usniDeploymentStatus === 'in-port';
-      const portLine = inPort && d.usniHomePort
-        ? `<br><span style="color:#44aaff;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">🏠 ${esc(d.usniHomePort)}</span>`
-        : '';
-      html = `<span style="font-weight:bold;">⛴ ${esc(d.name)}${hullLine}${deployStatus}</span>`
-        + darkWarning
-        + `<br><span style="opacity:.7;">${esc(d.typeLabel)}</span>`
-        + operatorLine
-        + portLine
-        + (!inPort && d.usniStrikeGroup ? `<br><span style="opacity:.85;">⚓ ${esc(d.usniStrikeGroup)}</span>` : '')
-        + (d.usniRegion ? `<br><span style="opacity:.6;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">${esc(d.usniRegion)}</span>` : '')
-        + (d.usniActivityDescription ? `<br><span style="opacity:.6;font-size:calc(10px * var(--wm-panel-effective-scale, 1));white-space:normal;display:block;max-width:200px;">${esc(d.usniActivityDescription.slice(0, 120))}</span>` : '')
-        + (d.usniSource
-          ? `<br><span style="color:#ffaa44;font-size:calc(9px * var(--wm-panel-effective-scale, 1));">⚠ EST. POSITION — ${inPort ? 'In-port' : 'Approx.'} via USNI${articleDate}</span>`
-          : `<br><span style="color:#44ff88;font-size:calc(9px * var(--wm-panel-effective-scale, 1));">● AIS LIVE</span>`);
-    } else if (d._kind === 'cluster') {
-      const cc = GlobeMap.CLUSTER_ACTIVITY_COLORS[d.activityType ?? 'unknown'] ?? '#6688aa';
-      const actLabel = d.activityType && d.activityType !== 'unknown'
-        ? d.activityType.charAt(0).toUpperCase() + d.activityType.slice(1) : '';
-      html = `<span style="color:${cc};font-weight:bold;">⚓ ${esc(d.name)}</span>`
-        + `<br><span style="opacity:.7;">${d.vesselCount} vessel${d.vesselCount !== 1 ? 's' : ''}</span>`
-        + (actLabel ? `<br><span style="opacity:.6;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">Activity: ${esc(actLabel)}</span>` : '')
-        + (d.region ? `<br><span style="opacity:.6;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">${esc(d.region)}</span>` : '');
-    } else if (d._kind === 'weather') {
+    if (d._kind === 'weather') {
       const wc = d.severity === 'Extreme' ? '#ff0044' : d.severity === 'Severe' ? '#ff6600' : '#88aaff';
       html = `<span style="color:${wc};font-weight:bold;">⚡ ${esc(d.severity)}</span>` +
              `<br><span style="opacity:.7;white-space:normal;display:block;">${esc(d.headline.slice(0, 90))}</span>`;
@@ -1549,10 +886,6 @@ export class GlobeMap {
     } else if (d._kind === 'natural') {
       html = `<span style="font-weight:bold;">${esc(d.title.slice(0, 60))}</span>` +
              `<br><span style="opacity:.7;">${esc(d.category)}</span>`;
-    } else if (d._kind === 'iran') {
-      const sc = getIranEventHexColor(d);
-      html = `<span style="color:${sc};font-weight:bold;">🎯 ${esc(d.title.slice(0, 60))}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.category)}${d.location ? ' · ' + esc(d.location) : ''}</span>`;
     } else if (d._kind === 'outage') {
       const sc = d.severity === 'total' ? '#ff2020' : d.severity === 'major' ? '#ff8800' : '#ffcc00';
       html = `<span style="color:${sc};font-weight:bold;">📡 ${d.severity.toUpperCase()} Outage</span>` +
@@ -1564,54 +897,15 @@ export class GlobeMap {
     } else if (d._kind === 'ddosHit') {
       html = `<span style="color:#b400ff;font-weight:bold;">⚔ DDoS Target: ${esc(d.countryName)}</span>` +
              `<br><span style="opacity:.7;">${d.percentage.toFixed(1)}% of attack traffic</span>`;
-    } else if (d._kind === 'cyber') {
-      const sc = d.severity === 'critical' ? '#ff0044' : d.severity === 'high' ? '#ff4400' : '#ffaa00';
-      html = `<span style="color:${sc};font-weight:bold;">🛡 ${d.severity.toUpperCase()}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.type)}</span>` +
-             `<br><span style="opacity:.5;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">${esc(d.indicator.slice(0, 40))}</span>`;
     } else if (d._kind === 'fire') {
       html = `<span style="color:#ff6600;font-weight:bold;">🔥 Wildfire</span>` +
              `<br><span style="opacity:.7;">${esc(d.region)}</span>` +
              `<br><span style="opacity:.5;">Brightness: ${d.brightness.toFixed(0)} K</span>`;
-    } else if (d._kind === 'protest') {
-      const typeColors: Record<string, string> = { riot: '#ff3030', strike: '#44aaff', protest: '#ffaa00' };
-      const c = typeColors[d.eventType] ?? '#ffaa00';
-      html = `<span style="color:${c};font-weight:bold;">📢 ${esc(d.eventType)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.country)}</span>` +
-             `<br><span style="opacity:.7;white-space:normal;display:block;">${esc(d.title.slice(0, 70))}</span>` +
-             renderPopupSourceLinks(d.sourceUrls, { limit: 1 });
-    } else if (d._kind === 'ucdp') {
-      html = `<span style="color:#ff6400;font-weight:bold;">⚔ ${esc(d.country)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.sideA)} vs ${esc(d.sideB)}</span>` +
-             (d.deaths ? `<br><span style="opacity:.5;">Deaths: ${d.deaths}</span>` : '');
-    } else if (d._kind === 'displacement') {
-      html = `<span style="color:#88bbff;font-weight:bold;">👥 Displacement</span>` +
-             `<br><span style="opacity:.7;">${esc(d.origin)} → ${esc(d.asylum)}</span>` +
-             `<br><span style="opacity:.5;">Refugees: ${d.refugees.toLocaleString()}</span>`;
     } else if (d._kind === 'climate') {
       const tc = d.type === 'warm' ? '#ff4400' : d.type === 'cold' ? '#44aaff' : '#88ff88';
       html = `<span style="color:${tc};font-weight:bold;">🌡 ${esc(d.type.toUpperCase())}</span>` +
              `<br><span style="opacity:.7;">${esc(d.zone)}</span>` +
              `<br><span style="opacity:.5;">ΔT: ${d.tempDelta > 0 ? '+' : ''}${d.tempDelta.toFixed(1)}°C · ${esc(d.severity)}</span>`;
-    } else if (d._kind === 'gpsjam') {
-      const gc = d.level === 'high' ? '#ff2020' : '#ff8800';
-      html = `<span style="color:${gc};font-weight:bold;">📡 GPS Jamming</span>` +
-             `<br><span style="opacity:.7;">Level: ${esc(d.level)}</span>` +
-             `<br><span style="opacity:.5;">Aircraft affected: ${d.pct.toFixed(1)}%</span>`;
-    } else if (d._kind === 'tech') {
-      html = `<span style="color:#44aaff;font-weight:bold;">💻 ${esc(d.title.slice(0, 50))}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.country)}</span>` +
-             (d.daysUntil >= 0 ? `<br><span style="opacity:.5;">In ${d.daysUntil} days</span>` : '');
-    } else if (d._kind === 'conflictZone') {
-      const ic = d.intensity === 'high' ? '#ff3030' : d.intensity === 'medium' ? '#ff8800' : '#ffcc00';
-      html = `<span style="color:${ic};font-weight:bold;">⚔ ${esc(d.name)}</span>` +
-             (d.parties.length ? `<br><span style="opacity:.7;">${d.parties.map(esc).join(', ')}</span>` : '') +
-             (d.casualties ? `<br><span style="opacity:.5;">Casualties: ${esc(d.casualties)}</span>` : '') +
-             `<details class="conflict-history-details" style="margin-top:6px;"><summary style="cursor:pointer;font-size:calc(9px * var(--wm-panel-effective-scale, 1));opacity:.6;list-style:none;user-select:none;padding:2px 0;">📜 HISTORICAL PROFILE</summary>` +
-             `<div class="conflict-history-content" style="margin-top:4px;"><span style="opacity:.5;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">Loading…</span></div></details>`;
-    } else if (d._kind === 'milbase') {
-      html = `<span style="color:#4488ff;font-weight:bold;">🏛 ${esc(d.name)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.type)}${d.country ? ' · ' + esc(d.country) : ''}</span>`;
     } else if (d._kind === 'nuclearSite') {
       const nc = d.status === 'active' ? '#ffd700' : d.status === 'construction' ? '#ff8800' : '#888888';
       html = `<span style="color:${nc};font-weight:bold;">☢ ${esc(d.name)}</span>` +
@@ -1628,50 +922,14 @@ export class GlobeMap {
     } else if (d._kind === 'irradiator') {
       html = `<span style="color:#ff8800;font-weight:bold;">⚠ Gamma Irradiator</span>` +
              `<br><span style="opacity:.7;">${esc(d.city)}, ${esc(d.country)}</span>`;
-    } else if (d._kind === 'spaceport') {
-      const lc = d.launches === 'High' ? '#88ddff' : d.launches === 'Medium' ? '#44aaff' : '#aaaaaa';
-      html = `<span style="color:${lc};font-weight:bold;">🚀 ${esc(d.name)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.operator)} · ${esc(d.country)}</span>` +
-             `<br><span style="opacity:.5;">Launch frequency: ${esc(d.launches)}</span>`;
     } else if (d._kind === 'earthquake') {
       const mc = d.magnitude >= 6 ? '#ff3030' : d.magnitude >= 4 ? '#ff8800' : '#ffcc00';
       html = `<span style="color:${mc};font-weight:bold;">🌍 M${d.magnitude.toFixed(1)}</span>` +
              `<br><span style="opacity:.7;white-space:normal;display:block;">${esc(d.place.slice(0, 70))}</span>`;
-    } else if (d._kind === 'economic') {
-      const ec = d.type === 'exchange' ? '#ffd700' : d.type === 'central-bank' ? '#4488ff' : '#44cc88';
-      html = `<span style="color:${ec};font-weight:bold;">💰 ${esc(d.name)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.type)} · ${esc(d.country)}</span>` +
-             (d.description ? `<br><span style="opacity:.5;white-space:normal;display:block;">${esc(d.description.slice(0, 70))}</span>` : '');
     } else if (d._kind === 'datacenter') {
       html = `<span style="color:#88aaff;font-weight:bold;">🖥 ${esc(d.name)}</span>` +
              `<br><span style="opacity:.7;">${esc(d.owner)} · ${esc(d.country)}</span>` +
              `<br><span style="opacity:.5;">${esc(d.chipType)}</span>`;
-    } else if (d._kind === 'waterway') {
-      html = `<span style="color:#44aadd;font-weight:bold;">⚓ ${esc(d.name)}</span>` +
-             (d.description ? `<br><span style="opacity:.7;white-space:normal;display:block;">${esc(d.description.slice(0, 80))}</span>` : '');
-    } else if (d._kind === 'mineral') {
-      const mc2 = d.status === 'producing' ? '#cc88ff' : '#8866bb';
-      html = `<span style="color:${mc2};font-weight:bold;">💎 ${esc(d.mineral)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.name)} · ${esc(d.country)}</span>` +
-             `<br><span style="opacity:.5;">${esc(d.status)}</span>`;
-    } else if (d._kind === 'flightDelay') {
-      // #3707: 'unknown' = no telemetry. Render desaturated grey (mirrors the
-      // marker branch at line 1157) so the tooltip doesn't show yellow for
-      // uncovered airports.
-      const sc = d.severity === 'severe' ? '#ff3030'
-               : d.severity === 'major' ? '#ff6600'
-               : d.severity === 'moderate' ? '#ffaa00'
-               : d.severity === 'unknown' ? '#7d7d8a'
-               : '#ffee44';
-      html = `<span style="color:${sc};font-weight:bold;">✈ ${esc(d.iata)} — ${esc(d.severity.toUpperCase())}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.name)}, ${esc(d.country)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.delayType.replace(/_/g, ' '))}` +
-             (d.avgDelayMinutes > 0 ? ` · avg ${d.avgDelayMinutes}min` : '') + `</span>` +
-             (d.reason ? `<br><span style="opacity:.5;white-space:normal;display:block;">${esc(d.reason.slice(0, 70))}</span>` : '');
-    } else if (d._kind === 'notamRing') {
-      html = `<span style="color:#ff2828;font-weight:bold;">⚠ NOTAM CLOSURE</span>` +
-             `<br><span style="opacity:.7;">${esc(d.name)}</span>` +
-             (d.reason ? `<br><span style="opacity:.5;white-space:normal;display:block;">${esc(d.reason.slice(0, 100))}</span>` : '');
     } else if (d._kind === 'cableAdvisory') {
       const sc = d.severity === 'fault' ? '#ff2020' : '#ff8800';
       html = `<span style="color:${sc};font-weight:bold;">🔌 ${esc(d.severity.toUpperCase())} — ${esc(d.title.slice(0, 50))}</span>` +
@@ -1682,90 +940,22 @@ export class GlobeMap {
       html = `<span style="color:${sc};font-weight:bold;">🚢 ${esc(d.name)}</span>` +
              `<br><span style="opacity:.7;">${esc(d.status.replace(/-/g, ' '))}${d.operator ? ' · ' + esc(d.operator) : ''}</span>` +
              (d.eta ? `<br><span style="opacity:.5;">ETA: ${esc(d.eta)}</span>` : '');
-    } else if (d._kind === 'aisDisruption') {
-      const sc = d.severity === 'high' ? '#ff2020' : d.severity === 'elevated' ? '#ff8800' : '#44aaff';
-      const typeLabel = d.type === 'gap_spike' ? 'Gap Spike' : 'Chokepoint Congestion';
-      html = `<span style="color:${sc};font-weight:bold;">⛴ ${esc(typeLabel)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.name)}</span>` +
-             `<br><span style="opacity:.5;">${esc(d.severity)} · ${esc(d.description.slice(0, 60))}</span>`;
     } else if (d._kind === 'newsLocation') {
       const tc = d.threatLevel === 'critical' ? '#ff2020' : d.threatLevel === 'high' ? '#ff6600' : (d.threatLevel === 'elevated' || d.threatLevel === 'medium') ? '#ffaa00' : '#44aaff';
       const coverage = corroborationLabelHtml(d.corroboration);
       html = `<span style="color:${tc};font-weight:bold;">📰 ${esc(d.title.slice(0, 60))}</span>` +
              `<br><span style="opacity:.5;">${esc(d.threatLevel)}</span>` +
              (coverage ? `<br>${coverage}` : '');
-    } else if (d._kind === 'satellite') {
-      const sc = SAT_COUNTRY_COLORS[d.country] || '#ccccff';
-      const altBand = d.alt < 2000 ? 'LEO' : d.alt < 35786 ? 'MEO' : 'GEO';
-      const operatorName = SAT_OPERATOR_NAME[d.country] || getCountryNameByCode(d.country) || d.country;
-      const overHit = getCountryAtCoordinates(d._lat, d._lng);
-      const overLabel = overHit ? overHit.name : 'Ocean';
-      html = `<div style="min-width:220px;">` +
-        `<span style="color:${sc};font-weight:bold;font-size:calc(12px * var(--wm-panel-effective-scale, 1));">${SAT_TYPE_EMOJI[d.type] || '\u{1F6F0}'} ${esc(d.name)}</span>` +
-        `<div style="opacity:.5;font-size:calc(10px * var(--wm-panel-effective-scale, 1));margin:2px 0 6px;">NORAD ${esc(d.id)}</div>` +
-        `<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:calc(11px * var(--wm-panel-effective-scale, 1));">` +
-        `<span style="opacity:.5;">Type</span><span>${esc(SAT_TYPE_LABEL[d.type] || d.type)}</span>` +
-        `<span style="opacity:.5;">Operator</span><span style="color:${sc}">${esc(operatorName)}</span>` +
-        `<span style="opacity:.5;">Over</span><span>${esc(overLabel)}</span>` +
-        `<span style="opacity:.5;">Alt. band</span><span>${altBand} \u00B7 ${Math.round(d.alt)} km</span>` +
-        `<span style="opacity:.5;">Incl.</span><span>${d.inclination.toFixed(1)}\u00B0</span>` +
-        `<span style="opacity:.5;">Velocity</span><span>${d.velocity.toFixed(1)} km/s</span>` +
-        `</div></div>`;
-    } else if (d._kind === 'imageryScene') {
-      html = `<span style="color:#00b4ff;font-weight:bold;">&#128752; ${esc(d.satellite)}</span>` +
-             `<br><span style="opacity:.7;">${esc(d.datetime)}</span>`;
-      if (d.resolutionM != null || d.mode) {
-        const rp: string[] = [];
-        if (d.resolutionM != null) rp.push(`${d.resolutionM}m`);
-        if (d.mode) rp.push(esc(d.mode));
-        html += `<br><span style="opacity:.5;">Res: ${rp.join(' \u00B7 ')}</span>`;
-      }
-      if (isAllowedPreviewUrl(d.previewUrl)) {
-        const safeHref = escapeHtml(new URL(d.previewUrl!).href);
-        html += `<br><img src="${safeHref}" referrerpolicy="no-referrer" style="max-width:180px;max-height:120px;margin-top:4px;border-radius:4px;" class="imagery-preview" alt="">`;
-      }
     } else if (d._kind === 'webcam') {
       html = '';
     } else if (d._kind === 'webcam-cluster') {
       html = '';
     }
     setTrustedHtml(el, trustedHtml(`<div style="padding-right:16px;position:relative;">${closeBtn}${html}</div>`, "legacy direct innerHTML migration"));
-    const wideKinds = new Set(['satellite', 'flightDelay', 'conflictZone', 'cableAdvisory', 'nuclearSite']);
+    const wideKinds = new Set(['cableAdvisory', 'nuclearSite']);
     if (wideKinds.has(d._kind)) el.style.maxWidth = '300px';
     el.querySelector('button')?.addEventListener('click', () => this.hideTooltip());
 
-    if (d._kind === 'conflictZone') {
-      const details = el.querySelector<HTMLDetailsElement>('.conflict-history-details');
-      const content = el.querySelector('.conflict-history-content');
-      if (details && content) {
-        let loaded = false;
-        details.addEventListener('toggle', async () => {
-          if (!details.open || loaded) return;
-          loaded = true;
-          // Auto-dismiss stays governed by hover: mouseenter already clears the
-          // hide timer while the cursor is over the tooltip, so don't permanently
-          // cancel it here — doing so left the tooltip stuck open forever.
-          try {
-            const { fetchUcdpEvents, deriveConflictHistory } = await import('@/services/conflict');
-            const resp = await fetchUcdpEvents();
-            if (!el.isConnected || !content.isConnected) return;
-            const { conflictSince, recordedFatalities } = deriveConflictHistory(d, resp.data);
-            const rows = [
-              conflictSince ? `<div style="display:flex;justify-content:space-between;gap:8px;font-size:calc(10px * var(--wm-panel-effective-scale, 1));margin:2px 0;"><span style="opacity:.5;">CONFLICT SINCE</span><span>${esc(conflictSince)}</span></div>` : '',
-              d.peaceAgreements?.length ? `<div style="font-size:calc(10px * var(--wm-panel-effective-scale, 1));margin:2px 0;"><span style="opacity:.5;display:block;margin-bottom:1px;">PEACE AGREEMENTS</span>${d.peaceAgreements.map(a => `<div style="opacity:.7;">· ${esc(a)}</div>`).join('')}</div>` : '',
-              recordedFatalities > 0
-                ? `<div style="display:flex;justify-content:space-between;gap:8px;font-size:calc(10px * var(--wm-panel-effective-scale, 1));margin:2px 0;"><span style="opacity:.5;">RECORDED FATALITIES</span><span>~${recordedFatalities.toLocaleString()}</span></div>`
-                : d.totalFatalities ? `<div style="display:flex;justify-content:space-between;gap:8px;font-size:calc(10px * var(--wm-panel-effective-scale, 1));margin:2px 0;"><span style="opacity:.5;">TOTAL FATALITIES</span><span>${esc(d.totalFatalities)}</span></div>` : '',
-            ].filter(Boolean).join('');
-            setTrustedHtml(content, trustedHtml(rows || '<span style="opacity:.5;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">No UCDP data found.</span>', 'legacy direct innerHTML migration'));
-          } catch {
-            if (el.isConnected && content.isConnected) {
-              setTrustedHtml(content, trustedHtml('<span style="opacity:.5;font-size:calc(10px * var(--wm-panel-effective-scale, 1));">Could not load history.</span>', 'legacy direct innerHTML migration'));
-            }
-          }
-        });
-      }
-    }
 
     if (d._kind === 'webcam') {
       const wrapper = el.firstElementChild!;
@@ -1880,7 +1070,7 @@ export class GlobeMap {
 
     this.tooltipEl = el;
     if (this.tooltipHideTimer) clearTimeout(this.tooltipHideTimer);
-    const richKinds = new Set(['satellite', 'flightDelay', 'cableAdvisory', 'conflictZone', 'nuclearSite', 'spaceport', 'economic', 'datacenter', 'imageryScene', 'repairShip', 'aisDisruption']);
+    const richKinds = new Set(['cableAdvisory', 'nuclearSite', 'datacenter', 'repairShip']);
     const hideDelay = d._kind === 'webcam' ? 8000 : d._kind === 'webcam-cluster' ? 12000 : richKinds.has(d._kind) ? 6000 : 3500;
     this.tooltipHideTimer = setTimeout(() => this.hideTooltip(), hideDelay);
 
@@ -2224,53 +1414,22 @@ export class GlobeMap {
       extra: Pick<Partial<GlobeMarkerGroup<GlobeMarker>>, 'rank' | 'exempt'> = {},
     ): void => { if (markers.length) groups.push({ layer, markers, ...extra }); };
 
-    if (this.layers.hotspots) add('hotspots', this.hotspots, { rank: m => (m._kind === 'hotspot' ? m.escalationScore : 0) });
-    if (this.layers.conflicts) add('conflicts', this.conflictZoneMarkers);
-    if (this.layers.bases) add('bases', this.milBaseMarkers);
     if (this.layers.nuclear) add('nuclear', this.nuclearSiteMarkers);
     if (this.layers.irradiators) add('irradiators', this.irradiatorSiteMarkers);
-    if (this.layers.spaceports) add('spaceports', this.spaceportSiteMarkers);
-    if (this.layers.military) {
-      add('military', this.flights);
-      // Carriers first: the AIS feed is the largest on the globe (1,526 markers
-      // measured on production) and is the one most likely to be trimmed.
-      add('military', this.vessels, { rank: m => (m._kind === 'vessel' && m.type === 'carrier' ? 1 : 0) });
-      add('military', this.clusterMarkers);
-    }
     if (this.layers.weather) add('weather', this.weatherMarkers);
     if (this.layers.natural) {
       add('natural', this.naturalMarkers);
       add('natural', this.earthquakeMarkers, { rank: m => (m._kind === 'earthquake' ? m.magnitude : 0) });
     }
     if (this.layers.radiationWatch) add('radiationWatch', this.radiationMarkers);
-    if (this.layers.economic) add('economic', this.economicMarkers);
     if (this.layers.datacenters) add('datacenters', this.datacenterMarkers);
-    if (this.layers.waterways) add('waterways', this.waterwayMarkers);
-    if (this.layers.minerals) add('minerals', this.mineralMarkers);
-    if (this.layers.flights) {
-      add('flights', this.flightDelayMarkers);
-      add('flights', this.notamRingMarkers);
-    }
-    if (this.layers.ais) add('ais', this.aisMarkers);
-    if (this.layers.iranAttacks) add('iranAttacks', this.iranMarkers);
     if (this.layers.outages) {
       add('outages', this.outageMarkers);
       add('outages', this.trafficAnomalyMarkers);
       add('outages', this.ddosMarkers);
     }
-    if (this.layers.cyberThreats) add('cyberThreats', this.cyberMarkers);
     if (this.layers.fires) add('fires', this.fireMarkers, { rank: m => (m._kind === 'fire' ? m.brightness : 0) });
-    if (this.layers.protests) add('protests', this.protestMarkers);
-    if (this.layers.ucdpEvents) add('ucdpEvents', this.ucdpMarkers, { rank: m => (m._kind === 'ucdp' ? m.deaths : 0) });
-    if (this.layers.displacement) add('displacement', this.displacementMarkers);
     if (this.layers.climate) add('climate', this.climateMarkers);
-    if (this.layers.gpsJamming) add('gpsJamming', this.gpsJamMarkers);
-    if (this.layers.satellites) {
-      add('satellites', this.satelliteMarkers);
-      add('satellites', this.satelliteFootprintMarkers);
-      add('satellites', this.imagerySceneMarkers);
-    }
-    if (this.layers.techEvents) add('techEvents', this.techMarkers);
     if (this.layers.cables) {
       add('cables', this.cableAdvisoryMarkers);
       add('cables', this.repairShipMarkers);
@@ -2294,8 +1453,8 @@ export class GlobeMap {
     for (const group of groups) {
       if (group.exempt) continue;
       // Unranked layers rank by nearness outright; ranked ones use it to break
-      // ties, because a coarse severity rank (carrier-or-not leaves ~1,500
-      // vessels on one score) would otherwise fall back to raw feed order.
+      // ties, because a coarse severity rank would otherwise fall back to raw
+      // feed order.
       if (group.rank) group.tieBreak = nearestFirst;
       else group.rank = nearestFirst;
     }
@@ -2323,13 +1482,6 @@ export class GlobeMap {
     });
   }
 
-  private flushArcs(): void {
-    if (!this.globe || !this.initialized || this.destroyed || this.webglLost) return;
-    this.wakeGlobe();
-    const segments = this.layers.tradeRoutes ? this.tradeRouteSegments : [];
-    (this.globe as any).arcsData(segments);
-  }
-
   private flushPaths(): void {
     if (!this.globe || !this.initialized || this.destroyed || this.webglLost) return;
     this.wakeGlobe();
@@ -2338,31 +1490,8 @@ export class GlobeMap {
     const paths = (showCables && showPipelines)
       ? this.globePaths
       : this.globePaths.filter(p => p.pathType === 'cable' ? showCables : showPipelines);
-    const orbitPaths = this.layers.satellites ? this.satelliteTrailPaths : [];
     const stormPaths = this.layers.natural ? this.stormTrackPaths : [];
-    (this.globe as any).pathsData([...paths, ...orbitPaths, ...stormPaths]);
-  }
-
-  private static readonly CII_GLOBE_COLORS: Record<string, string> = {
-    low:      'rgba(40, 180, 60, 0.35)',
-    normal:   'rgba(220, 200, 50, 0.35)',
-    elevated: 'rgba(240, 140, 30, 0.40)',
-    high:     'rgba(220, 50, 20, 0.45)',
-    critical: 'rgba(140, 10, 0, 0.50)',
-  };
-  private static readonly CONFLICT_CAP: Record<string, string> = { high: 'rgba(255,40,40,0.25)', medium: 'rgba(255,120,0,0.20)', low: 'rgba(255,200,0,0.15)' };
-  private static readonly CONFLICT_SIDE: Record<string, string> = { high: 'rgba(255,40,40,0.12)', medium: 'rgba(255,120,0,0.08)', low: 'rgba(255,200,0,0.06)' };
-  private static readonly CONFLICT_STROKE: Record<string, string> = { high: '#ff3030', medium: '#ff8800', low: '#ffcc00' };
-  private static readonly CONFLICT_ALT: Record<string, number> = { high: 0.006, medium: 0.004, low: 0.003 };
-
-  private getReversedRing(zoneId: string, countryIso: string, ringIdx: number, ring: number[][][]): number[][][] {
-    const key = `${zoneId}:${countryIso}:${ringIdx}`;
-    let cached = this.reversedRingCache.get(key);
-    if (!cached) {
-      cached = ring.map((r: number[][]) => [...r].reverse());
-      this.reversedRingCache.set(key, cached);
-    }
-    return cached;
+    (this.globe as any).pathsData([...paths, ...stormPaths]);
   }
 
   private flushPolygons(): void {
@@ -2370,118 +1499,14 @@ export class GlobeMap {
     this.wakeGlobe();
     const polys: GlobePolygon[] = [];
 
-    if (this.layers.conflicts) {
-      const CONFLICT_ISO: Record<string, string[]> = {
-        iran: ['IR'], ukraine: ['UA'], gaza: ['PS', 'IL'], sudan: ['SD'], myanmar: ['MM'],
-      };
-      for (const z of CONFLICT_ZONES) {
-        const isoCodes = CONFLICT_ISO[z.id];
-        if (isoCodes && this.countriesGeoData) {
-          for (const feat of this.countriesGeoData.features) {
-            const code = feat.properties?.['ISO3166-1-Alpha-2'] as string | undefined;
-            if (!code || !isoCodes.includes(code)) continue;
-            const geom = feat.geometry;
-            if (!geom) continue;
-            const rings = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
-            for (let ri = 0; ri < rings.length; ri++) {
-              polys.push({
-                coords: this.getReversedRing(z.id, code, ri, rings[ri] as number[][][]),
-                name: z.name,
-                _kind: 'conflict',
-                intensity: z.intensity ?? 'low',
-                parties: z.parties,
-                casualties: z.casualties,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    if (this.layers.ciiChoropleth && this.countriesGeoData) {
-      for (const feat of this.countriesGeoData.features) {
-        const code = feat.properties?.['ISO3166-1-Alpha-2'] as string | undefined;
-        const entry = code ? this.ciiScoresMap.get(code) : undefined;
-        if (!entry || !code) continue;
-        const geom = feat.geometry;
-        if (!geom) continue;
-        const rings = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
-        const name = (feat.properties?.name as string) ?? code;
-        for (const ring of rings) {
-          polys.push({ coords: ring, name, _kind: 'cii', level: entry.level, score: entry.score });
-        }
-      }
-    }
-
-    if (this.layers.satellites) {
-      polys.push(...this.imageryFootprintPolygons);
-    }
-
     if (this.layers.natural) {
       polys.push(...this.stormConePolygons);
-    }
-
-    if (this.scenarioPolygons.length) {
-      polys.push(...this.scenarioPolygons);
     }
 
     (this.globe as any).polygonsData(polys);
   }
 
   // ─── Public data setters ──────────────────────────────────────────────────
-
-  public setScenarioState(state: ScenarioVisualState | null): void {
-    this.scenarioPolygons = [];
-    if (state?.affectedIso2s?.length && this.countriesGeoData) {
-      const affected = new Set(state.affectedIso2s);
-      for (const feat of this.countriesGeoData.features) {
-        const code = feat.properties?.['ISO3166-1-Alpha-2'] as string | undefined;
-        if (!code || !affected.has(code)) continue;
-        const geom = feat.geometry;
-        if (!geom) continue;
-        const rings = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
-        for (const ring of rings) {
-          this.scenarioPolygons.push({ coords: ring as number[][][], name: code, _kind: 'scenario' });
-        }
-      }
-    }
-    this.flushPolygons();
-  }
-
-  public setCIIScores(scores: Array<{ code: string; score: number; level: string }>): void {
-    this.ciiScoresMap = new Map(scores.map(s => [s.code, { score: s.score, level: s.level }]));
-    this.flushPolygons();
-  }
-
-  public setHotspots(hotspots: Hotspot[]): void {
-    this.hotspots = hotspots.map(h => ({
-      _kind: 'hotspot' as const,
-      _lat: h.lat,
-      _lng: h.lon,
-      id: h.id,
-      name: h.name,
-      escalationScore: h.escalationScore ?? 1,
-    }));
-    this.flushMarkers();
-  }
-
-  private setConflictZones(): void {
-    this.conflictZoneMarkers = CONFLICT_ZONES.map(z => ({
-      _kind: 'conflictZone' as const,
-      _lat: z.center[1],
-      _lng: z.center[0],
-      id: z.id,
-      name: z.name,
-      intensity: z.intensity ?? 'low',
-      parties: z.parties ?? [],
-      casualties: z.casualties,
-      center: z.center,
-      startDate: z.startDate,
-      peaceAgreements: z.peaceAgreements,
-      totalFatalities: z.totalFatalities,
-    }));
-    this.flushMarkers();
-  }
 
   private initStaticLayers(): void {
     for (const k of Object.keys(this.layers) as (keyof MapLayers)[]) {
@@ -2491,12 +1516,6 @@ export class GlobeMap {
 
   private ensureStaticDataForLayer(layer: keyof MapLayers): void {
     switch (layer) {
-      case 'bases':
-        if (!this.milBaseMarkers.length) {
-          this.setMilitaryBaseMarkers(getCachedMilitaryBases());
-          if (!this.milBaseMarkers.length) this.requestMilitaryBaseMarkers();
-        }
-        break;
       case 'nuclear':
         if (!this.nuclearSiteMarkers.length) {
           this.nuclearSiteMarkers = NUCLEAR_FACILITIES
@@ -2528,36 +1547,6 @@ export class GlobeMap {
           }));
         }
         break;
-      case 'spaceports':
-        if (!this.spaceportSiteMarkers.length) {
-          this.spaceportSiteMarkers = (SPACEPORTS as Spaceport[])
-            .filter(s => s.status === 'active')
-            .map(s => ({
-              _kind: 'spaceport' as const,
-              _lat: s.lat,
-              _lng: s.lon,
-              id: s.id,
-              name: s.name,
-              country: s.country,
-              operator: s.operator,
-              launches: s.launches,
-            }));
-        }
-        break;
-      case 'economic':
-        if (!this.economicMarkers.length) {
-          this.economicMarkers = (ECONOMIC_CENTERS as EconomicCenter[]).map(c => ({
-            _kind: 'economic' as const,
-            _lat: c.lat,
-            _lng: c.lon,
-            id: c.id,
-            name: c.name,
-            type: c.type,
-            country: c.country,
-            description: c.description ?? '',
-          }));
-        }
-        break;
       case 'datacenters':
         if (!this.datacenterMarkers.length) {
           this.datacenterMarkers = (AI_DATA_CENTERS as AIDataCenter[])
@@ -2572,39 +1561,6 @@ export class GlobeMap {
               country: d.country,
               chipType: d.chipType,
             }));
-        }
-        break;
-      case 'waterways':
-        if (!this.waterwayMarkers.length) {
-          this.waterwayMarkers = (STRATEGIC_WATERWAYS as StrategicWaterway[]).map(w => ({
-            _kind: 'waterway' as const,
-            _lat: w.lat,
-            _lng: w.lon,
-            id: w.id,
-            name: w.name,
-            description: w.description ?? '',
-          }));
-        }
-        break;
-      case 'minerals':
-        if (!this.mineralMarkers.length) {
-          this.mineralMarkers = (CRITICAL_MINERALS as CriticalMineralProject[])
-            .filter(m => m.status === 'producing' || m.status === 'development')
-            .map(m => ({
-              _kind: 'mineral' as const,
-              _lat: m.lat,
-              _lng: m.lon,
-              id: m.id,
-              name: m.name,
-              mineral: m.mineral,
-              country: m.country,
-              status: m.status,
-            }));
-        }
-        break;
-      case 'tradeRoutes':
-        if (!this.tradeRouteSegments.length) {
-          this.tradeRouteSegments = resolveTradeRouteSegments();
         }
         break;
       case 'cables':
@@ -2629,142 +1585,6 @@ export class GlobeMap {
         }
         break;
     }
-  }
-
-  private setMilitaryBaseMarkers(bases: MilitaryBase[]): void {
-    this.milBaseMarkers = bases.map(b => ({
-      _kind: 'milbase' as const,
-      _lat: b.lat,
-      _lng: b.lon,
-      id: b.id,
-      name: b.name,
-      type: b.type,
-      country: b.country ?? '',
-    }));
-  }
-
-  private requestMilitaryBaseMarkers(): void {
-    if (this.milBaseMarkersLoadPending) return;
-    this.milBaseMarkersLoadPending = true;
-    void preloadMilitaryBases()
-      .then((bases) => {
-        this.milBaseMarkersLoadPending = false;
-        if (this.destroyed) return;
-        this.setMilitaryBaseMarkers(bases);
-        this.flushMarkers();
-      })
-      .catch((error) => {
-        this.milBaseMarkersLoadPending = false;
-        console.warn('[GlobeMap] Military base config unavailable:', error);
-      });
-  }
-
-  public setMilitaryFlights(flights: MilitaryFlight[]): void {
-    this.flightData.clear();
-    for (const f of flights) this.flightData.set(f.id, f);
-    this.flights = flights.map(f => ({
-      _kind: 'flight' as const,
-      _lat: f.lat,
-      _lng: f.lon,
-      id: f.id,
-      callsign: f.callsign ?? '',
-      type: (f as any).aircraftType ?? (f as any).type ?? 'fighter',
-      heading: (f as any).heading ?? 0,
-    }));
-    this.flushMarkers();
-  }
-
-  private static readonly FLIGHT_TYPE_COLORS: Record<string, string> = {
-    fighter: '#ff4444', bomber: '#ff8800', recon: '#44aaff',
-    tanker: '#88ff44', transport: '#aaaaff', helicopter: '#ffff44',
-    drone: '#ff44ff', maritime: '#44ffff',
-  };
-
-  private static readonly VESSEL_TYPE_COLORS: Record<string, string> = {
-    carrier:    '#ff4444',
-    destroyer:  '#ff8800',
-    frigate:    '#ffcc00',
-    submarine:  '#8844ff',
-    amphibious: '#44cc88',
-    patrol:     '#44aaff',
-    auxiliary:  '#aaaaaa',
-    research:   '#44ffff',
-    icebreaker: '#88ccff',
-    special:    '#ff44ff',
-    // An AIS-only military contact (#8611) has no hull class. Without this it
-    // fell through to patrol's own blue and read as a coast-guard vessel; the
-    // icon fallback is already the generic ship glyph, which is correct here.
-    unknown:    '#6688aa',
-  };
-
-  private static readonly VESSEL_TYPE_ICONS: Record<string, string> = {
-    carrier:    '\u26f4',
-    destroyer:  '\u25b2',
-    frigate:    '\u25b2',
-    submarine:  '\u25c6',
-    amphibious: '\u2b21',
-    patrol:     '\u25b6',
-    auxiliary:  '\u25cf',
-    research:   '\u25ce',
-    icebreaker: '\u2745',
-    special:    '\u2605',
-  };
-
-  private static readonly CLUSTER_ACTIVITY_COLORS: Record<string, string> = {
-    deployment: '#ff4444', exercise: '#ff8800', transit: '#ffcc00', unknown: '#6688aa',
-  };
-
-  private static readonly VESSEL_TYPE_LABELS: Record<string, string> = {
-    carrier: 'Aircraft Carrier',
-    destroyer: 'Destroyer',
-    frigate: 'Frigate',
-    submarine: 'Submarine',
-    amphibious: 'Amphibious',
-    patrol: 'Patrol',
-    auxiliary: 'Auxiliary',
-    research: 'Research',
-    icebreaker: 'Icebreaker',
-    special: 'Special Mission',
-    unknown: 'Unknown',
-  };
-
-  public setMilitaryVessels(vessels: MilitaryVessel[], clusters: MilitaryVesselCluster[] = []): void {
-    this.vesselData.clear();
-    for (const v of vessels) this.vesselData.set(v.id, v);
-    this.clusterData.clear();
-    for (const c of clusters) this.clusterData.set(c.id, c);
-
-    this.vessels = vessels.map(v => ({
-      _kind: 'vessel' as const,
-      _lat: v.lat,
-      _lng: v.lon,
-      id: v.id,
-      name: v.name ?? 'vessel',
-      type: v.vesselType,                                                    // raw enum — color/icon key
-      typeLabel: vesselTypeLabel(v, GlobeMap.VESSEL_TYPE_LABELS),            // display string
-      hullNumber: v.hullNumber,
-      operator: v.operator !== 'other' ? v.operator : undefined,
-      operatorCountry: v.operatorCountry,
-      isDark: v.isDark,
-      usniStrikeGroup: v.usniStrikeGroup,
-      usniRegion: v.usniRegion,
-      usniDeploymentStatus: v.usniDeploymentStatus,
-      usniHomePort: v.usniHomePort,
-      usniActivityDescription: v.usniActivityDescription,
-      usniArticleDate: v.usniArticleDate,
-      usniSource: v.usniSource,
-    }));
-    this.clusterMarkers = clusters.map(c => ({
-      _kind: 'cluster' as const,
-      _lat: c.lat,
-      _lng: c.lon,
-      id: c.id,
-      name: c.name,
-      vesselCount: c.vesselCount,
-      activityType: c.activityType,
-      region: c.region,
-    }));
-    this.flushMarkers();
   }
 
   public setWeatherAlerts(alerts: WeatherAlert[]): void {
@@ -2842,60 +1662,37 @@ export class GlobeMap {
 
   // ─── Layer control ────────────────────────────────────────────────────────
 
-  private static readonly LAYER_CHANNELS: Map<string, { markers: boolean; arcs: boolean; paths: boolean; polygons: boolean }> = new Map([
-    ['ciiChoropleth', { markers: false, arcs: false, paths: false, polygons: true }],
-    ['tradeRoutes',   { markers: false, arcs: true,  paths: false, polygons: false }],
-    ['pipelines',     { markers: false, arcs: false, paths: true,  polygons: false }],
-    ['conflicts',     { markers: true,  arcs: false, paths: false, polygons: true }],
-    ['cables',        { markers: true,  arcs: false, paths: true,  polygons: false }],
-    ['satellites',        { markers: true,  arcs: false, paths: true,  polygons: true }],
-
-    ['natural',           { markers: true,  arcs: false, paths: true,  polygons: true }],
-    ['webcams',           { markers: true,  arcs: false, paths: false, polygons: false }],
+  private static readonly LAYER_CHANNELS: Map<string, { markers: boolean; paths: boolean; polygons: boolean }> = new Map([
+    ['pipelines',     { markers: false, paths: true,  polygons: false }],
+    ['cables',        { markers: true,  paths: true,  polygons: false }],
+    ['natural',       { markers: true,  paths: true,  polygons: true }],
+    ['webcams',       { markers: true,  paths: false, polygons: false }],
   ]);
 
   private flushLayerChannels(layer: keyof MapLayers): void {
     const ch = GlobeMap.LAYER_CHANNELS.get(layer);
     if (!ch) { this.flushMarkers(); return; }
     if (ch.markers)  this.flushMarkers();
-    if (ch.arcs)     this.flushArcs();
     if (ch.paths)    this.flushPaths();
     if (ch.polygons) this.flushPolygons();
-    if (layer === 'satellites' && this.satBeamGroup) {
-      this.satBeamGroup.visible = !!this.layers.satellites;
-    }
   }
 
   public setLayers(layers: MapLayers): void {
     const prev = this.layers;
     this.layers = { ...layers, dayNight: false };
-    let needMarkers = false, needArcs = false, needPaths = false, needPolygons = false;
+    let needMarkers = false, needPaths = false, needPolygons = false;
     for (const k of Object.keys(layers) as (keyof MapLayers)[]) {
       if (!prev[k] && layers[k]) this.ensureStaticDataForLayer(k);
       if (prev[k] === layers[k]) continue;
       const ch = GlobeMap.LAYER_CHANNELS.get(k);
       if (!ch) { needMarkers = true; continue; }
       if (ch.markers)  needMarkers = true;
-      if (ch.arcs)     needArcs = true;
       if (ch.paths)    needPaths = true;
       if (ch.polygons) needPolygons = true;
     }
     if (needMarkers)  this.flushMarkers();
-    if (needArcs)     this.flushArcs();
     if (needPaths)    this.flushPaths();
     if (needPolygons) this.flushPolygons();
-    if (prev.satellites !== layers.satellites) {
-      if (this.satBeamGroup) this.satBeamGroup.visible = !!layers.satellites;
-      if (layers.satellites) {
-        this.fetchImageryForViewport();
-      } else {
-        if (this.imageryFetchTimer) { clearTimeout(this.imageryFetchTimer); this.imageryFetchTimer = null; }
-        this.lastImageryCenter = null;
-        this.imageryFetchVersion++;
-        this.imagerySceneMarkers = [];
-        this.imageryFootprintPolygons = [];
-      }
-    }
   }
 
   public enableLayer(layer: keyof MapLayers): void {
@@ -2914,7 +1711,7 @@ export class GlobeMap {
 
   /**
    * Shows "shown/total" beside any layer the marker budget is trimming (#5368).
-   * This is a monitoring product: quietly dropping 2,000 conflict events off the
+   * This is a monitoring product: quietly dropping 2,000 fire detections off the
    * globe would misrepresent the data, so the withholding is stated in the panel
    * that controls it.
    */
@@ -3199,10 +1996,6 @@ export class GlobeMap {
     this.onNewsClick = callback;
   }
 
-  public setOnHotspotClick(cb: (h: Hotspot) => void): void {
-    this.onHotspotClickCb = cb;
-  }
-
   public setOnCountryClick(_cb: (c: CountryClickPayload) => void): void {
     // Globe country click not yet implemented — no-op
   }
@@ -3268,12 +2061,6 @@ export class GlobeMap {
       this.flushMarkers();
     }
   }
-  public updateHotspotActivity(_news: any[]): void {}
-  public updateMilitaryForEscalation(_f: any[], _v: any[]): void {}
-  public getHotspotDynamicScore(_id: string) { return undefined; }
-  public getHotspotLevels() { return {} as Record<string, string>; }
-  public setHotspotLevels(_l: Record<string, string>): void {}
-  public initEscalationGetters(): void {}
   public highlightAssets(_assets: any): void {}
   public setOnLayerChange(cb: (layer: keyof MapLayers, enabled: boolean, source: 'user' | 'programmatic') => void): void {
     this.onLayerChangeCb = cb;
@@ -3305,38 +2092,11 @@ export class GlobeMap {
       this.flushMarkers();
     }, durationMs);
   }
-  public triggerHotspotClick(_id: string): void {}
-  public triggerConflictClick(_id: string): void {}
-  public triggerBaseClick(_id: string): void {}
   public triggerPipelineClick(_id: string): void {}
   public triggerCableClick(_id: string): void {}
   public triggerDatacenterClick(_id: string): void {}
   public triggerNuclearClick(_id: string): void {}
   public triggerIrradiatorClick(_id: string): void {}
-  // Rotate the globe so the chokepoint/waterway faces front, then open its popup
-  // once it has settled at container centre. The wait is tied to setCenter()'s
-  // rotation duration via SET_CENTER_ROTATION_MS so the two can't drift apart.
-  //
-  // MapContainer can replay a queued chokepoint deep-link right after construction,
-  // before initGlobe() has built the globe (this.globe is still null then), so
-  // defer until whenReady() rather than dropping the pan.
-  public openChokepoint(id: string): void {
-    const waterway = STRATEGIC_WATERWAYS.find(w => w.id === id || w.chokepointId === id);
-    if (!waterway) return;
-    const reveal = () => {
-      if (this.destroyed || !this.globe) return;
-      this.setCenter(waterway.lat, waterway.lon, 5);
-      const rect = this.container.getBoundingClientRect();
-      const x = rect.width / 2;
-      const y = rect.height / 2;
-      window.setTimeout(() => {
-        if (this.destroyed || !this.popup) return;
-        this.popup?.show({ type: 'waterway', data: waterway, x, y });
-      }, SET_CENTER_ROTATION_MS);
-    };
-    if (this.globe) reveal();
-    else void this.whenReady().then(reveal).catch(() => {});
-  }
   public fitCountry(code: string): void {
     if (!this.globe) return;
     const bbox = getCountryBbox(code);
@@ -3392,76 +2152,6 @@ export class GlobeMap {
     this.flushMarkers();
   }
 
-  public setImageryScenes(scenes: ImageryScene[]): void {
-    // Parse each scene's GeoJSON once — the filter, marker, and polygon
-    // passes previously re-parsed the identical string up to 3x per scene.
-    const parsed = (scenes ?? []).flatMap(s => {
-      try {
-        const geom = JSON.parse(s.geometryGeojson) as { type?: string; coordinates?: number[][][] };
-        if (geom?.type !== 'Polygon' || !geom.coordinates?.[0]?.[0]) return [];
-        return [{ s, geom }];
-      } catch { return []; }
-    });
-    this.imagerySceneMarkers = parsed.map(({ s, geom }) => {
-      const coords = geom.coordinates![0] as number[][];
-      const lats = coords.map(c => c[1] ?? 0);
-      const lons = coords.map(c => c[0] ?? 0);
-      const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-      const centerLon = (Math.min(...lons) + Math.max(...lons)) / 2;
-      return {
-        _kind: 'imageryScene' as const,
-        _lat: centerLat,
-        _lng: centerLon,
-        satellite: s.satellite,
-        datetime: s.datetime,
-        resolutionM: s.resolutionM,
-        mode: s.mode,
-        previewUrl: s.previewUrl,
-      };
-    });
-    this.imageryFootprintPolygons = parsed.map(({ s, geom }) => {
-      return {
-        coords: geom.coordinates as number[][][],
-        name: `${s.satellite} ${s.datetime}`,
-        _kind: 'imageryFootprint' as const,
-        satellite: s.satellite,
-        datetime: s.datetime,
-        resolutionM: s.resolutionM,
-        mode: s.mode,
-        previewUrl: s.previewUrl,
-      };
-    });
-    if (this.layers.satellites) {
-      this.flushMarkers();
-      this.flushPolygons();
-    }
-  }
-
-  private async fetchImageryForViewport(): Promise<void> {
-    if (this.destroyed) return;
-    const center = this.getCenter();
-    if (!center) return;
-    if (this.lastImageryCenter) {
-      const dLat = Math.abs(center.lat - this.lastImageryCenter.lat);
-      const dLon = Math.abs(center.lon - this.lastImageryCenter.lon);
-      if (dLat < 2 && dLon < 2) return;
-    }
-    const R = 5;
-    const south = Math.max(-90, center.lat - R);
-    const north = Math.min(90, center.lat + R);
-    const west = Math.max(-180, center.lon - R);
-    const east = Math.min(180, center.lon + R);
-    const bbox = `${west.toFixed(4)},${south.toFixed(4)},${east.toFixed(4)},${north.toFixed(4)}`;
-    const thisVersion = ++this.imageryFetchVersion;
-    try {
-      const { fetchImageryScenes } = await import('@/services/imagery');
-      const scenes = await fetchImageryScenes({ bbox, limit: 20 });
-      if (thisVersion !== this.imageryFetchVersion) return;
-      this.setImageryScenes(scenes);
-      this.lastImageryCenter = { lat: center.lat, lon: center.lon };
-    } catch { /* imagery is best-effort */ }
-  }
-
   public setOutages(outages: InternetOutage[]): void {
     this.outageMarkers = (outages ?? []).filter(o => o.lat != null && o.lon != null).map(o => ({
       _kind: 'outage' as const,
@@ -3503,22 +2193,6 @@ export class GlobeMap {
     this.flushMarkers();
   }
 
-  public setAisData(disruptions: AisDisruptionEvent[], _density: AisDensityZone[]): void {
-    // AisDensityZone requires a heatmap layer — render disruption events only
-    this.aisMarkers = (disruptions ?? [])
-      .filter(d => d.lat != null && d.lon != null)
-      .map(d => ({
-        _kind: 'aisDisruption' as const,
-        _lat: d.lat,
-        _lng: d.lon,
-        id: d.id,
-        name: d.name,
-        type: d.type,
-        severity: d.severity,
-        description: d.description ?? '',
-      }));
-    this.flushMarkers();
-  }
   public setCableActivity(advisories: CableAdvisory[], repairShips: RepairShip[]): void {
     this.cableAdvisoryMarkers = (advisories ?? [])
       .filter(a => a.lat != null && a.lon != null)
@@ -3551,47 +2225,6 @@ export class GlobeMap {
     this.flushPaths();
   }
   public setCableHealth(_m: any): void {}
-  public setProtests(events: SocialUnrestEvent[]): void {
-    this.protestMarkers = (events ?? []).filter(e => e.lat != null && e.lon != null).map(e => ({
-      _kind: 'protest' as const,
-      _lat: e.lat,
-      _lng: e.lon,
-      id: e.id,
-      title: e.title ?? '',
-      eventType: e.eventType ?? 'protest',
-      country: e.country ?? '',
-      sourceUrls: e.sourceUrls,
-    }));
-    this.flushMarkers();
-  }
-  public setFlightDelays(delays: AirportDelayAlert[]): void {
-    this.flightDelayMarkers = (delays ?? [])
-      .filter(d => d.lat != null && d.lon != null && d.severity !== 'normal')
-      .map(d => ({
-        _kind: 'flightDelay' as const,
-        _lat: d.lat,
-        _lng: d.lon,
-        id: d.id,
-        iata: d.iata,
-        name: d.name,
-        city: d.city,
-        country: d.country,
-        severity: d.severity,
-        delayType: d.delayType,
-        avgDelayMinutes: d.avgDelayMinutes,
-        reason: d.reason ?? '',
-      }));
-    this.notamRingMarkers = (delays ?? [])
-      .filter(d => d.lat != null && d.lon != null && d.delayType === 'closure')
-      .map(d => ({
-        _kind: 'notamRing' as const,
-        _lat: d.lat,
-        _lng: d.lon,
-        name: d.name || d.iata,
-        reason: d.reason || 'Airspace closure',
-      }));
-    this.flushMarkers();
-  }
   public setNewsLocations(data: NewsLocationInput[]): void {
     this.newsLocationMarkers = (data ?? [])
       .filter(d => d.lat != null && d.lon != null)
@@ -3605,40 +2238,6 @@ export class GlobeMap {
         threatLevel: d.threatLevel ?? 'info',
         ...(d.corroboration ? { corroboration: d.corroboration } : {}),
       }));
-    this.flushMarkers();
-  }
-  public setPositiveEvents(_events: any[]): void {}
-  public setKindnessData(_points: any[]): void {}
-  public setChokepointData(data: GetChokepointStatusResponse | null): void {
-    this.popup?.setChokepointData(data);
-  }
-
-  public setHappinessScores(_data: any): void {}
-  public setSpeciesRecoveryZones(_zones: any[]): void {}
-  public setRenewableInstallations(_installations: any[]): void {}
-  public setCyberThreats(threats: CyberThreat[]): void {
-    this.cyberMarkers = (threats ?? []).filter(t => t.lat != null && t.lon != null).map(t => ({
-      _kind: 'cyber' as const,
-      _lat: t.lat,
-      _lng: t.lon,
-      id: t.id,
-      indicator: t.indicator ?? '',
-      severity: t.severity ?? 'low',
-      type: t.type ?? 'malware_host',
-    }));
-    this.flushMarkers();
-  }
-  public setIranEvents(events: IranEvent[]): void {
-    this.iranMarkers = (events ?? []).filter(e => e.latitude != null && e.longitude != null).map(e => ({
-      _kind: 'iran' as const,
-      _lat: e.latitude,
-      _lng: e.longitude,
-      id: e.id,
-      title: e.title ?? '',
-      category: e.category ?? '',
-      severity: e.severity ?? 'moderate',
-      location: e.locationName ?? '',
-    }));
     this.flushMarkers();
   }
   public setFires(fires: Array<{ lat: number; lon: number; brightness: number; region: string; [key: string]: any }>): void {
@@ -3661,33 +2260,6 @@ export class GlobeMap {
     });
     this.flushMarkers();
   }
-  public setUcdpEvents(events: UcdpGeoEvent[]): void {
-    this.ucdpMarkers = (events ?? []).filter(e => e.latitude != null && e.longitude != null).map(e => ({
-      _kind: 'ucdp' as const,
-      _lat: e.latitude,
-      _lng: e.longitude,
-      id: e.id,
-      sideA: e.side_a ?? '',
-      sideB: e.side_b ?? '',
-      deaths: e.deaths_best ?? 0,
-      country: e.country ?? '',
-    }));
-    this.flushMarkers();
-  }
-  public setDisplacementFlows(flows: DisplacementFlow[]): void {
-    this.displacementMarkers = (flows ?? [])
-      .filter(f => f.originLat != null && f.originLon != null)
-      .map(f => ({
-        _kind: 'displacement' as const,
-        _lat: f.originLat!,
-        _lng: f.originLon!,
-        id: `${f.originCode}-${f.asylumCode}`,
-        origin: f.originName ?? f.originCode,
-        asylum: f.asylumName ?? f.asylumCode,
-        refugees: f.refugees ?? 0,
-      }));
-    this.flushMarkers();
-  }
   public setClimateAnomalies(anomalies: ClimateAnomaly[]): void {
     this.climateMarkers = (anomalies ?? []).filter(a => a.lat != null && a.lon != null).map(a => ({
       _kind: 'climate' as const,
@@ -3701,184 +2273,8 @@ export class GlobeMap {
     }));
     this.flushMarkers();
   }
-  public setGpsJamming(hexes: GpsJamHex[]): void {
-    this.gpsJamMarkers = (hexes ?? []).filter(h => h.lat != null && h.lon != null).map(h => ({
-      _kind: 'gpsjam' as const,
-      _lat: h.lat,
-      _lng: h.lon,
-      id: h.h3,
-      level: h.level,
-      pct: h.pct ?? 0,
-    }));
-    this.flushMarkers();
-  }
-
-  private static latLngAltToVec3(lat: number, lng: number, alt: number, vec3Ctor: any): any {
-    const GLOBE_R = 100;
-    const r = GLOBE_R * (1 + alt / 6371);
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (90 - lng) * (Math.PI / 180);
-    const sinPhi = Math.sin(phi);
-    return new vec3Ctor(
-      r * sinPhi * Math.cos(theta),
-      r * Math.cos(phi),
-      r * sinPhi * Math.sin(theta),
-    );
-  }
-
-  private async rebuildSatBeams(positions: SatellitePosition[]): Promise<void> {
-    if (!this.globe || this.destroyed) return;
-    const THREE = await import('three');
-    const scene = this.globe.scene();
-
-    if (this.satBeamGroup) {
-      scene.remove(this.satBeamGroup);
-      this.satBeamGroup.traverse((child: any) => {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-      });
-    }
-    this.satBeamGroup = new THREE.Group();
-    this.satBeamGroup.name = 'satBeams';
-
-    if (!this.layers.satellites || positions.length === 0) return;
-
-    const colorMap: Record<string, number> = {
-      CN: 0xff2020, RU: 0xff8800, US: 0x4488ff, EU: 0x44cc44,
-      KR: 0xaa66ff, IN: 0xff66aa, TR: 0xff4466, OTHER: 0xccccff,
-    };
-
-    const RAY_COUNT = 6;
-    const GLOBE_R = 100;
-    const BEAM_HEIGHT = 25;
-    const GROUND_SPREAD_RAD = 4.0;
-
-    const allRayPositions: number[] = [];
-    const allRayColors: number[] = [];
-    const allConePositions: number[] = [];
-    const allConeColors: number[] = [];
-
-    const tmpColor = new THREE.Color();
-
-    for (const s of positions) {
-      const groundCenter = GlobeMap.latLngAltToVec3(s.lat, s.lng, 0, THREE.Vector3);
-      const beamTop = new THREE.Vector3().copy(groundCenter).normalize().multiplyScalar(GLOBE_R + BEAM_HEIGHT);
-
-      const hex = colorMap[s.country] ?? 0xccccff;
-      tmpColor.setHex(hex);
-      const r = tmpColor.r, g = tmpColor.g, b = tmpColor.b;
-
-      const dir = new THREE.Vector3().copy(groundCenter).normalize().negate();
-      const up = new THREE.Vector3(0, 1, 0);
-      if (Math.abs(dir.dot(up)) > 0.99) up.set(1, 0, 0);
-      const right = new THREE.Vector3().crossVectors(dir, up).normalize();
-      const forward = new THREE.Vector3().crossVectors(right, dir).normalize();
-
-      const groundPts: InstanceType<typeof THREE.Vector3>[] = [];
-      for (let i = 0; i < RAY_COUNT; i++) {
-        const angle = (i / RAY_COUNT) * Math.PI * 2;
-        const gp = new THREE.Vector3()
-          .copy(groundCenter)
-          .addScaledVector(right, Math.cos(angle) * GROUND_SPREAD_RAD)
-          .addScaledVector(forward, Math.sin(angle) * GROUND_SPREAD_RAD)
-          .normalize().multiplyScalar(GLOBE_R);
-        groundPts.push(gp);
-        allRayPositions.push(beamTop.x, beamTop.y, beamTop.z, gp.x, gp.y, gp.z);
-        allRayColors.push(r, g, b, r * 0.3, g * 0.3, b * 0.3);
-      }
-
-      for (let i = 0; i < RAY_COUNT; i++) {
-        const next = (i + 1) % RAY_COUNT;
-        const gi = groundPts[i]!;
-        const gn = groundPts[next]!;
-        allConePositions.push(
-          beamTop.x, beamTop.y, beamTop.z,
-          gi.x, gi.y, gi.z,
-          gn.x, gn.y, gn.z,
-        );
-        allConeColors.push(r, g, b, r * 0.2, g * 0.2, b * 0.2, r * 0.2, g * 0.2, b * 0.2);
-      }
-    }
-
-    if (allRayPositions.length > 0) {
-      const rayGeo = new THREE.BufferGeometry();
-      rayGeo.setAttribute('position', new THREE.Float32BufferAttribute(allRayPositions, 3));
-      rayGeo.setAttribute('color', new THREE.Float32BufferAttribute(allRayColors, 3));
-      const rayMat = new THREE.LineBasicMaterial({
-        vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false,
-      });
-      this.satBeamGroup.add(new THREE.LineSegments(rayGeo, rayMat));
-    }
-
-    if (allConePositions.length > 0) {
-      const coneGeo = new THREE.BufferGeometry();
-      coneGeo.setAttribute('position', new THREE.Float32BufferAttribute(allConePositions, 3));
-      coneGeo.setAttribute('color', new THREE.Float32BufferAttribute(allConeColors, 3));
-      const coneMat = new THREE.MeshBasicMaterial({
-        vertexColors: true, transparent: true, opacity: 0.1,
-        side: THREE.DoubleSide, depthWrite: false,
-      });
-      this.satBeamGroup.add(new THREE.Mesh(coneGeo, coneMat));
-    }
-
-    this.satBeamGroup.visible = !!this.layers.satellites;
-    scene.add(this.satBeamGroup);
-  }
-
-  public setSatellites(positions: SatellitePosition[]): void {
-    this.satelliteMarkers = positions.map(s => ({
-      _kind: 'satellite' as const,
-      _lat: s.lat,
-      _lng: s.lng,
-      id: s.noradId,
-      name: s.name,
-      country: s.country,
-      type: s.type,
-      alt: s.alt,
-      velocity: s.velocity,
-      inclination: s.inclination,
-    }));
-
-    this.satelliteFootprintMarkers = positions.map(s => ({
-      _kind: 'satFootprint' as const,
-      _lat: s.lat,
-      _lng: s.lng,
-      country: s.country,
-      noradId: s.noradId,
-    }));
-
-    this.satelliteTrailPaths = positions
-      .filter(s => s.trail && s.trail.length > 1)
-      .map(s => ({
-        id: `orbit-${s.noradId}`,
-        name: s.name,
-        points: [[s.lng, s.lat, s.alt], ...s.trail],
-        pathType: 'orbit' as const,
-        status: 'active',
-        country: s.country,
-      }));
-
-    this.rebuildSatBeams(positions);
-    this.flushMarkers();
-    this.flushPaths();
-  }
-  public setTechEvents(events: Array<{ id: string; title: string; lat: number; lng: number; country: string; daysUntil: number; [key: string]: any }>): void {
-    this.techMarkers = (events ?? []).filter(e => e.lat != null && e.lng != null).map(e => ({
-      _kind: 'tech' as const,
-      _lat: e.lat,
-      _lng: e.lng,
-      id: e.id,
-      title: e.title ?? '',
-      country: e.country ?? '',
-      daysUntil: e.daysUntil ?? 0,
-    }));
-    this.flushMarkers();
-  }
-  public onHotspotClicked(cb: (h: Hotspot) => void): void { this.onHotspotClickCb = cb; }
   public onTimeRangeChanged(_cb: (r: TimeRange) => void): void {}
   public onStateChanged(cb: (s: MapContainerState) => void): void { this.onStateChangeCb = cb; }
-  public setOnCountry(_cb: any): void {}
-  public getHotspotLevel(_id: string) { return 'low'; }
 
   private async applyEnhancedVisuals(): Promise<void> {
     if (!this.globe || this.destroyed) return;
@@ -4013,13 +2409,10 @@ export class GlobeMap {
     this._pulseEnabled = !profile.disablePulseAnimations;
 
     if (profile.disableDashAnimations) {
-      (this.globe as any).arcDashAnimateTime(0);
       (this.globe as any).pathDashAnimateTime(0);
     } else {
-      (this.globe as any).arcDashAnimateTime(5000);
       (this.globe as any).pathDashAnimateTime((d: GlobePath) => {
         if (!d) return 5000;
-        if (d.pathType === 'orbit') return 0;
         if (d.pathType === 'cable') return 0;
         return 5000;
       });
@@ -4091,9 +2484,6 @@ export class GlobeMap {
   public destroy(): void {
     this.popup?.hide();
     this.popup = null;
-    this.flightData.clear();
-    this.vesselData.clear();
-    this.clusterData.clear();
     this.container.removeEventListener('contextmenu', this.handleContextMenu);
     this.unsubscribeGlobeQuality?.();
     this.unsubscribeGlobeQuality = null;
@@ -4111,8 +2501,6 @@ export class GlobeMap {
       this.visibilityHandler = null;
     }
     if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
-    if (this.imageryFetchTimer) { clearTimeout(this.imageryFetchTimer); this.imageryFetchTimer = null; }
-    this.imageryFetchVersion++;
     if (this.controlsStartHandler && this.controls) {
       this.controls.removeEventListener('start', this.controlsStartHandler);
       this.controlsStartHandler = null;
@@ -4128,14 +2516,6 @@ export class GlobeMap {
       this.extrasAnimFrameId = null;
     }
     const scene = this.globe?.scene();
-    if (this.satBeamGroup && scene) {
-      scene.remove(this.satBeamGroup);
-      this.satBeamGroup.traverse((child: any) => {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-      });
-      this.satBeamGroup = null;
-    }
     for (const obj of [this.outerGlow, this.innerGlow, this.starField, this.cyanLight]) {
       if (!obj) continue;
       if (scene) scene.remove(obj);
@@ -4153,9 +2533,7 @@ export class GlobeMap {
     if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = null; }
     if (this.flushMaxTimer) { clearTimeout(this.flushMaxTimer); this.flushMaxTimer = null; }
     if (this.autoRotateTimer) clearTimeout(this.autoRotateTimer);
-    this.reversedRingCache.clear();
     this.hideTooltip();
-    if (this.satHoverStyle) { this.satHoverStyle.remove(); this.satHoverStyle = null; }
     this.controls = null;
     this.controlsAutoRotateBeforePause = null;
     this.controlsDampingBeforePause = null;

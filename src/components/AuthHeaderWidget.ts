@@ -1,6 +1,7 @@
 import { subscribeAuthState, type AuthSession } from '@/services/auth-state';
 import { mountUserButton, openSignIn, openSignUp } from '@/services/clerk';
 import { t } from '@/services/i18n';
+import { IS_PARTNER_MODE } from '@/config/access-mode';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 
 export class AuthHeaderWidget {
@@ -70,6 +71,7 @@ export class AuthHeaderWidget {
     signInSkeleton.setAttribute('aria-hidden', 'true');
     this.container.appendChild(signInSkeleton);
 
+    if (!IS_PARTNER_MODE) return;
     const signUpSkeleton = document.createElement('span');
     signUpSkeleton.className = 'auth-header-skeleton auth-header-skeleton-signup';
     signUpSkeleton.setAttribute('aria-hidden', 'true');
@@ -86,6 +88,9 @@ export class AuthHeaderWidget {
     });
     this.container.appendChild(signInBtn);
 
+    // A public demo has nothing behind an account; invited partners create
+    // theirs from the partner deployment.
+    if (!IS_PARTNER_MODE) return;
     const signUpLink = document.createElement('button');
     signUpLink.className = 'auth-signup-link';
     signUpLink.textContent = t('auth.createAccount');

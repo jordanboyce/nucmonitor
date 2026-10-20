@@ -132,8 +132,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
   nuclear: [
     // NucMonitor — facilities first, then every hazard layer that can touch a site
     'usNuclearFacilities', 'radiationWatch', 'natural', 'weather', 'fires', 'outages',
-    'nuclear', 'irradiators', 'climate', 'pipelines', 'datacenters',
-    'cables', 'dayNight',
+    'nuclear', 'irradiators', 'climate', 'dayNight',
   ],
 };
 

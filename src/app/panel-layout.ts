@@ -614,11 +614,7 @@ export class PanelLayoutManager implements AppModule {
       <div class="header" role="banner">
         <div class="header-left">
           <span class="logo">NUCMONITOR</span><span class="logo-mobile">NucMonitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
-          <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="credit-link">
-            <svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            <span class="credit-text">@eliehabib</span>
-          </a>
-          <a href="https://github.com/koala73/worldmonitor" target="_blank" rel="noopener" class="github-link" title="${t('header.viewOnGitHub')}" aria-label="${t('header.viewOnGitHub')}">
+          <a href="https://github.com/jordanboyce/nucmonitor" target="_blank" rel="noopener" class="github-link" title="${t('header.viewOnGitHub')}" aria-label="${t('header.viewOnGitHub')}">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           </a>
           <button class="mobile-settings-btn" id="mobileSettingsBtn" title="${t('header.settings')}" aria-label="${t('header.settings')}">
@@ -632,12 +628,6 @@ export class PanelLayoutManager implements AppModule {
             <select id="regionSelect" class="region-select" aria-label="${t('header.selectRegion')}">
               <option value="global">${t('components.deckgl.views.global')}</option>
               <option value="america">${t('components.deckgl.views.americas')}</option>
-              <option value="mena">${t('components.deckgl.views.mena')}</option>
-              <option value="eu">${t('components.deckgl.views.europe')}</option>
-              <option value="asia">${t('components.deckgl.views.asia')}</option>
-              <option value="latam">${t('components.deckgl.views.latam')}</option>
-              <option value="africa">${t('components.deckgl.views.africa')}</option>
-              <option value="oceania">${t('components.deckgl.views.oceania')}</option>
             </select>
           </div>
           <span id="missionPresetMount" class="mission-preset-mount"></span>
@@ -689,16 +679,10 @@ export class PanelLayoutManager implements AppModule {
           <span class="mobile-menu-item-icon">${getCurrentTheme() === 'dark' ? '☀️' : '🌙'}</span>
           <span class="mobile-menu-item-label">${getCurrentTheme() === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
         </button>
-        <a class="mobile-menu-item" href="https://x.com/eliehabib" target="_blank" rel="noopener">
-          <span class="mobile-menu-item-icon"><svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>
-          <span class="mobile-menu-item-label">@eliehabib</span>
-        </a>
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-footer-links">
-          <a href="/pro#pricing" target="_blank" rel="noopener">Pricing</a>
-          <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
-          <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
-          <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
+          <a href="https://www.nrc.gov/reading-rm/doc-collections/event-status/" target="_blank" rel="noopener">NRC reports</a>
+          <a href="https://github.com/jordanboyce/nucmonitor" target="_blank" rel="noopener">Source</a>
         </div>
         <div class="mobile-menu-version">v${__APP_VERSION__}</div>
       </nav>
@@ -709,12 +693,6 @@ export class PanelLayoutManager implements AppModule {
         ${[
         { value: 'global', label: t('components.deckgl.views.global') },
         { value: 'america', label: t('components.deckgl.views.americas') },
-        { value: 'mena', label: t('components.deckgl.views.mena') },
-        { value: 'eu', label: t('components.deckgl.views.europe') },
-        { value: 'asia', label: t('components.deckgl.views.asia') },
-        { value: 'latam', label: t('components.deckgl.views.latam') },
-        { value: 'africa', label: t('components.deckgl.views.africa') },
-        { value: 'oceania', label: t('components.deckgl.views.oceania') },
       ].map(r =>
         `<button class="region-sheet-option ${r.value === 'global' ? 'active' : ''}" data-region="${r.value}">
           <span>${r.label}</span>
@@ -1589,7 +1567,6 @@ export class PanelLayoutManager implements AppModule {
     this.applyPanelSettings();
     this.applySavedPanelOrder();
     this.ctx.unifiedSettings?.refreshPanelToggles();
-    this.mountLiveNewsIfReady();
     this.scheduleLoadAllData();
   }
 
@@ -1677,46 +1654,6 @@ export class PanelLayoutManager implements AppModule {
       }
     });
     this.mobilePanelNav?.refresh();
-  }
-
-  /**
-   * Lazily instantiates and mounts LiveNewsPanel when channels become available
-   * mid-session (e.g. user adds channels via the standalone manager on a variant
-   * whose defaults are empty). No-op if the panel already exists or still has no
-   * channels. Called from the liveChannels storage event handler.
-   */
-  mountLiveNewsIfReady(): void {
-    if (this.ctx.panels['live-news']) return;
-    const grid = document.getElementById('panelsGrid');
-    if (this.lazyPanelRegistrations.has('live-news') && grid) {
-      this.mountLazyPanel('live-news', grid);
-      return;
-    }
-    void this.importPanel(
-      'live-news',
-      () => import('@/components/LiveNewsPanel'),
-      'LiveNewsPanel',
-      (LiveNewsPanel, module) => {
-        const liveNewsModule = module as typeof import('@/components/LiveNewsPanel');
-        if (liveNewsModule.getDefaultLiveChannels().length === 0 && liveNewsModule.loadChannelsFromStorage().length === 0) return null;
-        return new LiveNewsPanel();
-      },
-    ).then((panel) => {
-      if (this.ctx.isDestroyed) return;
-      if (this.ctx.panels['live-news'] || !panel) return;
-      this.ctx.panels['live-news'] = panel;
-      const el = panel.getElement();
-      this.makeDraggable(el, 'live-news');
-      if (grid) {
-        const addBlock = grid.querySelector('.add-panel-block');
-        if (addBlock) grid.insertBefore(el, addBlock);
-        else grid.appendChild(el);
-      }
-      this.applyPanelSettings();
-      this.afterPanelMounted('live-news', panel);
-    }).catch((err) => {
-      console.error('[panel] failed to lazy-load "live-news"', err);
-    });
   }
 
   private shouldCreatePanel(key: string): boolean {
@@ -1978,15 +1915,6 @@ export class PanelLayoutManager implements AppModule {
     return true;
   }
 
-  private mountLazyPanel(key: string, grid: HTMLElement): void {
-    void this.loadRegisteredPanel(key).then((panel) => {
-      if (!panel || this.ctx.isDestroyed) return;
-      if (this.mountPanelElement(grid, key, panel)) {
-        this.afterPanelMounted(key, panel);
-      }
-    });
-  }
-
   private scheduleHydrationForPanelElement(element: HTMLElement, fallbackPhase: HydrationSchedulePhase = 'near'): void {
     if (typeof window === 'undefined') {
       this.scheduleLoadAllData(fallbackPhase);
@@ -2108,6 +2036,7 @@ export class PanelLayoutManager implements AppModule {
       }),
     );
 
+    this.createNewsPanel('nuclear-headlines', 'panels.nuclearHeadlines');
     this.createNewsPanel('energy', 'panels.energy');
     this.createNewsPanel('nuclear-regulatory', 'panels.nuclearRegulatory');
     this.createNewsPanel('nuclear-industry', 'panels.nuclearIndustry');
@@ -2160,12 +2089,6 @@ export class PanelLayoutManager implements AppModule {
     this.lazyPanel('climate-news', () =>
       this.importPanel('climate-news', () => import('@/components/ClimateNewsPanel'), 'ClimateNewsPanel', (ClimateNewsPanel) => new ClimateNewsPanel()),
     );
-
-    this.lazyImportedPanel('live-news', () => import('@/components/LiveNewsPanel'), 'LiveNewsPanel', (LiveNewsPanel, module) => {
-      const liveNewsModule = module as typeof import('@/components/LiveNewsPanel');
-      if (liveNewsModule.getDefaultLiveChannels().length === 0 && liveNewsModule.loadChannelsFromStorage().length === 0) return null;
-      return new LiveNewsPanel();
-    });
 
     if (this.ctx.isDesktopApp) {
       this.lazyImportedPanel('runtime-config', () => import('@/components/RuntimeConfigPanel'), 'RuntimeConfigPanel', (RuntimeConfigPanel) => new RuntimeConfigPanel({ mode: 'alert' }));

@@ -112,6 +112,9 @@ export class StatusPanel extends Panel {
     }
     this.ensureCoverageRowMounted();
     this.digestCoverageRow.textContent = text;
+    // With no digest at all there is nothing to report on; the panels say
+    // which sources are down, so the footer stays quiet instead.
+    this.digestCoverageRow.hidden = coverage.state === 'unavailable' || coverage.state === 'unknown';
   }
 
   /**

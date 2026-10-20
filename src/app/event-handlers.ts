@@ -268,7 +268,6 @@ export interface EventHandlerCallbacks {
    */
   applyPanelSettings: () => void;
   applySavedPanelOrder?: (panelOrder?: string[]) => void;
-  mountLiveNewsIfReady?: () => void;
   isFreeTierFallbackActive?: () => boolean;
 }
 
@@ -618,16 +617,6 @@ export class EventHandlerManager implements AppModule {
           this.ctx.unifiedSettings?.refreshPanelToggles();
         } catch (_) { }
       }
-      if (e.key === STORAGE_KEYS.liveChannels && e.newValue) {
-        const panel = this.ctx.panels['live-news'];
-        if (panel) {
-          if (typeof (panel as unknown as { refreshChannelsFromStorage?: () => void }).refreshChannelsFromStorage === 'function') {
-            (panel as unknown as { refreshChannelsFromStorage: () => void }).refreshChannelsFromStorage();
-          }
-        } else {
-          this.callbacks.mountLiveNewsIfReady?.();
-        }
-      }
     };
     window.addEventListener('storage', this.boundStorageHandler);
 
@@ -748,6 +737,12 @@ export class EventHandlerManager implements AppModule {
   }
 
   private setupMissionPresets(): void {
+    // A single preset is the dashboard itself: there is nothing to choose, so
+    // neither the header control nor the first-run picker earns its space.
+    if (getMissionPresetsForVariant(SITE_VARIANT).length <= 1) {
+      document.getElementById('mobileMenuMission')?.remove();
+      return;
+    }
     this.renderMissionPresetControl();
 
     const shouldPrompt =
@@ -1103,7 +1098,6 @@ export class EventHandlerManager implements AppModule {
     this.applyMissionMapLayerTransitions(previousMapLayers, mapLayers);
     this.ctx.map?.setView(applied.preset.view as MapView, applied.preset.zoom);
     this.ctx.map?.setTimeRange(applied.preset.timeRange);
-    this.callbacks.mountLiveNewsIfReady?.();
     this.callbacks.syncDataFreshnessWithLayers();
     this.scheduleMissionDataRefresh();
     this.syncUrlState();
@@ -1210,7 +1204,6 @@ export class EventHandlerManager implements AppModule {
     this.applyMissionMapLayerTransitions(previousMapLayers, this.ctx.mapLayers);
     this.ctx.map?.setView(snapshot.mapView, snapshot.mapZoom);
     this.ctx.map?.setTimeRange(snapshot.timeRange as '1h' | '6h' | '24h' | '48h' | '7d' | 'all');
-    this.callbacks.mountLiveNewsIfReady?.();
     this.callbacks.syncDataFreshnessWithLayers();
     this.syncUrlState();
     this.renderMissionPresetControl();
@@ -1238,9 +1231,8 @@ export class EventHandlerManager implements AppModule {
     this.ctx.unifiedSettings?.refreshPanelToggles();
     this.ctx.map?.setLayers(mapLayers);
     this.applyMissionMapLayerTransitions(previousMapLayers, mapLayers);
-    this.ctx.map?.setView('global');
+    this.ctx.map?.setView('america');
     this.ctx.map?.setTimeRange('7d');
-    this.callbacks.mountLiveNewsIfReady?.();
     this.callbacks.syncDataFreshnessWithLayers();
     this.scheduleMissionDataRefresh();
     this.syncUrlState();

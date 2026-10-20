@@ -988,7 +988,6 @@ export class App {
       syncDataFreshnessWithLayers: () => this.dataLoader.syncDataFreshnessWithLayers(),
       applyPanelSettings: () => this.panelLayout.applyPanelSettings(),
       applySavedPanelOrder: (panelOrder?: string[]) => this.panelLayout.applySavedPanelOrder(panelOrder),
-      mountLiveNewsIfReady: () => this.panelLayout.mountLiveNewsIfReady(),
       isFreeTierFallbackActive: () => this.freeTierGate.authSettleDeadlineExceeded,
     });
 

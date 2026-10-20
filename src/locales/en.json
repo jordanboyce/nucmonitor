@@ -568,6 +568,7 @@
     "nuclearReactorStatus": "NRC Reactor Power Status",
     "nuclearHazards": "Facility All-Hazards Watch",
     "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearHeadlines": "Nuclear Headlines",
     "nuclearRegulatory": "NRC, DOE & IAEA Official",
     "nuclearIndustry": "Nuclear Industry News",
     "nuclearPolicy": "Nuclear Policy & Security"
@@ -1394,7 +1395,7 @@
       "timeAll": "All",
       "views": {
         "global": "Global",
-        "americas": "Americas",
+        "americas": "United States",
         "mena": "Middle East and North Africa",
         "europe": "Europe",
         "asia": "Asia",

@@ -28,7 +28,7 @@ export const COMMANDS: Command[] = [
   { id: 'nav:mena', keywords: ['mena', 'middle east', 'mideast'], label: 'Map: Middle East & North Africa', icon: '\u{1F54C}', category: 'navigate' },
   { id: 'nav:eu', keywords: ['europe', 'eu'], label: 'Map: Europe', icon: '\u{1F3F0}', category: 'navigate' },
   { id: 'nav:asia', keywords: ['asia', 'pacific'], label: 'Map: Asia-Pacific', icon: '\u{1F3EF}', category: 'navigate' },
-  { id: 'nav:america', keywords: ['america', 'americas', 'us', 'usa'], label: 'Map: Americas', icon: '\u{1F5FD}', category: 'navigate' },
+  { id: 'nav:america', keywords: ['america', 'americas', 'us', 'usa'], label: 'Map: United States', icon: '\u{1F5FD}', category: 'navigate' },
   { id: 'nav:africa', keywords: ['africa'], label: 'Map: Africa', icon: '\u{1F30D}', category: 'navigate' },
   { id: 'nav:latam', keywords: ['latam', 'latin america', 'south america'], label: 'Map: Latin America', icon: '\u{1F30E}', category: 'navigate' },
   { id: 'nav:oceania', keywords: ['oceania', 'australia', 'pacific islands'], label: 'Map: Oceania', icon: '\u{1F30F}', category: 'navigate' },

@@ -469,7 +469,7 @@ export const VARIANT_FEEDS: Record<string, Record<string, ServerFeed[]>> = {
   // NucMonitor — mirrors NUCLEAR_FEEDS in src/config/feeds.ts (guarded by
   // tests/news-feed-key-parity.test.mts).
   nuclear: {
-    'live-news': [
+    'nuclear-headlines': [
       // Faster-churn copies of the regulatory/industry feeds (distinct URLs:
       // the parsed RSS cache is keyed by variant + URL and retains names).
       { name: 'World Nuclear News', url: gn('site:world-nuclear-news.org when:1d') },

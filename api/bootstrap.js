@@ -1,4 +1,5 @@
 import { sanitizeBootstrapValue } from './_bootstrap-public-payload.js';
+import { isPartnerMode } from './_partner-access.js';
 import { validateImfDataset } from './_imf-dataset.js';
 import { stripTrailingSlashes } from './_strip-trailing-slashes.js';
 import { waitUntil as vercelWaitUntil } from '@vercel/functions';
@@ -272,11 +273,14 @@ async function validateBootstrapAuth(req, cors) {
   const headerKey = getHeaderApiKey(req);
   // The explicit public URL must have one response contract for every request:
   // Vercel may serve it from cache before cookie/header auth reaches this code.
-  const publicBootstrap = classifyPublicBootstrapRequest(req);
+  // Partner deployments have no anonymous reads (docs/partner-access.md): the
+  // public and anonymous-weather shapes fall through to the credential check.
+  const partnerMode = isPartnerMode();
+  const publicBootstrap = partnerMode ? null : classifyPublicBootstrapRequest(req);
   if (publicBootstrap) {
     return { ok: true, kind: publicBootstrap.authKind };
   }
-  if (!headerKey && !hasBootstrapCredentialCookie(req)) {
+  if (!partnerMode && !headerKey && !hasBootstrapCredentialCookie(req)) {
     if (isAnonymousWeatherBootstrapRequest(req)) {
       return { ok: true, kind: 'anonymous-weather' };
     }

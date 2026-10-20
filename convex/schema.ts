@@ -112,6 +112,19 @@ const companyMonitoringWorkIdentity = {
 };
 
 export default defineSchema({
+  // Partner access (docs/partner-access.md): who may sign in to a deployment
+  // running ACCESS_MODE=partner, in addition to PARTNER_ALLOWED_* env. One row
+  // per invited email or whole email domain; written only by internal
+  // mutations an operator runs with `npx convex run`.
+  partnerInvites: defineTable({
+    kind: v.union(v.literal("email"), v.literal("domain")),
+    // Lowercased email address, or bare domain without "@".
+    value: v.string(),
+    organization: v.optional(v.string()),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_kind_value", ["kind", "value"]),
+
   userPreferences: defineTable({
     userId: v.string(),
     variant: v.string(),

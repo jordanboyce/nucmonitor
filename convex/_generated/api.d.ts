@@ -58,6 +58,7 @@ import type * as lib_notificationEmail from "../lib/notificationEmail.js";
 import type * as lib_resendEmail from "../lib/resendEmail.js";
 import type * as lib_shards from "../lib/shards.js";
 import type * as notificationChannels from "../notificationChannels.js";
+import type * as partnerAccess from "../partnerAccess.js";
 import type * as payments_businessSeats from "../payments/businessSeats.js";
 import type * as payments_cacheActions from "../payments/cacheActions.js";
 import type * as payments_cancellationEmailCopy from "../payments/cancellationEmailCopy.js";
@@ -127,6 +128,7 @@ declare const fullApi: ApiFromModules<{
   "lib/resendEmail": typeof lib_resendEmail;
   "lib/shards": typeof lib_shards;
   notificationChannels: typeof notificationChannels;
+  partnerAccess: typeof partnerAccess;
   "payments/businessSeats": typeof payments_businessSeats;
   "payments/cacheActions": typeof payments_cacheActions;
   "payments/cancellationEmailCopy": typeof payments_cancellationEmailCopy;

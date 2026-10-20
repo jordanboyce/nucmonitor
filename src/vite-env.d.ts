@@ -17,6 +17,10 @@ declare const __CLERK_JS_VERSION__: string;
 interface ImportMetaEnv {
   readonly VITE_SENTRY_DSN?: string;
   readonly VITE_WS_API_URL?: string;
+  /** 'partner' gates the dashboard behind partner sign-in; anything else is the public demo. */
+  readonly VITE_ACCESS_MODE?: string;
+  /** Optional address the partner gate offers for access requests. */
+  readonly VITE_PARTNER_CONTACT_EMAIL?: string;
 }
 
 interface ImportMeta {

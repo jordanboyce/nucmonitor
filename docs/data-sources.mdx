@@ -1,13 +1,13 @@
 ---
 title: "Data Sources"
-description: "Every data source behind World Monitor, segmented by intelligence domain — what each domain covers, the providers behind it, and deep-dive links for methodology, cadence, and fallback ordering."
+description: "Every data source behind NucMonitor, segmented by intelligence domain — what each domain covers, the providers behind it, and deep-dive links for methodology, cadence, and fallback ordering."
 ---
 
-World Monitor fuses attributed structured APIs, news and OSINT feeds, and operational-status endpoints into live operating pictures across the product variants. The source-attribution manifest, application feed registry, and Telegram catalog are separate inventories and are not added together. This page is the catalog: start with the domain map below, open the domain you care about, then follow the deep-dive links for methodology and freshness guarantees.
+NucMonitor fuses attributed structured APIs, news and OSINT feeds, and operational-status endpoints into live operating pictures across the product variants. The source-attribution manifest, application feed registry, and Telegram catalog are separate inventories and are not added together. This page is the catalog: start with the domain map below, open the domain you care about, then follow the deep-dive links for methodology and freshness guarantees.
 
 Data flows one way: Railway seeders and edge functions fetch upstream sources on fixed cadences, normalize and cache the results in Redis, and the dashboard hydrates from those caches — so a burst of traffic never multiplies load on any provider. The [architecture guide](/architecture) covers the pipeline in depth, and the machine-audited inventory of every observed upstream host lives in the [full source inventory](/source-attribution).
 
-Compare the dashboard with its underlying event-data services: [World Monitor vs ACLED](https://www.worldmonitor.app/compare/worldmonitor-vs-acled/) and [World Monitor vs GDELT](https://www.worldmonitor.app/compare/worldmonitor-vs-gdelt/).
+Compare the dashboard with its underlying event-data services: [NucMonitor vs ACLED](https://www.worldmonitor.app/compare/worldmonitor-vs-acled/) and [NucMonitor vs GDELT](https://www.worldmonitor.app/compare/worldmonitor-vs-gdelt/).
 
 ## Coverage at a Glance
 
@@ -754,4 +754,4 @@ A singleton tracker monitors configured data sources (GDELT, GDELT Doc, RSS, AIS
 
 ## Full Source Inventory & Credits
 
-World Monitor is grateful to the organizations that make their data publicly accessible. The complete, machine-generated inventory of every observed upstream host — with its license posture, required attribution, and review status — is maintained on the [source attribution](/source-attribution) page. It is regenerated from URL literals in the source tree, so the disclosure cannot silently drift from what the code actually fetches.
+NucMonitor is grateful to the organizations that make their data publicly accessible. The complete, machine-generated inventory of every observed upstream host — with its license posture, required attribution, and review status — is maintained on the [source attribution](/source-attribution) page. It is regenerated from URL literals in the source tree, so the disclosure cannot silently drift from what the code actually fetches.

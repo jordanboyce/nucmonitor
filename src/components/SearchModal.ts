@@ -475,7 +475,7 @@ export class SearchModal {
     this.overlay.setAttribute('role', 'dialog');
     this.overlay.setAttribute('aria-modal', 'true');
     declareOverlay(this.overlay, { reload: 'blocking' });
-    this.overlay.setAttribute('aria-label', hasCommands ? 'World Monitor intelligence command deck' : this.placeholder);
+    this.overlay.setAttribute('aria-label', hasCommands ? 'NucMonitor intelligence command deck' : this.placeholder);
     this.overlay.dataset.searchScope = this.activeScope;
     // Claim human authority in capture phase, before a click can close the
     // palette or start a new selection. Keyboard-generated clicks have no

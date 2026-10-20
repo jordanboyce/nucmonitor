@@ -116,7 +116,7 @@ self.addEventListener('push', (event) => {
   } catch (_err) {
     // Non-JSON payload: treat the text body as the notification body.
     try {
-      data = { title: 'WorldMonitor', body: event.data ? event.data.text() : '' };
+      data = { title: 'NucMonitor', body: event.data ? event.data.text() : '' };
     } catch {
       data = {};
     }
@@ -124,7 +124,7 @@ self.addEventListener('push', (event) => {
 
   const title = typeof data.title === 'string' && data.title.length > 0
     ? data.title
-    : 'WorldMonitor';
+    : 'NucMonitor';
   const body = typeof data.body === 'string' ? data.body : '';
   const url = classifyClickTarget(data.url).url;
   const tag = typeof data.tag === 'string' ? data.tag : 'worldmonitor-generic';

@@ -882,7 +882,7 @@ export class UnifiedSettings {
     return `
       <section class="account-deletion-zone" data-account-deletion>
         <h3 class="account-deletion-title">Delete account</h3>
-        <p class="account-deletion-desc">Permanently delete this World Monitor account. Subscriptions cancel immediately with no refund of remaining prepaid time. API keys, embed keys, and MCP tokens stop working. Billing records needed for accounting, disputes, and lawful requests are kept with the customer contact details they carry; they stop naming your login account, though payment-provider webhook logs written before deletion keep the identifiers they were delivered with. Dashboard preferences and desktop keychain secrets on this device are not wiped remotely.</p>
+        <p class="account-deletion-desc">Permanently delete this NucMonitor account. Subscriptions cancel immediately with no refund of remaining prepaid time. API keys, embed keys, and MCP tokens stop working. Billing records needed for accounting, disputes, and lawful requests are kept with the customer contact details they carry; they stop naming your login account, though payment-provider webhook logs written before deletion keep the identifiers they were delivered with. Dashboard preferences and desktop keychain secrets on this device are not wiped remotely.</p>
         <button type="button" class="delete-account-btn" data-delete-account>Delete account</button>
       </section>
     `;
@@ -1353,7 +1353,7 @@ export class UnifiedSettings {
     return `
       <div class="api-keys-section">
         <div class="api-keys-header">
-          <p class="api-keys-desc">Create API keys to access WorldMonitor data programmatically. Keys are shown once on creation — store them securely.</p>
+          <p class="api-keys-desc">Create API keys to access NucMonitor data programmatically. Keys are shown once on creation — store them securely.</p>
         </div>
         <div class="api-keys-create-form">
           <input type="text" class="api-keys-name-input" placeholder="Key name (e.g. my-app)" aria-label="API key name" maxlength="64" />
@@ -1564,14 +1564,14 @@ export class UnifiedSettings {
       return `
         <div class="panel-locked-state">
           <div class="panel-locked-icon">${upgradeIcon}</div>
-          <div class="panel-locked-desc">Put World Monitor panels on your own site with a scoped embed key.</div>
+          <div class="panel-locked-desc">Put NucMonitor panels on your own site with a scoped embed key.</div>
         </div>`;
     }
 
     return `
       <div class="embed-keys-section">
         <div class="embed-keys-header">
-          <p class="embed-keys-desc">Embed keys authorise World Monitor panels on your site and nothing else, and each one is shown once at creation. Paste it into the <code>data-key</code> attribute of the <a class="embed-keys-docs-link" ${LEGAL_LINK_ATTR} href="${escapeHtml(`${WEB_APP_ORIGIN}/docs/embed-live-map`)}" target="_blank" rel="noopener noreferrer">embed loader</a>.</p>
+          <p class="embed-keys-desc">Embed keys authorise NucMonitor panels on your site and nothing else, and each one is shown once at creation. Paste it into the <code>data-key</code> attribute of the <a class="embed-keys-docs-link" ${LEGAL_LINK_ATTR} href="${escapeHtml(`${WEB_APP_ORIGIN}/docs/embed-live-map`)}" target="_blank" rel="noopener noreferrer">embed loader</a>.</p>
         </div>
         <div class="embed-keys-note">
           <strong>These are meant to be public.</strong> An embed key sits in your page's HTML where anyone can read it — that is the point, and it is why it exists as its own credential. Never put an API key (<code>wm_…</code>) there instead: that one carries your whole REST allowance. New reads with a revoked key are denied within about a minute. Already rendered paid-only panels remain visible until reload. A live map already showing its paid tier holds a session grant for up to 30 more minutes, then drops to the free tier.

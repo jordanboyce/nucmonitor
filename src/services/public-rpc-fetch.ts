@@ -1,3 +1,4 @@
+import { IS_PARTNER_MODE } from '@/config/access-mode';
 import { addPublicSharedRpcMarker } from '@/shared/public-rpc-cache';
 
 const CREDENTIAL_HEADERS = ['Authorization', 'X-WorldMonitor-Key', 'X-Api-Key', 'Cookie'];
@@ -7,6 +8,9 @@ const CREDENTIAL_HEADERS = ['Authorization', 'X-WorldMonitor-Key', 'X-Api-Key', 
  * isolated public CDN cache key. The legacy URL remains session/key gated.
  */
 export const publicRpcFetch: typeof fetch = async (input, init) => {
+  // Partner deployments serve no anonymous shape: take the ordinary
+  // session-carrying path (docs/partner-access.md).
+  if (IS_PARTNER_MODE) return globalThis.fetch(input, init);
   const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
   if (method.toUpperCase() !== 'GET') {
     throw new Error('public RPC fetch only supports GET');

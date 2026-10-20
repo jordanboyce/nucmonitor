@@ -10,12 +10,19 @@ export { bucketPanelKeyForAnalytics } from '@/utils/analytics-panel-key';
 import { scheduleAfterFirstPaint } from '@/utils/after-paint';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from '@/utils/safe-storage';
 import { subscribeAuthState, type AuthSession } from './auth-state';
-import { onSubscriptionChange, type SubscriptionInfo } from './billing';
+/** Former billing subscription shape; NucMonitor has no subscriptions. */
+type SubscriptionInfo = { status: string; planKey?: string | null };
 import { getClerkUserCreatedAt } from './clerk';
-import { DODO_PRODUCT_IDS } from '@/config/product-ids.generated';
 import { SITE_VARIANT, isSiteVariant } from '@/config/variant';
 import { isAgentPanelViewSuppressed } from './agent-analytics-privacy';
-import type { ActivationEventName, ActivationStepId } from './pro-activation-state';
+type ActivationEventName =
+  | 'pro-activation-entered'
+  | 'pro-activation-step-confirmed'
+  | 'pro-activation-step-skipped'
+  | 'pro-activation-step-blocked'
+  | 'pro-activation-step-failed'
+  | 'pro-activation-exit';
+type ActivationStepId = string;
 import {
   collectorFailureFromError,
   configureCollectorTransport,
@@ -41,10 +48,6 @@ import {
   type CheckoutContext,
   type CheckoutSurface,
 } from '../../shared/checkout-attribution';
-import {
-  loadCheckoutReturnState,
-  settleMissionReturnDelivery,
-} from './checkout-return-state';
 
 export type {
   CheckoutAttribution,
@@ -330,7 +333,6 @@ function handleCollectorOutcome(outcome: CollectorOutcome): void {
   if (!isDurableMarkerResolved(outcome.failure)) return;
 
   if (outcome.eventName === 'checkout-success') clearPendingCheckoutSuccessMarker();
-  if (outcome.eventName === 'mission-returned-after-purchase') settleMissionReturnDelivery();
   if (outcome.eventName === 'checkout-start' && isReplayedCheckoutStart(outcome.requestBody)) {
     noteProFunnelReplayDelivered();
   }
@@ -512,7 +514,6 @@ function scheduleTrackRetry(call: Extract<QueuedUmamiCall, { kind: 'track' }>, e
  */
 function clearUnobservableCriticalMarker(call: Extract<QueuedUmamiCall, { kind: 'track' }>): void {
   if (call.event === 'checkout-success') clearPendingCheckoutSuccessMarker();
-  if (call.event === 'mission-returned-after-purchase') settleMissionReturnDelivery();
   if (call.event === 'checkout-start' && call.data?.replayed === true) {
     noteProFunnelReplayDelivered();
   }
@@ -678,7 +679,6 @@ export function clearIdentity(): void {
 }
 
 let _unsubAuth: (() => void) | null = null;
-let _unsubBilling: (() => void) | null = null;
 
 // Cached latest values so either subscription firing can re-identify with full data
 let _lastAuth: AuthSession | null = null;
@@ -734,19 +734,12 @@ export function initAuthAnalytics(): void {
     _lastAuth = state;
     _syncIdentity();
   });
-
-  _unsubBilling = onSubscriptionChange((sub) => {
-    _lastSub = sub;
-    _syncIdentity();
-  });
 }
 
 /** Tear down auth + billing listeners. Symmetric with initAuthAnalytics(). */
 export function destroyAuthAnalytics(): void {
   _unsubAuth?.();
-  _unsubBilling?.();
   _unsubAuth = null;
-  _unsubBilling = null;
   _lastAuth = null;
   _lastSub = null;
   clearIdentity();
@@ -962,7 +955,7 @@ export function trackGateHit(feature: string): void {
  * small allowlist separate means analytics does not pull the checkout config
  * into the post-hydration module graph. (#5165)
  */
-const KNOWN_PRODUCT_IDS = DODO_PRODUCT_IDS;
+const KNOWN_PRODUCT_IDS: ReadonlySet<string> = new Set<string>();
 
 export function bucketProductIdForAnalytics(productId: string): string {
   return KNOWN_PRODUCT_IDS.has(productId) ? productId : 'unknown';
@@ -1653,17 +1646,8 @@ export function trackMissionReturnedAfterPurchase(
   });
 }
 
-export function replayPendingMissionReturn(): void {
-  const state = loadCheckoutReturnState();
-  if (!state || state.delivery.missionReturn !== 'pending') return;
-  const { origin } = state.context;
-  if (!origin.missionId) return;
-  trackMissionReturnedAfterPurchase(
-    origin.missionId,
-    origin.kind === 'mission-preview' ? origin.panelKey : 'unknown',
-    state.context.eventSurface,
-  );
-}
+/** No-op: there is no checkout to return from. Kept for existing callers. */
+export function replayPendingMissionReturn(): void {}
 
 export function trackApiKeysSnapshot(): void {}
 export function trackUpdateShown(_current: string, _remote: string): void {}

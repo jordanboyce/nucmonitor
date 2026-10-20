@@ -242,8 +242,7 @@ async function convexRelay(
       'User-Agent': 'worldmonitor-edge/1.0',
     },
     body: JSON.stringify(body),
-    // Matches the 15s timeout api/customer-portal.ts and
-    // api/create-checkout.ts already use for the same Convex host.
+    // 15s budget for the Convex relay host.
     // Without this, a hung relay call outlives the edge runtime's invocation
     // budget before the handler's own catch can run finish() to release the
     // idempotency lock this endpoint holds across the call — leaving retries

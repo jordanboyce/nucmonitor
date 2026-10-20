@@ -787,18 +787,7 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // its account owner so every display for one partner shares the same budget.
   // The CDN absorbs most canonical public requests before this policy runs.
   '/api/embed/map-frame': { limit: 120, window: '60 s' },
-  // Checkout session creation (api/create-checkout.ts) relays to Dodo. Same
-  // per-user 5/min fail-closed budget as the customer portal, enforced
-  // in-handler after JWT validation. A Redis outage must not lift it.
-  '/api/create-checkout': { limit: 5, window: '60 s' },
 };
-
-// Second, per-client-IP checkout budget on top of the per-user one above. Dodo
-// rate-limits our shared API key (#6027), so one client cycling many free
-// accounts could otherwise spend it and block real buyers. Higher than the
-// per-user cap so a single buyer retrying always hits that first; a shared
-// office NAT still gets 10 sessions per 10 minutes.
-export const CHECKOUT_PER_IP_RATE_POLICY = { limit: 10, window: '10 m' } as const;
 
 interface RateLimitPolicyDecision {
   reason: string;
@@ -871,9 +860,6 @@ export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimit
   },
   '/api/embed/map-frame': {
     reason: 'The keyless map frame is fully anonymous and fans out across four seed reads. Fail closed rather than inherit the availability-first global fallback: those reads come from the same Redis that would be degraded, so a fail-open origin would serve empty layers at unbounded volume while the CDN copy keeps real data on screen for the stale-while-revalidate window.',
-  },
-  '/api/create-checkout': {
-    reason: 'Checkout session creation relays to the paid Dodo provider. A Redis outage must not lift the per-user cap.',
   },
 };
 

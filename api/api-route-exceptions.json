@@ -885,34 +885,6 @@
       "removal_issue": "TBD"
     },
     {
-      "path": "api/create-checkout.ts",
-      "category": "deferred",
-      "reason": "Creates a Dodo Payments checkout session. Payments domain is still stabilizing (Clerk + Dodo integration); migrate once shape is frozen.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
-      "path": "api/customer-portal.ts",
-      "category": "deferred",
-      "reason": "Issues a Dodo customer-portal redirect URL. Paired with create-checkout.ts; migrate together.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
-      "path": "api/product-catalog.js",
-      "category": "deferred",
-      "reason": "Returns Dodo product catalog (pricing tiers). Migrate alongside the rest of the payments surface.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
-      "path": "api/referral/me.ts",
-      "category": "deferred",
-      "reason": "Returns the signed-in user's referral state. Auth-gated; part of user/v1 service.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
       "path": "api/scenario/v1/run.ts",
       "category": "deferred",
       "reason": "URL-compat alias for POST /api/scenario/v1/run-scenario. Thin gateway wrapper that rewrites the documented pre-#3207 v1 URL to the canonical sebuf RPC path. Not a new endpoint — preserves the partner-documented wire contract. Retires at the next v1→v2 break.",

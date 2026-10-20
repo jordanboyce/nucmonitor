@@ -12,12 +12,8 @@
  * none of them, so the dependency runs one way.
  */
 
-import { WEB_APP_ORIGIN } from '@/config/web-origin';
 import type { AuthSession } from './auth-state';
-import { getSubscription, openBillingPortal, prereserveBillingPortalTab } from './billing';
-import { deriveBillingUxState, getBillingGateOverride, getReactivationHref } from './billing-state';
 import { getEntitlementState } from './entitlements';
-import { openExternalUrl } from './external-navigation';
 import type { ClientEntitlementBelief } from './premium-denial';
 import { getSecretState } from './runtime-config';
 import { isProUser } from './widget-store';
@@ -119,29 +115,11 @@ export function getPanelGateReason(
 }
 
 /**
- * #4771: refine a generic FREE_TIER verdict with the customer's billing
- * state. A paying user whose local renewal evidence went stale (missed or
- * exhausted webhook) must see "we're verifying your renewal" — not an
- * Upgrade CTA that pushes them toward duplicate checkout. Reads the same
- * reactive snapshots the payment-failure banner uses, so panel copy and
- * banner always agree. Non-FREE_TIER reasons pass through untouched:
- * anonymous users have no billing state, and NONE means access works.
+ * Billing-aware refinement of a FREE_TIER verdict. NucMonitor has no billing,
+ * so every reason passes through untouched.
  */
 export function resolveBillingAwareGateReason(reason: PanelGateReason): PanelGateReason {
-  if (reason !== PanelGateReason.FREE_TIER) return reason;
-  const state = deriveBillingUxState(getSubscription(), getEntitlementState(), Date.now());
-  switch (getBillingGateOverride(state)) {
-    case 'payment_on_hold':
-      return PanelGateReason.PAYMENT_ON_HOLD;
-    case 'renewal_pending':
-      return PanelGateReason.RENEWAL_PENDING;
-    case 'renewal_failed':
-      return PanelGateReason.RENEWAL_FAILED;
-    case 'lapsed':
-      return PanelGateReason.LAPSED;
-    default:
-      return reason;
-  }
+  return reason;
 }
 
 /**
@@ -153,47 +131,15 @@ export function resolveBillingAwareGateReason(reason: PanelGateReason): PanelGat
 export interface GateActionDeps {
   /** Opens the sign-in modal for the ANONYMOUS reason. */
   openAuthModal: () => void;
-  /**
-   * Plan key used to preselect the pricing page's billing period on the LAPSED
-   * reason. Defaults to the live subscription row.
-   */
+  /** Unused since billing was removed; kept so existing callers compile. */
   planKey?: string | null;
 }
 
-// Absolute origin (WEB_APP_ORIGIN): the desktop runtime's webview has no
-// worldmonitor.app origin, so a relative href would resolve against
-// tauri://localhost. `openExternalUrl` then routes it to the OS browser on
-// desktop rather than opening another WebView window (#5911).
-function openProPage(path: string): void {
-  void openExternalUrl(`${WEB_APP_ORIGIN}${path}`);
-}
-
-/** Return the action callback for a given gate reason. */
+/**
+ * Return the action callback for a given gate reason. Only sign-in remains a
+ * real action: there is no pricing page or billing portal to send anyone to.
+ */
 export function resolveGateAction(reason: PanelGateReason, deps: GateActionDeps): () => void {
-  switch (reason) {
-    case PanelGateReason.ANONYMOUS:
-      return () => deps.openAuthModal();
-    case PanelGateReason.FREE_TIER:
-      return () => openProPage('/pro');
-    case PanelGateReason.PAYMENT_ON_HOLD:
-    case PanelGateReason.RENEWAL_FAILED:
-      // Pre-reserve the portal tab synchronously inside the click gesture
-      // so the async portal-session fetch survives the popup blocker
-      // (same pattern as payment-failure-banner.ts).
-      return () => {
-        const reservedWin = prereserveBillingPortalTab();
-        void openBillingPortal(reservedWin);
-      };
-    case PanelGateReason.RENEWAL_PENDING:
-      // Verification resolves server-side; a reload re-pulls entitlements
-      // for users who don't want to wait for the reactive update.
-      return () => window.location.reload();
-    case PanelGateReason.LAPSED:
-      // A returning subscriber lands on the pricing anchor with their previous
-      // billing period preselected — the bare /pro redirect this replaced
-      // dropped both signals.
-      return () => openProPage(getReactivationHref(deps.planKey ?? getSubscription()?.planKey));
-    default:
-      return () => {};
-  }
+  if (reason === PanelGateReason.ANONYMOUS) return () => deps.openAuthModal();
+  return () => {};
 }

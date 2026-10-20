@@ -1,0 +1,104 @@
+/* Partner access gate and demo banner (src/components/AccessGate.ts). */
+
+.access-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--bg, #0b0f14);
+  color: var(--text, #e6edf3);
+}
+
+.access-gate-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 28px 24px;
+  border: 1px solid var(--border, #263040);
+  border-radius: 10px;
+  background: var(--surface, #111821);
+}
+
+.access-gate-brand {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent, #4fb3ff);
+}
+
+.access-gate-title {
+  margin: 10px 0 8px;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.access-gate-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary, #a9b4c2);
+}
+
+.access-gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.access-gate-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong, #3a4658);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #e6edf3);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.access-gate-btn.primary {
+  border-color: var(--accent, #4fb3ff);
+  background: var(--accent, #4fb3ff);
+  color: #04121f;
+}
+
+.access-gate-btn:focus-visible {
+  outline: 2px solid var(--accent, #4fb3ff);
+  outline-offset: 2px;
+}
+
+.access-demo-banner {
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 40px 6px 16px;
+  border-bottom: 1px solid var(--border, #263040);
+  background: var(--bg-secondary, #101720);
+  color: var(--text-secondary, #a9b4c2);
+  font-size: 12px;
+  text-align: center;
+}
+
+.access-demo-banner strong {
+  color: var(--accent, #4fb3ff);
+}
+
+.access-demo-banner-close {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}

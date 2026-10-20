@@ -1,6 +1,7 @@
 import './styles/base-layer.css';
 import './bootstrap/zod-csp';
 import { SITE_VARIANT } from '@/config/variant';
+import { IS_PARTNER_MODE } from '@/config/access-mode';
 import { installLcpAttributionDebug } from '@/bootstrap/lcp-attribution';
 import { markLcpDebug } from '@/utils/lcp-debug';
 import { registerWebMcpTools, type WebMcpAppBindings } from '@/services/webmcp';
@@ -637,7 +638,18 @@ if (urlParams.get('settings') === '1') {
   });
   const webMcpController = registerWebMcpTools(bindings);
   // Import and constructor failures must reach the global startup error monitors.
-  void import('./App').then(({ App }) => {
+  // Partner deployments boot the dashboard only for a signed-in partner; demo
+  // deployments boot it for everyone and label it (docs/partner-access.md).
+  const appElement = document.getElementById('app');
+  const accessReady = IS_PARTNER_MODE && appElement
+    ? import('@/components/AccessGate').then((m) => m.runPartnerGate(appElement))
+    : Promise.resolve();
+  if (!IS_PARTNER_MODE) {
+    scheduleAfterFirstPaint(() => {
+      void import('@/components/AccessGate').then((m) => m.showDemoBanner());
+    });
+  }
+  void accessReady.then(() => import('./App')).then(({ App }) => {
     markLcpDebug('wm:boot:app-construct');
     const app = new App('app');
     resolveBindings(app.getWebMcpBindings());

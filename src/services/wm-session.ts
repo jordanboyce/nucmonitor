@@ -608,6 +608,17 @@ function isBrowserIssuedAbort(err: unknown, signal: AbortSignal): boolean {
     && (err as { name?: unknown }).name === 'AbortError';
 }
 
+/**
+ * Partner deployments mint a session only for a signed-in partner, so the mint
+ * must carry the Clerk bearer (docs/partner-access.md). The partner gate
+ * registers the provider before the app boots; demo deployments never do.
+ */
+let mintAuthHeaderProvider: (() => Promise<string | null>) | null = null;
+
+export function setWmSessionMintAuthProvider(provider: (() => Promise<string | null>) | null): void {
+  mintAuthHeaderProvider = provider;
+}
+
 async function mintSession(body?: { widgetKey?: string; proKey?: string }): Promise<MintOutcome> {
   // Sampled BEFORE the request leaves, not when it returns: concurrent mints
   // would otherwise let the first response to land make the others look like
@@ -629,9 +640,12 @@ async function mintSession(body?: { widgetKey?: string; proKey?: string }): Prom
   );
   try {
     const fetchImpl = nativeSessionFetch ?? globalThis.fetch;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const bearer = mintAuthHeaderProvider ? await mintAuthHeaderProvider() : null;
+    if (bearer) headers.Authorization = `Bearer ${bearer}`;
     const resp = await fetchImpl(toApiUrl('/api/wm-session'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
       body: body ? JSON.stringify(body) : undefined,
       signal: timeoutController.signal,

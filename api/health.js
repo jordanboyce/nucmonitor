@@ -375,7 +375,6 @@ const STANDALONE_KEYS = {
   forecastFredM2sl:         'economic:fred:v1:M2SL:0',
   forecastFredDcoilwtico:   'economic:fred:v1:DCOILWTICO:0',
   climateNews:              'climate:news-intelligence:v1',
-  productCatalog:           'product-catalog:v3',
   energySpineCountries:     'energy:spine:v1:_countries',
   energyMixAll:             'energy:mix:v1:_all',
   ieaOilStocks:             'energy:iea-oil-stocks:v1:index',
@@ -814,7 +813,6 @@ const SEED_META = {
   euFsi:             { key: 'seed-meta:economic:fsi-eu',               maxStaleMin: 5760 }, // daily seed (weekdays + holidays); 5760min = 96h = covers Wed→Mon Easter gap. Data freshness is tracked separately via content-age (STALE_CONTENT) — see seed-fsi-eu.mjs.
   diseaseOutbreaks:  { key: 'seed-meta:health:disease-outbreaks',      maxStaleMin: 2880 }, // daily seed; 2880 = 48h = 2x interval
   healthAirQuality:  { key: 'seed-meta:health:air-quality',            maxStaleMin: 180 }, // hourly cron; 180 = 3x interval for shared health/climate seed
-  productCatalog:    { key: 'seed-meta:product-catalog',               maxStaleMin: 1080 }, // relay loop every 6h; 1080 = 18h = 3x interval
   vpdTrackerRealtime:   { key: 'seed-meta:health:vpd-tracker',         maxStaleMin: 2880 }, // daily seed (0 2 * * *); 2880min = 48h = 2x interval
   vpdTrackerHistorical: { key: 'seed-meta:health:vpd-tracker',         maxStaleMin: 2880 }, // shares seed-meta key with vpdTrackerRealtime (same run)
   energyMixAll:         { key: 'seed-meta:economic:owid-energy-mix',   maxStaleMin: 50400 }, // same seed run as energyExposure; shares seed-meta key
@@ -2373,7 +2371,7 @@ const STATUS_COUNTS = {
   EMPTY: 'crit',
   EMPTY_DATA: 'crit',
   // Tenant-relay gateway gate (probeRelayGatewayGate). Both crit statuses mean
-  // checkout / customer-portal / notification-channels are dead right now:
+  // notification channels are dead right now:
   // MISCONFIGURED is the Vercel half of #8208 (the build cannot see the
   // secret), REJECTED is the Convex half (the deployed gate does not admit
   // it). UNREACHABLE is a transport verdict, not a credential one, and stays
@@ -2653,12 +2651,12 @@ function snapshotTtlSeconds(snapshot, now) {
 // compact `problems`, which is what the 15-minute seed-freshness monitor
 // fails on (scripts/check-seed-freshness.mjs findOperationalProblems).
 const RELAY_GATEWAY_GATE_CHECK_NAME = 'relayGatewayGate';
-const RELAY_GATEWAY_GATE_ROUTE = '/relay/create-checkout';
+const RELAY_GATEWAY_GATE_ROUTE = '/relay/notification-channels';
 const RELAY_GATEWAY_GATE_TIMEOUT_MS = 4_000;
 const RELAY_GATEWAY_GATE_USER_AGENT = 'worldmonitor-health-relay-gate/1.0';
 
-// The same resolution the gateways use (api/create-checkout.ts,
-// api/customer-portal.ts, api/notification-channels.ts): CONVEX_SITE_URL, or
+// The same resolution the gateway uses (api/notification-channels.ts):
+// CONVEX_SITE_URL, or
 // the `.convex.site` twin of CONVEX_URL. A deployment configured through
 // CONVEX_URL alone is a supported shape and must not read as misconfigured.
 function resolveRelayGatewaySiteUrl() {
@@ -3010,7 +3008,7 @@ async function probeRelayGatewayGate({
   // TLS: a malformed or `http:` CONVEX_SITE_URL is a misconfiguration, not a
   // transport failure, and is reported without a request being made.
   // The target is built exactly as the gateways build theirs — the configured
-  // string with the route appended (api/create-checkout.ts:172) — so a value
+  // string with the route appended (api/notification-channels.ts) — so a value
   // carrying a path or a trailing slash is probed at the same endpoint the
   // paying path would hit, not at a normalised origin that may be healthy
   // while the real one is not. Parsing is for the https check only.
@@ -3065,7 +3063,9 @@ async function probeRelayGatewayGate({
       hint: 'The deployed Convex gate does not admit this build\'s CONVEX_TENANT_RELAY_SECRET. Either side can be stale: a value written after the last `convex deploy` reads as undefined inside deployed functions until the next push (#8217). Redeploy Convex, then confirm this check returns OK.',
     };
   }
-  if (response.status === 400 && body?.error === 'MISSING_FIELDS') {
+  // `{}` carries no userId: an admitted bearer gets 400 MISSING_USER_ID before
+  // any Convex work runs. MISSING_FIELDS is the retired checkout route's answer.
+  if (response.status === 400 && (body?.error === 'MISSING_USER_ID' || body?.error === 'MISSING_FIELDS')) {
     return { ...base, status: 'OK', httpStatus: 400, latencyMs };
   }
   return {

@@ -7,6 +7,7 @@ import { getCorsHeaders, getOriginDeniedCorsHeaders, isDisallowedOrigin } from '
 import { timingSafeEqualSecret, timingSafeIncludes } from './_crypto.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { issueSessionToken, validateSessionToken } from './_session.js';
+import { isPartnerMode, verifyPartnerRequest } from './_partner-access.js';
 import { emitWmSessionUsage } from './_usage-telemetry.js';
 
 export const config = { runtime: 'edge' };
@@ -204,6 +205,16 @@ export default async function handler(req, ctx) {
   if (rl) {
     emitWmSessionUsage(ctx, req, rl, startedAt, rl.status === 429 ? 'rate_limit_429' : 'rate_limit_degraded');
     return rl;
+  }
+
+  // Partner deployments mint a browser session only for a signed-in partner;
+  // every data read downstream needs that session (or an API key), so this is
+  // the one gate between the dashboard and the data (docs/partner-access.md).
+  if (isPartnerMode()) {
+    const partner = await verifyPartnerRequest(req);
+    if (!partner.ok) {
+      return respond({ error: partner.error }, partner.status, cors, `partner_${partner.status}`);
+    }
   }
 
   // Before the new Set-Cookie: whether the caller's browser gave the previous

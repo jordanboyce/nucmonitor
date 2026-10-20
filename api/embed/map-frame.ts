@@ -37,6 +37,7 @@ import {
   verifyEmbedGrant,
   type EmbedGrantClaims,
 } from '../../server/_shared/embed-grant';
+import { isPartnerMode } from '../_partner-access.js';
 import {
   cacheControlForEmbedFrame,
   composeEmbedMapFrame,
@@ -130,7 +131,10 @@ export async function handleEmbedMapFrame(
 
   let tier: EmbedMapFrameTier = 'free';
   let principalUserId: string | undefined;
-  if (sharedLayers === null) {
+  // Partner deployments have no keyless frame: only a partner's embed grant
+  // renders one (docs/partner-access.md).
+  const partnerMode = isPartnerMode();
+  if (partnerMode || sharedLayers === null) {
     const claims = await deps.verifyGrant(grantFromHeaders(req.headers));
     // An absent or expired grant is not an error: it drops to the free tier,
     // which is what the frame renders while it re-mints. A grant minted for a
@@ -138,6 +142,11 @@ export async function handleEmbedMapFrame(
     if (claims && claims.panel === 'map') {
       tier = 'keyed';
       principalUserId = claims.accountId;
+    } else if (partnerMode) {
+      return new Response(JSON.stringify({ error: 'embed_grant_required' }), {
+        status: 401,
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      });
     }
   }
 
@@ -156,7 +165,7 @@ export async function handleEmbedMapFrame(
   const headers: Record<string, string> = {
     ...cors,
     'Content-Type': 'application/json',
-    'Cache-Control': cacheControlForEmbedFrame(sharedLayers !== null),
+    'Cache-Control': cacheControlForEmbedFrame(sharedLayers !== null && !partnerMode),
   };
   if (drainResponseHeaders(req)?.['X-No-Cache']
     || Object.values(frame.layers).some(state => state === 'partial' || state === 'unavailable')) {
@@ -166,7 +175,7 @@ export async function handleEmbedMapFrame(
   // body depend on it. Declaring Vary on the shared entry would fragment it on
   // a header that cannot change the answer — the tier is already in the cache
   // key, because it is in the URL.
-  if (sharedLayers === null) headers.Vary = 'X-WorldMonitor-Grant';
+  if (sharedLayers === null || partnerMode) headers.Vary = 'X-WorldMonitor-Grant';
 
   return new Response(JSON.stringify(frame), { status: 200, headers });
 }

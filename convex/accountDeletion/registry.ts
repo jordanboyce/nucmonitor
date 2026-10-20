@@ -66,11 +66,6 @@ export const ACCOUNT_DELETION_REGISTRY: readonly RegistryEntry[] = [
     notes: "Capture keyHash then delete; invalidate embed-key Redis",
   },
   {
-    target: "mcpProTokens",
-    action: "delete",
-    notes: "Capture token id then delete; write pro-mcp-token-neg:<tokenId>",
-  },
-  {
     target: "businessProGrants",
     action: "delete",
     notes: "Owner via subscriptions; invitee via userId/email",

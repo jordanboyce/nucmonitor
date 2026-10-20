@@ -551,7 +551,7 @@ async function hasActivatedServerProFunctionality(
   ctx: QueryCtx | MutationCtx,
   userId: string,
 ): Promise<boolean> {
-  const [channels, rules, apiKeys, mcpTokens] = await Promise.all([
+  const [channels, rules, apiKeys] = await Promise.all([
     ctx.db
       .query("notificationChannels")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -562,10 +562,6 @@ async function hasActivatedServerProFunctionality(
       .collect(),
     ctx.db
       .query("userApiKeys")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .collect(),
-    ctx.db
-      .query("mcpProTokens")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect(),
   ]);
@@ -581,10 +577,7 @@ async function hasActivatedServerProFunctionality(
       rule.channels.some((channelType) => verifiedChannels.has(channelType)),
   );
   const hasApiSetup = apiKeys.some((key) => key.revokedAt === undefined);
-  const hasMcpSetup = mcpTokens.some(
-    (token) => token.revokedAt === undefined && token.lastUsedAt !== undefined,
-  );
-  return hasConfiguredDelivery || hasApiSetup || hasMcpSetup;
+  return hasConfiguredDelivery || hasApiSetup;
 }
 
 /**

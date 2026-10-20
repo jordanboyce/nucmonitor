@@ -37,29 +37,6 @@ crons.hourly(
   {},
 );
 
-// Bounded recovery for Company Monitoring purge generations whose scheduled
-// continuation was dropped. The mutation independently enforces the ordinary
-// lapse purgeAfter deadline, so an hourly wake cannot bypass the 24h grace.
-crons.hourly(
-  "company-monitoring-stalled-purge-reaper",
-  { minuteUTC: 37 },
-  internal.companyMonitoring.accounts.reapStalledAccountPurges,
-  {},
-);
-
-// Company Monitoring account roots are provisioned on first use and are no
-// longer touched by entitlement writes (#6256), so lapses are pulled here
-// instead of pushed from billing. Scanning only companyMonitoringAccounts means
-// this costs nothing for the subscribers who never use the feature. The 24h
-// purgeAfter grace still applies downstream, so detection latency of one tick
-// is absorbed by a window that already exists.
-crons.hourly(
-  "company-monitoring-entitlement-reconciler",
-  { minuteUTC: 47 },
-  internal.companyMonitoring.accounts.reconcileAccountEntitlements,
-  {},
-);
-
 // Retention sweep for the preference-write rate limiter (#6706). The limiter
 // used to drop expired-window rows inline on every write, which widened that
 // mutation's OCC read set from one counter row to the caller's entire row set
@@ -96,24 +73,6 @@ crons.daily(
   "email-soft-bounce-prune",
   { hourUTC: 4, minuteUTC: 50 },
   internal.emailSuppressions.pruneSoftBounceData,
-  {},
-);
-
-// Daily retention prune for the append-only historical intelligence store
-// (#5694). The table has no natural ceiling — every seeder run appends the
-// events it published — and each row carries a 512-float vector, so the
-// vector index is the real cost being bounded here. Ages rows past
-// INTEL_HISTORY_RETENTION_DAYS out by `ingestedAt` in bounded per-run
-// batches that self-drain. Also drains expired retraction tombstones
-// (#5743) in the same pass, by `retractedAt` — a handful of hand-created
-// rows do not justify a second scheduled function. See `prune` in
-// convex/intelHistory.ts. 04:30 UTC sits between the plan-limit prune
-// (04:45) and the wave-runs cleanup (04:00) so the three delete-heavy jobs
-// never overlap.
-crons.daily(
-  "intel-history-prune",
-  { hourUTC: 4, minuteUTC: 30 },
-  internal.intelHistory.prune,
   {},
 );
 

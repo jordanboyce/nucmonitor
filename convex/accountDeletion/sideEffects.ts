@@ -16,7 +16,6 @@ import { mergeUniqueStrings } from "./registry";
 const REDIS_FETCH_TIMEOUT_MS = 5_000;
 const CLERK_FETCH_TIMEOUT_MS = 8_000;
 const DODO_ATTEMPT_TIMEOUT_MS = 8_000;
-const MCP_NEG_CACHE_TTL_SECONDS = 60;
 const USER_AGENT = "worldmonitor-convex/1.0";
 const MAX_EXTERNAL_ATTEMPTS = 5;
 const RETRY_BASE_DELAY_MS = 30_000;
@@ -256,7 +255,6 @@ async function deleteAccountRedisKeys(args: {
   userId: string;
   keyHashes: string[];
   embedKeyHashes: string[];
-  mcpTokenIds: string[];
 }): Promise<void> {
   const keys = [
     entitlementKey(args.userId),
@@ -277,18 +275,7 @@ async function deleteAccountRedisKeys(args: {
         : null;
   if (slot) keys.push(`brief:${args.userId}:${slot}`);
 
-  // Deletes and the MCP negative-cache sentinels go in one pipeline. The
-  // sentinels used to be a per-token await, each its own fetch with its own
-  // 5s budget, serialized inside the same action that still has to reach Dodo
-  // and Clerk.
-  await redisRevoke(
-    keys,
-    args.mcpTokenIds.map((tokenId) => ({
-      key: `pro-mcp-token-neg:${tokenId}`,
-      value: "1",
-      ttlSeconds: MCP_NEG_CACHE_TTL_SECONDS,
-    })),
-  );
+  await redisRevoke(keys, []);
 }
 
 async function deleteClerkUser(userId: string): Promise<"deleted" | "missing"> {
@@ -403,7 +390,6 @@ export const runExternalErase = internalAction({
           userId: snapshot.userId,
           keyHashes: snapshot.keyHashes,
           embedKeyHashes: snapshot.embedKeyHashes,
-          mcpTokenIds: snapshot.mcpTokenIds,
         });
         await ctx.runMutation(internal.accountDeletion.erase.recordExternalProgress, {
           deletionId: args.deletionId,
@@ -423,7 +409,6 @@ export const runExternalErase = internalAction({
         userId: snapshot.userId,
         keyHashes: snapshot.keyHashes,
         embedKeyHashes: snapshot.embedKeyHashes,
-        mcpTokenIds: snapshot.mcpTokenIds,
       });
       await ctx.runMutation(internal.accountDeletion.erase.recordExternalProgress, {
         deletionId: args.deletionId,

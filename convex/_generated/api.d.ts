@@ -13,7 +13,6 @@ import type * as accountDeletion_clerkWebhook from "../accountDeletion/clerkWebh
 import type * as accountDeletion_erase from "../accountDeletion/erase.js";
 import type * as accountDeletion_registry from "../accountDeletion/registry.js";
 import type * as accountDeletion_sideEffects from "../accountDeletion/sideEffects.js";
-import type * as agentSources from "../agentSources.js";
 import type * as alertRules from "../alertRules.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as apiPlanLimitEmails from "../apiPlanLimitEmails.js";
@@ -50,7 +49,6 @@ import type * as embedKeys from "../embedKeys.js";
 import type * as entitlements from "../entitlements.js";
 import type * as followedCountries from "../followedCountries.js";
 import type * as http from "../http.js";
-import type * as intelHistory from "../intelHistory.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_dodo from "../lib/dodo.js";
 import type * as lib_emailDomain from "../lib/emailDomain.js";
@@ -63,7 +61,6 @@ import type * as lib_iso2 from "../lib/iso2.js";
 import type * as lib_notificationEmail from "../lib/notificationEmail.js";
 import type * as lib_resendEmail from "../lib/resendEmail.js";
 import type * as lib_shards from "../lib/shards.js";
-import type * as mcpProTokens from "../mcpProTokens.js";
 import type * as notificationChannels from "../notificationChannels.js";
 import type * as payments_backfillCustomerNormalizedEmail from "../payments/backfillCustomerNormalizedEmail.js";
 import type * as payments_billing from "../payments/billing.js";
@@ -99,7 +96,6 @@ declare const fullApi: ApiFromModules<{
   "accountDeletion/erase": typeof accountDeletion_erase;
   "accountDeletion/registry": typeof accountDeletion_registry;
   "accountDeletion/sideEffects": typeof accountDeletion_sideEffects;
-  agentSources: typeof agentSources;
   alertRules: typeof alertRules;
   apiKeys: typeof apiKeys;
   apiPlanLimitEmails: typeof apiPlanLimitEmails;
@@ -136,7 +132,6 @@ declare const fullApi: ApiFromModules<{
   entitlements: typeof entitlements;
   followedCountries: typeof followedCountries;
   http: typeof http;
-  intelHistory: typeof intelHistory;
   "lib/auth": typeof lib_auth;
   "lib/dodo": typeof lib_dodo;
   "lib/emailDomain": typeof lib_emailDomain;
@@ -149,7 +144,6 @@ declare const fullApi: ApiFromModules<{
   "lib/notificationEmail": typeof lib_notificationEmail;
   "lib/resendEmail": typeof lib_resendEmail;
   "lib/shards": typeof lib_shards;
-  mcpProTokens: typeof mcpProTokens;
   notificationChannels: typeof notificationChannels;
   "payments/backfillCustomerNormalizedEmail": typeof payments_backfillCustomerNormalizedEmail;
   "payments/billing": typeof payments_billing;

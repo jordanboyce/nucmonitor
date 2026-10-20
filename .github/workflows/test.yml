@@ -48,6 +48,7 @@ jobs:
       - run: npm run lint:premium-fetch
       - run: npm run lint:unicode
       - run: npm run lint:md
+      - run: npm run entitlement:crosswalk:check
 
   # test:data shards by measured duration; the denominator in --shard must
   # match the matrix length.

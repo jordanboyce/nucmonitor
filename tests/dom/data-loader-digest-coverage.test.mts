@@ -114,10 +114,7 @@ async function makeLoader() {
     clustersSettled: false,
   } as unknown as AppContext;
   const { DataLoaderManager } = await import('@/app/data-loader');
-  const loader = new DataLoaderManager(ctx, {
-    renderCriticalBanner: () => undefined,
-    refreshOpenCountryBrief: () => undefined,
-  });
+  const loader = new DataLoaderManager(ctx);
   const internal = loader as unknown as DigestLoaderInternals;
   internal.persistDigest = vi.fn();
   internal.loadPersistedDigest = vi.fn().mockResolvedValue(null);

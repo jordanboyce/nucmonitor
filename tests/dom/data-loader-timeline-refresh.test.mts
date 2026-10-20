@@ -225,12 +225,7 @@ async function makeLoader() {
     isDestroyed: false,
   } as unknown as AppContext;
   const { DataLoaderManager } = await import('@/app/data-loader');
-  const loader = new DataLoaderManager(ctx, {
-    renderCriticalBanner: () => undefined,
-    refreshOpenCountryBrief: () => undefined,
-    refreshOpenCountryMilitary,
-    refreshOpenCountryTimeline,
-  });
+  const loader = new DataLoaderManager(ctx);
   return { loader, ctx, refreshOpenCountryMilitary, refreshOpenCountryTimeline };
 }
 

@@ -37,7 +37,7 @@ describe('failure-state displays', () => {
     const updateFeed = vi.fn();
     const manager = new DataLoaderManager({
       map: { setCableHealth }, statusPanel: { updateFeed },
-    } as unknown as AppContext, {} as ConstructorParameters<typeof DataLoaderManager>[1]);
+    } as unknown as AppContext);
     vi.mocked(fetchCableHealth).mockRejectedValue(new Error('Cable health unavailable'));
     await manager.loadCableHealth();
     expect(setCableHealth).toHaveBeenCalledWith({});

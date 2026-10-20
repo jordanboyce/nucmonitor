@@ -1,5 +1,5 @@
 name: Install root dependencies
-description: Restore the exact Node 24 dependency tree or install it, then prepare repository inventory.
+description: Restore the exact Node 24 dependency tree or install it.
 runs:
   using: composite
   steps:
@@ -19,7 +19,3 @@ runs:
       with:
         path: node_modules
         key: ${{ steps.node-modules.outputs.cache-primary-key }}
-    - name: Regenerate inventory on cache hit
-      if: steps.node-modules.outputs.cache-hit == 'true'
-      shell: bash
-      run: npm run inventory:facts

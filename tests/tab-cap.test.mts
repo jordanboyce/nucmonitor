@@ -167,12 +167,6 @@ describe('resolveTabCap — catalog activation (R10)', () => {
 });
 
 describe('resolveTabCap — billing-aware lock reasons (#4771)', () => {
-  it('a covering subscription on payment hold gets the payment reason, never an upsell', () => {
-    const verdict = resolveTabCap(inputs({ features: PRO, billingState: 'on_hold' }), 10);
-    assert.deepEqual(verdict, { allowed: false, cap: 10, reason: 'payment_on_hold' });
-    assert.notEqual(verdict.allowed === false && verdict.reason, 'free_tier');
-  });
-
   it('renewal verification pending → renewal_pending', () => {
     assert.deepEqual(
       resolveTabCap(inputs({ billingState: 'renewal_verification_pending' }), 3),

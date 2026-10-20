@@ -100,7 +100,7 @@ export const LAYER_EXPLANATIONS: Partial<Record<keyof MapLayers, LayerExplanatio
     coverage: 'curated',
     category: 'Weather',
     purpose: 'Shows active official severe-weather alerts from national meteorological services, merged into one weather:alerts:v1 feed.',
-    source: 'United States National Weather Service (NWS), Environment and Climate Change Canada (ECCC), and WMO Severe Weather Information Centre (SWIC) CAP aggregation, seeded through the WorldMonitor relay.',
+    source: 'United States National Weather Service (NWS), Environment and Climate Change Canada (ECCC), and WMO Severe Weather Information Centre (SWIC) CAP aggregation, seeded through the NucMonitor relay.',
     freshness: 'NWS, ECCC, and SWIC alerts are seeded every 15 minutes by the relay and monitored against a 45-minute freshness budget.',
     confidence: 'Authoritative for alerts issued by the contributing national services, subject to upstream publication timing. NWS and ECCC render as polygons; SWIC geocoded alerts render at the issuing service country centroid with an explicit precision marker.',
     limitations: [

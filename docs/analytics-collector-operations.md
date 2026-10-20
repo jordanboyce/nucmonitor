@@ -5,7 +5,7 @@ description: "Operational contracts for the self-hosted Umami collector, its wri
 
 # Analytics Collector Operations
 
-World Monitor sends product analytics to the separately deployed Railway
+NucMonitor sends product analytics to the separately deployed Railway
 `umami` service. Railway deployment status is not an application write-path
 health signal: a healthy deployment can still return HTTP 500 from `POST
 /api/send`.

@@ -7,7 +7,7 @@ review_agents:
   - compound-engineering:review:code-simplicity-reviewer
 ---
 
-# WorldMonitor Review Context
+# NucMonitor Review Context
 
 TypeScript monorepo: Vanilla TS panels (no React), sebuf proto RPCs, Redis-cached seed data,
 Vercel edge functions, Railway cron seeds.

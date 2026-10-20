@@ -21,6 +21,7 @@ export * from './base';
 export const DEFAULT_PANELS: Record<string, PanelConfig> = {
   map: { name: 'US Nuclear Facilities Map', enabled: true, priority: 1 },
   'nuclear-reactor-status': { name: 'NRC Reactor Power Status', enabled: true, priority: 1 },
+  'nuclear-events': { name: 'NRC Event Notifications', enabled: true, priority: 1 },
   'nuclear-hazards': { name: 'Facility All-Hazards Watch', enabled: true, priority: 1 },
   'nuclear-facilities': { name: 'US Nuclear Facility Directory', enabled: true, priority: 1 },
   'live-news': { name: 'Nuclear Headlines', enabled: true, priority: 1 },

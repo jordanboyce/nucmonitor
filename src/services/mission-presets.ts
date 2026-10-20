@@ -65,6 +65,7 @@ export const MISSION_PRESETS: readonly MissionPreset[] = [
     panels: [
       'map',
       'nuclear-reactor-status',
+      'nuclear-events',
       'nuclear-hazards',
       'nuclear-facilities',
       'radiation-watch',

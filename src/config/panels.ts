@@ -104,6 +104,7 @@ const FULL_MOBILE_MAP_LAYERS: MapLayers = {
 const NUCLEAR_PANELS: Record<string, PanelConfig> = {
   map: { name: 'US Nuclear Facilities Map', enabled: true, priority: 1 },
   'nuclear-reactor-status': { name: 'NRC Reactor Power Status', enabled: true, priority: 1 },
+  'nuclear-events': { name: 'NRC Event Notifications', enabled: true, priority: 1 },
   'nuclear-hazards': { name: 'Facility All-Hazards Watch', enabled: true, priority: 1 },
   'nuclear-facilities': { name: 'US Nuclear Facility Directory', enabled: true, priority: 1 },
   'live-news': { name: 'Nuclear Headlines', enabled: true, priority: 1 },
@@ -480,7 +481,7 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
 
   nuclearHub: {
     labelKey: 'header.panelCatNuclearHub',
-    panelKeys: ['nuclear-reactor-status', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
+    panelKeys: ['nuclear-reactor-status', 'nuclear-events', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
     variants: ['nuclear'],
   },
   nuclearNews: {

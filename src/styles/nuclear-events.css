@@ -1,0 +1,62 @@
+/* NucMonitor — NRC Event Notifications panel (shares card/table/filter styles with nuclear-hub.css) */
+
+.ner-toolbar { align-items: center; }
+.ner-region {
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  color: inherit;
+}
+
+.ner-class { width: 1%; white-space: nowrap; vertical-align: top; }
+.ner-date { width: 1%; white-space: nowrap; text-align: right; vertical-align: top; font-variant-numeric: tabular-nums; }
+.ner-title { font-weight: 600; line-height: 1.3; }
+.ner-retracted .ner-title { text-decoration: line-through; opacity: 0.7; }
+
+.ner-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--nuc-watch);
+  color: #fff;
+}
+.ner-badge-non-emergency { background: rgba(127, 140, 141, 0.35); color: inherit; }
+.ner-badge-unusual-event { background: var(--nuc-elevated); color: #111; }
+.ner-badge-alert { background: var(--nuc-high); color: #111; }
+.ner-badge-site-area-emergency,
+.ner-badge-general-emergency { background: var(--nuc-critical); color: #fff; }
+.ner-badge-unknown { background: transparent; border: 1px solid var(--nuc-watch); color: inherit; }
+
+.ner-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; align-items: center; }
+.ner-flag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+}
+.ner-flag-new { background: var(--nuc-accent); color: #111; }
+.ner-flag-retracted { background: var(--nuc-watch); color: #fff; }
+.ner-flag-updated { background: rgba(52, 152, 219, 0.35); }
+.ner-flag-scram { background: rgba(231, 76, 60, 0.3); }
+.ner-flag-watched { background: var(--nuc-accent-dim); color: var(--nuc-accent); }
+.ner-cat-label { font-size: 10px; color: var(--text-dim, #888); }
+
+.ner-units { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0; }
+.ner-units th, .ner-units td { text-align: left; padding: 2px 6px; border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08)); }
+.ner-cfr { list-style: none; margin: 6px 0; padding: 0; font-size: 11px; display: flex; flex-direction: column; gap: 2px; }
+.ner-cfr code { color: var(--nuc-accent); margin-right: 4px; }
+.ner-narrative { font-size: 12px; line-height: 1.5; color: var(--text-secondary, #bbb); max-height: 320px; overflow-y: auto; margin: 6px 0; }
+.ner-narrative p { margin: 0 0 6px; }
+.ner-narrative .ner-marker { font-weight: 700; color: var(--nuc-accent); }
+.ner-narrative-empty { font-style: italic; }
+.ner-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ner-watch.active { background: var(--nuc-accent-dim); color: var(--nuc-accent); }
+.ner-source { font-size: 11px; color: var(--nuc-accent); margin-left: auto; }

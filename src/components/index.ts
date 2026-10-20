@@ -24,6 +24,7 @@ export * from './ClimateAnomalyPanel';
 export * from './UnifiedSettings';
 export * from './RadiationWatchPanel';
 export * from './NuclearReactorStatusPanel';
+export * from './NuclearEventReportsPanel';
 export * from './NuclearFacilityHazardsPanel';
 export * from './NuclearFacilityDirectoryPanel';
 export * from './BreakingNewsBanner';

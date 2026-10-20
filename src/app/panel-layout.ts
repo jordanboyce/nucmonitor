@@ -191,6 +191,7 @@ const CW_PRO_GATE_TAB_RECOVERY_KEY = 'worldmonitor-cw-pro-gate-tab-recovery-v1';
 export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {
   'energy-complex': { rowSpan: 2 },
   'nuclear-reactor-status': { rowSpan: 2 },
+  'nuclear-events': { rowSpan: 2 },
   'nuclear-hazards': { rowSpan: 2 },
   'nuclear-facilities': { rowSpan: 2 },
   'live-news': { className: 'panel-wide' },
@@ -2328,6 +2329,13 @@ export class PanelLayoutManager implements AppModule {
     this.lazyPanel('nuclear-reactor-status', () =>
       this.importPanel('nuclear-reactor-status', () => import('@/components/NuclearReactorStatusPanel'), 'NuclearReactorStatusPanel', (NuclearReactorStatusPanel) => {
         const p = new NuclearReactorStatusPanel();
+        p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
+        return p;
+      }),
+    );
+    this.lazyPanel('nuclear-events', () =>
+      this.importPanel('nuclear-events', () => import('@/components/NuclearEventReportsPanel'), 'NuclearEventReportsPanel', (NuclearEventReportsPanel) => {
+        const p = new NuclearEventReportsPanel();
         p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
         return p;
       }),

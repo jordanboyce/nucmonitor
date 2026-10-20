@@ -10,6 +10,13 @@
       "removal_issue": null
     },
     {
+      "path": "api/nrc-event-reports.ts",
+      "category": "upstream-proxy",
+      "reason": "Fetches the trailing window of NRC daily Event Notification Report HTML pages (event-status/event/YYYY/YYYYMMDDen.html), parses them with the shared label-based parser in shared/nrc-event-reports.ts, merges updates and retractions across days, and returns compact JSON. nrc.gov publishes no API and no CORS headers; the upstream is fixed and the shape follows the NRC page, not a product contract.",
+      "owner": "@jordanboyce",
+      "removal_issue": null
+    },
+    {
       "path": "api/miit-news.js",
       "category": "non-json",
       "reason": "Adapts the fixed official MIIT dated news listing to RSS/XML for the existing browser and server feed readers. Success responses use application/rss+xml; the RSS transport cannot use a JSON proto envelope.",

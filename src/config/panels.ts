@@ -9,13 +9,12 @@ import { isEntitled } from '@/services/entitlements';
 
 // ============================================
 // NUCLEAR variant — NucMonitor (nuclear.<host>)
-// US nuclear facility hub: NRC reactor status, all-hazards watch, directory,
-// radiation monitoring, official + industry feeds.
-// See src/config/variants/nuclear.ts for the canonical description.
+// The NucMonitor dashboard: US nuclear facility all-hazards hub.
 // ============================================
 const NUCLEAR_PANELS: Record<string, PanelConfig> = {
   map: { name: 'US Nuclear Facilities Map', enabled: true, priority: 1 },
   'nuclear-reactor-status': { name: 'NRC Reactor Power Status', enabled: true, priority: 1 },
+  'nuclear-events': { name: 'NRC Event Notifications', enabled: true, priority: 1 },
   'nuclear-hazards': { name: 'Facility All-Hazards Watch', enabled: true, priority: 1 },
   'nuclear-facilities': { name: 'US Nuclear Facility Directory', enabled: true, priority: 1 },
   'live-news': { name: 'Nuclear Headlines', enabled: true, priority: 1 },
@@ -363,7 +362,7 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
 
   nuclearHub: {
     labelKey: 'header.panelCatNuclearHub',
-    panelKeys: ['nuclear-reactor-status', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
+    panelKeys: ['nuclear-reactor-status', 'nuclear-events', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
     variants: ['nuclear'],
   },
   nuclearNews: {

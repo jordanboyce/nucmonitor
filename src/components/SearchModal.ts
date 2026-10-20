@@ -150,9 +150,6 @@ export class SearchModal {
   private onCommand?: (command: Command) => void;
   private onHumanInteraction?: () => void;
   private onQueryChange?: (rawInput: string) => void;
-  private onFlightSearch?: (callsign: string) => void;
-  private currentFlightCallsign: string | null = null;
-  private flightSearchFired = false;
   private placeholder: string;
   private activePanelIds: Set<string> = new Set();
   /**
@@ -221,7 +218,6 @@ export class SearchModal {
       sources: this.sources,
       commands: getAllCommands(),
       isMobile: currentViewportIsMobile,
-      flightPrefixEnabled: !!this.onFlightSearch,
       isPanelCommandVisible: (panelId) => this.isPanelCommandVisible(panelId),
       isLayerCommandExecutable: (layerKey) => this.layerExecutableFn(layerKey),
       isCommandVisible: (command) => this.commandVisibleFn(command),
@@ -290,10 +286,6 @@ export class SearchModal {
 
   public setOnQueryChange(callback: (rawInput: string) => void): void {
     this.onQueryChange = callback;
-  }
-
-  public setOnFlightSearch(callback: (callsign: string) => void): void {
-    this.onFlightSearch = callback;
   }
 
   public refreshSearch(): void {
@@ -376,8 +368,6 @@ export class SearchModal {
     }
     if (this.overlay) return;
     this.isMobile = isMobileDevice();
-    this.currentFlightCallsign = null;
-    this.flightSearchFired = false;
     this.selectedIndex = 0;
     this.lastSearchedQuery = '';
     this.activeScope = this.scopes[0];
@@ -428,8 +418,6 @@ export class SearchModal {
         this.results = [];
         this.commandResults = [];
         this.selectedIndex = 0;
-        this.currentFlightCallsign = null;
-        this.flightSearchFired = false;
       };
       if (this.isMobile) {
         this.closeTimeoutId = setTimeout(() => {
@@ -686,10 +674,6 @@ export class SearchModal {
     if (!query) {
       this.showingAllCommands = false;
       this.commandResults = [];
-      // Drop flight trigger state so Enter on the idle deck cannot re-fire a
-      // prior "flight …" search after the operator cleared the input.
-      this.currentFlightCallsign = null;
-      this.flightSearchFired = false;
       this.selectedIndex = 0;
       this.showRecentOrEmpty();
       if (this.isMobile) this.renderChips();
@@ -699,8 +683,6 @@ export class SearchModal {
     this.onQueryChange?.(rawInput);
 
     const matches = this.search(rawInput, this.activeScope);
-    this.currentFlightCallsign = matches.flightCallsign;
-    this.flightSearchFired = false;
     this.commandResults = matches.commandMatches;
     this.results = matches.entityMatches.map((match) => match.result);
 
@@ -766,7 +748,6 @@ export class SearchModal {
 
     // All-channel tips are driven by ALL_CHANNEL_TIP_KEYS (pre-deck inventory).
     // Channel scopes keep a narrower, task-focused set.
-    const hasFlight = this.sources.some((source) => source.type === 'flight');
     const tipMeta: Record<string, { icon: string }> = {
       'commands.tips.map': { icon: '\u2316' },
       'commands.tips.panel': { icon: '\u25A6' },
@@ -774,22 +755,17 @@ export class SearchModal {
       'commands.tips.layers': { icon: '\u26A1' },
       'commands.tips.time': { icon: '\u23F1\uFE0F' },
       'commands.tips.settings': { icon: '\u2699\uFE0F' },
-      'commands.tips.flight': { icon: '\u2708\uFE0F' },
     };
     const toTip = (key: string) => ({
       icon: tipMeta[key]?.icon ?? '\u2022',
       key,
       exampleKey: `${key}Example`,
     });
-    const flightTip = hasFlight ? [toTip('commands.tips.flight')] : [];
-    const allChannelTips = ALL_CHANNEL_TIP_KEYS
-      .filter((key) => key !== 'commands.tips.flight' || hasFlight)
-      .map((key) => toTip(key));
+    const allChannelTips = ALL_CHANNEL_TIP_KEYS.map((key) => toTip(key));
     const allTips: Record<SearchScope, { icon: string; key: string; exampleKey: string }[]> = {
       all: allChannelTips,
       signals: [
         toTip('commands.tips.brief'),
-        ...flightTip,
       ],
       map: [
         toTip('commands.tips.map'),
@@ -965,19 +941,6 @@ export class SearchModal {
     this.quickLaunchExamples = [];
 
     if (this.commandResults.length === 0 && this.results.length === 0) {
-      if (this.currentFlightCallsign && this.onFlightSearch) {
-        if (this.flightSearchFired) {
-          setTrustedHtml(this.resultsList, trustedHtml(`
-            <div class="search-empty">
-              <div class="search-empty-icon">\u2708\uFE0F</div>
-              <div>${escapeHtml(t('modals.search.flightNotFound', { callsign: this.currentFlightCallsign }))}</div>
-            </div>`, "legacy direct innerHTML migration"));
-        } else {
-          this.renderFlightSearchTrigger(this.currentFlightCallsign);
-          this.announceResultCount(1);
-        }
-        return;
-      }
       setTrustedHtml(this.resultsList, trustedHtml(`
         <div class="search-empty">
           <div class="search-empty-icon">\u2205</div>
@@ -991,11 +954,7 @@ export class SearchModal {
     const icons: Record<SearchResultType, string> = {
       country: '\u{1F3F3}\uFE0F',
       news: '\u{1F4F0}',
-      hotspot: '\u{1F4CD}',
       market: '\u{1F4C8}',
-      prediction: '\u{1F3AF}',
-      conflict: '\u2694\uFE0F',
-      base: '\u{1F3DB}\uFE0F',
       pipeline: '\u{1F6E2}',
       cable: '\u{1F310}',
       datacenter: '\u{1F5A5}\uFE0F',
@@ -1003,17 +962,6 @@ export class SearchModal {
       outage: '\u{1F4E1}',
       nuclear: '\u2622\uFE0F',
       irradiator: '\u269B\uFE0F',
-      techcompany: '\u{1F3E2}',
-      ailab: '\u{1F9E0}',
-      startup: '\u{1F680}',
-      techevent: '\u{1F4C5}',
-      techhq: '\u{1F984}',
-      accelerator: '\u{1F680}',
-      exchange: '\u{1F3DB}\uFE0F',
-      financialcenter: '\u{1F4B0}',
-      centralbank: '\u{1F3E6}',
-      commodityhub: '\u{1F4E6}',
-      flight: '✈',
     };
 
     let html = '';
@@ -1079,35 +1027,6 @@ export class SearchModal {
     this.resultsStatus.textContent = count === 0
       ? `${t('modals.search.noResults')}${query ? `: ${query}` : ''}`
       : t('modals.search.resultAnnouncement', { count, query });
-  }
-
-  private renderFlightSearchTrigger(callsign: string): void {
-    if (!this.resultsList) return;
-    setTrustedHtml(this.resultsList, trustedHtml(`
-      <div class="search-result-item selected" data-flight-trigger="${escapeHtml(callsign)}">
-        <span class="search-result-icon">\u2708\uFE0F</span>
-        <div class="search-result-content">
-          <div class="search-result-title">Search live flight <strong>${escapeHtml(callsign)}</strong></div>
-          <div class="search-result-subtitle">${escapeHtml(t('modals.search.flightSearchHint'))}</div>
-        </div>
-        <span class="search-result-type">${escapeHtml(t('modals.search.types.flight'))}</span>
-      </div>`, "legacy direct innerHTML migration"));
-    this.resultsList.querySelector('[data-flight-trigger]')?.addEventListener('click', () => {
-      this.triggerFlightSearch(callsign);
-    });
-  }
-
-  private triggerFlightSearch(callsign: string): void {
-    if (!this.onFlightSearch || !this.resultsList) return;
-    this.flightSearchFired = true;
-    setTrustedHtml(this.resultsList, trustedHtml(`
-      <div class="search-result-item">
-        <span class="search-result-icon">\u2708\uFE0F</span>
-        <div class="search-result-content">
-          <div class="search-result-title">Searching for <strong>${escapeHtml(callsign)}</strong>\u2026</div>
-        </div>
-      </div>`, "legacy direct innerHTML migration"));
-    this.onFlightSearch(callsign);
   }
 
   private renderChips(query?: string): void {
@@ -1179,16 +1098,6 @@ export class SearchModal {
         break;
       case 'Enter':
         e.preventDefault();
-        if (this.currentFlightCallsign && this.onFlightSearch && this.results.length === 0 && this.commandResults.length === 0) {
-          // Only auto-trigger flight when the input still holds a flight prefix;
-          // after clear, fall through to idle launch/recent selection instead.
-          const stillFlightPrefix = (this.input?.value.toLowerCase() || '').trim().startsWith('flight ');
-          if (stillFlightPrefix) {
-            this.triggerFlightSearch(this.currentFlightCallsign);
-            return;
-          }
-          this.currentFlightCallsign = null;
-        }
         this.selectResult(this.selectedIndex);
         break;
       case 'Escape':

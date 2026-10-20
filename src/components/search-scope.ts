@@ -32,21 +32,14 @@ export function resolveIdleSelectionTerm(
 
 const SIGNAL_RESULT_TYPES = new Set([
   'news',
-  'hotspot',
   'market',
-  'prediction',
-  'conflict',
   'earthquake',
   'outage',
   'nuclear',
-  'flight',
 ]);
 
 const MAP_RESULT_TYPES = new Set([
   'country',
-  'hotspot',
-  'conflict',
-  'base',
   'pipeline',
   'cable',
   'datacenter',
@@ -54,17 +47,6 @@ const MAP_RESULT_TYPES = new Set([
   'outage',
   'nuclear',
   'irradiator',
-  'techcompany',
-  'ailab',
-  'startup',
-  'techevent',
-  'techhq',
-  'accelerator',
-  'exchange',
-  'financialcenter',
-  'centralbank',
-  'commodityhub',
-  'flight',
 ]);
 
 export function commandMatchesSearchScope(scope: SearchScope, category: SearchCommandCategory): boolean {
@@ -104,7 +86,6 @@ export const ALL_CHANNEL_TIP_KEYS = [
   'commands.tips.layers',
   'commands.tips.time',
   'commands.tips.settings',
-  'commands.tips.flight',
 ] as const;
 
 /**

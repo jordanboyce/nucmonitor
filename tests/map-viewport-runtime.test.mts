@@ -30,6 +30,25 @@ interface MapContainerHarness {
 
 let harness: MapContainerHarness;
 
+/**
+ * Yield to the event loop until `done()` holds or a wall-clock deadline passes.
+ *
+ * runDashboardActionBinding reaches the renderer only after a dynamic
+ * `import('../../shared/agent-bus-actions')`. Under `node --import tsx` every
+ * dynamic import, even of an already-cached module, is resolved through tsx's
+ * off-thread loader hooks, which costs a variable number of event-loop turns
+ * (measured 15-255 setImmediate turns on Node 22 in this container). The suite
+ * used to poll a fixed 20 turns, so these binding cases passed or failed by
+ * machine speed alone — including at the original fork point. A time bound
+ * keeps the same ordering assertions without depending on loader latency.
+ */
+async function yieldUntil(done: () => boolean, timeoutMs = 2_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!done() && Date.now() < deadline) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
 before(async () => {
   const lifecycleOnlyStubs: Plugin = {
     name: 'map-viewport-lifecycle-stubs',
@@ -126,7 +145,7 @@ before(async () => {
       sourcefile: 'map-viewport-runtime-entry.ts',
     },
     bundle: true,
-    define: { 'import.meta.env': '{"DEV":false,"PROD":true,"VITE_VARIANT":"full"}' },
+    define: { 'import.meta.env': '{"DEV":false,"PROD":true,"VITE_VARIANT":"nuclear"}' },
     format: 'esm',
     logLevel: 'silent',
     platform: 'node',
@@ -331,9 +350,7 @@ describe('map viewport runtime lifecycle', () => {
       whenViewportSettled: () => settled,
     };
     (internals.markRendererReady as (token: number) => void).call(map, 8);
-    for (let attempt = 0; replacementCalls.length === 0 && attempt < 20; attempt += 1) {
-      await new Promise<void>((resolve) => setImmediate(resolve));
-    }
+    await yieldUntil(() => replacementCalls.length > 0);
     assert.deepEqual(replacementCalls, [[12.5, 42.25, 6]]);
     assert.equal(urlSyncs, 0, 'URL sync must wait for the replacement renderer animation');
 
@@ -427,9 +444,7 @@ describe('map viewport runtime lifecycle', () => {
       },
     );
 
-    for (let attempt = 0; internals.useGlobe !== true && attempt < 20; attempt += 1) {
-      await new Promise<void>((resolve) => setImmediate(resolve));
-    }
+    await yieldUntil(() => internals.useGlobe === true);
     assert.equal(internals.useGlobe, true, 'switchToGlobe must start before the failure path');
     (internals.handleGlobeInitFailure as (token: number, error: unknown) => void).call(
       map,

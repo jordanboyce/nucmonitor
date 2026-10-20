@@ -93,7 +93,7 @@ export const LAYER_EXPLANATIONS: Partial<Record<keyof MapLayers, LayerExplanatio
       'EONET wildfires are freshness-filtered, so older open events may not appear as active map points.',
     ],
     related: ['Natural Events layer popups', 'Severe Weather Alerts (NWS, ECCC, WMO SWIC)', 'Country brief natural signals'],
-    evidence: ['docs/data-sources.mdx', 'docs/architecture.mdx', 'server/worldmonitor/natural/v1/list-natural-events.ts'],
+    evidence: ['docs/data-sources.mdx', 'docs/natural-disasters.mdx', 'server/worldmonitor/natural/v1/list-natural-events.ts'],
   },
   weather: {
     key: 'weather',

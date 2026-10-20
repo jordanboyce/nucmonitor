@@ -32,11 +32,11 @@ function makeCtx(overrides: Partial<AppContext> = {}): AppContext {
   let globeMode = false;
   let deckActive = false;
   const mapLayers = {
-    conflicts: false,
+    usNuclearFacilities: false,
+    radiationWatch: false,
     weather: false,
-    ciiChoropleth: false,
-    resilienceScore: false,
-    storageFacilities: false,
+    cables: false,
+    diseaseOutbreaks: false,
   } as unknown as MapLayers;
   return {
     panels: {},
@@ -63,9 +63,9 @@ const entitled = {
   isPanelAllowed: () => true,
   hasPremiumAccess: () => false,
   applyLayerChange: () => {},
-  // The node fallback variant is the nuclear hub; these cases exercise the
-  // full-variant layer catalogue (conflicts, CII, storage facilities).
-  getVariant: () => 'full' as const,
+  // NucMonitor's only map variant: its allowlist excludes the retired upstream
+  // layers (cables, pipelines, datacenters) that stay in the registry.
+  getVariant: () => 'nuclear' as const,
 };
 
 describe('agent bus applier', () => {
@@ -233,66 +233,57 @@ describe('agent bus applier', () => {
     assert.equal(result.reason, 'map_unavailable');
   });
 
-  it('filters layers by live state, entitlement, variant, and renderer executability', () => {
+  it('filters layers by live state, variant, and renderer executability', () => {
     const ctx = makeCtx();
     const result = applyAgentBusAction(ctx, {
       type: 'set_layers',
       layers: {
-        conflicts: true,
-        resilienceScore: true,
-        storageFacilities: true,
+        radiationWatch: true,
+        usNuclearFacilities: true,
+        cables: true,
         notARealLayer: true,
       },
-    }, entitled);
+    }, {
+      ...entitled,
+      // The globe has no paint path for the facility registry.
+      getRenderer: () => 'globe',
+    });
     const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
 
     assert.equal(result.ok, true);
-    assert.equal(ctx.mapLayers.conflicts, true);
-    assert.equal(ctx.mapLayers.resilienceScore, false);
-    assert.equal(ctx.mapLayers.storageFacilities, false);
+    assert.equal(ctx.mapLayers.radiationWatch, true);
+    assert.equal(ctx.mapLayers.usNuclearFacilities, false);
+    assert.equal(ctx.mapLayers.cables, false);
     assert.equal(mapCalls.setLayersCalls.length, 1);
     assert.deepEqual(
       result.targets.map((target) => [target.target, target.status, target.reason ?? '']),
       [
-        ['conflicts', 'applied', ''],
-        ['resilienceScore', 'denied', 'layer_not_entitled'],
-        ['storageFacilities', 'denied', 'layer_not_executable'],
+        ['radiationWatch', 'applied', ''],
+        ['usNuclearFacilities', 'denied', 'layer_not_executable'],
+        ['cables', 'denied', 'variant_disallowed'],
         ['notARealLayer', 'denied', 'unknown_layer'],
       ],
     );
   });
 
-  it('allows free enhanced layers and clears stale locked layers', () => {
-    // DeckGL-active context (kind 'deck'): the enhanced CII choropleth renders
-    // on deck + globe, so it must be executable here. The default makeCtx mock
-    // models the SVG fallback (kind 'svg'), where CII has no paint path.
-    const ctx = makeCtx({
-      map: {
-        setCenter: () => {},
-        setView: () => {},
-        setLayers: () => {},
-        isDeckGLActive: () => true,
-        isGlobeMode: () => false,
-      } as never,
-    });
-    ctx.mapLayers.resilienceScore = true;
+  it('lets free users enable and clear layers through the normal layer-change path', () => {
+    const ctx = makeCtx();
+    ctx.mapLayers.weather = true;
     const layerChanges: Array<[keyof MapLayers, boolean, 'programmatic']> = [];
     const result = applyAgentBusAction(ctx, {
       type: 'set_layers',
-      layers: { ciiChoropleth: true, resilienceScore: false },
+      layers: { usNuclearFacilities: true, weather: false },
     }, {
       ...entitled,
       applyLayerChange: (layer, enabled, source) => { layerChanges.push([layer, enabled, source]); },
     });
 
     assert.equal(result.ok, true);
-    assert.equal(ctx.mapLayers.ciiChoropleth, true,
-      'enhanced layers remain available to free users');
-    assert.equal(ctx.mapLayers.resilienceScore, false,
-      'free users must be able to clear stale locked state');
+    assert.equal(ctx.mapLayers.usNuclearFacilities, true, 'the SVG fallback paints the facility registry');
+    assert.equal(ctx.mapLayers.weather, false);
     assert.deepEqual(layerChanges, [
-      ['ciiChoropleth', true, 'programmatic'],
-      ['resilienceScore', false, 'programmatic'],
+      ['usNuclearFacilities', true, 'programmatic'],
+      ['weather', false, 'programmatic'],
     ]);
   });
 
@@ -300,7 +291,7 @@ describe('agent bus applier', () => {
     const ctx = makeCtx();
     const result = applyAgentBusAction(ctx, {
       type: 'set_layers',
-      layers: { conflicts: true },
+      layers: { weather: true },
     }, {
       getPanelConfig: entitled.getPanelConfig,
       isPanelAllowed: entitled.isPanelAllowed,
@@ -313,7 +304,7 @@ describe('agent bus applier', () => {
     assert.equal(result.reason, 'layer_change_unavailable');
     assert.equal(result.targets[0]?.status, 'denied');
     assert.equal(result.targets[0]?.reason, 'layer_change_unavailable');
-    assert.equal(ctx.mapLayers.conflicts, false);
+    assert.equal(ctx.mapLayers.weather, false);
     assert.equal(mapCalls.setLayersCalls.length, 0);
   });
 
@@ -322,46 +313,16 @@ describe('agent bus applier', () => {
     const before = ctx.mapLayers;
     const result = applyAgentBusAction(ctx, {
       type: 'set_layers',
-      layers: { resilienceScore: true },
+      layers: { cables: true, diseaseOutbreaks: true },
     }, entitled);
     const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
 
     assert.equal(result.ok, false);
     assert.equal(result.reason, 'no_allowed_layers');
     assert.equal(ctx.mapLayers, before);
-    assert.equal(ctx.mapLayers.resilienceScore, false);
+    assert.equal(ctx.mapLayers.cables, false);
+    assert.equal(ctx.mapLayers.diseaseOutbreaks, false);
     assert.equal(mapCalls.setLayersCalls.length, 0);
-  });
-
-  it('normalizes mutually exclusive choropleth layers before applying', () => {
-    const layerChanges: Array<[keyof MapLayers, boolean, 'programmatic']> = [];
-    const ctx = makeCtx({
-      map: {
-        setCenter: () => {},
-        setView: () => {},
-        setLayers: () => {},
-        isDeckGLActive: () => true,
-        isGlobeMode: () => false,
-      } as never,
-    });
-    ctx.mapLayers.ciiChoropleth = true;
-
-    const result = applyAgentBusAction(ctx, {
-      type: 'set_layers',
-      layers: { resilienceScore: true },
-    }, {
-      ...entitled,
-      hasPremiumAccess: () => true,
-      applyLayerChange: (layer, enabled, source) => { layerChanges.push([layer, enabled, source]); },
-    });
-
-    assert.equal(result.ok, true);
-    assert.equal(ctx.mapLayers.resilienceScore, true);
-    assert.equal(ctx.mapLayers.ciiChoropleth, false);
-    assert.deepEqual(layerChanges, [
-      ['ciiChoropleth', false, 'programmatic'],
-      ['resilienceScore', true, 'programmatic'],
-    ]);
   });
 
   it('applies every dashboard time-range enum through the map control', () => {

@@ -99,7 +99,7 @@ async function loadMinimalPanel() {
 
     export class FreshnessMappedPanel extends Panel {
       constructor() {
-        super({ id: 'polymarket', title: 'Mapped Freshness', showCount: true, closable: true, collapsible: true });
+        super({ id: 'nuclear-hazards', title: 'Mapped Freshness', showCount: true, closable: true, collapsible: true });
       }
 
       publicDataBadge(state, detail) {

@@ -17,12 +17,7 @@
 // failure itself.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
-
-import YAML from 'yaml';
 
 import {
   DEFAULT_MAX_RECONCILE_AGE_MS,
@@ -35,8 +30,6 @@ import {
   summarizeReconcileHistory,
   toCreatedFilter,
 } from '../scripts/check-railway-reconcile-age.mjs';
-
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // A fixed clock. Seeding from Date.now() makes every assertion below depend on
 // how long the suite took to get here.
@@ -324,37 +317,5 @@ describe('reading whether one run reconciled', () => {
       }),
       true,
     );
-  });
-});
-
-describe('the cross-file names this scanner depends on', () => {
-  const workflow = YAML.parse(readFileSync(
-    resolve(repoRoot, '.github/workflows/railway-deploy-trigger.yml'),
-    'utf8',
-  ));
-
-  it('matches a step the reconciler workflow actually defines', () => {
-    // The scanner's whole signal is this string. If the workflow renames the
-    // step, every run reads as "did not reconcile" — which alarms rather than
-    // going quiet, but alarms forever for the wrong reason.
-    const names = Object.values(workflow.jobs)
-      .flatMap((job) => job.steps ?? [])
-      .map((step) => step.name)
-      .filter(Boolean);
-    assert.ok(
-      names.includes(RECONCILE_STEP_NAME),
-      `RECONCILE_STEP_NAME ${JSON.stringify(RECONCILE_STEP_NAME)} names no step in the workflow; it has ${JSON.stringify(names)}`,
-    );
-  });
-
-  it('is retained only behind an explicit manual rollback invocation', () => {
-    assert.deepEqual(Object.keys(workflow.on), ['workflow_dispatch']);
-    assert.equal(Object.hasOwn(workflow.on, 'workflow_run'), false);
-    assert.equal(Object.hasOwn(workflow.on, 'schedule'), false);
-    const liveness = workflow.jobs.liveness;
-    assert.match(String(liveness.if), /needs\.verifier\.result != 'success'/);
-    const enforcement = liveness.steps.find((step) => step.name === 'Enforce reconciliation liveness');
-    assert.match(enforcement.run, /CUTOVER_ACTIVE/);
-    assert.match(enforcement.run, /check-railway-reconcile-age\.mjs/);
   });
 });

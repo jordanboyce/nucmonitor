@@ -33,9 +33,20 @@ function setSeedHealth(
   }]);
 }
 
-function primePolymarket(status: SeedStatus = 'OK', checkedAtMs = Date.now()): void {
-  setSeedHealth('polymarket', 'OK', { seedAgeMin: 5, maxStaleMin: 60, records: 4, checkedAtMs });
-  setSeedHealth('predictions', status, { seedAgeMin: 5, maxStaleMin: 60, records: 7, checkedAtMs });
+// The all-hazards watch aggregates five health-mapped sources. `weather` is the
+// varied source; the other four stay OK so the worst-status roll-up is driven by it.
+const HAZARD_SOURCES = ['usgs', 'weather', 'firms', 'radiation', 'outages'] as const;
+
+function primeHazards(
+  status: SeedStatus = 'OK',
+  options: { seedAgeMin?: number; maxStaleMin?: number; checkedAtMs?: number } = {},
+): void {
+  const { seedAgeMin = 5, maxStaleMin = 60, checkedAtMs = Date.now() } = options;
+  for (const sourceId of HAZARD_SOURCES) {
+    if (sourceId === 'weather') continue;
+    setSeedHealth(sourceId, 'OK', { seedAgeMin, maxStaleMin, records: 4, checkedAtMs });
+  }
+  setSeedHealth('weather', status, { seedAgeMin, maxStaleMin, records: 7, checkedAtMs });
 }
 
 describe('dataFreshness panel summaries', () => {
@@ -44,23 +55,23 @@ describe('dataFreshness panel summaries', () => {
   });
 
   it('aggregates multiple mapped sources to the worst active status', () => {
-    primePolymarket('STALE_SEED');
+    primeHazards('STALE_SEED');
 
-    const summary = dataFreshness.getPanelFreshness('polymarket');
+    const summary = dataFreshness.getPanelFreshness('nuclear-hazards');
     assert.equal(summary?.status, 'stale');
-    assert.equal(summary?.sources.length, 2);
+    assert.equal(summary?.sources.length, HAZARD_SOURCES.length);
   });
 
   it('keeps an all-disabled panel disabled without letting one disabled source hide active data', () => {
-    setSeedHealth('polymarket', 'OK');
-    dataFreshness.setEnabled('predictions', false);
+    primeHazards('OK');
+    dataFreshness.setEnabled('weather', false);
 
-    assert.equal(dataFreshness.getPanelFreshness('polymarket')?.status, 'fresh');
+    assert.equal(dataFreshness.getPanelFreshness('nuclear-hazards')?.status, 'fresh');
 
     setSeedHealth('usgs', 'OK');
     dataFreshness.setEnabled('usgs', false);
     assert.equal(dataFreshness.getPanelFreshness('natural')?.status, 'disabled');
-    dataFreshness.setEnabled('predictions', true);
+    dataFreshness.setEnabled('weather', true);
     dataFreshness.setEnabled('usgs', true);
   });
 
@@ -113,8 +124,7 @@ describe('dataFreshness panel summaries', () => {
   });
 
   it('keeps health and error details human-readable in tooltip text', () => {
-    setSeedHealth('polymarket', 'OK');
-    setSeedHealth('predictions', 'REDIS_DOWN');
+    primeHazards('REDIS_DOWN');
 
     const panel = harness.createFreshnessPanel();
     try {
@@ -126,15 +136,15 @@ describe('dataFreshness panel summaries', () => {
       panel.destroy();
     }
 
-    dataFreshness.recordError('polymarket', 'provider token expired');
-    const summary = dataFreshness.getPanelFreshness('polymarket');
-    assert.equal(summary?.sources.find((source) => source.id === 'polymarket')?.lastError, null);
+    dataFreshness.recordError('usgs', 'provider token expired');
+    const summary = dataFreshness.getPanelFreshness('nuclear-hazards');
+    assert.equal(summary?.sources.find((source) => source.id === 'usgs')?.lastError, null);
   });
 });
 
 describe('Panel freshness badge', () => {
   it('renders a separate compact header badge for mapped panels', () => {
-    primePolymarket('OK');
+    primeHazards('OK');
     const panel = harness.createFreshnessPanel();
     try {
       const root = panel.getElement();
@@ -150,7 +160,7 @@ describe('Panel freshness badge', () => {
   });
 
   it('coexists with the existing live/cached/unavailable panel data badge and header controls', () => {
-    primePolymarket('OK');
+    primeHazards('OK');
     const panel = harness.createFreshnessPanel();
     try {
       panel.publicDataBadge('cached', 'SWR');
@@ -168,19 +178,19 @@ describe('Panel freshness badge', () => {
   });
 
   it('updates after dataFreshness changes and stops updating after destroy', () => {
-    primePolymarket('OK');
+    primeHazards('OK');
     const panel = harness.createFreshnessPanel();
     const root = panel.getElement();
     const badge = root.querySelector('.panel-freshness-badge');
     assert.ok(badge, 'freshness badge is rendered');
 
-    setSeedHealth('predictions', 'STALE_SEED');
+    setSeedHealth('weather', 'STALE_SEED');
     assert.match(badge.textContent ?? '', /^Stale/);
     assert.ok(badge.classList.contains('panel-freshness-stale'));
 
     panel.destroy();
     const textAfterDestroy = badge.textContent;
-    setSeedHealth('predictions', 'REDIS_DOWN');
+    setSeedHealth('weather', 'REDIS_DOWN');
     assert.equal(badge.textContent, textAfterDestroy);
   });
 
@@ -203,8 +213,7 @@ describe('Panel freshness badge', () => {
     }) as typeof clearInterval;
 
     try {
-      setSeedHealth('polymarket', 'OK', { seedAgeMin: 10, maxStaleMin: 15, checkedAtMs: baseMs });
-      setSeedHealth('predictions', 'OK', { seedAgeMin: 10, maxStaleMin: 15, checkedAtMs: baseMs });
+      primeHazards('OK', { seedAgeMin: 10, maxStaleMin: 15, checkedAtMs: baseMs });
       const panel = harness.createFreshnessPanel();
       const badge = panel.getElement().querySelector('.panel-freshness-badge');
       assert.ok(badge, 'freshness badge is rendered');

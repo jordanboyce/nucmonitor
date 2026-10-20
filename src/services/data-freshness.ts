@@ -132,6 +132,9 @@ const PANEL_FRESHNESS_SOURCES: Record<string, readonly DataSourceId[]> = {
   'strategic-risk': CORE_SOURCES,
   cii: CORE_SOURCES,
   'nuclear-headlines': ['rss'],
+  // The all-hazards watch joins every health-checked hazard feed the site-risk
+  // store ingests (EONET natural events ride the usgs naturalEvents check).
+  'nuclear-hazards': ['usgs', 'weather', 'firms', 'radiation', 'outages'],
   intel: ['gdelt', 'pizzint'],
   'gdelt-intel': ['gdelt'],
   protests: ['acled', 'acled_conflict', 'gdelt_doc', 'ucdp', 'hapi'],

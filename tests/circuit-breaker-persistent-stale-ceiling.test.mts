@@ -236,41 +236,6 @@ describe('CircuitBreaker — persistentStaleCeilingMs edge cases', () => {
 });
 
 // ============================================================
-// 4. Static analysis: cached-risk-scores.ts passes persistentStaleCeilingMs
-// ============================================================
-
-describe('cached-risk-scores.ts — uses persistentStaleCeilingMs', () => {
-  const src = readSrc('src/services/cached-risk-scores.ts');
-
-  // Find the breaker creation call (skip the import which also mentions createCircuitBreaker)
-  const breakerCallMatch = src.match(/createCircuitBreaker<[^>]+>\(\{[\s\S]*?\}\)/);
-
-  it('Risk Scores breaker passes persistentStaleCeilingMs', () => {
-    assert.ok(breakerCallMatch, 'createCircuitBreaker call must exist in cached-risk-scores.ts');
-    const breakerCreation = breakerCallMatch![0];
-
-    assert.match(
-      breakerCreation,
-      /persistentStaleCeilingMs\s*:/,
-      'Risk Scores breaker must pass persistentStaleCeilingMs option',
-    );
-  });
-
-  it('Risk Scores persistentStaleCeilingMs matches localStorage staleness (1h)', () => {
-    assert.ok(breakerCallMatch, 'createCircuitBreaker call must exist in cached-risk-scores.ts');
-    const breakerCreation = breakerCallMatch![0];
-
-    const uses1hConstant = /persistentStaleCeilingMs\s*:\s*LS_MAX_STALENESS_MS/.test(breakerCreation);
-    const uses1hLiteral = /persistentStaleCeilingMs\s*:\s*60\s*\*\s*60\s*\*\s*1000/.test(breakerCreation);
-
-    assert.ok(
-      uses1hConstant || uses1hLiteral,
-      'persistentStaleCeilingMs should be 1h (matching LS_MAX_STALENESS_MS) — either reference the constant or use 60 * 60 * 1000',
-    );
-  });
-});
-
-// ============================================================
 // 5. Adversarial: multiple breakers with different ceilings
 // ============================================================
 

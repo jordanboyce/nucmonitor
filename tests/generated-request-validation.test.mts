@@ -134,27 +134,24 @@ describe('generated request validation', () => {
   });
 
   it('preserves optional zero-value defaults but still rejects invalid explicit values', () => {
-    assert.equal(validateGeneratedRequest('getAirportOpsSummary', {
-      airports: [],
+    assert.equal(validateGeneratedRequest('getEnergyPrices', {
+      commodities: [],
     }), undefined);
-    assert.equal(validateGeneratedRequest('listAirportFlights', {
-      airport: 'DXB',
-      direction: 'FLIGHT_DIRECTION_BOTH',
-      limit: 0,
+    assert.equal(validateGeneratedRequest('getStockAnalysisHistory', {
+      symbols: ['AAPL'],
+      limitPerSymbol: 0,
     }), undefined);
-    assert.deepEqual(validateGeneratedRequest('listAirportFlights', {
-      airport: 'DXB',
-      direction: 'FLIGHT_DIRECTION_BOTH',
-      limit: 101,
+    assert.deepEqual(validateGeneratedRequest('getStockAnalysisHistory', {
+      symbols: ['AAPL'],
+      limitPerSymbol: 33,
     }), [
-      { field: 'limit', description: 'number must be less than or equal to 100' },
+      { field: 'limitPerSymbol', description: 'number must be less than or equal to 32' },
     ]);
-    assert.deepEqual(validateGeneratedRequest('listAirportFlights', {
-      airport: 'DXB',
-      direction: 'FLIGHT_DIRECTION_BOTH',
-      limit: Number.NaN,
+    assert.deepEqual(validateGeneratedRequest('getStockAnalysisHistory', {
+      symbols: ['AAPL'],
+      limitPerSymbol: Number.NaN,
     }), [
-      { field: 'limit', description: 'value must be a finite number' },
+      { field: 'limitPerSymbol', description: 'value must be a finite number' },
     ]);
   });
 
@@ -186,160 +183,84 @@ describe('generated request validation', () => {
   });
 
   it('enforces every supported scalar and cardinality rule family', () => {
-    assert.deepEqual(validateGeneratedRequest('getFlightStatus', {
-      flightNumber: 'AB',
-      date: '2026-08-01',
+    assert.deepEqual(validateGeneratedRequest('submitErrorReport', {
+      message: 'too short',
     }), [
-      { field: 'flightNumber', description: 'string length must be at least 3' },
+      { field: 'message', description: 'string length must be at least 10' },
     ]);
-    assert.deepEqual(validateGeneratedRequest('getFlightStatus', {
-      flightNumber: 'EK202',
-      date: '20260801',
+    assert.deepEqual(validateGeneratedRequest('getCountryStockIndex', {
+      countryCode: 'USA',
     }), [
-      { field: 'date', description: 'string length must be exactly 10' },
+      { field: 'countryCode', description: 'string length must be exactly 2' },
     ]);
-    assert.deepEqual(validateGeneratedRequest('getCountryRisk', {
+    assert.deepEqual(validateGeneratedRequest('getCountryStockIndex', {
       countryCode: 'us',
     }), [
       { field: 'countryCode', description: 'string must match pattern ^[A-Z]{2}$' },
     ]);
-    assert.deepEqual(validateGeneratedRequest('listAirportFlights', {
-      airport: 'DXB',
+    assert.deepEqual(validateGeneratedRequest('getStockAnalysisHistory', {
+      symbols: ['AAPL'],
+      limitPerSymbol: -1,
+    }), [
+      { field: 'limitPerSymbol', description: 'number must be greater than or equal to 1' },
+    ]);
+    assert.deepEqual(validateGeneratedRequest('getUsCpiMonthly', {
       limit: -1,
     }), [
-      { field: 'limit', description: 'number must be greater than or equal to 1' },
+      { field: 'limit', description: 'number must be greater than or equal to 0' },
     ]);
-    assert.deepEqual(validateGeneratedRequest('getIntelTimeline', {
-      from: -1,
+    assert.deepEqual(validateGeneratedRequest('getUsCpiMonthly', {
+      limit: 367,
     }), [
-      { field: 'from', description: 'number must be greater than or equal to 0' },
+      { field: 'limit', description: 'number must be less than or equal to 366' },
     ]);
-    assert.deepEqual(validateGeneratedRequest('getPopulationExposure', {
-      lat: 90.1,
-      lon: 0,
-      radius: 1,
+    assert.deepEqual(validateGeneratedRequest('getPhysicalDivergenceIndex', {
+      metals: ['gold', 'silver', 'gold'],
     }), [
-      { field: 'lat', description: 'number must be less than or equal to 90' },
-    ]);
-    assert.deepEqual(validateGeneratedRequest('getAirportOpsSummary', {
-      airports: Array.from({ length: 21 }, (_, index) => `A${index}`),
-    }), [
-      { field: 'airports', description: 'array must contain at most 20 item(s)' },
+      { field: 'metals', description: 'array must contain at most 2 item(s)' },
+      { field: 'metals', description: 'array items must be unique' },
     ]);
   });
 
-  it('enforces UTF-8 byte ceilings and exact contract versions', () => {
-    assert.deepEqual(validateGeneratedRequest('createMonitoredCompany', {
-      company: {
-        name: 'é'.repeat(129),
-        domicileCountry: 'DOMICILE_COUNTRY_US',
-        aliases: [],
-      },
+  // The monitored-company and webhook RPCs that carried enum, claim-pattern and
+  // contract-version rules left with their services. The surviving registry
+  // still exercises exact constants, per-item patterns and nested elements.
+  it('enforces exact constants, per-item patterns and nested repeated elements', () => {
+    assert.deepEqual(validateGeneratedRequest('getTemporalBaseline', {
+      type: 'military_flights',
+      region: 'europe',
     }), [
-      { field: 'company.name', description: 'string UTF-8 length must be at most 256 bytes' },
+      { field: 'region', description: 'string must equal global' },
+    ]);
+    assert.equal(validateGeneratedRequest('getTemporalBaseline', {
+      type: 'military_flights',
+      region: '',
+    }), undefined, 'an ignored zero-value constant field is not a violation');
+
+    assert.deepEqual(validateGeneratedRequest('getPhysicalDivergenceIndex', {
+      metals: ['gold', 'platinum'],
+    }), [
+      { field: 'metals[1]', description: 'string must match pattern ^(?:gold|silver)$' },
     ]);
 
-    assert.deepEqual(validateGeneratedRequest('importMonitoredCompanyBatch', {
-      contractVersion: 'cm-import-v2',
-      clientImportId: 'import-001',
-      rows: [{
-        ordinal: 0,
-        company: {
-          name: 'Example Holdings',
-          domicileCountry: 'DOMICILE_COUNTRY_GB',
-          aliases: [],
-        },
-      }],
+    assert.deepEqual(validateGeneratedRequest('recordBaselineSnapshot', {
+      updates: [
+        { type: 'military_flights', region: 'global' },
+        { type: '', region: 'europe' },
+      ],
     }), [
-      { field: 'contractVersion', description: 'string must equal cm-import-v1' },
+      { field: 'updates[1].type', description: 'value is required' },
+      { field: 'updates[1].region', description: 'string must equal global' },
     ]);
-
-    assert.deepEqual(validateGeneratedRequest('createMonitoredCompany', {
-      company: {
-        name: 'Missing Domicile',
-        aliases: [],
-      },
-    }), [
-      { field: 'company.domicileCountry', description: 'value is required' },
-    ]);
-    assert.deepEqual(validateGeneratedRequest('createMonitoredCompany', {
-      company: {
-        name: 'Unspecified Domicile',
-        domicileCountry: 'DOMICILE_COUNTRY_UNSPECIFIED',
-        aliases: [],
-      },
-    }), [
-      { field: 'company.domicileCountry', description: 'value is required' },
-    ]);
-    assert.deepEqual(validateGeneratedRequest('createMonitoredCompany', {
-      company: {
-        name: 'Unknown Domicile',
-        domicileCountry: 'DOMICILE_COUNTRY_CA',
-        aliases: [],
-      },
-    }), [
-      { field: 'company.domicileCountry', description: 'enum value must be defined' },
-    ]);
-    assert.deepEqual(validateGeneratedRequest('createMonitoredCompany', {
-      company: {
-        name: 'Malformed Claims',
-        domicileCountry: 'DOMICILE_COUNTRY_US',
-        domains: ['https://example.com/path'],
-        xHandles: ['not-a-handle!'],
-      },
-    }), [
-      {
-        field: 'company.domains[0]',
-        description: 'string must match pattern ^(?:www\\.)?(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.?$',
-      },
-      {
-        field: 'company.xHandles[0]',
-        description: 'string must match pattern ^@?[A-Za-z0-9_]{1,15}$',
-      },
-    ]);
-    assert.deepEqual(validateGeneratedRequest('updateMonitoredCompany', {
-      companyId: 'cm_company_01JNZB2Y7K4F6W8P9Q0R1S2T3V',
-      patch: {
-        addClaims: [{ type: 'COMPANY_CLAIM_TYPE_UNSPECIFIED', value: 'x' }],
-        removeClaimIds: ['internal-document-id'],
-      },
-    }), [
-      { field: 'patch.addClaims[0].type', description: 'value is required' },
-      {
-        field: 'patch.removeClaimIds[0]',
-        description: 'string must match pattern ^cm_claim_[0-9A-HJKMNP-TV-Z]{26}$',
-      },
-    ]);
-    assert.deepEqual(validateGeneratedRequest('listCompanyEventImpacts', {
-      companyIds: ['internal-document-id'],
-      directions: ['up'],
-      lifecycles: ['deleted'],
-    }), [
-      {
-        field: 'companyIds[0]',
-        description: 'string must match pattern ^cm_company_[0-9A-HJKMNP-TV-Z]{26}$',
-      },
-      {
-        field: 'directions[0]',
-        description: 'string must match pattern ^(?:positive|negative|mixed|MATERIAL_IMPACT_DIRECTION_(?:POSITIVE|NEGATIVE|MIXED))$',
-      },
-      {
-        field: 'lifecycles[0]',
-        description: 'string must match pattern ^(?:admitted|corrected|retracted|MATERIAL_IMPACT_LIFECYCLE_(?:ADMITTED|CORRECTED|RETRACTED))$',
-      },
-    ]);
-
   });
 
   it('distinguishes an absent proto3 optional scalar from an invalid value', () => {
-    assert.equal(validateGeneratedRequest('registerWebhook', {
-      callbackUrl: 'https://example.com/webhook',
-    }), undefined);
-    assert.deepEqual(validateGeneratedRequest('registerWebhook', {
-      callbackUrl: 'https://example.com/webhook',
-      alertThreshold: -1,
+    assert.equal(validateGeneratedRequest('getUsCpiMonthly', {}), undefined);
+    assert.equal(validateGeneratedRequest('getUsCpiMonthly', { limit: 0 }), undefined);
+    assert.deepEqual(validateGeneratedRequest('getUsCpiMonthly', {
+      limit: -1,
     }), [
-      { field: 'alertThreshold', description: 'number must be greater than or equal to 0' },
+      { field: 'limit', description: 'number must be greater than or equal to 0' },
     ]);
   });
 
@@ -358,73 +279,30 @@ describe('generated request validation', () => {
   });
 });
 
-describe('enum and string-bound validation branches', () => {
-  const company = (overrides: Record<string, unknown> = {}) => ({
-    company: { name: 'Example Holdings', domicileCountry: 'DOMICILE_COUNTRY_US', aliases: [], ...overrides },
-  });
+// The enum branches (numeric proto3-JSON form, undeclared names, enum.not_in)
+// were pinned on the monitored-company RPCs, which left with the trim; no
+// surviving request field declares an enum rule. The UTF-8 byte ceiling is now
+// the default one every string carries (DEFAULT_STRING_MAX_BYTES).
+describe('string byte-ceiling validation branches', () => {
+  const LIMIT = 64 * 1024;
 
-  it('rejects the numeric proto3-JSON enum form with an actionable message', () => {
-    // Deliberately narrower than canonical proto3 JSON: the generated server types are
-    // string unions and the published OpenAPI documents only the name form, so accepting
-    // an integer here would hand a handler a value it is not typed for. Pinned so the
-    // decision cannot be reversed silently.
+  it('accepts a value at exactly the UTF-8 byte ceiling and rejects one byte over', () => {
+    // 32,768 x 'é' = exactly 65,536 bytes. A clean request returns undefined,
+    // not an empty array.
+    assert.equal(validateGeneratedRequest('getBlsSeries', { seriesId: 'é'.repeat(LIMIT / 2) }), undefined);
     assert.deepEqual(
-      validateGeneratedRequest('createMonitoredCompany', company({ domicileCountry: 1 })),
-      [{
-        field: 'company.domicileCountry',
-        description: 'value must be an enum name (this API does not accept the numeric proto3-JSON enum form)',
-      }],
-    );
-  });
-
-  it('rejects an undeclared enum name even without enum.defined_only', () => {
-    assert.deepEqual(
-      validateGeneratedRequest('createMonitoredCompany', company({ domicileCountry: 'DOMICILE_COUNTRY_ZZ' })),
-      [{ field: 'company.domicileCountry', description: 'enum value must be defined' }],
-    );
-  });
-
-  it('enforces enum.not_in on the patch domicile field', () => {
-    // The only field exercising the generator's number->name reverse lookup end to end.
-    assert.deepEqual(
-      validateGeneratedRequest('updateMonitoredCompany', {
-        companyId: 'cm_company_01ARZ3NDEKTSV4RRFFQ69G5FAV',
-        patch: { domicileCountry: 'DOMICILE_COUNTRY_UNSPECIFIED' },
-      }),
-      [{
-        field: 'patch.domicileCountry',
-        description: 'enum value must not be DOMICILE_COUNTRY_UNSPECIFIED',
-      }],
-    );
-  });
-
-  it('rejects a present-but-empty patch name, matching create', () => {
-    assert.deepEqual(
-      validateGeneratedRequest('updateMonitoredCompany', {
-        companyId: 'cm_company_01ARZ3NDEKTSV4RRFFQ69G5FAV',
-        patch: { name: '' },
-      }),
-      [{ field: 'patch.name', description: 'string length must be at least 1' }],
-    );
-  });
-
-  it('accepts a name at exactly the UTF-8 byte ceiling and rejects one byte over', () => {
-    // 128 x 'é' = exactly 256 bytes; the existing test only covered a well-over case.
-    // A clean request returns undefined, not an empty array.
-    assert.equal(validateGeneratedRequest('createMonitoredCompany', company({ name: 'é'.repeat(128) })), undefined);
-    assert.deepEqual(
-      validateGeneratedRequest('createMonitoredCompany', company({ name: `${'é'.repeat(128)}a` })),
-      [{ field: 'company.name', description: 'string UTF-8 length must be at most 256 bytes' }],
+      validateGeneratedRequest('getBlsSeries', { seriesId: `${'é'.repeat(LIMIT / 2)}a` }),
+      [{ field: 'seriesId', description: `string UTF-8 length must be at most ${LIMIT} bytes` }],
     );
   });
 
   it('counts astral surrogate pairs as their UTF-8 byte length', () => {
-    // 65 x U+1F600 = 260 bytes across 130 UTF-16 code units; the fast path must fall
-    // through to the encoder rather than answering from `.length`.
+    // 16,385 x U+1F600 = 65,540 bytes across 32,770 UTF-16 code units; the fast
+    // path must fall through to the encoder rather than answering from `.length`.
     assert.deepEqual(
-      validateGeneratedRequest('createMonitoredCompany', company({ name: '\u{1F600}'.repeat(65) })),
-      [{ field: 'company.name', description: 'string UTF-8 length must be at most 256 bytes' }],
+      validateGeneratedRequest('getBlsSeries', { seriesId: '\u{1F600}'.repeat(LIMIT / 4 + 1) }),
+      [{ field: 'seriesId', description: `string UTF-8 length must be at most ${LIMIT} bytes` }],
     );
-    assert.equal(validateGeneratedRequest('createMonitoredCompany', company({ name: '\u{1F600}'.repeat(64) })), undefined);
+    assert.equal(validateGeneratedRequest('getBlsSeries', { seriesId: '\u{1F600}'.repeat(LIMIT / 4) }), undefined);
   });
 });

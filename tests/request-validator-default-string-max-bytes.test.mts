@@ -63,6 +63,7 @@ describe('request validator default string max_bytes (#8402)', () => {
         );
       }
     }
-    assert.ok(stringFields > 100, `expected a broad string registry, saw ${stringFields}`);
+    // Re-derived for the trimmed 12-service registry (88 string fields today).
+    assert.ok(stringFields > 60, `expected a broad string registry, saw ${stringFields}`);
   });
 });

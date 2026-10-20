@@ -383,18 +383,3 @@ describe('per-service OpenAPI JSON property names', () => {
     ]);
   });
 });
-
-describe('forecast field descriptions a client needs to read the numbers (#8867)', () => {
-  const schemas = loadUnifiedOpenApiSpec().components.schemas;
-  const schema = (suffix) => Object.entries(schemas).find(([name]) => name.endsWith(`_${suffix}`) || name === suffix)?.[1];
-
-  it('says what paired_hit_rate is compared with', () => {
-    assert.match(schema('MarketAlertRow').properties.pairedHitRate.description ?? '', /control scored[\s\S]*base_?[hH]it_?[rR]ate/);
-  });
-
-  it('keeps the simulation demotion threshold and adjustment ranges', () => {
-    const forecast = schema('Forecast').properties;
-    assert.match(forecast.demotedBySimulation.description ?? '', /0\.50/);
-    assert.match(forecast.simulationAdjustment.description ?? '', /\+0\.08 to \+0\.12/);
-  });
-});

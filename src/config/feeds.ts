@@ -55,7 +55,7 @@ export function getSourcePanelId(sourceName: string): string {
       for (const feed of feeds) _sourcePanelMap.set(feed.name, category);
     }
   }
-  return _sourcePanelMap.get(sourceName) ?? 'live-news';
+  return _sourcePanelMap.get(sourceName) ?? 'nuclear-headlines';
 }
 
 // NucMonitor feeds.
@@ -63,7 +63,7 @@ export function getSourcePanelId(sourceName: string): string {
 // The server mirror lives in server/worldmonitor/news/v1/_feeds.ts
 // (VARIANT_FEEDS.nuclear); tests/news-feed-key-parity.test.mts keeps them aligned.
 const NUCLEAR_FEEDS: Record<string, Feed[]> = {
-  'live-news': [
+  'nuclear-headlines': [
     { name: 'World Nuclear News',    url: rss('https://news.google.com/rss/search?q=site:world-nuclear-news.org+when:1d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'ANS Nuclear Newswire',  url: rss('https://news.google.com/rss/search?q=site:ans.org+nuclear+when:1d&hl=en-US&gl=US&ceid=US:en') },
     { name: 'NRC News',              url: rss('https://news.google.com/rss/search?q=site:nrc.gov+when:2d&hl=en-US&gl=US&ceid=US:en') },
@@ -127,7 +127,7 @@ export const CANONICAL_FEEDS: Record<string, Feed[]> = mergeCanonicalFeeds([
 
 /** Groups the Settings → Sources pills; keys are CANONICAL_FEEDS categories. */
 export const SOURCE_REGION_MAP: Record<string, { labelKey: string; feedKeys: string[] }> = {
-  nuclearNews: { labelKey: 'header.panelCatNuclearNews', feedKeys: ['live-news', 'nuclear-regulatory', 'nuclear-industry', 'nuclear-policy'] },
+  nuclearNews: { labelKey: 'header.panelCatNuclearNews', feedKeys: ['nuclear-headlines', 'nuclear-regulatory', 'nuclear-industry', 'nuclear-policy'] },
   energy: { labelKey: 'header.sourceRegionTopical', feedKeys: ['energy'] },
 };
 

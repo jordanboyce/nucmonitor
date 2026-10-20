@@ -2592,12 +2592,6 @@ export class DeckGLMap {
         <select class="view-select" aria-label="${t('header.selectRegion')}">
           <option value="global">${t('components.deckgl.views.global')}</option>
           <option value="america">${t('components.deckgl.views.americas')}</option>
-          <option value="mena">${t('components.deckgl.views.mena')}</option>
-          <option value="eu">${t('components.deckgl.views.europe')}</option>
-          <option value="asia">${t('components.deckgl.views.asia')}</option>
-          <option value="latam">${t('components.deckgl.views.latam')}</option>
-          <option value="africa">${t('components.deckgl.views.africa')}</option>
-          <option value="oceania">${t('components.deckgl.views.oceania')}</option>
         </select>
       </div>
     `, "legacy direct innerHTML migration"));
@@ -3279,7 +3273,8 @@ export class DeckGLMap {
   }
 
   private resetView(): void {
-    this.setView('global');
+    // Home is the continental US: every registry facility is domestic.
+    this.setView('america');
   }
 
   private createClimateHeatmapLayer(): ScatterplotLayer<ClimateAnomaly> {

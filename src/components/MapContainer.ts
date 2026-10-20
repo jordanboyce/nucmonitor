@@ -489,6 +489,10 @@ export class MapContainer {
       isMobile: this.isMobile,
       canToggleLayer: this.svgLayerToggleGuard,
     });
+    // The SVG renderer takes zoom/pan literally; apply the regional preset when
+    // the caller asked for a region but left the camera at its untouched default.
+    const { view, pan } = this.initialState;
+    if (view !== 'global' && pan.x === 0 && pan.y === 0) this.svgMap.setView(view);
     this.rehydrateActiveMap();
     this.markRendererReady(token);
     markLcpDebug('wm:map:svg-ready');

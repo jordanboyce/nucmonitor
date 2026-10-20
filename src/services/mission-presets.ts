@@ -71,7 +71,7 @@ export const MISSION_PRESETS: readonly MissionPreset[] = [
       'radiation-watch',
       'satellite-fires',
       'climate',
-      'live-news',
+      'nuclear-headlines',
     ],
     layers: [
       'usNuclearFacilities',

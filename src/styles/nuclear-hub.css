@@ -74,7 +74,7 @@
 .nrs-filter.active, .nfh-sev-filter.active, .nfd-cat.active {
   background: var(--nuc-accent-dim);
   border-color: var(--nuc-accent);
-  color: var(--text-primary, #fff);
+  color: var(--text, #fff);
 }
 .nrs-filter-count, .nfh-chip-count, .nfd-cat-count { opacity: 0.7; font-variant-numeric: tabular-nums; }
 .nfh-sev-filter.nfh-sev-critical.active { border-color: var(--nuc-critical); }
@@ -203,7 +203,7 @@
   border-radius: 4px;
   border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
   background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
-  color: var(--text-primary, #fff);
+  color: var(--text, #fff);
 }
 .nfd-cat-badge {
   display: inline-block;
@@ -212,7 +212,7 @@
   font-size: 10px;
   font-weight: 600;
   background: var(--nuc-accent-dim);
-  color: var(--text-primary, #fff);
+  color: var(--text, #fff);
   white-space: nowrap;
 }
 .nfd-cat-power-reactor { background: rgba(245, 197, 24, 0.25); }
@@ -298,7 +298,7 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.nsu-toggle.active { background: var(--nuc-accent-dim); border-color: var(--nuc-accent); color: var(--text-primary, #fff); }
+.nsu-toggle.active { background: var(--nuc-accent-dim); border-color: var(--nuc-accent); color: var(--text, #fff); }
 .nsu-export { margin-left: auto; border-color: var(--nuc-accent); color: var(--nuc-accent); }
 .nsu-export:hover { background: var(--nuc-accent-dim); }
 .nsu-count { opacity: 0.7; font-variant-numeric: tabular-nums; }

@@ -69,43 +69,46 @@ describe('WebMCP search-result effect classes', () => {
   });
 
   it('classifies commands and entities onto the five effect classes', () => {
-    const enabled = new Set(['live-webcams', 'markets']);
+    const enabled = new Set(['nuclear-headlines', 'radiation-watch']);
     const isPanelEnabled = (panelId: string): boolean => enabled.has(panelId);
 
     assert.equal(classifySearchMatchEffect(command('nav:eu'), isPanelEnabled), 'view-state');
     assert.equal(classifySearchMatchEffect(command('time:7d'), isPanelEnabled), 'view-state');
     assert.equal(classifySearchMatchEffect(command('country-map:DE'), isPanelEnabled), 'view-state');
     assert.equal(
-      classifySearchMatchEffect(command('panel:live-webcams'), isPanelEnabled),
+      classifySearchMatchEffect(command('panel:nuclear-headlines'), isPanelEnabled),
       'view-state',
     );
     assert.equal(
-      classifySearchMatchEffect(command('panel:markets'), isPanelEnabled),
+      classifySearchMatchEffect(command('panel:radiation-watch'), isPanelEnabled),
       'view-state',
     );
     assert.equal(
-      classifySearchMatchEffect(command('panel:markets@overview'), isPanelEnabled),
+      classifySearchMatchEffect(command('panel:radiation-watch@overview'), isPanelEnabled),
       'persistent',
     );
     assert.equal(
-      classifySearchMatchEffect(command('panel:consumer-prices@world'), () => true),
+      classifySearchMatchEffect(command('panel:nuclear-facilities@operating'), () => true),
       'persistent',
     );
     assert.equal(classifySearchMatchEffect(entity('news'), isPanelEnabled), 'view-state');
     assert.equal(classifySearchMatchEffect(entity('market'), isPanelEnabled), 'view-state');
-    assert.equal(classifySearchMatchEffect(entity('hotspot'), isPanelEnabled), 'view-state');
-    assert.equal(classifySearchMatchEffect(entity('ailab'), isPanelEnabled), 'view-state');
+    assert.equal(classifySearchMatchEffect(entity('earthquake'), isPanelEnabled), 'view-state');
+    assert.equal(classifySearchMatchEffect(entity('outage'), isPanelEnabled), 'view-state');
 
     assert.equal(
-      classifySearchMatchEffect(command('panel:windy-webcams'), isPanelEnabled),
+      classifySearchMatchEffect(command('panel:climate-news'), isPanelEnabled),
       'persistent',
     );
-    assert.equal(classifySearchMatchEffect(command('layer:conflicts'), isPanelEnabled), 'persistent');
-    assert.equal(classifySearchMatchEffect(command('layers:military'), isPanelEnabled), 'persistent');
+    assert.equal(classifySearchMatchEffect(command('layer:radiationWatch'), isPanelEnabled), 'persistent');
+    assert.equal(classifySearchMatchEffect(command('layers:all'), isPanelEnabled), 'persistent');
     assert.equal(classifySearchMatchEffect(command('view:dark'), isPanelEnabled), 'persistent');
     assert.equal(classifySearchMatchEffect(command('view:resilience'), isPanelEnabled), 'persistent');
     assert.equal(classifySearchMatchEffect(entity('pipeline'), isPanelEnabled), 'persistent');
-    assert.equal(classifySearchMatchEffect(entity('flight'), isPanelEnabled), 'persistent');
+    assert.equal(classifySearchMatchEffect(entity('nuclear'), isPanelEnabled), 'persistent');
+    assert.equal(classifySearchMatchEffect(entity('irradiator'), isPanelEnabled), 'persistent');
+    // Retired entity types (live flights) fail closed rather than view-state.
+    assert.equal(classifySearchMatchEffect(entity('flight' as never), isPanelEnabled), 'persistent');
 
     assert.equal(classifySearchMatchEffect(command('country:US'), isPanelEnabled), 'quota-consuming');
     assert.equal(classifySearchMatchEffect(entity('country'), isPanelEnabled), 'quota-consuming');

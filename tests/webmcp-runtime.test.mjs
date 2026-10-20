@@ -325,7 +325,7 @@ describe('WebMCP registry behavioral contract', () => {
     for (let i = 0; i < 20; i += 1) {
       const controller = new AbortController();
       const invocation = tool.execute({}, { signal: controller.signal });
-      const rejected = assert.rejects(invocation, i % 2 ? /World Monitor could not open search/ : { name: 'AbortError' });
+      const rejected = assert.rejects(invocation, i % 2 ? /NucMonitor could not open search/ : { name: 'AbortError' });
       if (i % 2) t.mock.timers.tick(30_000);
       else controller.abort();
       await rejected;
@@ -456,7 +456,7 @@ describe('WebMCP registry behavioral contract', () => {
     const harness = trackedRuntime(provider);
     const controller = registerWebMcpTools(pending.promise, harness.runtime);
     const invocation = executeRegistered(provider, 'openSearch');
-    const rejected = assert.rejects(invocation, /World Monitor could not open search/);
+    const rejected = assert.rejects(invocation, /NucMonitor could not open search/);
     await settlePromises();
     t.mock.timers.tick(30_000);
     await rejected;
@@ -667,7 +667,6 @@ describe('WebMCP registry behavioral contract', () => {
         'create_dashboard_tab',
         'delete_dashboard_tab',
         'move_panel',
-        'openCountryBrief',
         'rename_dashboard_tab',
         'select_dashboard_tab',
         'set_country_followed',
@@ -675,9 +674,10 @@ describe('WebMCP registry behavioral contract', () => {
         'set_map_mode',
         'set_panel_collapsed',
         'set_panel_enabled',
-        'switch_monitor',
       ],
-      'the gated set includes navigation, persistent writes, and metered country generation',
+      // openCountryBrief (metered country generation) and switch_monitor left
+      // with the country brief and the multi-monitor variants.
+      'the gated set includes persistent writes',
     );
     let mutationCalls = 0;
     let openCalls = 0;
@@ -756,16 +756,12 @@ describe('WebMCP registry behavioral contract', () => {
       ok: false,
       status: 'denied',
       reason: 'target_cancellation_unsupported',
-      message: 'This browser cannot cancel work already running in the page, so World Monitor '
+      message: 'This browser cannot cancel work already running in the page, so NucMonitor '
         + 'will not run tools whose effects can outlive cancellation. Read-only and '
         + 'reversible view-state dashboard tools still work.',
     };
     assert.deepEqual(
-      await executeRegistered(provider, 'openCountryBrief', JSON.stringify({ iso2: 'DE' })),
-      denial,
-    );
-    assert.deepEqual(
-      await executeRegistered(provider, 'set_map_layers', JSON.stringify({ layers: { conflicts: true } })),
+      await executeRegistered(provider, 'set_map_layers', JSON.stringify({ layers: { radiationWatch: true } })),
       denial,
     );
     assert.deepEqual(
@@ -784,7 +780,7 @@ describe('WebMCP registry behavioral contract', () => {
       await executeRegistered(
         provider,
         'apply_mission_preset',
-        JSON.stringify({ presetId: 'supply-chain-risk' }),
+        JSON.stringify({ presetId: 'nuclear-hub' }),
       ),
       denial,
     );
@@ -800,7 +796,7 @@ describe('WebMCP registry behavioral contract', () => {
       await executeRegistered(
         provider,
         'set_panel_collapsed',
-        JSON.stringify({ panelId: 'live-news', collapsed: true }),
+        JSON.stringify({ panelId: 'nuclear-headlines', collapsed: true }),
       ),
       denial,
     );
@@ -820,10 +816,6 @@ describe('WebMCP registry behavioral contract', () => {
     ]) {
       assert.deepEqual(await executeRegistered(provider, tool, JSON.stringify(input)), denial);
     }
-    assert.deepEqual(
-      await executeRegistered(provider, 'switch_monitor', JSON.stringify({ monitor: 'nuclear' })),
-      denial,
-    );
     assert.deepEqual(
       await executeRegistered(
         provider,
@@ -968,9 +960,9 @@ describe('WebMCP registry behavioral contract', () => {
 
   it('reports duplicate, disallowed, rejected, and host-aborted registrations by closed reason', async () => {
     const failures = new Map([
-      ['openCountryBrief', new DOMException('duplicate detail', 'InvalidStateError')],
-      ['openSearch', new DOMException('policy detail', 'NotAllowedError')],
-      ['get_dashboard_context', new DOMException('origin detail', 'SecurityError')],
+      ['openSearch', new DOMException('duplicate detail', 'InvalidStateError')],
+      ['get_dashboard_context', new DOMException('policy detail', 'NotAllowedError')],
+      ['list_map_layers', new DOMException('origin detail', 'SecurityError')],
       ['open_dashboard_panel', new TypeError('schema detail')],
       ['set_map_view', new DOMException('host cancellation detail', 'AbortError')],
     ]);
@@ -980,9 +972,9 @@ describe('WebMCP registry behavioral contract', () => {
     await settlePromises();
 
     assert.deepEqual(harness.events.slice(0, 5), [
-      { event: 'webmcp-registration-failed', data: { tool: 'openCountryBrief', reason: 'invalid-state' } },
-      { event: 'webmcp-registration-failed', data: { tool: 'openSearch', reason: 'not-allowed' } },
-      { event: 'webmcp-registration-failed', data: { tool: 'get_dashboard_context', reason: 'security' } },
+      { event: 'webmcp-registration-failed', data: { tool: 'openSearch', reason: 'invalid-state' } },
+      { event: 'webmcp-registration-failed', data: { tool: 'get_dashboard_context', reason: 'not-allowed' } },
+      { event: 'webmcp-registration-failed', data: { tool: 'list_map_layers', reason: 'security' } },
       { event: 'webmcp-registration-failed', data: { tool: 'open_dashboard_panel', reason: 'invalid-tool' } },
       { event: 'webmcp-registration-failed', data: { tool: 'set_map_view', reason: 'aborted' } },
     ]);
@@ -1211,7 +1203,7 @@ describe('registered WebMCP readiness behavior', () => {
     await assert.rejects(
       executeRegistered(provider, 'openSearch'),
       (error) => error.name === 'WebMcpToolError'
-        && error.message === 'World Monitor could not open search.'
+        && error.message === 'NucMonitor could not open search.'
         && !error.message.includes('5ms'),
     );
     assert.deepEqual(harness.events.at(-1), {
@@ -1232,7 +1224,7 @@ describe('registered WebMCP readiness behavior', () => {
 
     const invocation = executeRegistered(provider, 'openSearch');
     destroyed.resolve();
-    await assert.rejects(invocation, /World Monitor could not open search/);
+    await assert.rejects(invocation, /NucMonitor could not open search/);
     controller.abort();
     assert.deepEqual(await provider.getTools(), []);
   });

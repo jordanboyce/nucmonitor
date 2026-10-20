@@ -365,7 +365,8 @@ describe('WebMCP analytics privacy policy', () => {
       collected.find(({ event }) => event === 'webmcp-registered'),
       {
         event: 'webmcp-registered',
-        data: { toolCount: 32, pageSurface: 'dashboard', api: 'document-current' },
+        // Every SPA tool except set_map_view, whose registration the host aborts.
+        data: { toolCount: WEBMCP_SPA_TOOL_NAMES.length - 1, pageSurface: 'dashboard', api: 'document-current' },
       },
     );
     assert.deepEqual(
@@ -461,9 +462,9 @@ describe('WebMCP analytics privacy policy', () => {
       searchDashboard: async () => { throw new Error('private internal failure'); },
     }), (event, data) => events.push({ event, data }));
 
-    await tools.find(({ name }) => name === 'openCountryBrief').execute({ iso2: 'DE' });
+    await tools.find(({ name }) => name === 'list_dashboard_panels').execute({});
     await assert.rejects(
-      tools.find(({ name }) => name === 'openCountryBrief').execute({ iso2: 'USA' }),
+      tools.find(({ name }) => name === 'list_dashboard_panels').execute({ unexpected: true }),
     );
     await assert.rejects(
       tools.find(({ name }) => name === 'openSearch').execute({}),
@@ -479,7 +480,7 @@ describe('WebMCP analytics privacy policy', () => {
     await tools.find(({ name }) => name === 'open_search_result')
       .execute({ resultKey: `sr_${'c'.repeat(32)}`, extra: true });
     await tools.find(({ name }) => name === 'apply_mission_preset')
-      .execute({ presetId: 'supply-chain-risk' });
+      .execute({ presetId: 'nuclear-hub' });
     await assert.rejects(
       tools.find(({ name }) => name === 'search_dashboard').execute({ query: 'safe' }),
     );

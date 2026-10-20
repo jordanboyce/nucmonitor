@@ -72,24 +72,29 @@ function collectPages(
 }
 
 describe('WebMCP dashboard panel catalog', () => {
-  it('lists every canonical panel ID, including disabled World defaults', () => {
+  it('lists every canonical panel ID, including disabled defaults', () => {
     const uniqueIds = getCanonicalDashboardPanelIds();
-    const worldIds = getCanonicalDashboardPanelIds('full');
-    const disabledWorld = (VARIANT_DEFAULTS.full ?? [])
-      .filter((panelId) => getEffectivePanelConfig(panelId, 'full').enabled !== true);
+    const nuclearIds = getCanonicalDashboardPanelIds('nuclear');
 
+    assert.deepEqual(SITE_VARIANTS, ['nuclear']);
     assert.equal(uniqueIds.length, Object.keys(ALL_PANELS).length);
-    assert.equal(worldIds.length, 111);
+    assert.deepEqual([...nuclearIds].sort(), [...(VARIANT_DEFAULTS.nuclear ?? [])].sort());
     assert.ok(uniqueIds.includes('nuclear-reactor-status'));
     assert.ok(uniqueIds.includes('nuclear-hazards'));
-    assert.equal(worldIds.includes('nuclear-reactor-status'), false);
-    assert.ok(disabledWorld.length > 0, 'World registry must include disabled panels');
-    assert.ok(disabledWorld.every((panelId) => worldIds.includes(panelId)));
+    assert.deepEqual(getCanonicalDashboardPanelIds('full'), [], 'a retired upstream variant lists nothing');
     assert.deepEqual([...uniqueIds], [...uniqueIds].sort((left, right) => left.localeCompare(right, 'en')));
+
+    // A panel the user disabled is still catalogued (and reported disabled), so
+    // an agent can discover and re-enable it.
+    const listed = collectPages(liveState('nuclear', { enabled: ['map', 'nuclear-reactor-status'] }))
+      .flatMap((page): DashboardPanelCatalogItem[] => page.panels);
+    assert.deepEqual(listed.map((item) => item.id).sort(), [...nuclearIds].sort());
+    assert.equal(listed.find((item) => item.id === 'nuclear-hazards')?.enabled, false);
+    assert.equal(listed.find((item) => item.id === 'nuclear-reactor-status')?.enabled, true);
   });
 
   it('rejects invalid filters and cursors with structured reasons', () => {
-    const live = liveState('full');
+    const live = liveState('nuclear');
     const cases: Array<[Parameters<typeof listDashboardPanelCatalog>[1], string]> = [
       [{ variant: 'desktop' }, 'invalid_variant'],
       [{ category: 'not-a-category' }, 'invalid_category'],

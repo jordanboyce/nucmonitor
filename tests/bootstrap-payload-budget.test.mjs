@@ -11,7 +11,6 @@ import {
   BOOTSTRAP_PAYLOAD_BUDGET_MANIFEST,
   CAPTURED_BASE_TIER_KEYS,
   CAPTURED_KEY_DECODED_BYTES,
-  DEMOTED_FAST_KEYS,
   ENERGY_ON_DEMAND_KEYS,
   FAST_FIRST_PAINT_JUSTIFICATION,
   FEATURE_GATED_UNCAPTURED_KEYS,
@@ -47,10 +46,10 @@ const PINNED_REPRESENTATIVE_FIXTURE_CONTRACTS = Object.freeze({
       minimumRecords: 500,
       requiredFields: Object.freeze(['brightness', 'detectedAt']),
     }),
-    ucdpEvents: Object.freeze({
+    naturalEvents: Object.freeze({
       collection: 'events',
       minimumRecords: 150,
-      requiredFields: Object.freeze(['id', 'country', 'dateStart', 'violenceType']),
+      requiredFields: Object.freeze(['id', 'title', 'category', 'date']),
     }),
   }),
 });
@@ -60,6 +59,7 @@ test('frozen production ledger is complete and cannot shrink silently', () => {
   assert.equal(PRODUCTION_CAPTURE.origin, 'https://worldmonitor.app');
   assert.match(PRODUCTION_CAPTURE.completeness, /missing: \[\]/);
   assert.match(PRODUCTION_CAPTURE.limitation, /not the full daily #7047 U1\/RUM baseline/);
+  assert.match(PRODUCTION_CAPTURE.derivation, /Re-derived/);
 
   const capturedKeys = [...CAPTURED_BASE_TIER_KEYS.fast, ...CAPTURED_BASE_TIER_KEYS.slow];
   assert.equal(new Set(capturedKeys).size, capturedKeys.length, 'captured tiers must not overlap');
@@ -70,6 +70,22 @@ test('frozen production ledger is complete and cannot shrink silently', () => {
   );
   for (const [key, bytes] of Object.entries(CAPTURED_KEY_DECODED_BYTES)) {
     assert.ok(Number.isInteger(bytes) && bytes > 0, `${key} has invalid byte evidence: ${bytes}`);
+  }
+
+  // The re-derivation is exact: every captured row is a registered key, and
+  // every key a tier serves today has frozen evidence from the capture.
+  const registered = new Set(['fast', 'slow', 'on-demand'].flatMap((tier) => bootstrapTierKeyNames(tier)));
+  for (const key of capturedKeys) {
+    assert.ok(registered.has(key), `${key} is no longer registered; drop its captured row`);
+  }
+  for (const key of [...bootstrapTierKeyNames('fast'), ...bootstrapTierKeyNames('slow')]) {
+    assert.ok(CAPTURED_KEY_DECODED_BYTES[key] > 0, `${key} rides a tier without captured byte evidence`);
+  }
+  for (const tier of ['fast', 'slow']) {
+    assert.ok(
+      PRODUCTION_CAPTURE.tiers[tier].decodedBytes < PRODUCTION_CAPTURE.tiers[tier].sourceDecodedBytes,
+      `${tier}: a re-derived subset cannot outweigh the source capture`,
+    );
   }
 
   assert.equal(
@@ -144,7 +160,7 @@ test('all demotions are represented in their actual destination tier', () => {
   const slow = new Set(bootstrapTierKeyNames('slow'));
   const onDemand = new Set(bootstrapTierKeyNames('on-demand'));
 
-  for (const key of [...ENERGY_ON_DEMAND_KEYS, ...DEMOTED_FAST_KEYS]) {
+  for (const key of ENERGY_ON_DEMAND_KEYS) {
     assert.equal(fast.has(key), false, `${key} must not ride FAST`);
     assert.equal(slow.has(key), false, `${key} must not ride SLOW`);
     assert.equal(onDemand.has(key), true, `${key} must be represented in ON_DEMAND`);
@@ -161,7 +177,14 @@ test('actual head memberships meet net reductions and absolute decoded ceilings'
   };
 
   for (const tier of ['fast', 'slow']) {
-    const baseBytes = PRODUCTION_CAPTURE.tiers[tier].decodedBytes;
+    // The #7046 targets were set against the full source capture, so the net
+    // reduction is measured against that body, not the re-derived subset.
+    const baseBytes = PRODUCTION_CAPTURE.tiers[tier].sourceDecodedBytes;
+    assert.equal(
+      FINAL_TIER_DECODED_BYTE_CEILINGS[tier],
+      Math.floor(baseBytes * (1 - REQUIRED_REDUCTION[tier])),
+      `${tier} ceiling must stay the required reduction of the source capture`,
+    );
     const headBytes = tierPayloadBytesFromLedger(headKeys[tier]);
     const reduction = 1 - (headBytes / baseBytes);
     assert.ok(

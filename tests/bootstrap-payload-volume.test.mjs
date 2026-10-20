@@ -16,7 +16,7 @@ describe('published bootstrap volume evaluation', () => {
       totalBytes: FINAL_TIER_DECODED_BYTE_CEILINGS.slow,
       keys: [
         { key: 'naturalEvents', valueBytes: CAPTURED_KEY_DECODED_BYTES.naturalEvents },
-        { key: 'chinaMacro', valueBytes: CAPTURED_KEY_DECODED_BYTES.chinaMacro },
+        { key: 'wildfires', valueBytes: CAPTURED_KEY_DECODED_BYTES.wildfires },
       ],
     };
     assert.deepEqual(evaluatePublishedBootstrapVolume('slow', ledger), {
@@ -60,11 +60,11 @@ describe('published bootstrap volume evaluation', () => {
 
   it('ignores growth at or under the 5% / 2 KiB floor', () => {
     const budget = BOOTSTRAP_PAYLOAD_BUDGET_MANIFEST.tiers.slow;
-    const captured = CAPTURED_KEY_DECODED_BYTES.sanctionsPressure;
+    const captured = CAPTURED_KEY_DECODED_BYTES.nationalDebt;
     const allowance = materialGrowthAllowanceBytes(captured, budget);
     const result = evaluatePublishedBootstrapVolume('slow', {
       totalBytes: budget.finalTargetBytes,
-      keys: [{ key: 'sanctionsPressure', valueBytes: captured + allowance }],
+      keys: [{ key: 'nationalDebt', valueBytes: captured + allowance }],
     });
     assert.deepEqual(result.alerts, []);
   });

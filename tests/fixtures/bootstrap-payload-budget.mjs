@@ -32,12 +32,9 @@ export const ENERGY_ON_DEMAND_KEYS = Object.freeze([
   'storageFacilities',
 ]);
 
-export const DEMOTED_FAST_KEYS = Object.freeze([
-  'forecasts',
-  'correlationCards',
-  'flightDelays',
-]);
-
+// The #7046 fast-tier demotions (forecasts, correlationCards, flightDelays)
+// left the registry with the nuclear trim; ENERGY_ON_DEMAND_KEYS above are the
+// demotions that are still registered.
 export const FAST_FIRST_PAINT_JUSTIFICATION = Object.freeze({
   earthquakes: 'Default-on natural map layer; consumed by loadNatural after the slow checkpoint but needed for the first map fill.',
   outages: 'Default-on outages map layer and internet-disruptions status.',
@@ -45,23 +42,8 @@ export const FAST_FIRST_PAINT_JUSTIFICATION = Object.freeze({
   ddosAttacks: 'Loaded with the default-on outages wave.',
   trafficAnomalies: 'Loaded with the default-on outages wave.',
   marketQuotes: 'Default markets panel data; retained once the 20% target is met to avoid a new startup request.',
-  commodityQuotes: 'Default commodities and energy tapes; retained once the 20% target is met to avoid a new startup request.',
-  macroSignals: 'Immediate macro tiles on finance/full first paint.',
-  chokepoints: 'Chokepoint strip and default supply-chain map markers.',
-  positiveGeoEvents: 'Happy/full positive-events first wave.',
-  riskScores: 'CII / strategic-risk first-wave scores.',
-  insights: 'Insights / threat-timeline first-wave cards.',
-  predictions: 'Polymarket first-wave when the panel is in view.',
-  iranEvents: 'Iran-attacks layer when the sunset gate is on.',
-  temporalAnomalies: 'Consumed into the signal aggregator at startup.',
-  weatherAlerts: 'Default-on weather map layer on full desktop and mobile.',
-  spending: 'Economic panel first-wave when the layer/panel is in view.',
-  theaterPosture: 'Strategic-posture first-wave.',
-  gdeltIntel: 'GDELT intel first-wave.',
-  canadaAlerts: 'Default-on Canada alerts layer on full desktop.',
-  shippingRates: 'Supply-chain first-wave rates.',
-  shippingStress: 'Supply-chain first-wave stress.',
-  socialVelocity: 'Retained once the 20% target is met to avoid another default dashboard request.',
+  commodityQuotes: 'Default energy-commodities tape; retained once the 20% target is met to avoid a new startup request.',
+  weatherAlerts: 'Default-on weather map layer on desktop and mobile.',
 });
 
 export const REPRESENTATIVE_FIXTURE_CONTRACTS = Object.freeze({
@@ -83,10 +65,10 @@ export const REPRESENTATIVE_FIXTURE_CONTRACTS = Object.freeze({
       minimumRecords: 500,
       requiredFields: Object.freeze(['brightness', 'detectedAt']),
     }),
-    ucdpEvents: Object.freeze({
+    naturalEvents: Object.freeze({
       collection: 'events',
       minimumRecords: 150,
-      requiredFields: Object.freeze(['id', 'country', 'dateStart', 'violenceType']),
+      requiredFields: Object.freeze(['id', 'title', 'category', 'date']),
     }),
   }),
 });
@@ -113,11 +95,13 @@ const representativeWildfires = Object.freeze(Array.from({ length: 500 }, (_, in
   detectedAt: `2026-08-21T${String(Math.floor(index / 60)).padStart(2, '0')}:${String(index % 60).padStart(2, '0')}:00Z`,
 })));
 
-const representativeUcdpEvents = Object.freeze(Array.from({ length: 150 }, (_, index) => Object.freeze({
-  id: `ucdp-${String(index).padStart(3, '0')}`,
-  country: index % 2 === 0 ? 'Exampleland' : 'Sample Republic',
-  dateStart: `2026-08-${String((index % 28) + 1).padStart(2, '0')}`,
-  violenceType: index % 3 === 0 ? 'state-based' : 'one-sided',
+// naturalEvents replaced the retired ucdpEvents fixture: it is the largest
+// surviving SLOW collection (200 KB in the capture).
+const representativeNaturalEvents = Object.freeze(Array.from({ length: 150 }, (_, index) => Object.freeze({
+  id: `natural-${String(index).padStart(3, '0')}`,
+  title: index % 2 === 0 ? 'M 4.6 - Example Ridge' : 'Tropical Storm Sample',
+  category: index % 3 === 0 ? 'earthquakes' : 'severeStorms',
+  date: 1_787_270_400_000 + (index * 60_000),
 })));
 
 /**
@@ -136,7 +120,7 @@ export const REPRESENTATIVE_BOOTSTRAP_PAYLOADS = Object.freeze({
   slow: Object.freeze({
     data: Object.freeze({
       wildfires: Object.freeze({ fireDetections: representativeWildfires }),
-      ucdpEvents: Object.freeze({ events: representativeUcdpEvents }),
+      naturalEvents: Object.freeze({ events: representativeNaturalEvents }),
     }),
     missing: Object.freeze([]),
   }),
@@ -154,8 +138,8 @@ export const REPRESENTATIVE_PAYLOAD_BYTE_BASELINES = Object.freeze({
     keyBytes: Object.freeze({ marketQuotes: 8_780, weatherAlerts: 3_644 }),
   }),
   slow: Object.freeze({
-    totalBytes: 42_982,
-    keyBytes: Object.freeze({ wildfires: 28_432, ucdpEvents: 14_525 }),
+    totalBytes: 43_435,
+    keyBytes: Object.freeze({ wildfires: 28_432, naturalEvents: 14_978 }),
   }),
 });
 

@@ -13730,6 +13730,9 @@
       "status": "terms-review",
       "references": [
         {
+          "path": "api/nrc-event-reports.ts"
+        },
+        {
           "path": "api/nrc-reactor-status.js"
         },
         {
@@ -13737,6 +13740,9 @@
         },
         {
           "path": "src/services/nrc-reactor-status.ts"
+        },
+        {
+          "path": "shared/nrc-event-reports.ts"
         }
       ]
     },

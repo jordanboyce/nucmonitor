@@ -97,10 +97,9 @@ export const DIRECT_LLM_GATEWAY_QUOTA_PATHS = new Set<string>([
   '/api/news/v1/summarize-article',
 ]);
 
-export const DIRECT_LLM_SELF_METERED_QUOTA_PATHS = new Set<string>([
-  '/api/chat-analyst',
-  '/api/widget-agent',
-]);
+// The chat analyst and widget agent that metered themselves were retired with
+// the trim; no self-metered direct-LLM endpoint remains.
+export const DIRECT_LLM_SELF_METERED_QUOTA_PATHS = new Set<string>([]);
 
 export const DIRECT_LLM_QUOTA_PATHS = new Set<string>([
   ...DIRECT_LLM_GATEWAY_QUOTA_PATHS,

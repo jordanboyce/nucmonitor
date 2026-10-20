@@ -124,27 +124,17 @@ describe("direct LLM daily quota", () => {
 
   test("documents gateway-managed and self-metered direct LLM quota paths", () => {
     expect([...DIRECT_LLM_GATEWAY_QUOTA_PATHS].sort()).toEqual([
-      "/api/intelligence/v1/classify-event",
-      "/api/intelligence/v1/deduct-situation",
-      "/api/intelligence/v1/get-country-intel-brief",
       "/api/market/v1/analyze-stock",
       "/api/news/v1/summarize-article",
     ]);
     expect(DIRECT_LLM_GATEWAY_QUOTA_PATHS.has("/api/market/v1/backtest-stock")).toBe(false);
-    expect([...DIRECT_LLM_SELF_METERED_QUOTA_PATHS].sort()).toEqual([
-      "/api/chat-analyst",
-      "/api/widget-agent",
-    ]);
+    expect([...DIRECT_LLM_SELF_METERED_QUOTA_PATHS]).toEqual([]);
     expect([...DIRECT_LLM_QUOTA_PATHS].sort()).toEqual([
-      "/api/chat-analyst",
-      "/api/intelligence/v1/classify-event",
-      "/api/intelligence/v1/deduct-situation",
-      "/api/intelligence/v1/get-country-intel-brief",
       "/api/market/v1/analyze-stock",
       "/api/news/v1/summarize-article",
-      "/api/widget-agent",
     ]);
   });
+
 });
 
 // #6105 review: `resolveDirectLlmDailyLimit` alone cannot tell "legacy PAID row

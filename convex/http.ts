@@ -5,17 +5,10 @@ import { internal } from "./_generated/api";
 import { lookupVerifiedAccountEmail, requireVerifiedAccountEmail } from "./lib/notificationEmail";
 import { timingSafeEqualStrings } from "./lib/svixVerify";
 import { TOUCH_DEBOUNCE_MS } from "./apiKeys";
-import {
-  CHECKOUT_RATE_LIMITED,
-  isCheckoutTimedOutOutcome,
-  isCheckoutRateLimitedOutcome,
-} from "./payments/checkoutRateLimit";
-import { webhookHandler } from "./payments/webhookHandlers";
 import { resendWebhookHandler } from "./resendWebhookHandler";
 import { clerkWebhookHandler } from "./accountDeletion/clerkWebhook";
 import { channelTypeValidator, USER_PREFS_WRITE_RATE_LIMIT } from "./constants";
 import { isPreferenceVariant } from "../shared/cloud-preferences-contract";
-import { verifyDunningPortalToken } from "./lib/identitySigning";
 import { buildUnsubscribeUrl, EMAIL_UNSUBSCRIBE_PATH, verifyUnsubscribeToken } from "./lib/emailUnsubscribe";
 
 // App-serving hosts only, aligned with api/_cors.js and server/cors.ts.
@@ -291,91 +284,12 @@ export async function internalEntitlementsHttpHandler(
       });
     }
 
-    let result = await ctx.runQuery(
+    const result = await ctx.runQuery(
       internal.entitlements.getEntitlementsByUserId,
       { userId: body.userId },
     );
-    let billingStatus:
-      | "subscription_lapsed"
-      | "renewal_verification_pending"
-      | "renewal_verification_failed"
-      | undefined;
-    let retryAfterSeconds: number | undefined;
-    let renewalVerificationFreshness:
-      | { status: "not_applicable"; checkedAt: number }
-      | undefined;
 
-    // Expired stored entitlements are deliberately returned as free-tier
-    // defaults by the query. Before the gateway turns that into a hard denial,
-    // give a recently-stale active subscription one bounded provider re-check.
-    if (result.features.tier === 0) {
-      const verification = await ctx.runAction(
-        internal.payments.billing.verifyRecentlyStaleSubscriptionOnDemand,
-        { userId: body.userId },
-      );
-      if (verification.status === "not_applicable") {
-        // Reached only when the user has NO subscription row at all
-        // (claimRecentlyStaleSubscriptionForVerification: any billing history
-        // yields `lapsed` instead). That cohort includes a buyer whose Dodo
-        // webhook has not landed yet, so the edge deliberately serves this
-        // marker for a short window only — see
-        // NOT_APPLICABLE_VERIFICATION_TTL_SECONDS in
-        // server/_shared/entitlement-check.ts (#5600). Widening the cases that
-        // produce this marker means revisiting that TTL.
-        renewalVerificationFreshness = {
-          status: "not_applicable",
-          checkedAt: Date.now(),
-        };
-      } else {
-        // The provider action and a webhook can interleave. Always re-read the
-        // source of truth before attaching a denial marker so a concurrent
-        // renewal wins over a stale action result.
-        result = await ctx.runQuery(
-          internal.entitlements.getEntitlementsByUserId,
-          { userId: body.userId },
-        );
-        // A stale materialized entitlement can point at the stronger row under
-        // verification even while another lower-plan subscription is still
-        // current. Preserve that known-good coverage in this response; the
-        // billing marker remains attached so callers deny only capabilities
-        // the fallback plan does not authorize.
-        const fallbackState = await ctx.runQuery(
-          internal.payments.billing.getOnDemandRenewalFallbackState,
-          { userId: body.userId, now: Date.now() },
-        );
-        if (
-          result.features.tier === 0 &&
-          fallbackState?.currentEntitlement
-        ) {
-          result = fallbackState.currentEntitlement;
-        }
-        const staleFeatures = fallbackState?.strongestRecentlyStaleFeatures;
-        const verificationCouldExpandCoverage = !!staleFeatures && (
-          staleFeatures.tier > result.features.tier ||
-          (staleFeatures.apiAccess && !result.features.apiAccess) ||
-          (staleFeatures.mcpAccess && !result.features.mcpAccess)
-        );
-        if (
-          verification.status !== "active" &&
-          (
-            result.features.tier === 0 ||
-            verificationCouldExpandCoverage
-          )
-        ) {
-          billingStatus = verification.status;
-          if ("retryAfterSeconds" in verification) {
-            retryAfterSeconds = verification.retryAfterSeconds;
-          }
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({
-      ...result,
-      ...(billingStatus ? { billingStatus } : {}),
-      ...(retryAfterSeconds != null ? { retryAfterSeconds } : {}),
-      ...(renewalVerificationFreshness ? { renewalVerificationFreshness } : {}),
-    }), {
+    return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -1661,187 +1575,6 @@ http.route({
 // See plan U1 / docs/plans/2026-05-10-001-feat-pro-mcp-clerk-auth-quota-plan.md
 // ---------------------------------------------------------------------------
 
-http.route({
-  path: "/dodopayments-webhook",
-  method: "POST",
-  handler: webhookHandler,
-});
-
-// Service-to-service: Vercel edge gateway creates Dodo checkout sessions.
-// Authenticated via CONVEX_TENANT_RELAY_SECRET; edge endpoint validates Clerk JWT
-// and forwards the verified userId.
-http.route({
-  path: "/relay/create-checkout",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const unauthorized = await authorizeTenantRelay(request, ["gateway"]);
-    if (unauthorized) return unauthorized;
-
-    const body = await parseJsonObjectBody<{
-      userId?: string;
-      email?: string;
-      name?: string;
-      productId?: string;
-      returnUrl?: string;
-      discountCode?: string;
-      referralCode?: string;
-      attributionSource?: string;
-      bypassPendingGuard?: boolean;
-    }>(request);
-    if (!body) {
-      return new Response(JSON.stringify({ error: "INVALID_JSON" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    if (!body.userId || !body.productId) {
-      return new Response(
-        JSON.stringify({ error: "MISSING_FIELDS", required: ["userId", "productId"] }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    try {
-      const result = await ctx.runAction(
-        internal.payments.checkout.internalCreateCheckout,
-        {
-          userId: body.userId,
-          email: body.email,
-          name: body.name,
-          productId: body.productId,
-          returnUrl: body.returnUrl,
-          discountCode: body.discountCode,
-          referralCode: body.referralCode,
-          attributionSource: body.attributionSource,
-          bypassPendingGuard: body.bypassPendingGuard,
-        },
-      );
-      if (isCheckoutTimedOutOutcome(result)) {
-        // Keep provider failures at 500; 502 triggers another browser retry.
-        return Response.json({ error: result.code }, { status: 500 });
-      }
-      if (isCheckoutRateLimitedOutcome(result)) {
-        return new Response(
-          JSON.stringify({
-            error: CHECKOUT_RATE_LIMITED,
-            message: "Checkout is temporarily rate limited. Retry shortly.",
-          }),
-          {
-            status: 429,
-            headers: {
-              "Content-Type": "application/json",
-              "Retry-After": String(result.retryAfterSeconds),
-            },
-          },
-        );
-      }
-      if (
-        result &&
-        typeof result === "object" &&
-        "blocked" in result &&
-        result.blocked === true
-      ) {
-        // Both blocked shapes share { code, message }; the duplicate-subscription
-        // block carries `subscription`, the pending-payment block (#4438) carries
-        // `pendingPayment`. Forward whichever is present so the client dialog can
-        // render. Both return 409 — the client discriminates on `error` (code).
-        const blockedBody: Record<string, unknown> = {
-          error: result.code,
-          message: result.message,
-        };
-        if ("subscription" in result) blockedBody.subscription = result.subscription;
-        if ("pendingPayment" in result) blockedBody.pendingPayment = result.pendingPayment;
-        return new Response(JSON.stringify(blockedBody), {
-          status: 409,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (err) {
-      if (extractConvexErrorCode(err) === "INVALID_CHECKOUT_PRODUCT") {
-        return Response.json({ error: "INVALID_CHECKOUT_PRODUCT" }, { status: 400 });
-      }
-      console.error("[create-checkout] Operation failed", err);
-      return new Response(JSON.stringify({ error: "Operation failed" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  }),
-});
-
-http.route({
-  path: "/relay/customer-portal",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const unauthorized = await authorizeTenantRelay(request, ["gateway"]);
-    if (unauthorized) return unauthorized;
-
-    const body = await parseJsonObjectBody<{ userId?: string; portalToken?: string }>(request);
-    if (!body) {
-      return new Response(JSON.stringify({ error: "INVALID_JSON" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    let userId = typeof body.userId === "string" ? body.userId : "";
-    if (typeof body.portalToken === "string" && body.portalToken.length > 0) {
-      // A token never falls back to body.userId. It mints only while the
-      // signed user still has an open hold, so recovery or cancellation
-      // revokes every outstanding email link.
-      const rejectToken = (reason: "invalid_or_expired" | "no_open_hold") => {
-        console.log(JSON.stringify({ event: "dunning_portal_token_rejected", reason }));
-        return new Response(JSON.stringify({ error: "INVALID_PORTAL_TOKEN" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        });
-      };
-      const tokenUserId = await verifyDunningPortalToken(body.portalToken, Date.now());
-      if (!tokenUserId) return rejectToken("invalid_or_expired");
-      const hasOpenHold = await ctx.runQuery(
-        internal.payments.subscriptionEmails.hasOpenDunningHold,
-        { userId: tokenUserId },
-      );
-      if (!hasOpenHold) return rejectToken("no_open_hold");
-      userId = tokenUserId;
-    }
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "MISSING_FIELDS", required: ["userId"] }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    try {
-      const result = await ctx.runAction(
-        internal.payments.billing.internalGetCustomerPortalUrl,
-        { userId },
-      );
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (err) {
-      if (extractConvexErrorCode(err) === "NO_CUSTOMER") {
-        return Response.json({ error: "NO_CUSTOMER" }, { status: 404 });
-      }
-      console.error("[customer-portal] Operation failed", err);
-      return new Response(JSON.stringify({ error: "Operation failed" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  }),
-});
-
-// Resend webhook: captures bounce/complaint events and suppresses emails.
-// Signature verification + internal mutation, same pattern as Dodo webhook.
 http.route({
   path: "/resend-webhook",
   method: "POST",

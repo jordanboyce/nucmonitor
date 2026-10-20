@@ -1,11 +1,11 @@
 /**
  * Unit tests for shouldReloadOnEntitlementChange.
  *
- * This helper drives the post-payment reload in src/app/panel-layout.ts.
- * A bug here is exactly what caused duplicate subscriptions in the
- * 2026-04-18 incident (customer cus_0NcmwcAWw0jhVBHVOK58C): the prior
- * skipInitialSnapshot guard swallowed the first pro snapshot unconditionally,
- * even when it arrived mid-session after a successful Dodo webhook.
+ * Upstream, this helper drove the post-payment reload in panel-layout.ts (the
+ * 2026-04-18 duplicate-subscription incident). NucMonitor removed pricing: the
+ * single partner entitlement is static and gating re-runs in place on every
+ * announcement, so no transition may force a page reload — a reload here would
+ * be a loop with nothing to activate.
  */
 
 import assert from 'node:assert/strict';
@@ -35,14 +35,11 @@ describe('shouldReloadOnEntitlementChange', () => {
     assert.equal(shouldReloadOnEntitlementChange(true, false), false);
   });
 
-  it('reloads on free → pro (post-payment activation — the incident case)', () => {
-    assert.equal(shouldReloadOnEntitlementChange(false, true), true);
+  it('does not reload on free → pro either (no post-payment activation exists)', () => {
+    assert.equal(shouldReloadOnEntitlementChange(false, true), false);
   });
 
-  it('simulates the incident sequence: free-tier default snapshot followed by authed pro snapshot → reload exactly once', () => {
-    // Before PR 1, this sequence produced no reload because skipInitialSnapshot
-    // swallowed the first snapshot. After the fix, the transition triggers a
-    // reload and the user's panels unlock without manual intervention.
+  it('replays the upstream incident sequence (free default, then entitled) without reloading', () => {
     let last: boolean | null = null;
     let reloadCount = 0;
 
@@ -52,7 +49,7 @@ describe('shouldReloadOnEntitlementChange', () => {
       last = entitled;
     }
 
-    assert.equal(reloadCount, 1);
+    assert.equal(reloadCount, 0);
   });
 
   it('legacy-pro user reconnecting WS: pro, pro, pro → zero reloads', () => {

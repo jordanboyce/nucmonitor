@@ -33,7 +33,7 @@ import {
 } from '../src/services/webmcp.ts';
 import { withTimeout } from '../src/utils/with-timeout.ts';
 
-type Variant = 'full' | 'nuclear';
+type Variant = 'nuclear';
 
 const managerSource = readFileSync(
   new URL('../src/app/search-manager.ts', import.meta.url),
@@ -141,9 +141,8 @@ interface Scenario {
     layers: string[];
     centers: Array<[number, number, number]>;
     timeRanges: string[];
-    hotspotIds: string[];
-    conflictIds: string[];
-    pipelineIds: string[];
+    nuclearIds: string[];
+    irradiatorIds: string[];
     countryBriefs: Array<[
       string,
       string,
@@ -247,12 +246,11 @@ function createHarness(
     64,
     120_000,
     120_000,
+    // Synthetic presets over the nuclear layer set: a preset's defining
+    // (primary) layers, and the wider list it toggles (below).
     {
-      military: ['bases', 'flights', 'military'],
-      finance: ['stockExchanges', 'financialCenters', 'centralBanks', 'commodityHubs', 'economic'],
-      infra: ['cables', 'pipelines', 'datacenters', 'spaceports', 'minerals'],
-      intel: ['conflicts', 'hotspots', 'protests', 'ucdpEvents', 'displacement'],
-      minimal: ['conflicts', 'hotspots'],
+      hazards: ['radiationWatch', 'natural'],
+      infra: ['cables', 'pipelines', 'datacenters'],
     },
     variant,
     10_000,
@@ -290,11 +288,8 @@ function createHarness(
     isLayerExecutable,
     isLayerEntitled,
     {
-      military: ['bases', 'nuclear', 'flights', 'military', 'waterways'],
-      finance: ['stockExchanges', 'financialCenters', 'centralBanks', 'commodityHubs', 'economic', 'tradeRoutes'],
-      infra: ['cables', 'pipelines', 'datacenters', 'spaceports', 'minerals'],
-      intel: ['conflicts', 'hotspots', 'protests', 'ucdpEvents', 'displacement'],
-      minimal: ['conflicts', 'hotspots'],
+      hazards: ['radiationWatch', 'natural', 'weather'],
+      infra: ['cables', 'pipelines', 'datacenters'],
     },
     {},
     (type: string) => runtime.selectedResultTypes.push(type),
@@ -381,7 +376,7 @@ function commandMatch(id: string, category: string, title = id): SearchMatch {
 
 function makeScenario(
   matches: SearchMatch[],
-  variant: Variant = 'full',
+  variant: Variant = 'nuclear',
   options: { allowedLayerKeys?: AllowedLayerKeysFn } = {},
 ): Scenario {
   const runtime: Runtime = {
@@ -409,9 +404,8 @@ function makeScenario(
     layers: [],
     centers: [],
     timeRanges: [],
-    hotspotIds: [],
-    conflictIds: [],
-    pipelineIds: [],
+    nuclearIds: [],
+    irradiatorIds: [],
     countryBriefs: [],
     enabledPanels: [],
     scrolledPanels: [],
@@ -477,9 +471,8 @@ function makeScenario(
       setLayers: () => {},
       setCenter: (lat: number, lon: number, zoom: number) => calls.centers.push([lat, lon, zoom]),
       setTimeRange: (range: string) => calls.timeRanges.push(range),
-      triggerHotspotClick: (id: string) => calls.hotspotIds.push(id),
-      triggerConflictClick: (id: string) => calls.conflictIds.push(id),
-      triggerPipelineClick: (id: string) => calls.pipelineIds.push(id),
+      triggerNuclearClick: (id: string) => calls.nuclearIds.push(id),
+      triggerIrradiatorClick: (id: string) => calls.irradiatorIds.push(id),
     },
     panelSettings: {
       'test-panel': { enabled: false },
@@ -574,21 +567,10 @@ function flushTimers(runtime: Runtime): void {
   }
 }
 
-function summarizeCountryBriefs(calls: Scenario['calls']['countryBriefs']): unknown[] {
-  return calls.map(([code, name, options]) => [
-    code,
-    name,
-    options ? {
-      trackDetailedAnalytics: options.trackDetailedAnalytics,
-      ...(options.signal ? { hasSignal: true } : {}),
-    } : undefined,
-  ]);
-}
-
 describe('SearchManager programmatic dashboard search (#6212)', () => {
   it('denies forged keys and consumes issued keys before selection', async () => {
     const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
+      resultMatch('earthquake', 'eq-1', 'Needle earthquake', { id: 'eq-1' }),
     ]);
 
     assert.deepEqual(await scenario.manager.openSearchResult(`sr_${'f'.repeat(32)}`), {
@@ -598,20 +580,20 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     });
 
     const first = await searchThenOpen(scenario);
-    assert.deepEqual(first.opened, { ok: true, status: 'opened', type: 'country' });
+    assert.deepEqual(first.opened, { ok: true, status: 'opened', type: 'earthquake' });
     assert.deepEqual(await scenario.manager.openSearchResult(first.descriptor.key), {
       ok: false,
       status: 'denied',
       reason: 'invalid_or_expired_key',
     });
-    assert.equal(scenario.calls.countryBriefs.length, 1, 'replay must not repeat selection');
+    assert.deepEqual(scenario.calls.views, ['global'], 'replay must not repeat selection');
     assert.equal(scenario.modal.openCalls, 0, 'programmatic search must not open CMD+K');
   });
 
   it('cancels delayed work from an earlier programmatic selection', async () => {
     const scenario = makeScenario([
-      resultMatch('hotspot', 'old-hotspot', 'Old hotspot', { id: 'old-hotspot' }),
-      resultMatch('country', 'CA', 'Canada', { code: 'CA', name: 'Canada' }),
+      resultMatch('nuclear', 'old-site', 'Old site', { id: 'old-site' }),
+      resultMatch('earthquake', 'eq-ca', 'Needle earthquake', { id: 'eq-ca' }),
     ]);
     scenario.runtime.deferTimers = true;
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -627,7 +609,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.equal(staleOpenSettled, false, 'scheduled map work must keep the opener pending');
     assert.deepEqual(
       await scenario.manager.openSearchResult(response.results[1].key),
-      { ok: true, status: 'opened', type: 'country' },
+      { ok: true, status: 'opened', type: 'earthquake' },
     );
     assert.deepEqual(await staleOpen, {
       ok: false,
@@ -636,18 +618,14 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     });
 
     flushTimers(scenario.runtime);
-    assert.deepEqual(scenario.calls.hotspotIds, []);
-    assert.deepEqual(scenario.calls.views, []);
-    assert.deepEqual(summarizeCountryBriefs(scenario.calls.countryBriefs), [[
-      'CA',
-      'Canada',
-      { trackDetailedAnalytics: false, hasSignal: true },
-    ]]);
+    assert.deepEqual(scenario.calls.nuclearIds, []);
+    assert.deepEqual(scenario.calls.layers, [], 'the cancelled nuclear-site open must not enable its layer');
+    assert.deepEqual(scenario.calls.views, ['global'], 'only the newer earthquake selection moves the map');
   });
 
   it('rejects an aborted delayed selection without applying its map effect', async () => {
     const scenario = makeScenario([
-      resultMatch('hotspot', 'cancelled-hotspot', 'Cancelled hotspot', { id: 'cancelled-hotspot' }),
+      resultMatch('nuclear', 'cancelled-site', 'Cancelled site', { id: 'cancelled-site' }),
     ]);
     scenario.runtime.deferTimers = true;
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -664,13 +642,13 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       error instanceof Error && error.name === 'AbortError'
     ));
     flushTimers(scenario.runtime);
-    assert.deepEqual(scenario.calls.hotspotIds, []);
+    assert.deepEqual(scenario.calls.nuclearIds, []);
     assert.deepEqual(scenario.calls.views, []);
   });
 
   it('aborts promptly while renderer readiness is still pending', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-pending', 'Pending pipeline', { id: 'pipe-pending' }),
+      resultMatch('irradiator', 'irr-pending', 'Pending irradiator', { id: 'irr-pending' }),
     ]);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     const key = response.results[0]?.key;
@@ -690,17 +668,17 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
     controller.abort();
     await assert.rejects(pendingOpen, (error: unknown) => error === controller.signal.reason);
-    assert.deepEqual(scenario.calls.pipelineIds, []);
+    assert.deepEqual(scenario.calls.irradiatorIds, []);
     assert.deepEqual(scenario.calls.views, []);
     assert.equal(scenario.modal.closeCalls, 0);
     releaseRenderer();
     await Promise.resolve();
-    assert.deepEqual(scenario.calls.pipelineIds, []);
+    assert.deepEqual(scenario.calls.irradiatorIds, []);
   });
 
   it('lets an existing palette interaction cancel an open before renderer readiness', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-human-cancel', 'Human-cancelled pipeline', { id: 'pipe-human-cancel' }),
+      resultMatch('irradiator', 'irr-human-cancel', 'Human-cancelled irradiator', { id: 'irr-human-cancel' }),
     ]);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     const key = response.results[0]?.key;
@@ -722,14 +700,14 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
     releaseRenderer();
     await Promise.resolve();
-    assert.deepEqual(scenario.calls.pipelineIds, [], 'released stale readiness must not mutate the map');
+    assert.deepEqual(scenario.calls.irradiatorIds, [], 'released stale readiness must not mutate the map');
     assert.equal(scenario.modal.closeCalls, 0, 'released stale readiness must not close the palette');
   });
 
   it('lets a newer result supersede an older open held in renderer readiness', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-old', 'Old pipeline', { id: 'pipe-old' }),
-      resultMatch('pipeline', 'pipe-new', 'New pipeline', { id: 'pipe-new' }),
+      resultMatch('irradiator', 'irr-old', 'Old irradiator', { id: 'irr-old' }),
+      resultMatch('irradiator', 'irr-new', 'New irradiator', { id: 'irr-new' }),
     ]);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     const oldKey = response.results[0]?.key;
@@ -743,7 +721,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
     assert.deepEqual(
       await scenario.manager.openSearchResult(newKey, async () => {}),
-      { ok: true, status: 'opened', type: 'pipeline' },
+      { ok: true, status: 'opened', type: 'irradiator' },
     );
     assert.deepEqual(await oldOpen, {
       ok: false,
@@ -753,14 +731,14 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
     releaseOldRenderer();
     await Promise.resolve();
-    assert.deepEqual(scenario.calls.pipelineIds, ['pipe-new']);
+    assert.deepEqual(scenario.calls.irradiatorIds, ['irr-new']);
     assert.equal(scenario.modal.closeCalls, 1, 'only the newer successful result may close the palette');
   });
 
   it('cancels renderer-held opens on security invalidation and destroy', async () => {
     for (const cause of ['security', 'destroy'] as const) {
       const scenario = makeScenario([
-        resultMatch('pipeline', `pipe-${cause}`, `${cause} pipeline`, { id: `pipe-${cause}` }),
+        resultMatch('irradiator', `irr-${cause}`, `${cause} irradiator`, { id: `irr-${cause}` }),
       ]);
       if (cause === 'security') scenario.manager.observeSecurityContext();
       const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -784,7 +762,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
         : { ok: false, status: 'denied', reason: 'result_no_longer_executable' });
       releaseRenderer();
       await Promise.resolve();
-      assert.deepEqual(scenario.calls.pipelineIds, [], cause);
+      assert.deepEqual(scenario.calls.irradiatorIds, [], cause);
       assert.equal(scenario.modal.closeCalls, 0, cause);
     }
   });
@@ -1221,7 +1199,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
   it('cancels delayed programmatic selection work on destroy', async () => {
     const scenario = makeScenario([
-      resultMatch('hotspot', 'stale-hotspot', 'Stale hotspot', { id: 'stale-hotspot' }),
+      resultMatch('nuclear', 'stale-site', 'Stale site', { id: 'stale-site' }),
     ]);
     scenario.runtime.deferTimers = true;
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -1243,26 +1221,16 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     });
     flushTimers(scenario.runtime);
 
-    assert.deepEqual(scenario.calls.hotspotIds, []);
+    assert.deepEqual(scenario.calls.nuclearIds, []);
     assert.deepEqual(scenario.calls.views, []);
     assert.equal(scenario.modal.cancelCalls, 1);
   });
 
   it('re-resolves a refreshed target and dispatches its fresh non-indexed payload', async () => {
-    const oldMatch = resultMatch(
-      'country',
-      'XZ',
-      'Example Republic',
-      { code: 'XZ', name: 'Old display name' },
-      'CII: 42',
-    );
-    const freshMatch = resultMatch(
-      'country',
-      'XZ',
-      'Example Republic',
-      { code: 'XZ', name: 'Fresh display name' },
-      'CII: 42',
-    );
+    // The logical identity (type, id, title) is unchanged; only the payload the
+    // map click consumes is refreshed between search and open.
+    const oldMatch = resultMatch('nuclear', 'site-xz', 'Example Station', { id: 'old-payload' }, 'PWR');
+    const freshMatch = resultMatch('nuclear', 'site-xz', 'Example Station', { id: 'fresh-payload' }, 'PWR');
     const scenario = makeScenario([oldMatch]);
     scenario.state.onUpdate = (count) => {
       if (count === 2) {
@@ -1271,63 +1239,12 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     };
 
     const { opened } = await searchThenOpen(scenario);
-    assert.deepEqual(opened, { ok: true, status: 'opened', type: 'country' });
-    assert.deepEqual(summarizeCountryBriefs(scenario.calls.countryBriefs), [[
-      'XZ',
-      'Fresh display name',
-      { trackDetailedAnalytics: false, hasSignal: true },
-    ]]);
-    assert.deepEqual(
-      scenario.runtime.detailedCountryAnalytics,
-      [],
-      'agent selection must suppress detailed country analytics',
-    );
-  });
-
-  it('uses the live callsign fallback for programmatic search', async () => {
-    const scenario = makeScenario([]);
-    scenario.modal.flightCallsign = 'AB123';
-
-    const response = await scenario.manager.searchDashboard('flight ab123', 'signals', 10);
-
-    assert.deepEqual(scenario.runtime.liveFlightQueries, ['AB123']);
-    assert.equal(response.results[0]?.type, 'flight');
-    assert.equal(response.results[0]?.title, 'AB123');
-  });
-
-  it('bounds a hung live callsign lookup before returning search results', async () => {
-    const scenario = makeScenario([]);
-    scenario.modal.flightCallsign = 'AB123';
-    scenario.runtime.liveFlightPending = true;
-    scenario.manager.constructor.SEARCH_INDEX_READY_TIMEOUT_MS = 20;
-
-    const response = await withTimeout(
-      scenario.manager.searchDashboard('flight ab123', 'signals', 10),
-      250,
-      'search-dashboard-test',
-    );
-
-    assert.deepEqual(scenario.runtime.liveFlightQueries, ['AB123']);
-    assert.deepEqual(response.results, []);
-
-    scenario.runtime.releaseLiveFlight?.();
-    await Promise.resolve();
-    await Promise.resolve();
-    assert.deepEqual(
-      scenario.modal.matches,
-      [],
-      'a timed-out live lookup must not mutate the shared flight index later',
-    );
+    assert.deepEqual(opened, { ok: true, status: 'opened', type: 'nuclear' });
+    assert.deepEqual(scenario.calls.nuclearIds, ['fresh-payload']);
   });
 
   it('keeps a key valid across a benign index refresh', async () => {
-    const match = resultMatch(
-      'country',
-      'XZ',
-      'Example Republic',
-      { code: 'XZ', name: 'Example Republic' },
-      'CII: 42',
-    );
+    const match = resultMatch('earthquake', 'eq-1', 'Needle earthquake', { id: 'eq-1' }, 'M5.1');
     const scenario = makeScenario([match]);
     scenario.state.onUpdate = (count) => {
       if (count === 2) scenario.modal.revision += 1;
@@ -1339,14 +1256,14 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(await scenario.manager.openSearchResult(key), {
       ok: true,
       status: 'opened',
-      type: 'country',
+      type: 'earthquake',
     });
-    assert.equal(scenario.calls.countryBriefs.length, 1);
+    assert.deepEqual(scenario.calls.views, ['global']);
   });
 
   it('does not consume a map-target key while the renderer is still becoming ready', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-1', 'Needle pipeline', { id: 'pipe-1' }),
+      resultMatch('irradiator', 'irr-1', 'Needle irradiator', { id: 'irr-1' }),
     ]);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     const key = response.results[0]?.key;
@@ -1362,18 +1279,13 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(await pendingOpen, {
       ok: true,
       status: 'opened',
-      type: 'pipeline',
+      type: 'irradiator',
     });
-    assert.deepEqual(scenario.calls.pipelineIds, ['pipe-1']);
+    assert.deepEqual(scenario.calls.irradiatorIds, ['irr-1']);
   });
 
   it('waits for async source hydration before issuing capabilities', async () => {
-    const match = resultMatch(
-      'country',
-      'XZ',
-      'Example Republic',
-      { code: 'XZ', name: 'Example Republic' },
-    );
+    const match = resultMatch('earthquake', 'eq-1', 'Needle earthquake', { id: 'eq-1' });
     const scenario = makeScenario([match]);
     let releaseHydration!: () => void;
     scenario.manager.searchIndexReady = new Promise<void>((resolve) => {
@@ -1392,13 +1304,13 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     const key = (response as { results: Array<{ key: string }> }).results[0]?.key;
     assert.ok(key);
     const opened = await scenario.manager.openSearchResult(key);
-    assert.deepEqual(opened, { ok: true, status: 'opened', type: 'country' });
-    assert.equal(scenario.calls.countryBriefs.length, 1);
+    assert.deepEqual(opened, { ok: true, status: 'opened', type: 'earthquake' });
+    assert.deepEqual(scenario.calls.views, ['global']);
   });
 
   it('denies without selection when destroyed during renderer readiness', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-1', 'Needle pipeline', { id: 'pipe-1' }),
+      resultMatch('irradiator', 'irr-1', 'Needle irradiator', { id: 'irr-1' }),
     ]);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     const key = response.results[0]?.key;
@@ -1412,12 +1324,12 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       status: 'denied',
       reason: 'search_state_changed',
     });
-    assert.deepEqual(scenario.calls.pipelineIds, []);
+    assert.deepEqual(scenario.calls.irradiatorIds, []);
   });
 
   it('denies a key when an index revision removes its logical target', async () => {
     const scenario = makeScenario([
-      resultMatch('hotspot', 'removed', 'Removed hotspot', { id: 'removed' }),
+      resultMatch('nuclear', 'removed', 'Removed site', { id: 'removed' }),
     ]);
     scenario.state.onUpdate = (count) => {
       if (count === 2) {
@@ -1434,12 +1346,12 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       status: 'denied',
       reason: 'result_no_longer_available',
     });
-    assert.deepEqual(scenario.calls.hotspotIds, []);
+    assert.deepEqual(scenario.calls.nuclearIds, []);
   });
 
   it('invalidates capabilities across a same-user entitlement downgrade and restoration', async () => {
     const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
+      resultMatch('earthquake', 'eq-1', 'Needle earthquake', { id: 'eq-1' }),
     ]);
     scenario.manager.observeSecurityContext();
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -1458,13 +1370,13 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       status: 'denied',
       reason: 'invalid_or_expired_key',
     });
-    assert.deepEqual(scenario.calls.countryBriefs, []);
+    assert.deepEqual(scenario.calls.views, []);
     scenario.manager.destroy();
   });
 
   it('revalidates executability after a renderer flip', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-1', 'Needle pipeline', { id: 'pipe-1' }),
+      resultMatch('irradiator', 'irr-1', 'Needle irradiator', { id: 'irr-1' }),
     ]);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     assert.equal(response.results[0]?.executable, true);
@@ -1482,12 +1394,12 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     });
     assert.equal(readinessCalls, 0, 'a denied key must not wake the deferred renderer');
     assert.deepEqual(scenario.calls.layers, []);
-    assert.deepEqual(scenario.calls.pipelineIds, []);
+    assert.deepEqual(scenario.calls.irradiatorIds, []);
   });
 
   it('revalidates renderer compatibility at the delayed mutation boundary', async () => {
     const scenario = makeScenario([
-      resultMatch('pipeline', 'pipe-delayed', 'Delayed pipeline', { id: 'pipe-delayed' }),
+      resultMatch('irradiator', 'irr-delayed', 'Delayed irradiator', { id: 'irr-delayed' }),
     ]);
     scenario.runtime.deferTimers = true;
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -1505,13 +1417,13 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       reason: 'result_no_longer_executable',
     });
     assert.deepEqual(scenario.calls.layers, []);
-    assert.deepEqual(scenario.calls.pipelineIds, []);
+    assert.deepEqual(scenario.calls.irradiatorIds, []);
     assert.deepEqual(scenario.calls.views, []);
   });
 
   it('denies a delayed selection removed from the live search index before commit', async () => {
     const scenario = makeScenario([
-      resultMatch('hotspot', 'removed-hotspot', 'Removed hotspot', { id: 'removed-hotspot' }),
+      resultMatch('nuclear', 'removed-site', 'Removed site', { id: 'removed-site' }),
     ]);
     scenario.runtime.deferTimers = true;
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -1528,7 +1440,7 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       status: 'denied',
       reason: 'result_no_longer_executable',
     });
-    assert.deepEqual(scenario.calls.hotspotIds, []);
+    assert.deepEqual(scenario.calls.nuclearIds, []);
     assert.deepEqual(scenario.calls.views, []);
   });
 
@@ -1587,32 +1499,11 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(itemScrolls, ['enabled']);
   });
 
-  it('does not report a country opened when the lazy brief surface fails', async () => {
+  it('keeps an open palette visible when a command fails to present', async () => {
     const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
+      commandMatch('panel:test-panel', 'panels', 'Test panel'),
     ]);
-    scenario.manager.callbacks.openCountryBriefByCode = async () => false;
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    assert.deepEqual(await scenario.manager.openSearchResult(key), {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    assert.deepEqual(
-      scenario.runtime.detailedCountryAnalytics,
-      [],
-      'a failed country open must not emit detailed country analytics',
-    );
-  });
-
-  it('keeps an open palette visible when a country command fails to present', async () => {
-    const scenario = makeScenario([
-      commandMatch('country:US', 'actions', 'United States'),
-    ]);
-    scenario.manager.callbacks.openCountryBriefByCode = async () => false;
+    scenario.manager.searchSelection.bindings.enablePanel = () => false;
 
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
     const key = response.results[0]?.key;
@@ -1647,45 +1538,42 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     const unloadedCountryMap = commandMatch('country-map:US', 'country-map', 'United States').command;
     assert.equal(scenario.manager.isModalCommandVisible(unloadedCountryMap), false);
     assert.equal(scenario.manager.isCommandExecutable(unloadedCountryMap), false);
+
+    // The country brief is gone and the dispatcher has no `country:` handler:
+    // the generated brief commands must not surface as dead clicks.
+    const countryBrief = commandMatch('country:US', 'country', 'United States').command;
+    assert.equal(scenario.manager.isModalCommandVisible(countryBrief), false);
+    assert.equal(scenario.manager.isCommandExecutable(countryBrief), false);
   });
 
   it('does not treat an incidental preset overlap as a meaningful agent action', () => {
-    // Both remaining monitors allow a defining military layer (bases), so the
-    // contextual-only overlap is modelled by narrowing the allowlist to the
-    // preset's waterways extra.
-    const militaryPreset = commandMatch('layers:military', 'layers', 'Military layers').command;
+    // The synthetic hazards preset toggles weather as context, but only
+    // radiationWatch/natural define it. An allowlist that admits the context
+    // layer alone keeps the command visible yet not agent-executable.
+    const hazardsPreset = commandMatch('layers:hazards', 'layers', 'Hazard layers').command;
     const contextualOnly = makeScenario([], 'nuclear', {
-      allowedLayerKeys: () => new Set(['waterways'] as const),
+      allowedLayerKeys: () => new Set(['weather'] as const),
     });
-    assert.equal(contextualOnly.manager.isModalCommandVisible(militaryPreset), true);
-    assert.equal(contextualOnly.manager.isCommandExecutable(militaryPreset), false);
+    assert.equal(contextualOnly.manager.isModalCommandVisible(hazardsPreset), true);
+    assert.equal(contextualOnly.manager.isCommandExecutable(hazardsPreset), false);
 
     const nuclear = makeScenario([], 'nuclear');
-    assert.equal(nuclear.manager.isCommandExecutable(militaryPreset), true, 'bases is a defining military layer');
+    assert.equal(nuclear.manager.isCommandExecutable(hazardsPreset), true, 'radiationWatch is a defining hazards layer');
 
-    const full = makeScenario([], 'full');
-    assert.equal(full.manager.isCommandExecutable(militaryPreset), true);
+    // The retired infrastructure preset names only layers outside the nuclear
+    // allowlist, so it is neither shown nor agent-executable.
+    const infraPreset = commandMatch('layers:infra', 'layers', 'Infrastructure layers').command;
+    assert.equal(nuclear.manager.isModalCommandVisible(infraPreset), false);
+    assert.equal(nuclear.manager.isCommandExecutable(infraPreset), false);
   });
 
-  it('routes country, panel, map, infrastructure, and command selections through shared handlers', async () => {
+  it('routes panel, map, facility, and command selections through shared handlers', async () => {
     const cases: Array<{
       label: string;
       variant?: Variant;
       match: SearchMatch;
       verify(scenario: Scenario): void;
     }> = [
-      {
-        label: 'country',
-        match: resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
-        verify: ({ calls, runtime }) => {
-          assert.deepEqual(summarizeCountryBriefs(calls.countryBriefs), [[
-            'US',
-            'United States',
-            { trackDetailedAnalytics: false, hasSignal: true },
-          ]]);
-          assert.deepEqual(runtime.detailedCountryAnalytics, []);
-        },
-      },
       {
         label: 'panel',
         match: commandMatch('panel:test-panel', 'panels', 'Test panel'),
@@ -1698,31 +1586,25 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
         },
       },
       {
-        label: 'hotspot',
-        match: resultMatch('hotspot', 'hs-1', 'Needle hotspot', { id: 'hs-1' }),
-        verify: ({ calls }) => assert.deepEqual(calls.hotspotIds, ['hs-1']),
-      },
-      {
-        label: 'conflict',
-        match: resultMatch('conflict', 'conflict-1', 'Needle conflict', { id: 'conflict-1' }),
-        verify: ({ calls }) => assert.deepEqual(calls.conflictIds, ['conflict-1']),
-      },
-      {
-        label: 'infrastructure',
-        match: resultMatch('pipeline', 'pipe-1', 'Needle pipeline', { id: 'pipe-1' }),
+        label: 'nuclear site',
+        match: resultMatch('nuclear', 'np-1', 'Needle station', { id: 'np-1' }),
         verify: ({ calls }) => {
-          assert.ok(calls.layers.includes('pipelines'));
-          assert.deepEqual(calls.pipelineIds, ['pipe-1']);
+          assert.ok(calls.layers.includes('nuclear'));
+          assert.deepEqual(calls.nuclearIds, ['np-1']);
         },
       },
       {
-        label: 'infrastructure on nuclear',
-        variant: 'nuclear',
-        match: resultMatch('pipeline', 'pipe-2', 'Needle pipeline', { id: 'pipe-2' }),
+        label: 'irradiator',
+        match: resultMatch('irradiator', 'irr-1', 'Needle irradiator', { id: 'irr-1' }),
         verify: ({ calls }) => {
-          assert.ok(calls.layers.includes('pipelines'));
-          assert.deepEqual(calls.pipelineIds, ['pipe-2']);
+          assert.ok(calls.layers.includes('irradiators'));
+          assert.deepEqual(calls.irradiatorIds, ['irr-1']);
         },
+      },
+      {
+        label: 'earthquake',
+        match: resultMatch('earthquake', 'eq-1', 'Needle earthquake', { id: 'eq-1' }),
+        verify: ({ calls }) => assert.deepEqual(calls.views, ['global']),
       },
       {
         label: 'command',
@@ -1750,10 +1632,10 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
   it('resolves a desktop-issued key after the ranked window recaps', async () => {
     const matches = Array.from({ length: 8 }, (_, index) => resultMatch(
-      'country',
-      `C${index}`,
-      `Country ${index}`,
-      { code: `C${index}`, name: `Country ${index}` },
+      'nuclear',
+      `np-${index}`,
+      `Station ${index}`,
+      { id: `np-${index}` },
     ));
     const scenario = makeScenario(matches);
     const response = await scenario.manager.searchDashboard('needle', 'all', 10);
@@ -1767,13 +1649,9 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(await scenario.manager.openSearchResult(issued.key), {
       ok: true,
       status: 'opened',
-      type: 'country',
+      type: 'nuclear',
     });
-    assert.deepEqual(summarizeCountryBriefs(scenario.calls.countryBriefs), [[
-      'C7',
-      'Country 7',
-      { trackDetailedAnalytics: false, hasSignal: true },
-    ]]);
+    assert.deepEqual(scenario.calls.nuclearIds, ['np-7']);
   });
 
   it('uses the same premium policy for panel entitlement and free-cap bypass', () => {
@@ -1789,65 +1667,27 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     ), true);
   });
 
-  it('enforces the two-variant entity visibility matrix without leaking foreign domains', () => {
+  it('enforces the nuclear entity visibility matrix without leaking retired domains', () => {
     const probes: Record<string, SearchResult> = {
-      country: {
-        type: 'country', id: 'US', title: 'United States', data: { code: 'US', name: 'United States' },
-      },
-      hotspot: { type: 'hotspot', id: 'hs', title: 'Hotspot', data: { id: 'hs' } },
+      nuclear: { type: 'nuclear', id: 'np', title: 'Station', data: { id: 'np' } },
+      irradiator: { type: 'irradiator', id: 'irr', title: 'Irradiator', data: { id: 'irr' } },
+      earthquake: { type: 'earthquake', id: 'eq', title: 'Quake', data: { id: 'eq' } },
+      outage: { type: 'outage', id: 'out', title: 'Outage', data: { id: 'out' } },
       pipeline: { type: 'pipeline', id: 'pipe', title: 'Pipeline', data: { id: 'pipe' } },
-      techcompany: { type: 'techcompany', id: 'tech', title: 'Tech', data: { id: 'tech' } },
-      exchange: { type: 'exchange', id: 'exchange', title: 'Exchange', data: { id: 'exchange' } },
-      commodityhub: { type: 'commodityhub', id: 'hub', title: 'Hub', data: { id: 'hub' } },
+      cable: { type: 'cable', id: 'cable', title: 'Cable', data: { id: 'cable' } },
+      datacenter: { type: 'datacenter', id: 'dc', title: 'Data center', data: { id: 'dc' } },
     };
-    const expected: Record<Variant, string[]> = {
-      full: ['country', 'hotspot', 'pipeline'],
-      nuclear: ['country', 'pipeline'],
-    };
-
-    for (const variant of Object.keys(expected) as Variant[]) {
-      const scenario = makeScenario([], variant);
-      const visible = Object.entries(probes)
-        .filter(([, result]) => scenario.manager.isSearchResultVisible(result))
-        .map(([name]) => name);
-      assert.deepEqual(visible, expected[variant], variant);
-      assert.equal(scenario.modal.openCalls, 0, variant);
-    }
-  });
-
-  it('registers commodity hubs through the shared variant-layer policy', () => {
-    const enabledVariants = (['full', 'nuclear'] as Variant[])
-      .filter((variant) => getAllowedLayerKeys(variant).has('commodityHubs'));
-    assert.deepEqual(enabledVariants, [], 'no remaining variant allows commodity hubs');
-
-    let commodityRegistration: ts.CallExpression | undefined;
-    const visit = (node: ts.Node): void => {
-      if (
-        ts.isCallExpression(node)
-        && ts.isPropertyAccessExpression(node.expression)
-        && node.expression.name.text === 'registerSource'
-        && ts.isStringLiteral(node.arguments[0])
-        && node.arguments[0].text === 'commodityhub'
-      ) {
-        commodityRegistration = node;
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(managerNode);
-    assert.ok(commodityRegistration, 'commodityhub source must be registered');
-
-    let parent: ts.Node | undefined = commodityRegistration.parent;
-    while (parent && !ts.isIfStatement(parent)) parent = parent.parent;
-    assert.ok(parent && ts.isIfStatement(parent), 'commodityhub registration must be policy-gated');
-    assert.match(
-      parent.expression.getText(sourceFile),
-      /getAllowedLayerKeys[\s\S]+?\.has\('commodityHubs'\)/,
-    );
+    const scenario = makeScenario([], 'nuclear');
+    const visible = Object.entries(probes)
+      .filter(([, result]) => scenario.manager.isSearchResultVisible(result))
+      .map(([name]) => name);
+    assert.deepEqual(visible, ['nuclear', 'irradiator', 'earthquake', 'outage']);
+    assert.equal(scenario.modal.openCalls, 0);
   });
 
   it('opens view-state results without a target signal and blocks persistent ones', async () => {
     const viewScenario = makeScenario([
-      resultMatch('hotspot', 'view-hotspot', 'View hotspot', { id: 'view-hotspot' }),
+      resultMatch('earthquake', 'view-quake', 'View earthquake', { id: 'view-quake' }),
     ]);
     const viewResponse = await viewScenario.manager.searchDashboard(
       'needle',
@@ -1862,12 +1702,12 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
         async () => {},
         undefined,
       ),
-      { ok: true, status: 'opened', type: 'hotspot' },
+      { ok: true, status: 'opened', type: 'earthquake' },
     );
-    assert.deepEqual(viewScenario.calls.hotspotIds, ['view-hotspot']);
+    assert.deepEqual(viewScenario.calls.views, ['global']);
 
     const layerScenario = makeScenario([
-      commandMatch('layer:conflicts', 'layers', 'Toggle conflict zones'),
+      commandMatch('layer:radiationWatch', 'layers', 'Toggle radiation watch'),
     ]);
     const layerResponse = await layerScenario.manager.searchDashboard(
       'needle',
@@ -1893,6 +1733,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       await layerScenario.manager.openSearchResult(layerKey, async () => {}, capable.signal),
       { ok: true, status: 'opened', type: 'command' },
     );
-    assert.deepEqual(layerScenario.calls.layers, ['conflicts']);
+    assert.deepEqual(layerScenario.calls.layers, ['radiationWatch']);
   });
 });

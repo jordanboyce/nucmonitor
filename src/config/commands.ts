@@ -12,9 +12,10 @@ export interface Command {
   category: 'navigate' | 'layers' | 'panels' | 'view' | 'actions' | 'country';
 }
 
-export const LAYER_PRESETS: Record<string, (keyof MapLayers)[]> = {
-  infra: ['cables', 'pipelines', 'datacenters'],
-};
+// Named layer groups for `layers:<name>` commands. Empty since the
+// infrastructure preset (cables/pipelines/datacenters) left the nuclear
+// allowlist; `layers:all` / `layers:none` are handled by the dispatcher.
+export const LAYER_PRESETS: Record<string, (keyof MapLayers)[]> = {};
 
 // Maps command suffix → actual MapLayers key when they differ
 export const LAYER_KEY_MAP: Record<string, keyof MapLayers> = {
@@ -34,13 +35,10 @@ export const COMMANDS: Command[] = [
   { id: 'nav:oceania', keywords: ['oceania', 'australia', 'pacific islands'], label: 'Map: Oceania', icon: '\u{1F30F}', category: 'navigate' },
 
   // Layer presets (toggle groups)
-  { id: 'layers:infra', keywords: ['infrastructure', 'infra layers', 'show infrastructure'], label: 'Show infrastructure layers', icon: '\u{1F3D7}\uFE0F', category: 'layers' },
   { id: 'layers:all', keywords: ['all layers', 'show all', 'enable all'], label: 'Enable all layers', icon: '\u{1F441}\uFE0F', category: 'layers' },
   { id: 'layers:none', keywords: ['hide all', 'clear layers', 'no layers', 'disable all'], label: 'Hide all layers', icon: '\u{1F6AB}', category: 'layers' },
 
   // Individual layer toggles
-  { id: 'layer:cables', keywords: ['cables', 'undersea', 'submarine cables'], label: 'Toggle undersea cables', icon: '\u{1F310}', category: 'layers' },
-  { id: 'layer:pipelines', keywords: ['pipelines', 'oil', 'gas pipelines'], label: 'Toggle pipelines', icon: '\u{1F6E2}\uFE0F', category: 'layers' },
   { id: 'layer:nuclear', keywords: ['nuclear', 'reactors'], label: 'Toggle nuclear facilities', icon: '\u2622\uFE0F', category: 'layers' },
   { id: 'layer:fires', keywords: ['fires', 'wildfires'], label: 'Toggle satellite fires', icon: '\u{1F525}', category: 'layers' },
   { id: 'layer:weather', keywords: ['weather'], label: 'Toggle weather overlay', icon: '\u{1F324}\uFE0F', category: 'layers' },
@@ -49,7 +47,6 @@ export const COMMANDS: Command[] = [
   { id: 'layer:irradiators', keywords: ['irradiators', 'gamma', 'radiation'], label: 'Toggle gamma irradiators', icon: '\u2623\uFE0F', category: 'layers' },
   { id: 'layer:radiation', keywords: ['radiation', 'radnet', 'safecast', 'anomalies'], label: 'Toggle radiation anomalies', icon: '\u2622\uFE0F', category: 'layers' },
   { id: 'layer:usNuclearFacilities', keywords: ['us nuclear facilities', 'nuclear plants', 'nrc', 'reactors', 'doe sites', 'nucmonitor'], label: 'Toggle US nuclear facilities', icon: '\u2622\uFE0F', category: 'layers' },
-  { id: 'layer:datacenters', keywords: ['datacenters', 'data centers', 'ai data'], label: 'Toggle AI data centers', icon: '\u{1F5A5}\uFE0F', category: 'layers' },
   { id: 'layer:natural', keywords: ['natural events', 'earthquakes', 'volcanoes', 'tsunamis'], label: 'Toggle natural events', icon: '\u{1F30B}', category: 'layers' },
   { id: 'layer:dayNight', keywords: ['day night', 'terminator', 'shadow', 'day/night'], label: 'Toggle day/night overlay', icon: '\u{1F31C}', category: 'layers' },
 

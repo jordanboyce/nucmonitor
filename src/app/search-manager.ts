@@ -49,9 +49,9 @@ import type {
   DashboardSearchResponse,
   DashboardSearchScope,
 } from '@/services/webmcp';
-const LAYER_PRESET_PRIMARY_LAYERS: Record<string, (keyof MapLayers)[]> = {
-  infra: ['cables', 'pipelines', 'datacenters'],
-};
+// Defining layers per LAYER_PRESETS entry (none since the infrastructure
+// preset was retired with its layers).
+const LAYER_PRESET_PRIMARY_LAYERS: Record<string, (keyof MapLayers)[]> = {};
 
 export interface SearchManagerCallbacks {
   /** Enables a currently-disabled panel (CMD+K "Add"). Returns false if blocked (unknown / free-tier cap). */
@@ -290,7 +290,9 @@ export class SearchManager implements AppModule {
     if (category === 'layer') return this.isLayerCommandExecutable(action);
     if (category === 'layers') return this.hasVisibleLayerPreset(action);
     if (category === 'country-map') return getCountryBbox(action) !== null;
-    return ['nav', 'country', 'time', 'view'].includes(category);
+    // `country:<code>` opened the country brief, which the trim removed; the
+    // dispatcher has no handler left, so showing it would be a dead click.
+    return ['nav', 'time', 'view'].includes(category);
   }
 
   private isCommandExecutable(

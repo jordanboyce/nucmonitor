@@ -275,6 +275,7 @@ export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, Deferred
   displacement: { rowSpan: 2 },
   economic: { rowSpan: 2 },
   'global-procurement': { rowSpan: 2 },
+  'grid-alerts': { rowSpan: 2, className: 'panel-wide' },
   'energy-complex': { rowSpan: 2 },
   'energy-crisis': { rowSpan: 2 },
   'energy-disruptions': { rowSpan: 2 },

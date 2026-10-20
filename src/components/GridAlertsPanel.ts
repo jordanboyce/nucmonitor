@@ -28,6 +28,7 @@ const STATUS_CLASS: Record<GridRegion['status'], string> = {
 
 /** Map click → panel focus. Dispatched by the DeckGL grid layer. */
 export const GRID_FOCUS_REGION_EVENT = 'grid:focus-region';
+const NARROW_WIDTH_PX = 520;
 
 export class GridAlertsPanel extends Panel {
   private view: GridAlertsView = 'alerts';
@@ -37,6 +38,8 @@ export class GridAlertsPanel extends Panel {
   private error: string | null = null;
   private focusedRegionId: string | null = null;
   private expandedRegions = new Set<string>();
+  private narrow = false;
+  private resizeObserver: ResizeObserver | null = null;
 
   private readonly focusHandler = (event: Event): void => {
     const regionId = (event as CustomEvent<{ regionId?: string }>).detail?.regionId;
@@ -53,20 +56,36 @@ export class GridAlertsPanel extends Panel {
       id: 'grid-alerts',
       title: t('panels.gridAlerts'),
       showCount: true,
+      // Two columns wide and two rows tall: the regions board and hazard matrix
+      // are tabular and unreadable in a single grid cell. Mirrored in
+      // DEFERRED_PANEL_NATURAL_FOOTPRINTS (src/app/panel-layout.ts).
+      className: 'panel-wide',
+      defaultRowSpan: 2,
       // English literal on purpose: the first-paint shell catalogue is byte-budgeted
       // and a localized infoTooltip would have to ride it (tests/i18n-english-shell).
       // Same precedent as TorontoSafetyPanel; the coverage catalog carries the
       // written description in scripts/data/coverage-panel-descriptions.json.
       infoTooltip: 'ISO/RTO operating conditions, EIA-930 demand, grid-relevant NWS hazard alerts mapped to operator footprints and NOAA SWPC geomagnetic state, scored into a per-region impact with named drivers. Scores are WorldMonitor heuristics, not operator declarations.',
     });
-    this.element.classList.add('panel-tall');
     if (typeof window !== 'undefined') window.addEventListener(GRID_FOCUS_REGION_EVENT, this.focusHandler);
+    // The regions board and hazard matrix are tabular. Below ~520px (mobile,
+    // or a single grid cell) they stack into two lines via `.ga-narrow`.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width ?? 0;
+        const narrow = width > 0 && width < NARROW_WIDTH_PX;
+        if (narrow !== this.narrow) { this.narrow = narrow; if (this.data) this.render(); }
+      });
+      this.resizeObserver.observe(this.content);
+    }
     this.showLoading(t('components.gridAlerts.loading'));
     void this.fetchData();
   }
 
   public destroy(): void {
     if (typeof window !== 'undefined') window.removeEventListener(GRID_FOCUS_REGION_EVENT, this.focusHandler);
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     super.destroy();
   }
 
@@ -118,7 +137,7 @@ export class GridAlertsPanel extends Panel {
     const data = this.data;
     this.setCount(data.alerts.length);
     this.setContentNodes(
-      h('div', { className: 'grid-alerts' },
+      h('div', { className: `grid-alerts${this.narrow ? ' ga-narrow' : ''}` },
         this.renderSummary(data),
         h('div', { className: 'panel-tabs', role: 'tablist', 'aria-label': t('panels.gridAlerts') },
           ...VIEWS.map((view) => h('button', {

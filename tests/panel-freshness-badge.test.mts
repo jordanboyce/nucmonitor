@@ -67,7 +67,7 @@ describe('dataFreshness panel summaries', () => {
   it('surfaces no data when a mapped source has no usable timestamp', () => {
     setSeedHealth('rss', 'EMPTY', { records: 0 });
 
-    const summary = dataFreshness.getPanelFreshness('live-news');
+    const summary = dataFreshness.getPanelFreshness('nuclear-headlines');
     assert.equal(summary?.status, 'no_data');
     assert.equal(summary?.sources[0]?.lastUpdate, null);
   });
@@ -96,7 +96,7 @@ describe('dataFreshness panel summaries', () => {
       setSeedHealth('rss', 'STALE_SEED', { seedAgeMin: 70, maxStaleMin: 60, records: 2, checkedAtMs: baseMs });
       const seedUpdate = dataFreshness.getSource('rss')?.lastUpdate?.getTime();
       assert.equal(seedUpdate, baseMs - 70 * 60_000);
-      assert.equal(dataFreshness.getPanelFreshness('live-news')?.status, 'stale');
+      assert.equal(dataFreshness.getPanelFreshness('nuclear-headlines')?.status, 'stale');
 
       Date.now = () => laterMs;
       dataFreshness.recordUpdate('rss', 99);
@@ -106,7 +106,7 @@ describe('dataFreshness panel summaries', () => {
       assert.equal(source?.lastUpdate?.getTime(), seedUpdate);
       assert.equal(source?.healthStatus, 'STALE_SEED');
       assert.equal(source?.lastError, null);
-      assert.equal(dataFreshness.getPanelFreshness('live-news')?.status, 'stale');
+      assert.equal(dataFreshness.getPanelFreshness('nuclear-headlines')?.status, 'stale');
     } finally {
       Date.now = originalNow;
     }

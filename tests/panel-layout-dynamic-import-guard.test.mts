@@ -185,69 +185,6 @@ function assertNoDirectComponentConstructors(source: string) {
   );
 }
 
-function assertChatAnalystLoadsWithoutAgentBusApplier(source: string) {
-  const registrationStart = source.indexOf("this.lazyImportedPanel('chat-analyst'");
-  assert.notEqual(registrationStart, -1, 'chat-analyst lazy panel registration not found');
-  const registrationEnd = source.indexOf("this.lazyDefaultPanel(\n      'forecast'", registrationStart);
-  assert.ok(registrationEnd > registrationStart, 'chat-analyst lazy panel registration boundary not found');
-  const registration = source.slice(registrationStart, registrationEnd);
-
-  assert.match(
-    registration,
-    /this\.lazyImportedPanel\('chat-analyst',\s*\(\) => import\('@\/components\/ChatAnalystPanel'\),\s*'ChatAnalystPanel'/,
-    'chat-analyst panel component should load through the guarded helper',
-  );
-  assert.doesNotMatch(
-    registration,
-    /Promise\.all\(\s*\[[\s\S]*?@\/components\/ChatAnalystPanel[\s\S]*?@\/app\/agent-bus-applier/,
-    'chat-analyst must not couple panel mounting to agent-bus-applier through Promise.all',
-  );
-  assert.match(
-    registration,
-    /const panel = new ChatAnalystPanel\(\);[\s\S]*?void import\('@\/app\/agent-bus-applier'\)/,
-    'chat-analyst should create the panel before loading the optional dashboard action handler',
-  );
-  assert.match(
-    registration,
-    /\.catch\(\(err\) => \{[\s\S]*?failed to lazy-load "chat-analyst" dashboard action handler/,
-    'agent-bus-applier lazy-load failure should be logged without rejecting the panel loader',
-  );
-  assert.match(
-    registration,
-    /return panel;/,
-    'chat-analyst loader should return the panel even while the optional action handler is loading',
-  );
-}
-
-function assertLiveNewsDirectMountCatchesCallbackErrors(source: string) {
-  const start = source.indexOf('mountLiveNewsIfReady(): void');
-  const end = source.indexOf('\n  private shouldCreatePanel', start);
-  assert.ok(start >= 0 && end > start, 'mountLiveNewsIfReady block not found');
-  const block = source.slice(start, end);
-  assert.match(
-    block,
-    /void this\.importPanel\([\s\S]*?\)\.then\(\(panel\) => \{[\s\S]*?this\.afterPanelMounted\('live-news', panel\);[\s\S]*?\}\)\.catch\(\(err\) => \{[\s\S]*?failed to lazy-load "live-news"/,
-    'direct live-news mount path must catch callback errors as well as import failures',
-  );
-}
-
-function assertGccInvestmentsFocusHelperIsLoadedOnce(source: string) {
-  const start = source.indexOf("this.lazyPanel('gcc-investments'");
-  const end = source.indexOf("this.lazyDefaultPanel('world-clock'", start);
-  assert.ok(start >= 0 && end > start, 'gcc-investments lazy panel registration not found');
-  const registration = source.slice(start, end);
-  assert.match(
-    registration,
-    /const \{ focusInvestmentOnMap \} = await import\('@\/services\/investments-focus'\);[\s\S]*?this\.importPanel\('gcc-investments'/,
-    'gcc-investments should load the map focus helper once during panel load before constructing the click handler',
-  );
-  assert.doesNotMatch(
-    registration,
-    /new InvestmentsPanel\(\(inv\) => \{[\s\S]*?import\('@\/services\/investments-focus'\)/,
-    'gcc-investments click handler must not import investments-focus on every click',
-  );
-}
-
 function assertDestroyOnceIsolatesPanelThrows(source: string) {
   const start = source.indexOf('const destroyOnce =');
   assert.notEqual(start, -1, 'destroyOnce helper not found');
@@ -263,22 +200,14 @@ function assertDestroyOnceIsolatesPanelThrows(source: string) {
   );
 }
 
+// Panels registered through lazyPanel(key, () => importPanel(...)): each must
+// stay out of the eager graph and go through the shared guarded import.
 const SPLIT_RISK_PANEL_IMPORTS: Array<[string, string, string]> = [
-  ['pipeline-status', '@/components/PipelineStatusPanel', 'PipelineStatusPanel'],
-  ['storage-facility-map', '@/components/StorageFacilityMapPanel', 'StorageFacilityMapPanel'],
-  ['fuel-shortages', '@/components/FuelShortagePanel', 'FuelShortagePanel'],
-  ['energy-disruptions', '@/components/EnergyDisruptionsPanel', 'EnergyDisruptionsPanel'],
-  ['energy-risk-overview', '@/components/EnergyRiskOverviewPanel', 'EnergyRiskOverviewPanel'],
-  ['deduction', '@/components/DeductionPanel', 'DeductionPanel'],
-  ['regional-intelligence', '@/components/RegionalIntelligenceBoard', 'RegionalIntelligenceBoard'],
-  ['gulf-economies', '@/components/GulfEconomiesPanel', 'GulfEconomiesPanel'],
-  ['grocery-basket', '@/components/GroceryBasketPanel', 'GroceryBasketPanel'],
-  ['bigmac', '@/components/BigMacPanel', 'BigMacPanel'],
-  ['fuel-prices', '@/components/FuelPricesPanel', 'FuelPricesPanel'],
-  ['fao-food-price-index', '@/components/FaoFoodPriceIndexPanel', 'FaoFoodPriceIndexPanel'],
+  ['nuclear-reactor-status', '@/components/NuclearReactorStatusPanel', 'NuclearReactorStatusPanel'],
+  ['nuclear-events', '@/components/NuclearEventReportsPanel', 'NuclearEventReportsPanel'],
+  ['nuclear-hazards', '@/components/NuclearFacilityHazardsPanel', 'NuclearFacilityHazardsPanel'],
+  ['nuclear-facilities', '@/components/NuclearFacilityDirectoryPanel', 'NuclearFacilityDirectoryPanel'],
   ['climate-news', '@/components/ClimateNewsPanel', 'ClimateNewsPanel'],
-  ['events', '@/components/TechEventsPanel', 'TechEventsPanel'],
-  ['macro-signals', '@/components/MacroSignalsPanel', 'MacroSignalsPanel'],
 ];
 
 describe('panel-layout lazy dynamic-import guard (WORLDMONITOR-R4)', () => {
@@ -295,14 +224,11 @@ describe('panel-layout lazy dynamic-import guard (WORLDMONITOR-R4)', () => {
     assertNoDirectComponentConstructors(source);
   });
 
-  it('direct live-news mid-session mount path catches callback errors', async () => {
+  it('lazily registered panels load through lazyPanel() + importPanel() and are never eagerly imported', async () => {
     const source = await readFile(filePath, 'utf8');
-    assertLiveNewsDirectMountCatchesCallbackErrors(source);
-  });
-
-  it('GCC investments map focus helper is loaded once during panel load', async () => {
-    const source = await readFile(filePath, 'utf8');
-    assertGccInvestmentsFocusHelperIsLoadedOnce(source);
+    for (const [panelKey, modulePath, exportName] of SPLIT_RISK_PANEL_IMPORTS) {
+      assertLazyPanelRegistration(source, panelKey, modulePath, exportName);
+    }
   });
 
   it('destroy() isolates a single panel destroy() throw from the rest of teardown', async () => {

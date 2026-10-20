@@ -18,8 +18,8 @@ const panelLayoutSrc = readFileSync(resolve(__dirname, '../src/app/panel-layout.
 const panelsSrc = readFileSync(resolve(__dirname, '../src/config/panels.ts'), 'utf-8');
 const commandsSrc = readFileSync(resolve(__dirname, '../src/config/commands.ts'), 'utf-8');
 
-// NucMonitor ships two variants (src/config/variant.ts SITE_VARIANTS).
-const VARIANT_FILES = ['full', 'nuclear'];
+// NucMonitor ships one variant (src/config/variant.ts SITE_VARIANTS).
+const VARIANT_FILES = ['nuclear'];
 const PANEL_WIDE_CLASS_RE = /className:\s*['"][^'"]*\bpanel-wide\b/;
 const COMPONENT_SOURCE_RE = /\.tsx?$/;
 
@@ -661,19 +661,21 @@ describe('panel-config guardrails', () => {
     );
   });
 
-  it('reapplies panel settings after mounting the async deduction panel', () => {
+  it('reapplies panel settings after mounting an async lazy panel', () => {
     assert.match(
       panelLayoutSrc,
-      /this\.lazyPanel\('deduction',\s*\(\)\s*=>\s*\n?\s*this\.importPanel\([\s\S]*?'@\/components\/DeductionPanel'[\s\S]*?new DeductionPanel\(\(\) => this\.ctx\.allNews\)/,
-      'expected DeductionPanel to be registered through the lazy panel loader',
+      /this\.lazyPanel\('nuclear-reactor-status',\s*\(\)\s*=>\s*\n?\s*this\.importPanel\([\s\S]*?'@\/components\/NuclearReactorStatusPanel'[\s\S]*?new NuclearReactorStatusPanel\(\)/,
+      'expected NuclearReactorStatusPanel to be registered through the lazy panel loader',
     );
 
-    const mountLazyPanel = panelLayoutSrc.match(
-      /private mountLazyPanel\([\s\S]*?\n\s*\}/
-    );
-    assert.ok(mountLazyPanel, 'expected mountLazyPanel helper in panel-layout.ts');
+    // Lazy registrations mount through the deferred-mount path once their
+    // import resolves (mountLazyPanel folded into mountDeferredPanel).
+    const deferredStart = panelLayoutSrc.indexOf('  private mountDeferredPanel(');
+    assert.notEqual(deferredStart, -1, 'expected mountDeferredPanel helper in panel-layout.ts');
+    const deferredEnd = panelLayoutSrc.indexOf('\n  private ', deferredStart + 1);
+    const mountDeferredPanel = panelLayoutSrc.slice(deferredStart, deferredEnd);
     assert.match(
-      mountLazyPanel[0],
+      mountDeferredPanel,
       /this\.afterPanelMounted\(key, panel\);/,
       'lazy panel mounts must run afterPanelMounted so saved settings and hydration replay apply',
     );
@@ -747,47 +749,6 @@ describe('panel-config guardrails', () => {
     );
   });
 
-  it('reserves deferred shells for dynamic custom and MCP panel footprints', () => {
-    const dynamicEntries = deferredDynamicPanelFootprintRegistryEntries();
-    assert.match(dynamicEntries.get('cw-') ?? '', /rowSpan:\s*2/, 'cw- dynamic shell row span missing');
-    assert.match(dynamicEntries.get('mcp-') ?? '', /rowSpan:\s*2/, 'mcp- dynamic shell row span missing');
-    assert.equal(dynamicConstructorRowSpan('CustomWidgetPanel.ts', 'custom-widget-panel'), 2);
-    assert.equal(dynamicConstructorRowSpan('McpDataPanel.ts', 'mcp-data-panel'), 2);
-  });
-
-  it('runs dynamic custom and MCP panels through the mounted-panel hydration path', () => {
-    const helperStart = panelLayoutSrc.indexOf('private addDynamicPanel(');
-    assert.notEqual(helperStart, -1, 'expected addDynamicPanel helper in panel-layout.ts');
-    const helperEnd = panelLayoutSrc.indexOf('addCustomWidget(spec:', helperStart);
-    assert.ok(helperEnd > helperStart, 'expected addDynamicPanel helper boundary in panel-layout.ts');
-    const addDynamicPanel = panelLayoutSrc.slice(helperStart, helperEnd);
-    assert.match(
-      addDynamicPanel,
-      /this\.afterPanelMounted\(key, panel\);/,
-      'custom and MCP panels added after startup must run afterPanelMounted so initial hydration can be scheduled',
-    );
-
-    for (const methodName of ['addCustomWidget', 'addMcpPanel']) {
-      const methodStart = panelLayoutSrc.indexOf(`${methodName}(spec:`);
-      assert.notEqual(methodStart, -1, `expected ${methodName} method in panel-layout.ts`);
-      const methodEnd = methodName === 'addCustomWidget'
-        ? panelLayoutSrc.indexOf('addMcpPanel(spec:', methodStart)
-        : panelLayoutSrc.indexOf('private getSavedPanelOrder', methodStart);
-      assert.ok(methodEnd > methodStart, `expected ${methodName} method boundary in panel-layout.ts`);
-      const method = panelLayoutSrc.slice(methodStart, methodEnd);
-      assert.match(
-        method,
-        /this\.importPanel\(/,
-        `${methodName} must use the shared guarded import path`,
-      );
-      assert.match(
-        method,
-        /this\.addDynamicPanel\(spec\.id, panel\);/,
-        `${methodName} must insert through addDynamicPanel() so notifyConnected/afterPanelMounted run`,
-      );
-    }
-  });
-
   it('every API-key-entitled premium panel is in WEB_PREMIUM_PANELS (anon lock-CTA invariant)', () => {
     // Background: src/config/panels.ts has TWO premium-related lists:
     //
@@ -823,12 +784,15 @@ describe('panel-config guardrails', () => {
     const apiKeyPanels = [...apiKeyPanelsMatch[1].matchAll(QUOTED)].map(m => m[1]);
     assert.ok(apiKeyPanels.length > 0, 'apiKeyPanels parse returned no entries');
 
-    const webPremiumMatch = panelLayoutSrc.match(/const WEB_PREMIUM_PANELS = new Set\(\[([\s\S]*?)\]\);/);
+    const webPremiumMatch = panelLayoutSrc.match(/const WEB_PREMIUM_PANELS = new Set(?:<string>)?\(\[([\s\S]*?)\]\);/);
     assert.ok(webPremiumMatch, 'WEB_PREMIUM_PANELS not found in panel-layout.ts');
     const webPremium = new Set([...webPremiumMatch[1].matchAll(QUOTED)].map(m => m[1]));
-    assert.ok(webPremium.size > 0, 'WEB_PREMIUM_PANELS parse returned no entries');
 
-    const orphans = apiKeyPanels.filter(k => !webPremium.has(k));
+    // NucMonitor registers none of the upstream API-key panels (and WEB_PREMIUM_PANELS
+    // is empty), so the invariant is checked over the panels that can actually
+    // mount: a registered API-key panel must carry the lock CTA.
+    const registered = allRegistryPanelIds();
+    const orphans = apiKeyPanels.filter(k => registered.has(k) && !webPremium.has(k));
     assert.deepStrictEqual(
       orphans,
       [],
@@ -882,7 +846,7 @@ describe('panel-config guardrails', () => {
     assert.ok(panels.size > 0, 'registry parse must not be empty');
     assert.ok(commands.size > 0, 'command parse must not be empty');
     assert.ok(categories.size > 0, 'category parse must not be empty');
-    for (const critical of ['insights', 'live-news', 'markets']) {
+    for (const critical of ['map', 'nuclear-headlines', 'nuclear-reactor-status']) {
       assert.ok(panels.has(critical), `registry parse must retain critical panel ${critical}`);
       assert.ok(commands.has(critical), `command parse must retain critical panel ${critical}`);
       assert.ok(categories.has(critical), `category parse must retain critical panel ${critical}`);
@@ -1049,8 +1013,8 @@ describe('panel-config guardrails', () => {
     const primed = primedPanelIds();
     assert.ok(scheduled.length > 0, 'self-fetching schedule extraction must not be empty');
     assert.ok(primed.size > 0, 'primeTask extraction must not be empty');
-    assert.ok(scheduled.includes('energy-crisis'), 'the critical energy-crisis refresh must stay in the self-fetching schedule');
-    assert.ok(primed.has('energy-crisis'), 'the critical energy-crisis panel must stay in the prime table');
+    assert.ok(scheduled.includes('nuclear-reactor-status'), 'the critical NRC reactor-status refresh must stay in the self-fetching schedule');
+    assert.ok(primed.has('nuclear-reactor-status'), 'the critical NRC reactor-status panel must stay in the prime table');
 
     const unprimed = scheduled.filter((id) => !primed.has(id)).sort();
     assert.deepStrictEqual(

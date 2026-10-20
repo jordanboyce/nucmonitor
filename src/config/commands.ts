@@ -54,29 +54,14 @@ export const COMMANDS: Command[] = [
   { id: 'layer:dayNight', keywords: ['day night', 'terminator', 'shadow', 'day/night'], label: 'Toggle day/night overlay', icon: '\u{1F31C}', category: 'layers' },
 
   // Panel navigation (matching actual DEFAULT_PANELS keys)
-  { id: 'panel:live-news', keywords: ['news', 'live news', 'headlines'], label: 'Panel: Live News', icon: '\u{1F4F0}', category: 'panels' },
-  { id: 'panel:politics', keywords: ['world news', 'politics', 'geopolitics'], label: 'Panel: World News', icon: '\u{1F30D}', category: 'panels' },
-  { id: 'panel:us', keywords: ['united states', 'us news', 'america news'], label: 'Panel: United States', icon: '\u{1F1FA}\u{1F1F8}', category: 'panels' },
-  { id: 'panel:europe', keywords: ['europe news', 'eu news', 'europe', 'european'], label: 'Panel: Europe', icon: '\u{1F1EA}\u{1F1FA}', category: 'panels' },
-  { id: 'panel:middleeast', keywords: ['middle east news', 'mideast news', 'middle east', 'gulf', 'levant'], label: 'Panel: Middle East', icon: '\u{1F54C}', category: 'panels' },
-  { id: 'panel:africa', keywords: ['africa news', 'africa', 'african', 'sahel'], label: 'Panel: Africa', icon: '\u{1F30D}', category: 'panels' },
-  { id: 'panel:latam', keywords: ['latin america news', 'latam news', 'latin america', 'south america'], label: 'Panel: Latin America', icon: '\u{1F30E}', category: 'panels' },
-  { id: 'panel:asia', keywords: ['asia news', 'asia-pacific news', 'asia', 'asia pacific', 'indo-pacific'], label: 'Panel: Asia-Pacific', icon: '\u{1F30F}', category: 'panels' },
+  { id: 'panel:nuclear-headlines', keywords: ['news', 'headlines', 'nuclear news', 'nuclear headlines'], label: 'Panel: Nuclear Headlines', icon: '\u{1F4F0}', category: 'panels' },
   { id: 'panel:energy', keywords: ['energy', 'resources', 'oil news'], label: 'Panel: Energy & Resources', icon: '\u26A1', category: 'panels' },
-  { id: 'panel:energy-complex', keywords: ['energy complex', 'oil markets', 'gas markets', 'energy prices'], label: 'Panel: Energy Complex', icon: '\u{1F6E2}\uFE0F', category: 'panels' },
-  { id: 'panel:gov', keywords: ['government', 'gov', 'policy', 'legislation'], label: 'Panel: Government', icon: '\u{1F3DB}\uFE0F', category: 'panels' },
-  { id: 'panel:thinktanks', keywords: ['think tanks', 'thinktanks', 'analysis'], label: 'Panel: Think Tanks', icon: '\u{1F9E0}', category: 'panels' },
   { id: 'panel:commodities', keywords: ['commodities', 'gold', 'silver'], label: 'Panel: Commodities', icon: '\u{1F4E6}', category: 'panels' },
-  { id: 'panel:markets', keywords: ['markets', 'stocks', 'indices'], label: 'Panel: Markets', icon: '\u{1F4C8}', category: 'panels' },
   { id: 'panel:monitors', keywords: ['monitors', 'my monitors', 'watchlist'], label: 'Panel: My Monitors', icon: '\u{1F4CB}', category: 'panels' },
   { id: 'panel:map', keywords: ['map', 'globe', 'global map'], label: 'Panel: Global Map', icon: '\u{1F5FA}\uFE0F', category: 'panels' },
-  { id: 'panel:live-webcams', keywords: ['webcams', 'live cameras', 'cctv'], label: 'Panel: Live Webcams', icon: '\u{1F4F7}', category: 'panels' },
-  { id: 'panel:windy-webcams', keywords: ['windy', 'weather cam', 'weather webcam', 'weather cameras'], label: 'Panel: Live Weather Cams', icon: '\u{1F4F9}', category: 'panels' },
   { id: 'panel:satellite-fires', keywords: ['fires', 'satellite fires', 'wildfires', 'fire detections'], label: 'Panel: Fires', icon: '\u{1F525}', category: 'panels' },
   { id: 'panel:climate', keywords: ['climate', 'climate anomalies', 'temperature', 'weather patterns'], label: 'Panel: Climate Anomalies', icon: '\u{1F321}\uFE0F', category: 'panels' },
-  { id: 'panel:population-exposure', keywords: ['population', 'exposure', 'population exposure', 'affected population'], label: 'Panel: Population Exposure', icon: '\u{1F465}', category: 'panels' },
   { id: 'panel:world-clock', keywords: ['clock', 'world clock', 'time zones', 'timezone'], label: 'Panel: World Clock', icon: '\u{1F570}\uFE0F', category: 'panels' },
-  { id: 'panel:science', keywords: ['science', 'research', 'nature', 'climate science', 'space'], label: 'Panel: Science', icon: '\u{1F52C}', category: 'panels' },
   { id: 'panel:radiation-watch', keywords: ['radiation', 'nuclear', 'radnet', 'safecast', 'radiation watch'], label: 'Panel: Radiation Watch', icon: '\u2622\uFE0F', category: 'panels' },
   { id: 'panel:nuclear-events', keywords: ['nrc events', 'event notification', 'event report', 'scram', 'reactor trip', 'unusual event', 'emergency declared', '50.72', 'retraction'], label: 'Panel: NRC Event Notifications', icon: '\u2622\uFE0F', category: 'panels' },
   { id: 'panel:nuclear-reactor-status', keywords: ['reactor status', 'nrc status', 'power reactor status', 'reactor power', 'units offline', 'refueling outage'], label: 'Panel: NRC Reactor Power Status', icon: '\u2622\uFE0F', category: 'panels' },
@@ -87,7 +72,6 @@ export const COMMANDS: Command[] = [
   { id: 'panel:nuclear-policy', keywords: ['nuclear policy', 'spent fuel', 'nuclear waste', 'nonproliferation', 'nuclear security'], label: 'Panel: Nuclear Policy & Security', icon: '\u{1F4DC}', category: 'panels' },
 
   { id: 'panel:climate-news', keywords: ['climate news', 'climate headlines', 'environment news', 'climate intelligence', 'carbon brief', 'copernicus'], label: 'Panel: Climate News', icon: '\u{1F30D}', category: 'panels' },
-  { id: 'panel:disease-outbreaks', keywords: ['disease outbreaks', 'outbreaks', 'who alerts', 'epidemic', 'health alerts', 'promed'], label: 'Panel: Disease Outbreaks', icon: '\u{1F9A0}', category: 'panels' },
 
   // View / settings
   { id: 'view:dark', keywords: ['dark', 'dark mode', 'night'], label: 'Switch to dark mode', icon: '\u{1F319}', category: 'view' },

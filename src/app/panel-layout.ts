@@ -170,14 +170,10 @@ const CW_PRO_GATE_TAB_RECOVERY_KEY = 'worldmonitor-cw-pro-gate-tab-recovery-v1';
 // lift these defaults into one shared table imported by both the `Panel`
 // constructor and this map, removing the duplication entirely (see #4490).
 export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {
-  'energy-complex': { rowSpan: 2 },
   'nuclear-reactor-status': { rowSpan: 2 },
   'nuclear-events': { rowSpan: 2 },
   'nuclear-hazards': { rowSpan: 2 },
   'nuclear-facilities': { rowSpan: 2 },
-  'live-news': { className: 'panel-wide' },
-  'live-webcams': { className: 'panel-wide' },
-  'windy-webcams': { className: 'panel-wide' },
 };
 
 const DEFERRED_DYNAMIC_PANEL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {

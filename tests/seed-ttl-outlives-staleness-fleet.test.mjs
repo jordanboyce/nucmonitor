@@ -19,7 +19,7 @@
 //
 // ── Why there is an allowlist, and what it does and does not mean ──────────────
 //
-// 51 seeders currently violate this. They are NOT all broken. `maxStaleMin` is only
+// The seeders frozen below currently violate this. They are NOT all broken. `maxStaleMin` is only
 // a PROXY for the cron cadence, and it is a leaky one: several of these have TTLs
 // that are 4-6x their ACTUAL refresh interval and are in no danger of losing data —
 // they simply have a generous maxStaleMin. Verified against the live Railway crons:
@@ -29,7 +29,7 @@
 //   seed-thermal-escalation cron 0 */3  ttl 9h     = 3x interval  (retired this PR)
 //   seed-conflict-intel     cron */15   ttl 15min  = 1x interval  (THE BUG, fixed)
 //
-// So raising all 51 TTLs would trade real cost (memory, staler data served) for a
+// So raising all of those TTLs would trade real cost (memory, staler data served) for a
 // cosmetic severity signal. Instead this test RATCHETS: the existing violations are
 // frozen as visible debt, and no NEW one can be introduced. Adding a seeder here is
 // a deliberate act that shows up in review.
@@ -67,20 +67,13 @@ const KNOWN_VIOLATIONS = new Set([
   // old fire data through a failed producer cycle instead of making the vanished output loud.
   'seed-fire-detections.mjs',
   'seed-fire-detections.mjs::seed-meta:wildfire:fires-bootstrap',
-  'seed-aaii-sentiment.mjs',
   'seed-bis-data.mjs',
-  'seed-china-coverage-health.mjs',
-  'seed-chokepoint-baselines.mjs',
   'seed-climate-news.mjs',
   'seed-co2-monitoring.mjs',
   'seed-commodity-quotes.mjs',
-  'seed-cross-source-signals.mjs',
   'seed-crypto-sectors.mjs',
-  'seed-cyber-threats.mjs',
-  'seed-displacement-summary.mjs',
   'seed-ecb-fx-rates.mjs',
   'seed-economy.mjs',
-  'seed-energy-crisis-policies.mjs',
   'seed-eurostat-country-data.mjs',
   'seed-eurostat-gov-debt-q.mjs',
   'seed-eurostat-house-prices.mjs',
@@ -88,27 +81,12 @@ const KNOWN_VIOLATIONS = new Set([
   'seed-fsi-eu.mjs',
   'seed-fx-rates.mjs',
   'seed-fx-yoy.mjs',
-  'seed-global-tenders.mjs',
   'seed-gold-cb-reserves.mjs',
   'seed-gold-etf-flows.mjs',
-  'seed-hormuz.mjs',
   'seed-iea-oil-stocks.mjs',
-  'seed-imf-external.mjs',
-  'seed-imf-growth.mjs',
-  'seed-imf-labor.mjs',
   'seed-imf-macro.mjs',
-  'seed-iran-events.mjs',
   'seed-market-quotes.mjs',
-  'seed-portwatch-chokepoints-ref.mjs',
-  'seed-portwatch-disruptions.mjs',
-  'seed-portwatch.mjs',
-  'seed-recovery-external-debt.mjs',
-  'seed-recovery-fiscal-space.mjs',
-  'seed-recovery-reserve-adequacy.mjs',
-  'seed-sovereign-wealth.mjs',
-  'seed-spr-policies.mjs',
   'seed-token-panels.mjs',
-  'seed-usa-spending.mjs',
   'seed-wb-external-debt.mjs',
   'seed-weather-alerts.mjs',
   'seed-yield-curve-eu.mjs',
@@ -219,7 +197,9 @@ test('no NEW seeder lets its data expire before its own staleness gate', () => {
   // Guard the guard: a broken extractor would silently audit nothing and pass. This
   // is exactly how the first draft of this audit fooled me — it resolved 4 of ~120
   // seeders and reported "3 violations" with a straight face.
-  assert.ok(audited.length > 80, `extractor regressed: only audited ${audited.length} seeders`);
+  // The trimmed NucMonitor fleet has ~100 seed-*.mjs scripts, of which ~60
+  // canonical keys and health-monitored extraKeys resolve today.
+  assert.ok(audited.length > 50, `extractor regressed: only audited ${audited.length} seeders`);
 
   const fresh = violations.filter((v) => !KNOWN_VIOLATIONS.has(v.file));
   assert.deepEqual(

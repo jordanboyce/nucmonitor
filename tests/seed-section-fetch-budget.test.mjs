@@ -41,12 +41,20 @@ const SCRIPTS_DIR = join(resolve(__dirname, '..'), 'scripts');
  * needed to put another verified instance under this gate.
  */
 const SECTION_BUDGET_SEEDERS = [
+  // The original instance (seed-mineral-production.mjs: 300s lock-derived
+  // deadline vs a 180s section) left with the static-ref-heavy bundle. These
+  // two macro-bundle seeders carry the same mismatch through an EXPLICIT
+  // deadline: fetchPhaseTimeoutMs 150s against their 120s sections in
+  // scripts/seed-bundle-macro.mjs.
   {
-    script: 'seed-mineral-production.mjs',
-    // lockTtlMs: 180_000 with no fetchPhaseTimeoutMs → default deadline 300s
-    // against Mineral-Production's 180s section (scripts/seed-bundle-static-ref-heavy.mjs).
+    script: 'seed-world-cpi-estat.mjs',
     lockTtlMs: 180_000,
-    fetchPhaseTimeoutMs: null,
+    fetchPhaseTimeoutMs: 150_000,
+  },
+  {
+    script: 'seed-world-cpi-abs.mjs',
+    lockTtlMs: 180_000,
+    fetchPhaseTimeoutMs: 150_000,
   },
 ];
 

@@ -24,7 +24,7 @@ test('boundary requests reject untrusted origins before fetching and forbid redi
     calls++;
     assert.equal(new URL(url).origin, 'https://www.worldmonitor.app');
     assert.equal(options.redirect, 'manual');
-    return new Response('{}', { headers: { 'x-product-catalog-source': 'cache' } });
+    return new Response('{}');
   };
   for (const origin of ['https://evil.example', 'http://worldmonitor.app', 'https://clerk.worldmonitor.app', 'javascript:alert(1)', 'data:text/plain,hello']) {
     const results = await checkPublicBoundary(origin, 0);
@@ -32,7 +32,7 @@ test('boundary requests reject untrusted origins before fetching and forbid redi
   }
   assert.equal(calls, 0);
   assert.ok((await checkPublicBoundary('https://worldmonitor.app', 0)).every(result => result.pass));
-  assert.equal(calls, 2);
+  assert.equal(calls, 1); // the bootstrap boundary is the only public endpoint left to probe
 });
 
 test('boundary fetch uses a redirect mode the edge runtime accepts', async () => {
@@ -46,7 +46,7 @@ test('boundary fetch uses a redirect mode the edge runtime accepts', async () =>
     if (!EDGE_REDIRECT_MODES.has(options.redirect)) {
       throw new TypeError(`Invalid redirect value, must be one of "follow" or "manual" ("${options.redirect}" won't be implemented since it does not make sense at the edge; use "manual" and check the response status code).`);
     }
-    return new Response('{}', { headers: { 'x-product-catalog-source': 'cache' } });
+    return new Response('{}');
   };
   const results = await checkPublicBoundary('https://www.worldmonitor.app', 0);
   assert.deepEqual(results.filter(result => !result.pass), []);
@@ -62,7 +62,7 @@ test('boundary refuses a redirected response instead of following it', async () 
   };
   const results = await checkPublicBoundary('https://www.worldmonitor.app', 0);
   assert.ok(results.every(result => !result.pass && result.reason === 'redirect'));
-  assert.equal(calls, 4); // 2 endpoints x 1 retry each — never a followed hop
+  assert.equal(calls, 2); // 1 endpoint x (attempt + 1 retry) — never a followed hop
 });
 
 test('handler ignores the request host and authenticates before making requests', async () => {
@@ -75,7 +75,7 @@ test('handler ignores the request host and authenticates before making requests'
     urls.push(parsed);
     return parsed.origin === 'https://redis.test'
       ? new Response(JSON.stringify({ result: null }))
-      : new Response('{}', { headers: { 'x-product-catalog-source': 'cache' } });
+      : new Response('{}');
   };
   try {
     const denied = await handler(new Request('https://evil.example/api/seed-contract-probe'));
@@ -204,53 +204,15 @@ function mockBoundary(bodyByEndpoint, headersByEndpoint = {}) {
   };
 }
 
-test('checkPublicBoundary: product-catalog served from cache + bootstrap no leak → pass', async () => {
-  mockBoundary(
-    {
-      '/api/product-catalog': JSON.stringify({ tiers: [{ id: 'pro' }], fetchedAt: 1 }),
-      '/api/bootstrap':       JSON.stringify({ market: { quotes: [] } }),
-    },
-    { '/api/product-catalog': { 'x-product-catalog-source': 'cache' } },
-  );
+test('checkPublicBoundary: bootstrap with no seed envelope leak → pass', async () => {
+  mockBoundary({ '/api/bootstrap': JSON.stringify({ market: { quotes: [] } }) });
   const res = await checkPublicBoundary('https://worldmonitor.app', 0);
+  assert.deepEqual(res.map(r => r.endpoint), ['/api/bootstrap']);
   assert.equal(res.every(r => r.pass), true, JSON.stringify(res));
 });
 
-test('checkPublicBoundary: product-catalog served from fallback fails source-header assert', async () => {
-  // This is the regression case — response has no _seed leak, but the cached
-  // reader path silently failed and we fell through to static fallback.
-  mockBoundary(
-    {
-      '/api/product-catalog': JSON.stringify({ tiers: [], priceSource: 'fallback' }),
-      '/api/bootstrap':       JSON.stringify({}),
-    },
-    { '/api/product-catalog': { 'x-product-catalog-source': 'fallback' } },
-  );
-  const res = await checkPublicBoundary('https://worldmonitor.app', 0);
-  const pc = res.find(r => r.endpoint === '/api/product-catalog');
-  assert.equal(pc.pass, false);
-  assert.match(pc.reason, /source:fallback!=cache/);
-});
-
-test('checkPublicBoundary: product-catalog missing source header fails', async () => {
-  mockBoundary({
-    '/api/product-catalog': JSON.stringify({ tiers: [] }),
-    '/api/bootstrap':       JSON.stringify({}),
-  });
-  const res = await checkPublicBoundary('https://worldmonitor.app', 0);
-  const pc = res.find(r => r.endpoint === '/api/product-catalog');
-  assert.equal(pc.pass, false);
-  assert.match(pc.reason, /source:missing!=cache/);
-});
-
-test('checkPublicBoundary: response leaking _seed fails before source check', async () => {
-  mockBoundary(
-    {
-      '/api/product-catalog': JSON.stringify({ _seed: { fetchedAt: 1 }, data: { tiers: [] } }),
-      '/api/bootstrap':       JSON.stringify({}),
-    },
-    { '/api/product-catalog': { 'x-product-catalog-source': 'cache' } },
-  );
+test('checkPublicBoundary: response leaking _seed fails', async () => {
+  mockBoundary({ '/api/bootstrap': JSON.stringify({ _seed: { fetchedAt: 1 }, data: { earthquakes: [] } }) });
   const res = await checkPublicBoundary('https://worldmonitor.app', 0);
   assert.ok(res.some(r => !r.pass && r.reason === 'seed-leak'));
 });
@@ -332,8 +294,8 @@ test('checkProbe: non-JSON Redis body returns reason=redis-bad-json-body (no thr
 });
 
 test('checkPublicBoundary: a transient first-attempt failure on each endpoint recovers on retry', async () => {
-  // First call to each endpoint 503s (cold start); the retry returns a healthy
-  // cache-served catalog + clean bootstrap → the boundary stays green.
+  // First call to each endpoint 503s (cold start); the retry returns a clean
+  // bootstrap → the boundary stays green.
   const callCount = {};
   globalThis.fetch = async (url) => {
     const path = new URL(url).pathname;
@@ -341,13 +303,11 @@ test('checkPublicBoundary: a transient first-attempt failure on each endpoint re
     if (callCount[path] === 1) {
       return { ok: false, status: 503, text: async () => '', headers: { get: () => null } };
     }
-    const body = path === '/api/product-catalog'
-      ? JSON.stringify({ tiers: [{ id: 'pro' }], fetchedAt: 1 })
-      : JSON.stringify({ market: { quotes: [] } });
-    const hdrs = new Headers(path === '/api/product-catalog' ? { 'x-product-catalog-source': 'cache' } : {});
+    const body = JSON.stringify({ market: { quotes: [] } });
+    const hdrs = new Headers({});
     return { ok: true, status: 200, text: async () => body, headers: { get: (n) => hdrs.get(n) } };
   };
   const res = await checkPublicBoundary('https://worldmonitor.app', 0);
   assert.equal(res.every(r => r.pass), true, JSON.stringify(res));
-  assert.ok(res.every(r => r.recovered === true), 'both endpoints should be flagged recovered');
+  assert.ok(res.every(r => r.recovered === true), 'every endpoint should be flagged recovered');
 });

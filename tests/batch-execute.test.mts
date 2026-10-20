@@ -617,7 +617,7 @@ describe('batch gateway access', () => {
     const [{ createDomainGateway }] = await Promise.all([
       import('../server/gateway.ts'),
     ]);
-    const path = '/api/intelligence/v1/get-china-decision-signals';
+    const path = '/api/news/v1/list-label-changes';
     const redis = installRedis({});
     __resetRateLimitForTest();
     const keys: string[] = [];
@@ -651,7 +651,7 @@ describe('batch gateway access', () => {
     const [{ createDomainGateway }] = await Promise.all([
       import('../server/gateway.ts'),
     ]);
-    const path = '/api/intelligence/v1/get-china-decision-signals';
+    const path = '/api/news/v1/list-label-changes';
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
     __resetRateLimitForTest();

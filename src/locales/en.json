@@ -1,9 +1,9 @@
 {
   "shell": {
-    "documentTitle": "World Monitor — Real-Time Global Intelligence Dashboard",
+    "documentTitle": "NucMonitor — Real-Time Global Intelligence Dashboard",
     "metaDescription": "Real-time global intelligence platform. Featured in WIRED. Used by 2M+ people across 190 countries. Conflicts, markets, military, open-source intelligence in one view.",
     "offlineTitle": "You're Offline",
-    "offlineMessage": "World Monitor requires an internet connection for real-time intelligence data.",
+    "offlineMessage": "NucMonitor requires an internet connection for real-time intelligence data.",
     "offlineRetry": "Retry"
   },
   "widgets": {
@@ -41,12 +41,12 @@
     "phaseError": "Error",
     "previewCheckingHeading": "Connecting the widget builder",
     "previewReadyHeading": "Describe the widget you want",
-    "previewFetchingHeading": "Fetching live WorldMonitor data",
+    "previewFetchingHeading": "Fetching live NucMonitor data",
     "previewComposingHeading": "Composing the widget layout",
     "previewErrorHeading": "The preview needs attention",
     "previewCheckingCopy": "We are validating your widget key and backend availability before enabling generation.",
     "previewReadyCopy": "Use a prompt example or describe the exact live view you want. The preview will update here before you save it.",
-    "previewFetchingCopy": "The agent is calling approved WorldMonitor endpoints and shaping the dataset for the widget.",
+    "previewFetchingCopy": "The agent is calling approved NucMonitor endpoints and shaping the dataset for the widget.",
     "previewComposingCopy": "The preview is rendering with the latest live data and dashboard styling.",
     "previewErrorCopy": "Fix the issue, then retry. Your existing widgets are unaffected.",
     "createInteractive": "Create Interactive Widget",
@@ -793,7 +793,7 @@
         "some": "Some features need API keys"
       },
       "reserveEarlyAccess": "Reserve Your Early Access",
-      "skipSetup": "Skip the setup — a single World Monitor license unlocks everything. Join the waitlist for early access.",
+      "skipSetup": "Skip the setup — a single NucMonitor license unlocks everything. Join the waitlist for early access.",
       "summary": {
         "desktop": "Desktop mode",
         "web": "Web mode (read-only, server-managed credentials)",
@@ -824,7 +824,7 @@
       }
     },
     "settingsWindow": {
-      "shellTitle": "World Monitor Settings",
+      "shellTitle": "NucMonitor Settings",
       "shellSearchPlaceholder": "Search settings...",
       "shellCancel": "Cancel",
       "shellSaveClose": "Save & Close",
@@ -1236,7 +1236,7 @@
       "skipToEnd": "Skip to end"
     },
     "pizzint": {
-      "indexSource": "Index: World Monitor · venue data:",
+      "indexSource": "Index: NucMonitor · venue data:",
       "statusNormal": "NORMAL",
       "statusNoData": "NO DATA",
       "statusNoBaseline": "NO BASELINE",
@@ -1245,7 +1245,7 @@
       "defcon": "DEFCON {{level}}",
       "updated": "Updated {{timeAgo}}",
       "tensionsTitle": "Geopolitical Tensions",
-      "tensionsSource": "Tensions: World Monitor from GDELT events",
+      "tensionsSource": "Tensions: NucMonitor from GDELT events",
       "insufficientData": "Insufficient data",
       "pizzaUnavailable": "Pizza activity unavailable",
       "source": "Source:",
@@ -2443,7 +2443,7 @@
       "loadError": "Climate news temporarily unavailable"
     },
     "chatAnalyst": {
-      "infoTooltip": "<strong>WM Analyst</strong> AI analyst with live context across geopolitical, market, military, and economic domains. Powered by Claude with real-time data injected from active WorldMonitor feeds."
+      "infoTooltip": "<strong>WM Analyst</strong> AI analyst with live context across geopolitical, market, military, and economic domains. Powered by Claude with real-time data injected from active NucMonitor feeds."
     },
     "cotPositioning": {
       "infoTooltip": "<strong>Futures positioning</strong> Weekly net positions for commercial traders, large speculators and small traders across commodity and financial futures. Source is the Commodity Futures Trading Commission Commitments of Traders report, published on Fridays."
@@ -2531,7 +2531,7 @@
       "infoTooltip": "<strong>Economic Calendar</strong> Scheduled macroeconomic releases: consumer price index, nonfarm payrolls, gross domestic product, purchasing managers index, and central bank decisions. Shows forecast vs actual vs prior. High-impact events highlighted. Source: economic data providers."
     },
     "fsi": {
-      "infoTooltip": "<strong>Financial Stress Indicator</strong> WorldMonitor ratio of high-yield credit to long Treasuries, adjusted for equity volatility and the high-yield spread: (HYG / TLT) / (VIX × High-yield spread / 100). This is not the Kansas City Fed Financial Stress Index. A reading of 1.5 or higher is low stress; below 0.3 is high stress.",
+      "infoTooltip": "<strong>Financial Stress Indicator</strong> NucMonitor ratio of high-yield credit to long Treasuries, adjusted for equity volatility and the high-yield spread: (HYG / TLT) / (VIX × High-yield spread / 100). This is not the Kansas City Fed Financial Stress Index. A reading of 1.5 or higher is low stress; below 0.3 is high stress.",
       "title": "Financial Stress Indicator",
       "usFsiValue": "US Financial Stress Indicator value",
       "cissTitle": "EU CISS (Euro Area Systemic Stress)",
@@ -2615,7 +2615,7 @@
       "infoTooltip": "<strong>Macro indicators</strong> US, euro area and China prices, activity, policy and currency indicators. China requires current coverage. Each tile shows its source and observation date."
     },
     "monitors": {
-      "infoTooltip": "<strong>Keyword Monitors</strong> Add any term to track live news mentions across all WorldMonitor sources. Results update in real time as matching articles are ingested."
+      "infoTooltip": "<strong>Keyword Monitors</strong> Add any term to track live news mentions across all NucMonitor sources. Results update in real time as matching articles are ingested."
     },
     "renewable": {
       "infoTooltip": "<strong>Renewable Energy</strong> Share of electricity generation from renewables by region and year, plus US installed capacity for solar, wind, and coal (MW). Sources: World Bank (EG.ELC.RNEW.ZS) and US Energy Information Administration."
@@ -3756,7 +3756,7 @@
   },
   "premium": {
     "pro": "PRO",
-    "lockedDesc": "Requires a World Monitor license key",
+    "lockedDesc": "Requires a NucMonitor license key",
     "signInToUnlock": "Sign in to unlock premium features",
     "signIn": "Sign In to Unlock",
     "upgradeDesc": "Upgrade to Pro for full access to premium analytics",

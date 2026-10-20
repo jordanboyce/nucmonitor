@@ -415,20 +415,6 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      - name: zh-TW catalogues reproduce from their Simplified source (#6555)
-        # The zh-TW catalogues are generated from zh.json, not translated from
-        # en.json, so the EN baseline in translate-locales.mjs is the wrong
-        # instrument for them and reports them separately. That leaves this as
-        # the only check that fails when zh.json moves and nobody reran the
-        # generator — without it, key-existence stays green while the values
-        # rot, which is the #5645 blindspot on this catalogue.
-        #
-        # Version-pinned deliberately: a different OpenCC build shifts terms no
-        # override pins, and reporting both catalogues stale at once is the
-        # intended loud failure rather than a silent reformat.
-        run: |
-          pip install opencc-python-reimplemented==0.1.7
-          python3 scripts/convert-zh-tw.py --check
       - name: Enforce health-probe cutovers
         env:
           # NOT github.event.pull_request.base.sha. GitHub pins that SHA when the

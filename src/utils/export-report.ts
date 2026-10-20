@@ -235,8 +235,8 @@ export function buildDataReportDocument(data: ExportData, options: DataReportOpt
   const body = sections || '<p class="wm-empty">No dashboard data was available at export time.</p>';
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">`
-    + `<title>WorldMonitor Data Report</title><style>${REPORT_STYLES}</style></head><body>`
-    + `<h1>WorldMonitor Data Report</h1>`
+    + `<title>NucMonitor Data Report</title><style>${REPORT_STYLES}</style></head><body>`
+    + `<h1>NucMonitor Data Report</h1>`
     + `<p class="wm-meta">Generated ${escapeReportHtml(generatedAt)}</p>`
     + (clean.meta?.note ? `<p class="wm-meta">${escapeReportHtml(clean.meta.note)}</p>` : '')
     + body

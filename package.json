@@ -44,8 +44,6 @@
     "check:prereqs": "node scripts/check-build-prereqs.mjs",
     "sync:locales": "node scripts/sync-locale-keys.mjs",
     "sync:locales:check": "node scripts/sync-locale-keys.mjs --check",
-    "locales:zh-tw": "python3 scripts/convert-zh-tw.py",
-    "locales:zh-tw:check": "python3 scripts/convert-zh-tw.py --check",
     "sync:bootstrap-tier-keys": "node scripts/sync-bootstrap-tier-keys.mjs",
     "sync:bootstrap-tier-keys:check": "node scripts/sync-bootstrap-tier-keys.mjs --check",
     "sync:live-video-channels": "node --import tsx scripts/sync-live-video-refresh-channels.mjs",

@@ -1,4 +1,4 @@
-import { LANGUAGES, getCurrentLanguageTag, changeLanguage, t } from '@/services/i18n';
+import { getCurrentLanguageTag, t } from '@/services/i18n';
 import { getAiFlowSettings, setAiFlowSetting, getStreamQuality, setStreamQuality, STREAM_QUALITY_OPTIONS } from '@/services/ai-flow-settings';
 import { getMapProvider, setMapProvider, MAP_PROVIDER_OPTIONS, MAP_THEME_OPTIONS, getMapTheme, setMapTheme, type MapProvider } from '@/config/basemap';
 import {
@@ -24,7 +24,6 @@ import {
   type FontScaleChangedDetail,
 } from '@/services/font-scale-settings';
 import { escapeHtml } from '@/utils/sanitize';
-import { trackLanguageChange } from '@/services/analytics';
 import { exportSettings, importSettings, type ImportResult } from '@/utils/settings-persistence';
 import { getSyncState, getLastSyncAt, syncNow, isCloudSyncEnabled } from '@/utils/cloud-prefs-sync';
 
@@ -166,9 +165,6 @@ function handlePreferenceChange(
       setLiveMediaIdleStop(idleStop);
       return true;
     }
-    case 'us-language':
-      trackLanguageChange(target.value);
-      return changeLanguage(target.value);
     case 'us-cloud':
       setAiFlowSetting('cloudLlm', target.checked);
       updateAiStatus(container);
@@ -208,9 +204,6 @@ function handlePreferenceChange(
 
 export function renderPreferences(host: PreferencesHost): PreferencesResult {
   const settings = getAiFlowSettings();
-  // Compared against LANGUAGES[].code below, which carries full tags (`zh-TW`).
-  // The region-stripped accessor would mark 简体中文 selected for a Traditional reader.
-  const currentLang = getCurrentLanguageTag();
   let html = '';
 
   // ── Display group ──
@@ -317,18 +310,6 @@ export function renderPreferences(host: PreferencesHost): PreferencesResult {
     html += `<option value="${opt.value}"${selected}>${escapeHtml(opt.label)}</option>`;
   }
   html += `</select>`;
-
-  // Language
-  html += `<div class="ai-flow-section-label" id="us-language-label">${t('header.languageLabel')}</div>`;
-  html += `<select class="unified-settings-lang-select" id="us-language" aria-labelledby="us-language-label">`;
-  for (const lang of LANGUAGES) {
-    const selected = lang.code === currentLang ? ' selected' : '';
-    html += `<option value="${lang.code}"${selected}>${lang.flag} ${escapeHtml(lang.label)}</option>`;
-  }
-  html += `</select>`;
-  if (currentLang === 'vi') {
-    html += `<div class="ai-flow-toggle-desc">${t('components.languageSelector.mapLabelsFallbackVi')}</div>`;
-  }
 
   html += `</div></details>`;
 

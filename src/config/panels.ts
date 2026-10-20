@@ -17,7 +17,7 @@ const NUCLEAR_PANELS: Record<string, PanelConfig> = {
   'nuclear-events': { name: 'NRC Event Notifications', enabled: true, priority: 1 },
   'nuclear-hazards': { name: 'Facility All-Hazards Watch', enabled: true, priority: 1 },
   'nuclear-facilities': { name: 'US Nuclear Facility Directory', enabled: true, priority: 1 },
-  'live-news': { name: 'Nuclear Headlines', enabled: true, priority: 1 },
+  'nuclear-headlines': { name: 'Nuclear Headlines', enabled: true, priority: 1 },
   'nuclear-regulatory': { name: 'NRC, DOE & IAEA Official', enabled: true, priority: 1 },
   'nuclear-industry': { name: 'Nuclear Industry News', enabled: true, priority: 1 },
   'nuclear-policy': { name: 'Nuclear Policy & Security', enabled: true, priority: 2 },
@@ -96,7 +96,6 @@ export const VARIANT_DEFAULTS: Record<string, string[]> = {
 export const VARIANT_PANEL_OVERRIDES: Partial<Record<string, Partial<Record<string, Partial<PanelConfig>>>>> = {
   nuclear: {
     map:         { name: 'US Nuclear Facilities Map' },
-    'live-news': { name: 'Nuclear Headlines' },
     insights:    { name: 'AI Nuclear Insights' },
     energy:      { name: 'Energy Markets News' },
     commodities: { name: 'Energy Commodities' },
@@ -357,7 +356,7 @@ export const LAYER_TO_SOURCE: Partial<Record<keyof MapLayers, DataSourceId[]>> =
 export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: string[]; variants?: string[] }> = {
   core: {
     labelKey: 'header.panelCatCore',
-    panelKeys: ['map', 'live-news'],
+    panelKeys: ['map', 'nuclear-headlines'],
   },
 
   nuclearHub: {

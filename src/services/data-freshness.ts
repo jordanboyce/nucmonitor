@@ -88,7 +88,7 @@ const SOURCE_METADATA: Record<DataSourceId, { name: string; requiredForRisk: boo
   usgs: { name: 'Earthquakes', requiredForRisk: false, panelId: 'natural' },
   gdelt: { name: 'News Intelligence', requiredForRisk: true, panelId: 'intel' },
   gdelt_doc: { name: 'GDELT Doc Intelligence', requiredForRisk: false, panelId: 'protests' },
-  rss: { name: 'Live News Feeds', requiredForRisk: true, panelId: 'live-news' },
+  rss: { name: 'Live News Feeds', requiredForRisk: true, panelId: 'nuclear-headlines' },
   polymarket: { name: 'Prediction Markets', requiredForRisk: false, panelId: 'polymarket' },
   predictions: { name: 'Predictions Feed', requiredForRisk: false, panelId: 'polymarket' },
   pizzint: { name: 'PizzINT Monitoring', requiredForRisk: false, panelId: 'intel' },
@@ -131,7 +131,7 @@ const SOURCE_METADATA: Record<DataSourceId, { name: string; requiredForRisk: boo
 const PANEL_FRESHNESS_SOURCES: Record<string, readonly DataSourceId[]> = {
   'strategic-risk': CORE_SOURCES,
   cii: CORE_SOURCES,
-  'live-news': ['rss'],
+  'nuclear-headlines': ['rss'],
   intel: ['gdelt', 'pizzint'],
   'gdelt-intel': ['gdelt'],
   protests: ['acled', 'acled_conflict', 'gdelt_doc', 'ucdp', 'hapi'],

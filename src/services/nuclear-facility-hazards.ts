@@ -3,7 +3,8 @@
  *
  * Takes the hazard feeds the dashboard already loads (USGS earthquakes, NWS
  * weather alerts, NASA FIRMS fire detections, EPA RadNet / Safecast radiation
- * observations, and EONET / NHC natural events such as tropical cyclones) and
+ * observations, EONET / NHC natural events such as tropical cyclones, and
+ * internet / grid-adjacent outages) and
  * joins them geographically to the facility registry. The output is a ranked
  * list of facilities with every active hazard signal within its watch radius,
  * so a reader can answer "which plants have something happening near them
@@ -21,10 +22,10 @@ import {
 import type { Earthquake } from '@/services/earthquakes';
 import type { WeatherAlert } from '@/services/weather';
 import type { RadiationObservation } from '@/services/radiation';
-import type { NaturalEvent } from '@/types';
+import type { InternetOutage, NaturalEvent } from '@/types';
 import type { MapFire } from '@/services/wildfires';
 
-export type FacilityHazardKind = 'earthquake' | 'weather' | 'fire' | 'radiation' | 'storm' | 'flood' | 'volcano' | 'other';
+export type FacilityHazardKind = 'earthquake' | 'weather' | 'fire' | 'radiation' | 'storm' | 'flood' | 'volcano' | 'outage' | 'other';
 export type FacilityHazardSeverity = 'critical' | 'high' | 'elevated' | 'watch';
 
 export interface FacilityHazardSignal {
@@ -56,6 +57,8 @@ export interface FacilityHazardInputs {
   fires?: MapFire[];
   radiation?: RadiationObservation[];
   naturalEvents?: NaturalEvent[];
+  /** Internet outages (Cloudflare Radar / IODA) — a proxy for regional grid and telecom disruption. */
+  outages?: InternetOutage[];
   /** Reference time for recency windows (defaults to now). */
   now?: Date;
 }
@@ -77,6 +80,8 @@ export interface FacilityHazardOptions {
   stormRadiusKm?: number;
   /** Fallback radius for weather alerts that only have a centroid (default 60). */
   weatherCentroidRadiusKm?: number;
+  /** Outage radius in km (default 80, roughly the 50-mile ingestion EPZ). */
+  outageRadiusKm?: number;
 }
 
 export const DEFAULT_HAZARD_CATEGORIES: UsNuclearFacilityCategory[] = [
@@ -164,6 +169,15 @@ function stormSeverity(event: NaturalEvent, distanceKm: number): FacilityHazardS
   return 'watch';
 }
 
+function outageSeverity(outage: InternetOutage): FacilityHazardSeverity {
+  // Telecom loss matters to a plant because offsite communications and
+  // emergency notification depend on it; a total regional outage is treated
+  // like a severe weather warning, a partial one only as a watch item.
+  if (outage.severity === 'total') return 'high';
+  if (outage.severity === 'major') return 'elevated';
+  return 'watch';
+}
+
 function naturalEventKind(event: NaturalEvent): FacilityHazardKind {
   const cat = String(event.category);
   if (cat.includes('storm') || cat.includes('cyclone') || event.stormId) return 'storm';
@@ -212,6 +226,7 @@ export function correlateFacilityHazards(
   const radRadius = options.radiationRadiusKm ?? 80;
   const stormRadius = options.stormRadiusKm ?? 250;
   const centroidRadius = options.weatherCentroidRadiusKm ?? 60;
+  const outageRadius = options.outageRadiusKm ?? 80;
 
   // Pre-filter feeds once so the per-facility loop stays cheap.
   const quakes = (inputs.earthquakes ?? []).filter((q) =>
@@ -228,6 +243,11 @@ export function correlateFacilityHazards(
   const fires = inputs.fires ?? [];
   const radiation = (inputs.radiation ?? []).filter((r) => r.severity !== 'normal');
   const natural = (inputs.naturalEvents ?? []).filter((e) => !e.closed);
+  const outages = (inputs.outages ?? []).filter((o) =>
+    Number.isFinite(o.lat)
+    && Number.isFinite(o.lon)
+    && (!o.endDate || o.endDate.getTime() > now.getTime()),
+  );
 
   const reports: FacilityHazardReport[] = [];
 
@@ -322,6 +342,20 @@ export function correlateFacilityHazards(
       });
     }
 
+    for (const o of outages) {
+      const d = haversineKm(facility.lat, facility.lon, o.lat, o.lon);
+      if (d > outageRadius) continue;
+      signals.push({
+        kind: 'outage',
+        severity: outageSeverity(o),
+        summary: `${o.severity[0]!.toUpperCase()}${o.severity.slice(1)} outage ${formatKm(d)} away (${o.region || o.title})`,
+        distanceKm: d,
+        at: o.pubDate,
+        sourceUrl: o.link || undefined,
+        source: 'Internet outages',
+      });
+    }
+
     if (signals.length === 0) continue;
 
     signals.sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.distanceKm - b.distanceKm);
@@ -356,7 +390,7 @@ export function summarizeFacilityHazards(reports: FacilityHazardReport[]): Facil
   const totals: FacilityHazardTotals = {
     facilitiesWithSignals: reports.length,
     critical: 0, high: 0, elevated: 0, watch: 0,
-    byKind: { earthquake: 0, weather: 0, fire: 0, radiation: 0, storm: 0, flood: 0, volcano: 0, other: 0 },
+    byKind: { earthquake: 0, weather: 0, fire: 0, radiation: 0, storm: 0, flood: 0, volcano: 0, outage: 0, other: 0 },
   };
   for (const r of reports) {
     totals[r.severity] += 1;

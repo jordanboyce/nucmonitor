@@ -168,6 +168,7 @@ export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, Deferred
   'nuclear-events': { rowSpan: 2 },
   'nuclear-hazards': { rowSpan: 2 },
   'nuclear-facilities': { rowSpan: 2 },
+  'grid-alerts': { rowSpan: 2, className: 'panel-wide' },
 };
 
 const DEFERRED_DYNAMIC_PANEL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {

@@ -1,12 +1,12 @@
-# Architecture
+# NucMonitor Architecture
 
 > **Inventory ownership**: map layers, services, protos, locales, CI workflows, and freshness sources are defined by their registries. `npm run docs:check` verifies registry and fixed-contract documentation; generated snapshots are refreshed with `npm run docs:stats`.
 >
 > **Ownership rule**: When deployment topology, API surface, desktop runtime, or bootstrap keys change, this document must be updated in the same PR.
 
-> **Design philosophy**: For the "why" behind architectural decisions, intelligence tradecraft, and algorithmic choices, see [Design Philosophy](docs/architecture.mdx).
+NucMonitor is an all-hazards dashboard for US nuclear facilities, built as a TypeScript single-page application. It joins the NRC reactor status and event reports, a registry of US nuclear facilities, and public hazard feeds (weather alerts, earthquakes, fires, storms, outages, radiation) into one map and a grid of panels.
 
-World Monitor is a real-time global intelligence dashboard built as a TypeScript single-page application. It aggregates data from dozens of external sources covering geopolitics, military activity, financial markets, cyber threats, climate events, maritime tracking, and aviation into a unified operational picture rendered through an interactive map and a grid of specialized panels.
+> **Note**: NucMonitor was forked from NucMonitor and trimmed to the nuclear hub. Some sections below still describe upstream infrastructure (relay loops, Railway services, desktop runtime) that has been or is being removed; treat the registries and code as the source of truth.
 
 ---
 
@@ -116,12 +116,6 @@ No external state library. `AppContext` is a central mutable object holding: map
 - **ml.worker.ts**: ONNX inference via `@xenova/transformers` (MiniLM-L6 embeddings, sentiment, summarization, NER), in-worker vector store for headline memory
 - **vector-db.ts**: IndexedDB-backed vector store for semantic search
 
-### Variant System
-
-Detected by hostname (`tech.worldmonitor.app` → tech, `finance.worldmonitor.app` → finance, etc.) or localStorage on desktop. Controls: default panels, map layers, refresh intervals, theme, UI text. Variant change resets all settings to defaults.
-
-**Source files**: `src/main.ts`, `src/App.ts`, `src/app/`, `src/components/Panel.ts`, `src/components/DeckGLMap.ts`, `src/components/GlobeMap.ts`, `src/config/variant.ts`, `src/workers/`
-
 ---
 
 ## 4. API Layer
@@ -224,21 +218,6 @@ CI enforces generated code freshness via `.github/workflows/proto-check.yml`: ru
 
 `seed-supply-vulnerability.mjs` runs once per durable turn in the static-reference Railway bundle after its mirrored inputs. It publishes `supply-chain:vulnerability:cohort:v1` plus two-slot country and chokepoint shards, then writes separate activation and seed-health metadata. The cohort pointer is the read authority; compatibility manifests are not independent publication clocks.
 
-### AIS Relay Seed Loops
-
-The Railway relay service (`scripts/ais-relay.cjs`) runs continuous seed loops:
-
-- Market data (stocks, commodities, crypto, stablecoins, sectors, ETF flows, gulf quotes)
-- Aviation (international delays)
-- Positive events
-- GPSJAM (GPS interference)
-- Risk scores (CII)
-- UCDP events
-
-These are the primary seeders. Standalone `seed-*.mjs` scripts on Railway cron are secondary/backup.
-
-The market backup bundle also persists 14 days of timestamped hourly Yahoo closes for the news-to-market correlation panel. This series is an on-demand bootstrap key, so it does not increase the default hydration payload.
-
 ### Refresh Scheduling
 
 `startSmartPollLoop()` supports: exponential backoff (max 4x), viewport-conditional refresh (only if panel is near viewport), tab-pause (suspend when hidden), and staggered flush on tab visibility (150ms delays).
@@ -251,31 +230,7 @@ The market backup bundle also persists 14 days of timestamped hourly Yahoo close
 
 ---
 
-## 7. Desktop Architecture
-
-### Tauri Shell
-
-Tauri 2.x (Rust) manages the app lifecycle, system tray, and IPC commands:
-
-- **Secret management**: Read/write platform keyring (macOS Keychain, Windows Credential Manager, Linux keyring)
-- **Sidecar control**: Spawn Node.js process, probe port, inject environment variables
-- **Window management**: Three trusted windows (main, settings, live-channels) with Edit menu for macOS clipboard shortcuts
-
-### Node.js Sidecar
-
-`src-tauri/sidecar/local-api-server.mjs` runs on a dynamic port. It dynamically loads Edge Function handler modules from `api/`, injects secrets from the keyring via environment variables, and monkey-patches `globalThis.fetch` to force IPv4 (Node.js tries IPv6 first, but many government APIs have broken IPv6).
-
-### Fetch Patching
-
-`installRuntimeFetchPatch()` in `src/services/runtime.ts` replaces `window.fetch` on the desktop renderer. All `/api/*` requests route to the sidecar with `Authorization: Bearer <token>` (5-min TTL from Tauri IPC). If the sidecar fails, requests fall back to the cloud API.
-
-Seed-owned scorecard RPC paths are always cloud-preferred on desktop. The sidecar does not carry the Railway-published scorecard cohort, so routing these paths locally would create a false unavailable state instead of using the authenticated cloud API.
-
-**Source files**: `src-tauri/src/main.rs`, `src-tauri/sidecar/local-api-server.mjs`, `src/services/runtime.ts`, `src/services/tauri-bridge.ts`
-
----
-
-## 8. Security Model
+## 7. Security Model
 
 ### Trust Boundaries
 
@@ -304,15 +259,7 @@ API keys are required for non-browser origins. Trusted browser origins (producti
 
 Per-IP sliding window via Upstash with per-endpoint overrides for high-traffic paths.
 
-### Desktop Secret Storage
-
-Secrets are stored in the platform keyring (never plaintext), injected into the sidecar via Tauri IPC, and scoped to an allowlist of environment variable keys.
-
-**Source files**: `middleware.ts`, `vercel.json`, `index.html`, `src-tauri/tauri.conf.json`, `api/_api-key.js`, `server/_shared/rate-limit.ts`
-
----
-
-## 9. Caching Architecture
+## 8. Caching Architecture
 
 ### Four-Layer Hierarchy
 
@@ -350,7 +297,7 @@ The five-factor scorecard adds an atomic two-key read pattern: `scorecard:five-f
 
 ---
 
-## 10. Testing
+## 9. Testing
 
 ### Unit and Integration
 
@@ -384,7 +331,7 @@ Runs before every `git push`:
 
 ---
 
-## 11. CI/CD
+## 10. CI/CD
 
 | Workflow | Trigger | Checks |
 |----------|---------|--------|
@@ -451,7 +398,7 @@ gates.
 
 ---
 
-## 12. Directory Reference
+## 11. Directory Reference
 
 ```
 .

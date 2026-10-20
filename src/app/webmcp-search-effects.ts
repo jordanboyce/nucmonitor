@@ -29,28 +29,13 @@ const PERSISTENT_ENTITY_TYPES = new Set([
   'datacenter',
   'nuclear',
   'irradiator',
-  'techcompany',
-  'startup',
-  'techevent',
-  'techhq',
-  'accelerator',
-  'exchange',
-  'financialcenter',
-  'centralbank',
-  'commodityhub',
-  'flight',
 ]);
 
 const VIEW_STATE_ENTITY_TYPES = new Set([
   'news',
-  'hotspot',
   'market',
-  'prediction',
-  'conflict',
-  'base',
   'earthquake',
   'outage',
-  'ailab',
 ]);
 
 const EXTERNAL_NAVIGATION_VIEW_ACTIONS = new Set([

@@ -197,7 +197,7 @@ export function exportSettings(): void {
     throw new Error('Settings export could not read browser storage.');
   }
 
-  let variant = 'full';
+  let variant = 'nuclear';
   for (const [key, value] of snapshot.entries) {
     if (key === 'worldmonitor-variant' && value) variant = value;
     if (isSettingsKey(key)) data[key] = key === PINNED_WEBCAMS_KEY ? normalizePinnedWebcamsPreference(value) : value;

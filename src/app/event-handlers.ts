@@ -49,10 +49,8 @@ import {
   LAYER_TO_SOURCE,
   FEEDS,
   CANONICAL_FEEDS,
-  INTEL_SOURCES,
 } from '@/config';
 import { resolveNewsCategories, enabledNewsCategoryKeys } from '@/config/feed-resolution';
-import { VARIANT_META } from '@/config/variant-meta';
 import { isDesktopRuntime } from '@/services/runtime';
 import {
   getMissionPresetsForVariant,
@@ -74,7 +72,6 @@ import {
   type MissionPickerTrigger,
   trackMissionSelected,
   trackPanelView,
-  trackVariantSwitch,
   trackMapViewChange,
   trackMapLayerToggle,
   trackPanelToggled,
@@ -134,7 +131,6 @@ import {
   removeResponsiveZoneListener,
   type ResponsiveZoneListener,
 } from '@/app/responsive-zone-listener';
-import { stageVariantSelection } from '@/services/variant-panel-ownership';
 import { transferSourceGateOwnershipToUser as releaseSourceGateOwnership } from '@/services/source-cap';
 
 function readStorageValue(key: string): string | null {
@@ -345,9 +341,6 @@ export class EventHandlerManager implements AppModule {
     this.callbacks = callbacks;
     this.mobilePrimaryNav = new MobilePrimaryNav(ctx, {
       openSearch: (options) => this.callbacks.openSearch(options),
-      navigateToVariant: async (variant, options) => {
-        await this.navigateToVariant(variant, options);
-      },
       openMission: (anchor) => this.openMissionPresetPopover(anchor, true),
     });
   }
@@ -683,19 +676,6 @@ export class EventHandlerManager implements AppModule {
       }
     };
     document.addEventListener('keydown', this.boundUndoHandler);
-
-    const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    this.ctx.container.querySelectorAll<HTMLAnchorElement>('.variant-option').forEach(link => {
-      link.addEventListener('click', (e) => {
-        const variant = link.dataset.variant;
-        if (!variant || variant === SITE_VARIANT) return;
-        e.preventDefault();
-        void this.navigateToVariant(variant, {
-          href: link.href,
-          isLocalDev,
-        });
-      });
-    });
 
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     if (!this.ctx.isDesktopApp && fullscreenBtn) {
@@ -1722,60 +1702,6 @@ export class EventHandlerManager implements AppModule {
     window.setTimeout(sync, delayMs);
   }
 
-  private async exitFullscreenForNavigation(): Promise<void> {
-    const fullscreenDocument = this.getFullscreenDocument();
-    if (!fullscreenDocument.fullscreenElement && !fullscreenDocument.webkitFullscreenElement) return;
-    try {
-      if (typeof fullscreenDocument.exitFullscreen === 'function') {
-        await fullscreenDocument.exitFullscreen();
-        return;
-      }
-      await fullscreenDocument.webkitExitFullscreen?.();
-    } catch { /* proceed with navigation regardless */ }
-  }
-
-  private async navigateToVariant(
-    variant: string,
-    options: { href?: string; isLocalDev: boolean },
-  ): Promise<'reload' | 'assign' | 'blocked'> {
-    trackVariantSwitch(SITE_VARIANT, variant);
-    await this.exitFullscreenForNavigation();
-
-    if (this.ctx.isDesktopApp || options.isLocalDev) {
-      if (stageVariantSelection(SITE_VARIANT, variant, writeStorageValue)) {
-        window.location.reload();
-        return 'reload';
-      }
-      return 'blocked';
-    }
-
-    const target = options.href || VARIANT_META[variant]?.url;
-    if (!target) return 'blocked';
-    try {
-      const parsed = new URL(target, window.location.href);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'blocked';
-      window.location.href = parsed.toString();
-      return 'assign';
-    } catch {
-      return 'blocked';
-    }
-  }
-
-  public async navigateToVisibleVariant(
-    variant: string,
-  ): Promise<'none' | 'reload' | 'assign' | 'blocked' | 'unavailable'> {
-    if (variant === SITE_VARIANT) return 'none';
-    const link = this.ctx.container.querySelector<HTMLAnchorElement>(
-      `.variant-option[data-variant="${variant}"]`,
-    );
-    if (!link) return 'unavailable';
-    const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    return this.navigateToVariant(variant, {
-      href: link.href,
-      isLocalDev,
-    });
-  }
-
   toggleFullscreen(): void {
     const fullscreenDocument = this.getFullscreenDocument();
     if (fullscreenDocument.fullscreenElement || fullscreenDocument.webkitFullscreenElement) {
@@ -2779,7 +2705,6 @@ export class EventHandlerManager implements AppModule {
     // the source manager stays in sync with what loadNews() actually fetches.
     const categories = resolveNewsCategories(FEEDS, CANONICAL_FEEDS, enabledNewsCategoryKeys(this.ctx.newsCategoryPanelKeys, this.ctx.panelSettings));
     categories.forEach(({ feeds }) => feeds.forEach(f => sources.add(f.name)));
-    INTEL_SOURCES.forEach(f => sources.add(f.name));
     return Array.from(sources).sort((a, b) => a.localeCompare(b));
   }
 

@@ -5,7 +5,6 @@ import {
   throwIfWebMcpAborted,
   type DashboardActionResult,
   type DashboardContextSnapshot,
-  type WebMcpMonitorKey,
   type WebMcpNavigationResult,
 } from '@/services/webmcp';
 import {
@@ -277,41 +276,6 @@ const APP_DESTROYED_NAV_RESULT = (
   message: 'Dashboard is no longer available.',
   context,
 });
-
-export type WebMcpVisibleMonitorNavigation = 'none' | 'reload' | 'assign' | 'blocked' | 'unavailable';
-
-export async function applyWebMcpSwitchMonitor(
-  ctx: AppContext,
-  currentVariant: string,
-  monitor: WebMcpMonitorKey,
-  navigate: (variant: WebMcpMonitorKey) => Promise<WebMcpVisibleMonitorNavigation>,
-): Promise<WebMcpNavigationResult> {
-  const context = navigationContext(ctx, currentVariant);
-  if (ctx.isDestroyed) return APP_DESTROYED_NAV_RESULT(context);
-
-  const navigation = await navigate(monitor);
-  if (navigation === 'unavailable' || navigation === 'blocked') {
-    return {
-      ok: false,
-      status: 'denied',
-      destination: monitor,
-      reason: 'unavailable',
-      message: navigation === 'unavailable'
-        ? 'That monitor is not available on this dashboard.'
-        : 'World Monitor could not switch monitors.',
-      context,
-    };
-  }
-
-  return {
-    ok: true,
-    status: 'applied',
-    destination: monitor,
-    navigation,
-    message: navigation === 'none' ? 'Already on that monitor.' : 'Switched monitor.',
-    context: { ...navigationContext(ctx, currentVariant), variant: monitor },
-  };
-}
 
 async function openUnifiedSettingsOverlay(
   ctx: AppContext,

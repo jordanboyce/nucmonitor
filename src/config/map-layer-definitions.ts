@@ -8,7 +8,7 @@ import type { MapLayers } from '@/types';
  * imports this type so the picker, dispatcher, and shell stay in lockstep.
  */
 export type RendererKind = 'svg' | 'deck' | 'globe';
-export type MapVariant = 'full' | 'nuclear';
+export type MapVariant = 'nuclear';
 
 export interface LayerDefinition {
   key: keyof MapLayers;
@@ -129,14 +129,6 @@ export const LAYER_EXPLANATIONS: Partial<Record<keyof MapLayers, LayerExplanatio
 };
 
 const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
-  full: [
-    'nuclear', 'irradiators', 'radiationWatch',
-    'cables', 'pipelines', 'datacenters',
-    'climate', 'weather',
-    'outages', 'natural', 'fires',
-    'dayNight', 'webcams',
-    'diseaseOutbreaks',
-  ],
   nuclear: [
     // NucMonitor — facilities first, then every hazard layer that can touch a site
     'usNuclearFacilities', 'radiationWatch', 'natural', 'weather', 'fires', 'outages',
@@ -148,7 +140,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
 const I18N_PREFIX = 'components.deckgl.layers.';
 
 export function getOrderedLayerKeys(variant: MapVariant): Array<keyof MapLayers> {
-  return VARIANT_LAYER_ORDER[variant] ?? VARIANT_LAYER_ORDER.full;
+  return VARIANT_LAYER_ORDER[variant] ?? VARIANT_LAYER_ORDER.nuclear;
 }
 
 export function getCompleteLayerCatalogKeys(variant: MapVariant): Array<keyof MapLayers> {

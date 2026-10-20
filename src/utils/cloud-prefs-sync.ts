@@ -21,28 +21,10 @@ import {
 } from './sync-keys';
 import { isDesktopRuntime } from '@/services/runtime';
 import { getClerkToken } from '@/services/clerk';
-import {
-  computeLegacyDefaultDisabledSources,
-  computePreStrategicDefaultDisabledSources,
-  CANADA_ARCTIC_OPT_IN_SOURCES,
-  CANADA_DEPTH_OPT_IN_SOURCES,
-  CRISIS_FLOOR_OPT_IN_SOURCES,
-  CURATED_REGIONAL_OPT_IN_SOURCES,
-  FEEDS,
-  FRONTLINE_EUROPE_PROTECTED_SOURCES,
-  getStrategicDefaultSources,
-  INTEL_SOURCES,
-} from '@/config/feeds';
-import { FREE_MAX_SOURCES } from '@/config/panels';
-import { computeCapDisabledSources } from '@/services/source-cap';
-import {
-  buildPreStrategicDefaultDisabledStates,
-  buildRegionalFeedRolloutMigrationTargets,
-} from '@/services/regional-feed-rollout';
+import { FEEDS } from '@/config/feeds';
 import {
   applyMigrationChainWithSchemaVersion,
   buildMigrations,
-  isRegionalFeedRolloutMigrationAmbiguous,
   mergeCloudWithLocalDirty,
   parsePersistedDirtyKeys,
   settledDirtyKeys,
@@ -142,58 +124,20 @@ const CLOUD_PREFS_REQUEST_TIMEOUT_MS = 15_000;
 // Schema 6 already ran; a new App.ts key alone is not enough.
 // Schema 8 (#6813-#6830): add the validated crisis-desk opt-in companions.
 // Schema 9 (#7748): keep the new curated regional desks opt-in for returners.
+//
+// NucMonitor's catalog never carried the World Monitor sources schemas 3-9
+// reconcile, so they run with empty inputs and only advance schemaVersion.
 let _migrations: ReturnType<typeof buildMigrations> | null = null;
-let _regionalRolloutTargets: ReturnType<typeof buildRegionalFeedRolloutMigrationTargets> | null = null;
-
-function getRegionalRolloutTargets(): ReturnType<typeof buildRegionalFeedRolloutMigrationTargets> {
-  _regionalRolloutTargets ??= buildRegionalFeedRolloutMigrationTargets(FREE_MAX_SOURCES);
-  return _regionalRolloutTargets;
-}
 
 function getMigrations(): ReturnType<typeof buildMigrations> {
-  if (_migrations) return _migrations;
-  const legacyPreStrategicDefaultDisabled = new Set(
-    computePreStrategicDefaultDisabledSources(),
-  );
-  const legacyPreStrategicCapDisabled = computeCapDisabledSources(
-    FEEDS,
-    INTEL_SOURCES,
-    legacyPreStrategicDefaultDisabled,
-    FREE_MAX_SOURCES,
-  );
-  _migrations = buildMigrations(FEEDS, {
-    frontline: {
-      legacyDefaultDisabled: new Set(computeLegacyDefaultDisabledSources()),
-      names: new Set(FRONTLINE_EUROPE_PROTECTED_SOURCES),
-      legacyCapDisabled: legacyPreStrategicCapDisabled,
-    },
-    strategic: {
-      names: getStrategicDefaultSources(),
-      legacyDisabledStates: buildPreStrategicDefaultDisabledStates(FREE_MAX_SOURCES),
-    },
-    regionalRollout: {
-      targets: getRegionalRolloutTargets(),
-    },
-    canadaArctic: {
-      optInSources: CANADA_ARCTIC_OPT_IN_SOURCES,
-    },
-    canadaDepth: {
-      optInSources: CANADA_DEPTH_OPT_IN_SOURCES,
-    },
-    crisisDesk: {
-      optInSources: CRISIS_FLOOR_OPT_IN_SOURCES,
-    },
-    curatedRegional: {
-      optInSources: CURATED_REGIONAL_OPT_IN_SOURCES,
-    },
-  });
+  _migrations ??= buildMigrations(FEEDS);
   return _migrations;
 }
 
 type SyncState = 'synced' | 'pending' | 'syncing' | 'conflict' | 'offline' | 'signed-out' | 'error';
 
 let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
-let _currentVariant = 'full';
+let _currentVariant = 'nuclear';
 let _installed = false;
 let _suppressPatch = false; // prevents applyCloudBlob from re-triggering upload
 let _cachedToken: string | null = null; // synchronous token cache for flush()
@@ -360,7 +304,7 @@ let _pendingSignInRetryGeneration: number | null = null;
 let _authGeneration = 0;
 const _syncOperations = new SerializedAsyncQueue();
 let _activeUploadPromise: Promise<void> | null = null;
-let _queuedUploadVariant = 'full';
+let _queuedUploadVariant = 'nuclear';
 
 function clearRetryTimer(): void {
   if (_retryTimer !== null) {
@@ -598,10 +542,7 @@ function applyMigrationsWithSchemaVersion(
     fromVersion,
     CURRENT_PREFS_SCHEMA_VERSION,
     getMigrations(),
-    (version, migrationData) => (
-      version === 5
-      && isRegionalFeedRolloutMigrationAmbiguous(migrationData, getRegionalRolloutTargets())
-    ),
+    () => false,
     true,
   );
   // Schema 5 intentionally fails closed when a locale-less fingerprint has

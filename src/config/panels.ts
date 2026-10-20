@@ -8,94 +8,6 @@ import { getSecretState } from '@/services/runtime-config';
 import { isEntitled } from '@/services/entitlements';
 
 // ============================================
-// FULL VARIANT (Geopolitical)
-// ============================================
-// Panel order matters! First panels appear at top of grid.
-// Desired order: live-news, AI Insights, AI Strategic Posture, cii, strategic-risk, then rest
-const FULL_PANELS: Record<string, PanelConfig> = {
-  map: { name: 'Global Map', enabled: true, priority: 1 },
-  'live-news': { name: 'Live News', enabled: true, priority: 1 },
-  'live-webcams': { name: 'Live Webcams', enabled: true, priority: 1 },
-  'windy-webcams': { name: 'Windy Live Webcam', enabled: false, priority: 2 },
-  politics: { name: 'World News', enabled: true, priority: 1 },
-  us: { name: 'United States', enabled: true, priority: 1 },
-  europe: { name: 'Europe', enabled: true, priority: 1 },
-  middleeast: { name: 'Middle East', enabled: true, priority: 1 },
-  africa: { name: 'Africa', enabled: true, priority: 1 },
-  latam: { name: 'Latin America', enabled: true, priority: 1 },
-  asia: { name: 'Asia-Pacific', enabled: true, priority: 1 },
-  energy: { name: 'Energy & Resources', enabled: true, priority: 1 },
-  gov: { name: 'Government', enabled: true, priority: 1 },
-  thinktanks: { name: 'Think Tanks', enabled: true, priority: 1 },
-  commodities: { name: 'Metals & Materials', enabled: true, priority: 1 },
-  'energy-complex': { name: 'Energy Complex', enabled: true, priority: 1 },
-  markets: { name: 'Markets', enabled: true, priority: 1 },
-  // Opt-in news panel (2026-10-17 audit); its feeds also widen /verify claim search.
-  science: { name: 'Science', enabled: false, priority: 2 },
-  monitors: { name: 'My Monitors', enabled: true, priority: 2 },
-  'satellite-fires': { name: 'Fires', enabled: true, priority: 2 },
-  // Distinct from the `forex` key, which is an RSS news feed, not a rate
-  // surface. Opt-in per #6199; being per-variant, it can go default-on in
-  // FINANCE_PANELS later without changing any other variant.
-  'disease-outbreaks': { name: 'Disease Outbreaks', enabled: true, priority: 2 },
-  climate: { name: 'Climate Anomalies', enabled: true, priority: 2 },
-  'climate-news': { name: 'Climate News', enabled: false, priority: 2 },
-  'radiation-watch': { name: 'Radiation Watch', enabled: true, priority: 2 },
-  'world-clock': { name: 'World Clock', enabled: true, priority: 2 },
-};
-
-const FULL_MAP_LAYERS: MapLayers = {
-  cables: false,
-  pipelines: false,
-  nuclear: true,
-  irradiators: false,
-  radiationWatch: false,
-  weather: true,
-  outages: true,
-  datacenters: false,
-  natural: true,
-  fires: false,
-  climate: false,
-  dayNight: false,
-  webcams: false,
-  diseaseOutbreaks: false,
-};
-
-const FULL_MOBILE_MAP_LAYERS: MapLayers = {
-  cables: false,
-  pipelines: false,
-  nuclear: false,
-  irradiators: false,
-  radiationWatch: false,
-  weather: true,
-  outages: true,
-  datacenters: false,
-  natural: true,
-  fires: false,
-  climate: false,
-  dayNight: false,
-  webcams: false,
-  diseaseOutbreaks: false,
-};
-
-// ============================================
-// TECH VARIANT (Tech/AI/Startups)
-
-// ============================================
-// FINANCE VARIANT (Markets/Trading)
-
-// ============================================
-// HAPPY VARIANT (Good News & Progress)
-
-// ============================================
-// COMMODITY VARIANT (Mining, Metals, Energy)
-
-// ============================================
-// ENERGY variant — energy.worldmonitor.app
-// Pipelines, storage, chokepoints, fuel shortages, disruption timeline.
-// See docs/internal/global-energy-flow-parity-and-surpass.md (not committed).
-
-// ============================================
 // NUCLEAR variant — NucMonitor (nuclear.<host>)
 // US nuclear facility hub: NRC reactor status, all-hazards watch, directory,
 // radiation monitoring, official + industry feeds.
@@ -150,10 +62,9 @@ const NUCLEAR_MOBILE_MAP_LAYERS: MapLayers = {
 // UNIFIED PANEL REGISTRY
 // ============================================
 
-type PanelVariant = 'full' | 'nuclear';
+type PanelVariant = 'nuclear';
 
 const VARIANT_PANEL_CONFIGS: Record<PanelVariant, Record<string, PanelConfig>> = {
-  full: FULL_PANELS,
   nuclear: NUCLEAR_PANELS,
 };
 
@@ -172,12 +83,10 @@ export function isPanelNativeToVariant(panelId: string, variant: string): boolea
 /** All panels from all variants — canonical cross-variant registry. */
 export const ALL_PANELS: Record<string, PanelConfig> = {
   ...NUCLEAR_PANELS,
-  ...FULL_PANELS,
 };
 
 /** Per-variant canonical panel order (keys = which panels are enabled by default). */
 export const VARIANT_DEFAULTS: Record<string, string[]> = {
-  full:      Object.keys(VARIANT_PANEL_CONFIGS.full),
   nuclear:   Object.keys(VARIANT_PANEL_CONFIGS.nuclear),
 };
 
@@ -213,7 +122,7 @@ export function getEffectivePanelConfig(key: string, variant: string): PanelConf
  * variant-realistic state without duplicating App's merge formula.
  */
 export function getInitialPanelSettingsForVariant(variant: string): Record<string, PanelConfig> {
-  const variantDefaults = new Set(VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.full ?? []);
+  const variantDefaults = new Set(VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.nuclear ?? []);
   return Object.fromEntries(
     Object.keys(ALL_PANELS).map((key) => {
       const config = getEffectivePanelConfig(key, variant);
@@ -423,18 +332,14 @@ export function shouldDeferFreeTierEnforcement(
 // VARIANT-AWARE EXPORTS
 // ============================================
 export const DEFAULT_PANELS: Record<string, PanelConfig> = Object.fromEntries(
-  (VARIANT_DEFAULTS[SITE_VARIANT] ?? VARIANT_DEFAULTS['full'] ?? []).map(key =>
+  (VARIANT_DEFAULTS[SITE_VARIANT] ?? []).map(key =>
     [key, getEffectivePanelConfig(key, SITE_VARIANT)]
   )
 );
 
-export const DEFAULT_MAP_LAYERS = SITE_VARIANT === 'nuclear'
-  ? NUCLEAR_MAP_LAYERS
-  : FULL_MAP_LAYERS;
+export const DEFAULT_MAP_LAYERS = NUCLEAR_MAP_LAYERS;
 
-export const MOBILE_DEFAULT_MAP_LAYERS = SITE_VARIANT === 'nuclear'
-  ? NUCLEAR_MOBILE_MAP_LAYERS
-  : FULL_MOBILE_MAP_LAYERS;
+export const MOBILE_DEFAULT_MAP_LAYERS = NUCLEAR_MOBILE_MAP_LAYERS;
 
 /** Maps map-layer toggle keys to their data-freshness source IDs (single source of truth). */
 export const LAYER_TO_SOURCE: Partial<Record<keyof MapLayers, DataSourceId[]>> = {
@@ -453,29 +358,7 @@ export const LAYER_TO_SOURCE: Partial<Record<keyof MapLayers, DataSourceId[]>> =
 export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: string[]; variants?: string[] }> = {
   core: {
     labelKey: 'header.panelCatCore',
-    panelKeys: ['map', 'live-news', 'live-webcams', 'windy-webcams'],
-  },
-
-  // Full (geopolitical) variant — marketsFinance/topical/dataTracking are
-  regionalNews: {
-    labelKey: 'header.panelCatRegionalNews',
-    panelKeys: ['politics', 'us', 'europe', 'middleeast', 'africa', 'latam', 'asia'],
-    variants: ['full'],
-  },
-  marketsFinance: {
-    labelKey: 'header.panelCatMarketsFinance',
-    panelKeys: ['commodities', 'energy-complex', 'markets'],
-    variants: ['full'],
-  },
-  topical: {
-    labelKey: 'header.panelCatTopical',
-    panelKeys: ['energy', 'gov', 'thinktanks', 'science'],
-    variants: ['full'],
-  },
-  dataTracking: {
-    labelKey: 'header.panelCatDataTracking',
-    panelKeys: ['monitors', 'satellite-fires', 'climate', 'climate-news', 'radiation-watch', 'world-clock', 'disease-outbreaks'],
-    variants: ['full'],
+    panelKeys: ['map', 'live-news'],
   },
 
   nuclearHub: {
@@ -488,10 +371,6 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
     panelKeys: ['nuclear-regulatory', 'nuclear-industry', 'nuclear-policy', 'climate-news', 'energy', 'commodities', 'monitors', 'world-clock'],
     variants: ['nuclear'],
   },
-
-
-
-
 };
 
 export interface VariantPanelCategory {

@@ -24,7 +24,7 @@ import { I18N_RESOURCES_LOADED_EVENT, initI18n, t } from '../services/i18n';
 import { setCachedPipelineRegistries } from '../shared/pipeline-registry-store';
 import type { WeatherAlert } from '../services/weather';
 
-type HarnessVariant = 'full' | 'nuclear';
+type HarnessVariant = 'nuclear';
 type HarnessLayerKey = keyof MapLayers;
 type NewsPulseScenario = 'none' | 'recent' | 'stale';
 
@@ -415,14 +415,6 @@ const VISUAL_SCENARIOS: VisualScenario[] = [
     expectedSelectors: [],
     includeNewsLocation: true,
   },
-  {
-    id: 'disease-outbreaks-z5',
-    variant: 'full',
-    enabledLayers: ['diseaseOutbreaks'],
-    camera: seededCameras.diseaseOutbreaks,
-    expectedDeckLayers: ['disease-outbreaks-layer'],
-    expectedSelectors: [],
-  },
 ];
 
 const visualScenarioMap = new Map(VISUAL_SCENARIOS.map((scenario) => [scenario.id, scenario]));
@@ -433,7 +425,7 @@ const filterScenariosForVariant = (variant: HarnessVariant): VisualScenario[] =>
   );
 };
 
-const currentHarnessVariant: HarnessVariant = SITE_VARIANT === 'nuclear' ? 'nuclear' : 'full';
+const currentHarnessVariant: HarnessVariant = SITE_VARIANT;
 
 const seedAllDynamicData = (): void => {
   setCachedPipelineRegistries({

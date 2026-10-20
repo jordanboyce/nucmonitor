@@ -2,7 +2,6 @@ import type { AppContext } from '@/app/app-context';
 import type { MapView } from '@/components/MapContainer';
 import type { AuthLauncher } from '@/components/AuthLauncher';
 import { AuthHeaderWidget } from '@/components/AuthHeaderWidget';
-import { SITE_VARIANT } from '@/config';
 import { getAuthState, subscribeAuthState } from '@/services/auth-state';
 import { track, trackMapViewChange, trackThemeChanged } from '@/services/analytics';
 import { getCurrentTheme, setTheme, showToast } from '@/utils';
@@ -16,7 +15,6 @@ import { reconcileOverlayForTab } from '@/app/mobile-overlay-reconcile';
 
 type MobilePrimaryNavCallbacks = {
   openSearch(options: { replaceOverlayId?: OverlayId; historyPending: true }): void;
-  navigateToVariant(variant: string, options: { isLocalDev: boolean }): Promise<void>;
   openMission(anchor: HTMLElement): void;
 };
 
@@ -189,13 +187,6 @@ export class MobilePrimaryNav {
 
     overlay.addEventListener('click', () => this.closeMenu(), options);
     close.addEventListener('click', () => this.closeMenu(), options);
-    const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    menu.querySelectorAll<HTMLButtonElement>('.mobile-menu-variant').forEach((button) => {
-      button.addEventListener('click', () => {
-        const variant = button.dataset.variant;
-        if (variant && variant !== SITE_VARIANT) void this.callbacks.navigateToVariant(variant, { isLocalDev });
-      }, options);
-    });
     document.getElementById('mobileMenuRegion')?.addEventListener('click', () => {
       this.openRegion('menu');
     }, options);

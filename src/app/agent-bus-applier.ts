@@ -85,7 +85,7 @@ export interface AgentBusApplierOptions {
 }
 
 const DEFAULT_LAYER_RESULT: AgentBusApplyTargetResult[] = [];
-const MAP_VARIANTS = new Set<MapVariant>(['full', 'nuclear']);
+const MAP_VARIANTS = new Set<MapVariant>(['nuclear']);
 
 function denied(
   message: string,
@@ -169,7 +169,7 @@ function currentRendererKind(ctx: AppContext, options: AgentBusApplierOptions): 
 
 function currentMapVariant(options: AgentBusApplierOptions): MapVariant {
   if (options.getVariant) return options.getVariant();
-  return MAP_VARIANTS.has(SITE_VARIANT as MapVariant) ? SITE_VARIANT as MapVariant : 'full';
+  return MAP_VARIANTS.has(SITE_VARIANT as MapVariant) ? SITE_VARIANT as MapVariant : 'nuclear';
 }
 
 function isMapLayerKey(key: string): key is keyof MapLayers {

@@ -62,7 +62,6 @@ import type { ParsedMapUrlState } from '@/utils';
 import { BreakingNewsBanner } from '@/components/BreakingNewsBanner';
 import { initBreakingNewsAlerts, destroyBreakingNewsAlerts } from '@/services/breaking-news-alerts';
 import { markLcpDebug } from '@/utils/lcp-debug';
-import { safeStorageGet, safeStorageSet } from '@/utils/safe-storage';
 import type { MonitorPanel } from '@/components/MonitorPanel';
 import type { NuclearReactorStatusPanel } from '@/components/NuclearReactorStatusPanel';
 import type { ClimateNewsPanel } from '@/components/ClimateNewsPanel';
@@ -75,23 +74,8 @@ import { initI18n, t, I18N_RESOURCES_LOADED_EVENT, type I18nResourcesLoadedDetai
 import { initDeferredDashboardFonts } from '@/bootstrap/secondary-startup';
 import { applyFontScale, FONT_SCALE_STORAGE_KEY } from '@/services/font-scale-settings';
 
+import { computeDefaultDisabledSources, FEEDS } from '@/config/feeds';
 import {
-  CANADA_ARCTIC_OPT_IN_SOURCES,
-  CANADA_DEPTH_OPT_IN_SOURCES,
-  CRISIS_FLOOR_OPT_IN_SOURCES,
-  CURATED_REGIONAL_OPT_IN_SOURCES,
-  computeDefaultDisabledSources,
-  computeLegacyDefaultDisabledSources,
-  FEEDS,
-  FREE_CAP_PROTECTED_SOURCES,
-  FRONTLINE_EUROPE_PROTECTED_SOURCES,
-  getLocaleBoostedSources,
-  getStrategicDefaultSources,
-  getTotalFeedCount,
-  INTEL_SOURCES,
-} from '@/config/feeds';
-import {
-  computeCapDisabledSources,
   findFullyDisabledCategories,
   inferExactSourceGateOwnership,
   reconcileSourceGateOwnership,
@@ -104,10 +88,6 @@ import {
   persistGateOwnershipTransition,
   resolveAppliedPanelLayoutVariant,
 } from '@/services/variant-panel-ownership';
-import {
-  buildPreStrategicDefaultDisabledStates,
-  buildRegionalFeedRolloutMigrationTargets,
-} from '@/services/regional-feed-rollout';
 import {
   cancelBootstrapSlowTier,
   fetchBootstrapData,
@@ -131,7 +111,6 @@ import {
   applyWebMcpOpenAlerts,
   applyWebMcpOpenMissionPicker,
   applyWebMcpOpenSettings,
-  applyWebMcpSwitchMonitor,
   getWebMcpDashboardContext,
   getWebMcpMapLayerCatalogSnapshot,
   listWebMcpDashboardPanels,
@@ -176,15 +155,6 @@ import {
   type CloudPrefsAppliedDetail,
   type CloudPrefsSignInTerminalDetail,
 } from '@/utils/cloud-prefs-sync';
-import {
-  migrateFrontlineEuropeDefaultsV3,
-  migrateStrategicDefaultsV4,
-  migrateRegionalFeedRolloutDefaultsV5,
-  migrateCanadaArcticOptInsV6,
-  migrateCanadaDepthOptInsV7,
-  migrateCrisisDeskOptInsV8,
-  migrateCuratedRegionalOptInsV9,
-} from '@/utils/cloud-prefs-migrations';
 import {
   getConvexClient,
   getConvexApi,
@@ -679,11 +649,8 @@ export class App {
     // reads at all.
     if (!forceAll) this.primeViewportNearCache();
 
-    if (shouldPrimeAny(['markets', 'commodities', 'energy-complex'])) {
+    if (shouldPrimeAny(['markets', 'commodities'])) {
       primeTask('markets', () => this.dataLoader.loadMarkets());
-    }
-    if (shouldPrime('energy-complex')) {
-      primeTask('oil', () => this.dataLoader.loadOilAnalytics());
     }
     // NucMonitor — NRC reactor status self-fetches through the edge proxy.
     if (shouldPrime('nuclear-reactor-status')) {
@@ -976,208 +943,6 @@ export class App {
       mapLayers = this.sanitizeMapLayersForTier(mapLayers, undefined, { ephemeralSnapshot: true });
       initialUrlState.layers = mapLayers;
     }
-    // One-time migration: reduce default-enabled sources (full variant only)
-    if (currentVariant === 'full' && storageAvailable) {
-      const baseKey = 'worldmonitor-sources-reduction-v3';
-      if (!localStorage.getItem(baseKey)) {
-        const defaultDisabled = computeDefaultDisabledSources();
-        saveToStorage(STORAGE_KEYS.disabledFeeds, defaultDisabled);
-        localStorage.setItem(baseKey, 'done');
-        const total = getTotalFeedCount();
-        console.log(`[App] Sources reduction: ${defaultDisabled.length} disabled, ${total - defaultDisabled.length} enabled`);
-      }
-      const userLang = this.currentSourceCapLanguage();
-      // #5949 — re-enable Ukraine/Poland frontline sources for profiles that
-      // still have the untouched pre-#5949 default disabled set. An exact-set
-      // guard is important here: a customized disabledFeeds set is user
-      // intent, and must not be rewritten by the startup migration.
-      const frontlineKey = 'worldmonitor-frontline-europe-enable-v1';
-      if (!localStorage.getItem(frontlineKey)) {
-        const frontline = new Set<string>(FRONTLINE_EUROPE_PROTECTED_SOURCES);
-        const legacyDefaultDisabled = new Set(computeLegacyDefaultDisabledSources());
-        const legacyCapDisabled = computeCapDisabledSources(
-          FEEDS,
-          INTEL_SOURCES,
-          new Set(computeDefaultDisabledSources()),
-          FREE_MAX_SOURCES,
-        );
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateFrontlineEuropeDefaultsV3(
-          { [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current) },
-          legacyDefaultDisabled,
-          frontline,
-          legacyCapDisabled,
-        );
-        const updated = JSON.parse(migrated[STORAGE_KEYS.disabledFeeds] as string) as string[];
-        if (updated.length !== current.length) {
-          saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-          console.log(
-            `[App] Frontline Europe enable (#5949): re-enabled ${current.length - updated.length} source(s)`,
-          );
-        }
-        localStorage.setItem(frontlineKey, 'done');
-      }
-      // #6000 — re-enable strategic defaults for profiles created before the
-      // flag became part of the canonical default set. An exact-set guard is
-      // required: a customized disabledFeeds set is user intent and must not
-      // be rewritten by a startup migration.
-      const strategicKey = 'worldmonitor-strategic-defaults-enable-v1';
-      if (!localStorage.getItem(strategicKey)) {
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateStrategicDefaultsV4(
-          { [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current) },
-          new Set(),
-          getStrategicDefaultSources(),
-          new Set(),
-          buildPreStrategicDefaultDisabledStates(FREE_MAX_SOURCES, userLang),
-        );
-        const updated = JSON.parse(migrated[STORAGE_KEYS.disabledFeeds] as string) as string[];
-        if (updated.length !== current.length) {
-          saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-          console.log(
-            `[App] Strategic defaults enable (#6000): re-enabled ${current.length - updated.length} source(s)`,
-          );
-        }
-        localStorage.setItem(strategicKey, 'done');
-      }
-      // #5975/#5976/#5977/#5980 — reconcile the regional feed wave for
-      // returning denylist profiles. Exact historical default/cap states are
-      // the only eligible inputs; any source customization skips the migration.
-      const regionalRolloutKey = 'worldmonitor-regional-feed-rollout-reconcile-v1';
-      if (!localStorage.getItem(regionalRolloutKey)) {
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateRegionalFeedRolloutDefaultsV5(
-          { [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current) },
-          buildRegionalFeedRolloutMigrationTargets(FREE_MAX_SOURCES, userLang),
-        );
-        const updated = JSON.parse(migrated[STORAGE_KEYS.disabledFeeds] as string) as string[];
-        if (JSON.stringify(updated) !== JSON.stringify(current)) {
-          saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-          console.log('[App] Regional feed rollout: restored declared defaults and opt-in boundaries for an untouched profile');
-        }
-        localStorage.setItem(regionalRolloutKey, 'done');
-      }
-      // #5960 — Canada + Arctic/Nordic pack: denylist is additive-only, so newly
-      // cataloged opt-in names would be implicitly enabled for every returner.
-      // Insert opt-ins into any existing denylist once. CBC is intentionally
-      // omitted so default-on can enable it for returners (not in old denylist).
-      const canadaArcticKey = 'worldmonitor-canada-arctic-optin-v1';
-      if (!localStorage.getItem(canadaArcticKey)) {
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateCanadaArcticOptInsV6({
-          [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current),
-        }, CANADA_ARCTIC_OPT_IN_SOURCES);
-        const rawUpdated = migrated[STORAGE_KEYS.disabledFeeds];
-        if (typeof rawUpdated === 'string') {
-          let updated: unknown;
-          try { updated = JSON.parse(rawUpdated); } catch { updated = null; }
-          if (
-            Array.isArray(updated)
-            && updated.every((name): name is string => typeof name === 'string')
-            && JSON.stringify(updated) !== JSON.stringify(current)
-          ) {
-            saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-            console.log(
-              `[App] Canada/Arctic opt-in (#5960): disabled ${updated.length - current.length} newly cataloged source(s)`,
-            );
-          }
-        }
-        localStorage.setItem(canadaArcticKey, 'done');
-      }
-      // #6604/#6605 — Canada depth pack: new opt-in names need a NEW key.
-      // Do not reuse worldmonitor-canada-arctic-optin-v1 (already fired).
-      const canadaDepthKey = 'worldmonitor-canada-depth-optin-v1';
-      if (!localStorage.getItem(canadaDepthKey)) {
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateCanadaDepthOptInsV7({
-          [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current),
-        }, CANADA_DEPTH_OPT_IN_SOURCES);
-        const rawUpdated = migrated[STORAGE_KEYS.disabledFeeds];
-        if (typeof rawUpdated === 'string') {
-          let updated: unknown;
-          try { updated = JSON.parse(rawUpdated); } catch { updated = null; }
-          if (
-            Array.isArray(updated)
-            && updated.every((name): name is string => typeof name === 'string')
-            && JSON.stringify(updated) !== JSON.stringify(current)
-          ) {
-            saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-            console.log(
-              `[App] Canada depth opt-in (#6604/#6605): disabled ${updated.length - current.length} newly cataloged source(s)`,
-            );
-          }
-        }
-        localStorage.setItem(canadaDepthKey, 'done');
-      }
-      // #6813-#6830 — validated crisis desks: preserve every reviewed depth,
-      // backup, and locale-primary source as opt-in for returning profiles.
-      const crisisDeskOptInKey = 'worldmonitor-crisis-desk-optin-v1';
-      if (!localStorage.getItem(crisisDeskOptInKey)) {
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateCrisisDeskOptInsV8({
-          [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current),
-        }, CRISIS_FLOOR_OPT_IN_SOURCES);
-        const rawUpdated = migrated[STORAGE_KEYS.disabledFeeds];
-        if (typeof rawUpdated === 'string') {
-          let updated: unknown;
-          try { updated = JSON.parse(rawUpdated); } catch { updated = null; }
-          if (
-            Array.isArray(updated)
-            && updated.every((name): name is string => typeof name === 'string')
-            && JSON.stringify(updated) !== JSON.stringify(current)
-          ) {
-            saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-            console.log(
-              `[App] Crisis-desk opt-ins (#6813-#6830): disabled ${updated.length - current.length} newly cataloged source(s)`,
-            );
-          }
-        }
-        localStorage.setItem(crisisDeskOptInKey, 'done');
-      }
-      const curatedRegionalOptInKey = 'worldmonitor-curated-regional-optin-v1';
-      if (!safeStorageGet(curatedRegionalOptInKey)) {
-        const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-        const migrated = migrateCuratedRegionalOptInsV9({
-          [STORAGE_KEYS.disabledFeeds]: JSON.stringify(current),
-        }, CURATED_REGIONAL_OPT_IN_SOURCES);
-        const rawUpdated = migrated[STORAGE_KEYS.disabledFeeds];
-        let persisted = true;
-        if (typeof rawUpdated === 'string') {
-          let updated: unknown;
-          try { updated = JSON.parse(rawUpdated); } catch { updated = null; }
-          if (
-            Array.isArray(updated)
-            && updated.every((name): name is string => typeof name === 'string')
-            && JSON.stringify(updated) !== JSON.stringify(current)
-          ) {
-            persisted = saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-          }
-        }
-        if (persisted) safeStorageSet(curatedRegionalOptInKey, 'done');
-      }
-      // Locale boost: additively enable locale-matched sources (runs once per locale).
-      // Reads the explicit-choice key (`wm-locale-explicit`, written by Settings →
-      // Language) before falling back to navigator. Mirrors the i18n.ts:99
-      // `wmExplicit` detector — without this, a user whose browser is en-US who
-      // picks Magyar in Settings never gets the locale boost (the migration's
-      // first run with `userLang='en'` sets `worldmonitor-locale-boost-en` and
-      // the `userLang !== 'en'` short-circuit means the boost block never re-fires
-      // for any subsequent locale choice). Direct localStorage read because
-      // i18next isn't initialized yet here in the constructor — `initI18n()` is
-      // called later inside `init()`.
-      const localeKey = `worldmonitor-locale-boost-${userLang}`;
-      if (userLang !== 'en' && !localStorage.getItem(localeKey)) {
-        const boosted = getLocaleBoostedSources(userLang);
-        if (boosted.size > 0) {
-          const current = loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []);
-          const updated = current.filter(name => !boosted.has(name));
-          saveToStorage(STORAGE_KEYS.disabledFeeds, updated);
-          console.log(`[App] Locale boost (${userLang}): enabled ${current.length - updated.length} sources`);
-        }
-        localStorage.setItem(localeKey, 'done');
-      }
-    }
-
     const disabledSources = new Set(loadFromStorage<string[]>(STORAGE_KEYS.disabledFeeds, []));
 
     // Build shared state object
@@ -1474,16 +1239,6 @@ export class App {
             isPanelEntitled(panelId, config, hasPremiumAccess(getAuthState()))
           ),
         });
-      },
-      switchMonitor: async (monitor, execution) => {
-        await this.waitForDashboardReady(false, execution?.signal);
-        throwIfWebMcpAborted(execution?.signal);
-        return applyWebMcpSwitchMonitor(
-          this.state,
-          SITE_VARIANT,
-          monitor,
-          (variant) => this.eventHandlers.navigateToVisibleVariant(variant),
-        );
       },
       openSettings: async (execution) => {
         await this.waitForDashboardReady(false, execution?.signal);
@@ -1833,10 +1588,7 @@ export class App {
     // Localize the static index.html shell — <title>, meta description, and
     // the accessible <h1> are baked in English before the app boots; once i18n
     // is ready we swap them to the user's locale.
-    // Dedicated variant shells (tech, finance, ..., nuclear) carry their own
-    // <title> from VARIANT_META via meta-tags.ts; only the full dashboard
-    // swaps in the localized World Monitor title.
-    if (SITE_VARIANT === 'full') document.title = t('shell.documentTitle');
+    // The <title> comes from VARIANT_META via meta-tags.ts.
     const setMeta = (sel: string, val: string) => {
       const el = document.querySelector(sel);
       if (el) el.setAttribute('content', val);
@@ -2676,21 +2428,6 @@ export class App {
     return true;
   }
 
-  private currentSourceCapLanguage(): string {
-    let explicitLocale = '';
-    try { explicitLocale = localStorage.getItem('wm-locale-explicit') || ''; } catch { /* private mode */ }
-    return ((explicitLocale || navigator.language || 'en').split('-')[0] ?? 'en').toLowerCase();
-  }
-
-  private sourceCapProtectedNames(userLang: string): Set<string> {
-    const protectedNames = new Set<string>(FREE_CAP_PROTECTED_SOURCES);
-    for (const name of getStrategicDefaultSources()) protectedNames.add(name);
-    if (userLang !== 'en') {
-      for (const name of getLocaleBoostedSources(userLang)) protectedNames.add(name);
-    }
-    return protectedNames;
-  }
-
   /** Reconcile or restore the persisted 80-source cap without losing user intent. */
   private reconcileSourceLimitForTier(pro: boolean): boolean {
     let ownershipMetadataExists = false;
@@ -2704,19 +2441,16 @@ export class App {
       loadFromStorage<string[]>(STORAGE_KEYS.sourceGateOwnership, []),
     );
     let gateOwned = new Set(persistedGateOwned);
-    const userLang = this.currentSourceCapLanguage();
-    const protectedNames = this.sourceCapProtectedNames(userLang);
 
     // Heal untouched profiles capped before ownership metadata existed. Exact
     // matching preserves every customized denylist.
     if (!ownershipMetadataExists) {
-      const defaultUserDisabled = new Set(computeDefaultDisabledSources(userLang));
+      const defaultUserDisabled = new Set(computeDefaultDisabledSources());
       const expectedGateOwned = selectSourcesUnderCap(
         FEEDS,
-        INTEL_SOURCES,
+        [],
         defaultUserDisabled,
         FREE_MAX_SOURCES,
-        protectedNames,
       ).autoDisabled;
       gateOwned = inferExactSourceGateOwnership(
         persistedDisabled,
@@ -2734,10 +2468,9 @@ export class App {
       const userDisabled = restoreGateOwnedSources(persistedDisabled, gateOwned);
       const nextAutoDisabled = selectSourcesUnderCap(
         FEEDS,
-        INTEL_SOURCES,
+        [],
         userDisabled,
         FREE_MAX_SOURCES,
-        protectedNames,
       ).autoDisabled;
       const reconciled = reconcileSourceGateOwnership(
         userDisabled,
@@ -3143,7 +2876,6 @@ export class App {
       { name: 'natural', fn: () => this.dataLoader.loadNatural(), intervalMs: REFRESH_INTERVALS.natural, condition: () => this.state.mapLayers.natural },
       { name: 'weather', fn: () => this.dataLoader.loadWeatherAlerts(), intervalMs: REFRESH_INTERVALS.weather, condition: () => this.state.mapLayers.weather },
       { name: 'pipelineRegistries', fn: () => this.dataLoader.loadPipelineRegistries({ refresh: true }), intervalMs: REFRESH_INTERVALS.pipelineStatus, condition: () => !!this.state.mapLayers.pipelines },
-      { name: 'oil', fn: () => this.dataLoader.loadOilAnalytics(), intervalMs: REFRESH_INTERVALS.oil, condition: () => this.isPanelNearViewport('energy-complex') },
       // inFlight key 'fires' matches the hydration loader and loadDataForLayer
       // (the map-layer key), like every other layer refresh here — so all three
       // firms call sites one-flight the guard-less loadFirmsData (#6770).

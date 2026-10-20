@@ -29,7 +29,6 @@ import {
   hasCuratedLayerExplanation,
   resolveLayerLabel,
   bindLayerSearch,
-  type MapVariant,
 } from '@/config/map-layer-definitions';
 import { renderLayerExplanationCard } from '@/utils/layer-explanation-card';
 import { guardOrbitControlsPointerTracking } from '@/utils/orbit-controls-pointer-guard';
@@ -1191,7 +1190,7 @@ export class GlobeMap {
   }
 
   private createLayerToggles(): void {
-    const layerDefs = getLayersForVariant((SITE_VARIANT || 'full') as MapVariant, 'globe');
+    const layerDefs = getLayersForVariant(SITE_VARIANT, 'globe');
     const authState = getAuthState();
     const layers = layerDefs.map(def => ({
       key: def.key,
@@ -1357,7 +1356,7 @@ export class GlobeMap {
     existing?.remove();
     this.container.querySelectorAll('.layer-explain-btn.active').forEach(btn => btn.classList.remove('active'));
 
-    const def = getLayersForVariant((SITE_VARIANT || 'full') as MapVariant, 'globe').find(item => item.key === layer);
+    const def = getLayersForVariant(SITE_VARIANT, 'globe').find(item => item.key === layer);
     const layerLabel = def ? resolveLayerLabel(def, t) : String(layer);
     const popup = document.createElement('div');
     popup.className = 'layer-explanation-popup';

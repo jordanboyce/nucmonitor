@@ -8,8 +8,14 @@
  * the TARGET schema version (so MIGRATIONS[N] runs when going from N-1 → N).
  */
 
-import type { RegionalFeedRolloutMigrationTarget } from '@/services/regional-feed-rollout';
 import { findFullyDisabledCategories, type FeedsByCategory } from '@/services/source-cap';
+
+/** One exact historical source state the schema-5 migration may rewrite. */
+export interface RegionalFeedRolloutMigrationTarget {
+  legacyDisabled: ReadonlySet<string>;
+  defaultNames: ReadonlySet<string>;
+  optInNames: ReadonlySet<string>;
+}
 
 /**
  * Apply all migrations from `fromVersion + 1` up through `toVersion`

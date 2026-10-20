@@ -27,8 +27,8 @@ const require = createRequire(import.meta.url);
 const relaySrc = readFileSync(resolve(__dirname, '..', 'scripts', 'notification-relay.cjs'), 'utf-8');
 const aisRelaySrc = readFileSync(resolve(__dirname, '..', 'scripts', 'ais-relay.cjs'), 'utf-8');
 const weatherSelectSrc = readFileSync(resolve(__dirname, '..', 'scripts', '_weather-alert-select.mjs'), 'utf-8');
-const seedAviationSrc = readFileSync(resolve(__dirname, '..', 'scripts', 'seed-aviation.mjs'), 'utf-8');
-const regionalAlertEmitterSrc = readFileSync(resolve(__dirname, '..', 'scripts', 'regional-snapshot', 'alert-emitter.mjs'), 'utf-8');
+// seed-aviation.mjs and regional-snapshot/alert-emitter.mjs were removed in the
+// NucMonitor trim; ais-relay.cjs and notification-relay.cjs are the publishers left.
 const notificationDedupSrc = readFileSync(resolve(__dirname, '..', 'scripts', 'shared', 'notification-dedup.cjs'), 'utf-8');
 const notificationDedup = require('../scripts/shared/notification-dedup.cjs');
 const {
@@ -153,8 +153,6 @@ describe('shared notification-dedup helper — buildDedupMaterial', () => {
   it('all notification publishers import/require the shared helper (no re-inlined copies)', () => {
     assert.match(relaySrc, /require\('\.\/shared\/notification-dedup\.cjs'\)/, 'notification-relay.cjs must require the shared helper');
     assert.match(aisRelaySrc, /require\('\.\/shared\/notification-dedup\.cjs'\)/, 'ais-relay.cjs must require the shared helper');
-    assert.match(seedAviationSrc, /from '\.\/shared\/notification-dedup\.cjs'/, 'seed-aviation.mjs must import the shared helper');
-    assert.match(regionalAlertEmitterSrc, /from '\.\.\/shared\/notification-dedup\.cjs'/, 'regional alert emitter must import the shared helper');
   });
 });
 
@@ -252,16 +250,6 @@ describe('shared notification-dedup helper — SETNX failure policy', () => {
       /classifySetNxResult[\s\S]*recordDedupOutcome/,
       'ais-relay.cjs must use the shared SETNX classifier and outcome recorder',
     );
-    assert.match(
-      seedAviationSrc,
-      /classifySetNxResult[\s\S]*recordDedupOutcome/,
-      'seed-aviation.mjs must use the shared SETNX classifier and outcome recorder',
-    );
-    assert.match(
-      regionalAlertEmitterSrc,
-      /classifySetNxResult[\s\S]*recordDedupOutcome/,
-      'regional alert emitter must use the shared SETNX classifier and outcome recorder',
-    );
   });
 
   it('ais-relay exposes SETNX error counters in /metrics rollups', () => {
@@ -319,57 +307,6 @@ describe('market alert producer — asset-family coalesce key', () => {
         `market_alert block must pass coalesceKey:\n${block}`,
       );
     }
-  });
-});
-
-describe('seed-aviation publishNotificationEvent — Slot B publisher dedup', () => {
-  it('publisher dedup key uses coalesceKey when set, else falls back to title', () => {
-    assert.match(
-      seedAviationSrc,
-      /const dedupMaterial = buildDedupMaterial\(eventType,\s*payload\?\.title,\s*payload\?\.coalesceKey\)/,
-      'seed-aviation publishNotificationEvent must derive dedupMaterial via the shared buildDedupMaterial helper',
-    );
-  });
-
-  it('aviation and NOTAM notification payloads include coalesceKey', () => {
-    assert.match(
-      seedAviationSrc,
-      /coalesceKey:\s*`aviation:closure:\$\{a\.iata\}:\$\{severity\}`/,
-      'airport disruption notifications must coalesce by airport + severity band so a MAJOR->SEVERE escalation re-notifies',
-    );
-    assert.match(
-      seedAviationSrc,
-      /coalesceKey:\s*`notam:closure:\$\{icao\}`/,
-      'NOTAM closure notifications must coalesce by ICAO closure family',
-    );
-  });
-
-  it('aviation prev-state diff keys on airport + severity so escalations survive the upstream filter', () => {
-    // P1 (PR #4985 review): the coalesce key is severity-aware, but the upstream
-    // prevSet diff must use the SAME identity — else a MAJOR->SEVERE escalation
-    // for an already-alerted airport is filtered by !prevSet.has(a.iata) BEFORE
-    // the severity-aware coalesce key is ever reached, so the escalation never
-    // publishes.
-    assert.match(
-      seedAviationSrc,
-      /const aviationAlertKey = a => `\$\{a\.iata\}:\$\{aviationSeverityBand\(a\)\}`/,
-      'aviation must build an airport+severity identity matching the coalesce key',
-    );
-    assert.match(
-      seedAviationSrc,
-      /const newAlerts = severeAlerts\.filter\(a => a\.iata && !prevSet\.has\(aviationAlertKey\(a\)\)\)/,
-      'newAlerts must diff by airport+severity identity, not iata alone',
-    );
-    assert.match(
-      seedAviationSrc,
-      /new Set\(severeAlerts\.filter\(a => a\.iata\)\.map\(aviationAlertKey\)\)/,
-      'persisted prev-state must store the same airport+severity identity for next tick',
-    );
-    assert.doesNotMatch(
-      seedAviationSrc,
-      /!prevSet\.has\(a\.iata\)\)/,
-      'the airport-only prevSet filter (which drops escalations) must be gone',
-    );
   });
 });
 

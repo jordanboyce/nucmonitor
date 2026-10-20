@@ -11,19 +11,9 @@ const root = resolve(import.meta.dirname, '..');
 const stubs: Record<string, string> = {
   '@/services/runtime': 'export const isDesktopRuntime = () => false;',
   '@/services/clerk': 'export const getClerkToken = async () => globalThis.__cloudPrefsToken;',
-  '@/config/feeds': [
-    "export const CANADA_ARCTIC_OPT_IN_SOURCES = ['Globe and Mail', 'Global News', 'Yle News', 'NRK', 'Aftenposten', 'DR Nyheder', 'Arctic Today'];",
-    "export const CANADA_DEPTH_OPT_IN_SOURCES = [];",
-    "export const CRISIS_FLOOR_OPT_IN_SOURCES = ['WAFA English'];",
-    "export const CURATED_REGIONAL_OPT_IN_SOURCES = ['Guardian Pacific'];",
-    'export const FEEDS = {};',
-    'export const FRONTLINE_EUROPE_PROTECTED_SOURCES = [];',
-    'export const INTEL_SOURCES = [];',
-    'export const computeDefaultDisabledSources = () => [];',
-    'export const computePreStrategicDefaultDisabledSources = () => [];',
-    'export const computeLegacyDefaultDisabledSources = () => [];',
-    'export const getStrategicDefaultSources = () => new Set();',
-  ].join('\n'),
+  // cloud-prefs-sync only reads FEEDS; NucMonitor runs schemas 3-9 with empty
+  // opt-in inputs, so no regional opt-in lists are wired from the feed config.
+  '@/config/feeds': 'export const FEEDS = {};',
   '@/config/panels': 'export const FREE_MAX_SOURCES = 80;',
   '@/utils/dom-utils': [
     'export const trustedHtml = (value) => value;',
@@ -546,8 +536,9 @@ describe('cloud preference write serialization', () => {
     assert.equal(result.localSchemaVersion, 9);
     assert.deepEqual(result.acceptedSchemaVersionsByToken['test-token'], [9, 9]);
     const disabled = JSON.parse(result.acceptedDataByToken['test-token']['worldmonitor-disabled-feeds']) as string[];
-    assert.ok(disabled.includes('user-choice'));
-    assert.ok(disabled.includes('Guardian Pacific'));
+    // Schemas 3-9 only advance the version in NucMonitor (empty opt-in inputs),
+    // so the user's own denylist reaches the keepalive upload unchanged.
+    assert.deepEqual(disabled, ['user-choice']);
   });
 
   it('preserves edits made for a new account while its sign-in waits in the queue', async () => {

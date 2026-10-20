@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import dns from 'node:dns';
 import { gzipSync } from 'node:zlib';
 import { fetchNaturalEvents, naturalEventsAfterPublish } from '../scripts/seed-natural-events.mjs';
+import { NATIVE_BODY_CHUNK_EVENTS, expectedWireBytes } from './helpers/undici-chunk-events.mjs';
 
 const NOW = Date.parse('2026-09-18T06:00:00Z');
 const event = {
@@ -588,10 +589,15 @@ test('failed native attempts log isolated wire progress without logging response
     assert.equal(item.requestCount, 1);
     assert.equal(item.requestSendObserved, true);
     assert.equal(item.responseHeadersObserved, true);
-    assert.equal(item.wireBodyBytes, Buffer.byteLength(body));
+    assert.equal(item.wireBodyBytes, expectedWireBytes(Buffer.byteLength(body)));
     assert.equal(item.wireBodyComplete, false);
-    assert.ok(item.firstBodyByteMs >= 0);
-    assert.ok(item.lastBodyByteMs >= item.firstBodyByteMs);
+    if (NATIVE_BODY_CHUNK_EVENTS) {
+      assert.ok(item.firstBodyByteMs >= 0);
+      assert.ok(item.lastBodyByteMs >= item.firstBodyByteMs);
+    } else {
+      assert.equal(item.firstBodyByteMs, null);
+      assert.equal(item.lastBodyByteMs, null);
+    }
   }
   assert.doesNotMatch(logs.join('\n'), /private|secret|127\.0\.0\.1/);
   assert.equal(transport.calls.get('eonet'), 2);

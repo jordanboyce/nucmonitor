@@ -30,8 +30,9 @@ const ALLOWED_RAW_GLOBAL_READERS = new Set([
   'src/services/tauri-bridge.ts',
 ]);
 
+// src/config/variant.ts was one of the original six; the single-dashboard trim
+// removed its desktop branch entirely, so it no longer needs the detector.
 const CONVERGED_CALL_SITES = [
-  'src/config/variant.ts',
   'src/config/basemap.ts',
   'src/main.ts',
   'src/services/push-notifications.ts',
@@ -39,9 +40,9 @@ const CONVERGED_CALL_SITES = [
   'src/bootstrap/sentry-init.ts',
 ];
 
-// Config sits below services (scripts/lint-boundaries.mjs), so these two take
-// the detector from its config home rather than the services re-export.
-const CONFIG_CALL_SITES = ['src/config/variant.ts', 'src/config/basemap.ts'];
+// Config sits below services (scripts/lint-boundaries.mjs), so config call
+// sites take the detector from its config home rather than the services re-export.
+const CONFIG_CALL_SITES = ['src/config/basemap.ts'];
 
 /**
  * Every code token that names a bridge global: identifiers (`window.__TAURI__`,
@@ -101,7 +102,7 @@ describe('desktop runtime detection has one owner (#5912)', () => {
     );
   });
 
-  it('the six formerly split-brained call sites import the shared detector', () => {
+  it('the formerly split-brained call sites import the shared detector', () => {
     for (const rel of CONVERGED_CALL_SITES) {
       const code = read(rel);
       assert.match(

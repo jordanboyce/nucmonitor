@@ -106,7 +106,8 @@ describe('summarize-article translate target language', () => {
     const match = source.match(/const SUPPORTED_LANGUAGES = \[([^\]]+)\]/);
     assert.ok(match, 'SUPPORTED_LANGUAGES declaration not found in src/services/i18n.ts');
     const uiLanguages = [...match[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
-    assert.ok(uiLanguages.length > 10);
+    // English-only since the locale trim; the allowlist must still cover it.
+    assert.ok(uiLanguages.length >= 1);
     for (const lang of uiLanguages) {
       assert.ok(TRANSLATE_TARGET_LANGUAGES.has(lang), `translate must accept UI language ${lang}`);
     }

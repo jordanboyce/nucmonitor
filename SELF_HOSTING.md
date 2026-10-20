@@ -1,6 +1,8 @@
-# 🌍 Self-Hosting World Monitor
+# Self-Hosting NucMonitor
 
-Run the full World Monitor stack locally with Docker/Podman.
+Run the NucMonitor stack locally with Docker/Podman.
+
+> **Note**: the Docker and seeder topology is still being trimmed from the upstream World Monitor stack. If a service below no longer exists in `docker-compose.yml`, the compose file is the source of truth.
 
 ## 📋 Prerequisites
 
@@ -12,8 +14,8 @@ Run the full World Monitor stack locally with Docker/Podman.
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/koala73/worldmonitor.git
-cd worldmonitor
+git clone https://github.com/jordanboyce/nucmonitor.git
+cd nucmonitor
 npm install
 
 # 2. Generate the REQUIRED secrets. Without these the stack will not start
@@ -33,37 +35,7 @@ docker compose up -d        # or: uvx podman-compose up -d
 open http://localhost:3000
 ```
 
-The dashboard works out of the box with public data sources (earthquakes, weather, conflicts, etc.). API keys unlock additional data feeds.
-
-## Documentation indexing
-
-The bundled documentation identifies `https://www.worldmonitor.app/docs` as its
-original location. `docs/docs.json` sets this canonical base for Mintlify, and
-`src/config/docs-locale-seo.ts` uses `DOCS_PUBLIC_ORIGIN` to produce an absolute,
-page-specific canonical and language links.
-
-Deployments that run `middleware.ts` also return `X-Robots-Tag: noindex` for docs
-HTML on hosts other than the configured public host. This includes preview
-hosts. The policy also applies to HEAD and 304 responses, and preserves existing
-robots restrictions. It does not stop people from reading the docs. Static
-exports and proxies that bypass this middleware must set their own indexing
-headers; they retain the canonical metadata only if they preserve it.
-
-Inspect canonical URLs before publishing a static export. The pinned Mintlify
-CLI currently includes `/src/_props` in local preview and export canonicals;
-that local output does not establish the hosted provider's URL behavior.
-
-For a fork that publishes its own documentation, deliberately update the
-canonical base in `docs/docs.json`, `DOCS_PUBLIC_ORIGIN`, and the docs upstream and
-reverse-proxy routes (`DOCS_UPSTREAM_ORIGIN` and `vercel.json`) together. Configure
-the provider's base path to match. Check the resulting canonical URLs, language
-links, structured data, sitemap, and indexing headers before requesting indexing.
-Do not derive the canonical origin from the incoming request or a forwarded-host
-header. Keep shared caches separated by host and preserve the response's `Vary`
-selectors.
-
-Canonical metadata is a search-engine signal, not a guarantee. A proxy can rewrite
-or remove it, and older deployed copies will not receive changes to this repo.
+The dashboard works out of the box with public data sources (NRC reports, earthquakes, weather alerts, natural events, radiation). API keys unlock additional feeds such as NASA FIRMS fire detections.
 
 ## 🔐 Required Environment Variables
 
@@ -88,41 +60,16 @@ Native administration routes under `/api/local-` return `403` in Docker mode, in
 - Direct-LLM spend on that route is capped at 50 calls per UTC day per client IP. nginx stamps `X-Real-IP` from `$remote_addr`, so a caller cannot rotate the header to reset the cap. Rotating the session token also does not reset spend.
 - Every other premium route still requires an API key or a Clerk entitlement. Cloud deployments do not set `LOCAL_API_MODE=docker` and keep key plus entitlement enforcement on this route too.
 
-If another reverse proxy sits in front of the World Monitor container, set
+If another reverse proxy sits in front of the NucMonitor container, set
 `WM_TRUSTED_PROXY_CIDRS` to that proxy's IP address or network. Separate multiple
 values with commas, for example `WM_TRUSTED_PROXY_CIDRS=172.20.0.0/16,2001:db8::/32`.
-World Monitor then uses `X-Forwarded-For` only when it comes through those trusted
+NucMonitor then uses `X-Forwarded-For` only when it comes through those trusted
 peers, and nginx resolves the original client address recursively. Invalid values
 stop the container at startup. Leave this variable unset for direct connections;
 never trust a network that can contain untrusted clients, because those clients
 could then supply a false forwarded address and evade the per-IP quota.
 
 > Need to bring the relay up without auth for local debugging? Set `I_UNDERSTAND_THIS_DISABLES_AUTH=true` (the deprecated `ALLOW_UNAUTHENTICATED_RELAY=true` is still accepted). The relay will log a loud `[SECURITY]` warning at boot and every 5 minutes, and every non-public route will be reachable by anyone who can hit the port — **never use this on an internet-reachable host.**
-
-## 🤖 Using the MCP server
-
-The bundled MCP server is served at `/api/mcp` on your own stack. It authenticates
-with the `X-WorldMonitor-Key` header, validated against `WORLDMONITOR_VALID_KEYS`
-(the OAuth path is hosted-only). Generate a key, put it in `.env`, and restart:
-
-```bash
-YOUR_KEY="wm_$(openssl rand -hex 20)"
-echo "WORLDMONITOR_VALID_KEYS=$YOUR_KEY" >> .env
-docker compose up -d
-```
-
-```bash
-curl -s -X POST http://localhost:3000/api/mcp \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  -H "X-WorldMonitor-Key: $YOUR_KEY" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
-
-The bundled nginx proxy supplies `X-WorldMonitor-Local-Token` for transport
-between nginx and the sidecar. It preserves the client's `Authorization`
-header. The transport token does not grant MCP access: operator keys still
-use `X-WorldMonitor-Key`, and OAuth requires the hosted identity services.
 
 ## 🔑 API Keys
 
@@ -132,55 +79,24 @@ Create a `docker-compose.override.yml` to inject your keys. This file is **gitig
 services:
   worldmonitor:
     environment:
-      # 🤖 LLM (used for intelligence assessments)
-      OPENROUTER_API_KEY: ""      # https://openrouter.ai (free, 50 req/day)
-
-      # 📊 Markets & Economics
-      FINNHUB_API_KEY: ""         # https://finnhub.io (free tier) — primary equity gap + search
-      ALPHA_VANTAGE_API_KEY: ""   # https://www.alphavantage.co/support/#api-key — equity fallback + seeders
-      FRED_API_KEY: ""            # https://fred.stlouisfed.org/docs/api/api_key.html (free)
-      EIA_API_KEY: ""             # https://www.eia.gov/opendata/ (free)
-
-      # ⚔️ Conflict & Unrest
-      ACLED_EMAIL: ""             # https://acleddata.com (free for researchers)
-      ACLED_PASSWORD: ""          # OAuth flow — tokens auto-refresh (preferred over ACLED_ACCESS_TOKEN)
-      ACLED_ACCESS_TOKEN: ""      # Alternative: static token (expires every 24h)
-
-      # 🛰️ Earth Observation
+      # Earth observation
       NASA_FIRMS_API_KEY: ""      # REQUIRED for seed-fire-detections.mjs — https://firms.modaps.eosdis.nasa.gov (free)
 
-      # ✈️ Aviation
-      AVIATIONSTACK_API: ""       # https://aviationstack.com (free tier)
-      TRAVELPAYOUTS_API_TOKEN: "" # https://travelpayouts.com (flight price search — optional)
-      # 🚢 Maritime
-      AISSTREAM_API_KEY: ""       # https://aisstream.io (free)
+      # Energy markets
+      EIA_API_KEY: ""             # https://www.eia.gov/opendata/ (free)
+      FRED_API_KEY: ""            # https://fred.stlouisfed.org/docs/api/api_key.html (free)
+      FINNHUB_API_KEY: ""         # https://finnhub.io (free tier)
 
-      # 🌐 Internet Outages (paid)
+      # Internet outages (paid)
       CLOUDFLARE_API_TOKEN: ""    # https://dash.cloudflare.com (requires Radar access)
-
-      # 🔌 Self-hosted LLM (optional — any OpenAI-compatible endpoint)
-      LLM_API_URL: ""             # e.g. http://localhost:11434/v1/chat/completions
-      LLM_API_KEY: ""
-      LLM_MODEL: ""
-      # Same value as ais-relay — gateway accepts it on list-feed-digest (#7437).
-      WORLDMONITOR_RELAY_KEY: ""
-
-  ais-relay:
-    environment:
-      AISSTREAM_API_KEY: ""       # same key as above — relay needs it too
-      # Classify fetches the local digest (compose defaults API_BASE_URL to
-      # http://worldmonitor:8080). Set the same WORLDMONITOR_RELAY_KEY on
-      # worldmonitor so the digest GET is not a silent 401.
-      WORLDMONITOR_RELAY_KEY: ""
 ```
 
 ### 💰 Free vs Paid
 
 | Status | Keys |
 |--------|------|
-| 🟢 No key needed | Earthquakes, weather, natural events, UNHCR displacement, prediction markets, stablecoins, crypto, spending, climate anomalies, submarine cables, BIS data, cyber threats |
-| 🟢 Free signup | FRED, EIA, NASA FIRMS, AISSTREAM, Finnhub, Alpha Vantage, AviationStack, ACLED, OpenRouter |
-| 🟡 Free (limited) | OpenSky (higher rate limits with account) |
+| 🟢 No key needed | NRC reactor status and event reports, earthquakes, NWS alerts, natural events and storms, EPA RadNet / Safecast radiation, news feeds |
+| 🟢 Free signup | NASA FIRMS, EIA, FRED, Finnhub |
 | 🔴 Paid | Cloudflare Radar (internet outages) |
 
 ## 🌱 Seeding Data
@@ -348,10 +264,7 @@ curl -s -X POST "$UPSTASH_REDIS_REST_URL/pipeline" \
 
 ```bash
 # Frontend only (for development)
-# Build /pro first: it is generated by pro-test, not committed (#6898), and the
-# root Vite build only copies whatever public/ already contains. Skipping it
-# leaves dist/ with no /pro.
-npm run build:pro && npx vite build
+npm run build
 
 # Full Docker image
 docker build -t worldmonitor:latest -f Dockerfile .
@@ -364,7 +277,6 @@ docker compose down && docker compose up -d
 ### ⚠️ Build Notes
 
 - The Docker image uses **Node.js 22 Alpine** for both builder and runtime stages
-- Blog site build is skipped in Docker (separate dependencies)
 - The runtime stage needs `gettext` (Alpine package) for `envsubst` in the nginx config
 - Docker nginx mirrors Vercel's `script-src` policy and does not allow `'unsafe-inline'`; hash-pin any custom inline scripts before adding them to a self-hosted build.
 - If you hit `npm ci` sync errors in Docker, regenerate the lockfile with the container's npm version:

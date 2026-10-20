@@ -28,7 +28,7 @@
   var CACHE_TTL_MS = 60 * 1000;
   var FETCH_TIMEOUT_MS = 3_000;
   var URL_DIGEST_PREFIX = 'sha256:';
-  var FALLBACK_BODY = 'This link was blocked by WorldMonitor after delivery. Open the dashboard for the latest safe update.';
+  var FALLBACK_BODY = 'This link was blocked by NucMonitor after delivery. Open the dashboard for the latest safe update.';
 
   function normalizeUrl(raw, origin) {
     if (typeof raw !== 'string') return null;
@@ -182,7 +182,7 @@
 
   function showBlockedNotice(tag) {
     try {
-      return self.registration.showNotification('Link blocked by WorldMonitor', {
+      return self.registration.showNotification('Link blocked by NucMonitor', {
         body: FALLBACK_BODY,
         tag: typeof tag === 'string' && tag.length > 0 ? 'suppressed:' + tag : 'suppressed:link',
         data: { url: '/' },

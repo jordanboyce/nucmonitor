@@ -18,7 +18,7 @@ import enShellTranslation from '../locales/en.shell.json';
 // the moment they pick another language explicitly, that choice persists here.
 const EXPLICIT_LOCALE_KEY = 'wm-locale-explicit';
 
-const SUPPORTED_LANGUAGES = ['en', 'bg', 'cs', 'fr', 'de', 'el', 'es', 'hr', 'hu', 'it', 'pl', 'pt', 'nl', 'sv', 'ru', 'uk', 'ar', 'fa', 'zh', 'zh-TW', 'ja', 'ko', 'ro', 'tr', 'th', 'vi', 'hi', 'sw'] as const;
+const SUPPORTED_LANGUAGES = ['en'] as const;
 type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 type TranslationDictionary = Record<string, unknown>;
 
@@ -41,7 +41,7 @@ const localeModules = import.meta.glob<TranslationDictionary>(
   { import: 'default' },
 );
 
-const RTL_LANGUAGES = new Set(['ar', 'fa']);
+const RTL_LANGUAGES = new Set<string>();
 
 function normalizeLanguage(lng: string): SupportedLanguage {
   return resolveLanguageTag(lng, SUPPORTED_LANGUAGE_SET) as SupportedLanguage;
@@ -49,9 +49,7 @@ function normalizeLanguage(lng: string): SupportedLanguage {
 
 function applyDocumentDirection(lang: string): void {
   const base = lang.split('-')[0] || lang;
-  const isTraditionalChinese = normalizeLanguage(lang) === 'zh-TW';
-  const documentLang = isTraditionalChinese ? 'zh-TW' : base === 'zh' ? 'zh-CN' : base;
-  document.documentElement.setAttribute('lang', documentLang);
+  document.documentElement.setAttribute('lang', base);
   if (RTL_LANGUAGES.has(base)) {
     document.documentElement.setAttribute('dir', 'rtl');
   } else {
@@ -282,37 +280,10 @@ export function getLocale(): string {
   // from zh-CN. Tags that are already full BCP-47 locales fall through the map
   // unchanged — it exists only to expand bare base codes.
   const lang = getCurrentLanguageTag();
-  const map: Record<string, string> = { en: 'en-US', bg: 'bg-BG', cs: 'cs-CZ', el: 'el-GR', fa: 'fa-IR', zh: 'zh-CN', pt: 'pt-BR', ja: 'ja-JP', ko: 'ko-KR', ro: 'ro-RO', tr: 'tr-TR', th: 'th-TH', vi: 'vi-VN', hi: 'hi-IN' };
+  const map: Record<string, string> = { en: 'en-US' };
   return map[lang] || lang;
 }
 
 export const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'bg', label: 'Български', flag: '🇧🇬' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-  { code: 'fa', label: 'فارسی', flag: '🇮🇷' },
-  { code: 'cs', label: 'Čeština', flag: '🇨🇿' },
-  { code: 'zh', label: '简体中文', flag: '🇨🇳' },
-  { code: 'zh-TW', label: '繁體中文', flag: '🇹🇼' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'el', label: 'Ελληνικά', flag: '🇬🇷' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'hr', label: 'Hrvatski', flag: '🇭🇷' },
-  { code: 'hu', label: 'Magyar', flag: '🇭🇺' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'pl', label: 'Polski', flag: '🇵🇱' },
-  { code: 'pt', label: 'Português', flag: '🇵🇹' },
-  { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
-  { code: 'sv', label: 'Svenska', flag: '🇸🇪' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'uk', label: 'Українська', flag: '🇺🇦' },
-  { code: 'ja', label: '日本語', flag: '🇯🇵' },
-  { code: 'ko', label: '한국어', flag: '🇰🇷' },
-  { code: 'ro', label: 'Română', flag: '🇷🇴' },
-  { code: 'th', label: 'ไทย', flag: '🇹🇭' },
-  { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
-  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'sw', label: 'Kiswahili', flag: '🇹🇿' },
 ];

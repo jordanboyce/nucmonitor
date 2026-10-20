@@ -585,40 +585,40 @@ const SEARCH_RESULT_TYPE_BUCKETS = new Set([
   'irradiator',
 ]);
 const TOOL_FAILURE_MESSAGES: Record<WebMcpSpaToolName, string> = {
-  openSearch: 'World Monitor could not open search.',
-  get_dashboard_context: 'World Monitor could not read dashboard context.',
-  list_map_layers: 'World Monitor could not list map layers.',
-  list_dashboard_panels: 'World Monitor could not list dashboard panels.',
-  open_settings: 'World Monitor could not open settings.',
-  open_alerts: 'World Monitor could not open alerts.',
-  open_dashboard_panel: 'World Monitor could not open that dashboard panel.',
-  set_panel_enabled: 'World Monitor could not update that dashboard panel.',
-  get_panel_layout: 'World Monitor could not read the panel layout.',
-  set_panel_collapsed: 'World Monitor could not update that panel collapse state.',
-  move_panel: 'World Monitor could not move that panel.',
-  set_panel_fullscreen: 'World Monitor could not update that panel fullscreen state.',
-  set_map_view: 'World Monitor could not move the map.',
-  set_map_layers: 'World Monitor could not update map layers.',
-  set_time_range: 'World Monitor could not set the map time range.',
-  focus_country: 'World Monitor could not focus that country.',
-  set_map_mode: 'World Monitor could not switch the map mode.',
-  search_dashboard: 'World Monitor could not search the dashboard.',
-  open_search_result: 'World Monitor could not open that search result.',
-  list_dashboard_tabs: 'World Monitor could not list dashboard tabs.',
-  select_dashboard_tab: 'World Monitor could not select that dashboard tab.',
-  create_dashboard_tab: 'World Monitor could not create that dashboard tab.',
-  rename_dashboard_tab: 'World Monitor could not rename that dashboard tab.',
-  delete_dashboard_tab: 'World Monitor could not delete that dashboard tab.',
-  list_mission_presets: 'World Monitor could not list mission presets.',
-  apply_mission_preset: 'World Monitor could not apply that mission preset.',
-  open_mission_picker: 'World Monitor could not open the mission picker.',
-  list_followed_countries: 'World Monitor could not list followed countries.',
-  set_country_followed: 'World Monitor could not update that followed country.',
-  get_access_context: 'World Monitor could not read access context.',
-  open_sign_in: 'World Monitor could not open sign-in.',
+  openSearch: 'NucMonitor could not open search.',
+  get_dashboard_context: 'NucMonitor could not read dashboard context.',
+  list_map_layers: 'NucMonitor could not list map layers.',
+  list_dashboard_panels: 'NucMonitor could not list dashboard panels.',
+  open_settings: 'NucMonitor could not open settings.',
+  open_alerts: 'NucMonitor could not open alerts.',
+  open_dashboard_panel: 'NucMonitor could not open that dashboard panel.',
+  set_panel_enabled: 'NucMonitor could not update that dashboard panel.',
+  get_panel_layout: 'NucMonitor could not read the panel layout.',
+  set_panel_collapsed: 'NucMonitor could not update that panel collapse state.',
+  move_panel: 'NucMonitor could not move that panel.',
+  set_panel_fullscreen: 'NucMonitor could not update that panel fullscreen state.',
+  set_map_view: 'NucMonitor could not move the map.',
+  set_map_layers: 'NucMonitor could not update map layers.',
+  set_time_range: 'NucMonitor could not set the map time range.',
+  focus_country: 'NucMonitor could not focus that country.',
+  set_map_mode: 'NucMonitor could not switch the map mode.',
+  search_dashboard: 'NucMonitor could not search the dashboard.',
+  open_search_result: 'NucMonitor could not open that search result.',
+  list_dashboard_tabs: 'NucMonitor could not list dashboard tabs.',
+  select_dashboard_tab: 'NucMonitor could not select that dashboard tab.',
+  create_dashboard_tab: 'NucMonitor could not create that dashboard tab.',
+  rename_dashboard_tab: 'NucMonitor could not rename that dashboard tab.',
+  delete_dashboard_tab: 'NucMonitor could not delete that dashboard tab.',
+  list_mission_presets: 'NucMonitor could not list mission presets.',
+  apply_mission_preset: 'NucMonitor could not apply that mission preset.',
+  open_mission_picker: 'NucMonitor could not open the mission picker.',
+  list_followed_countries: 'NucMonitor could not list followed countries.',
+  set_country_followed: 'NucMonitor could not update that followed country.',
+  get_access_context: 'NucMonitor could not read access context.',
+  open_sign_in: 'NucMonitor could not open sign-in.',
 };
 export const WEBMCP_UNSUPPORTED_CANCELLATION_MESSAGE =
-  'This browser cannot cancel work already running in the page, so World Monitor '
+  'This browser cannot cancel work already running in the page, so NucMonitor '
   + 'will not run tools whose effects can outlive cancellation. Read-only and '
   + 'reversible view-state dashboard tools still work.';
 
@@ -1799,7 +1799,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.openSearch,
       title: 'Open Search',
       description:
-        'Open the global search command palette so the user can find countries, signals, alerts, and other entities tracked by World Monitor.',
+        'Open the global search command palette so the user can find countries, signals, alerts, and other entities tracked by NucMonitor.',
       inputSchema: {
         type: 'object',
         properties: {},
@@ -2007,7 +2007,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.openDashboardPanel,
       title: 'Open Dashboard Panel',
       description:
-        'Open and scroll to an already-live, currently enabled dashboard panel through the same entitlement-aware control path used by World Monitor. For the commodities panel, tab can also select commodities, physical, fx, or xau through the same tab path used by a person. Disabled panels return panel_disabled. Use set_panel_enabled to change whether a catalog panel is enabled; this tool does not enable panels itself.',
+        'Open and scroll to an already-live, currently enabled dashboard panel through the same entitlement-aware control path used by NucMonitor. For the commodities panel, tab can also select commodities, physical, fx, or xau through the same tab path used by a person. Disabled panels return panel_disabled. Use set_panel_enabled to change whether a catalog panel is enabled; this tool does not enable panels itself.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2348,7 +2348,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.setMapLayers,
       title: 'Set Map Layers',
       description:
-        'Enable or disable explicit visible map layers through World Monitor’s variant, renderer, and entitlement-aware control path.',
+        'Enable or disable explicit visible map layers through NucMonitor’s variant, renderer, and entitlement-aware control path.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2463,7 +2463,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.searchDashboard,
       title: 'Search Dashboard',
       description:
-        'Search the current World Monitor country, signal, map, panel, finance, and action indexes without opening the command palette or changing the dashboard. executable is true only when live dashboard state and this host’s cancellation support both allow the bound effect.',
+        'Search the current NucMonitor country, signal, map, panel, finance, and action indexes without opening the command palette or changing the dashboard. executable is true only when live dashboard state and this host’s cancellation support both allow the bound effect.',
       inputSchema: {
         type: 'object',
         properties: {

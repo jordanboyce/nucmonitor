@@ -11,19 +11,33 @@
  * can import it. Do not move it under `tests/`.
  */
 
+/**
+ * The 2026-08-21 capture was taken from the full WorldMonitor registry. The
+ * NucMonitor trim retired most of its keys, so the ledger below is RE-DERIVED
+ * from that capture: it keeps the frozen per-key byte evidence, unchanged, for
+ * exactly the captured keys that are still registered in
+ * shared/bootstrap-tier-keys.js (in their captured tier), and `decodedBytes`
+ * is the reconstruction of a `{"data":{...},"missing":[]}` body from those rows.
+ * The original bodies are kept as provenance (`source*`); the absolute final
+ * ceilings and the #7046 net-reduction targets are still measured against
+ * them, because that is the baseline those targets were set from.
+ */
 export const PRODUCTION_CAPTURE = Object.freeze({
   capturedAt: '2026-08-21T14:51:50Z',
   origin: 'https://worldmonitor.app',
   requestShape: 'GET [REDACTED]/api/bootstrap?tier=<tier>&public=1',
   completeness: 'Both responses were HTTP 200, parsed successfully, and declared missing: [].',
   limitation: 'Single complete public capture; not the full daily #7047 U1/RUM baseline.',
+  derivation: 'Re-derived for the NucMonitor key set: captured rows for keys no longer registered were dropped; surviving rows are byte-for-byte the capture.',
   tiers: Object.freeze({
     fast: Object.freeze({
-      decodedBytes: 921_832,
+      decodedBytes: 528_755,
+      sourceDecodedBytes: 921_832,
       sha256: '9723bf77e7a88323e58e747977c64d8ba1bcee77b72b9db06fe5d37c2773d3de',
     }),
     slow: Object.freeze({
-      decodedBytes: 1_977_154,
+      decodedBytes: 1_166_983,
+      sourceDecodedBytes: 1_977_154,
       sha256: '0d4caebf63182d1f816ec41bfc47b0f5e30efc378722b0cab785ebd70d85bcdb',
     }),
   }),
@@ -32,29 +46,16 @@ export const PRODUCTION_CAPTURE = Object.freeze({
 export const CAPTURED_BASE_TIER_KEYS = Object.freeze({
   fast: Object.freeze([
     'earthquakes', 'outages', 'serviceStatuses', 'ddosAttacks', 'trafficAnomalies',
-    'marketQuotes', 'commodityQuotes', 'macroSignals', 'shippingRates', 'chokepoints',
-    'theaterPosture', 'riskScores', 'flightDelays', 'insights',
-    'predictions', 'temporalAnomalies', 'weatherAlerts', 'canadaAlerts', 'spending',
-    'gdeltIntel', 'correlationCards', 'forecasts', 'shippingStress', 'socialVelocity',
-    'wsbTickers',
+    'marketQuotes', 'commodityQuotes', 'weatherAlerts',
   ]),
   slow: Object.freeze([
-    'sectors', 'etfFlows', 'bisPolicy', 'bisExchange', 'bisCredit', 'chinaMacro',
-    'chinaReleaseCalendar', 'chinaCorporateDisclosures', 'minerals', 'giving',
-    'climateAnomalies', 'climateDisasters', 'co2Monitoring', 'oceanIce', 'climateNews',
-    'radiationWatch', 'thermalEscalation', 'crossSourceSignals', 'wildfires',
-    'techReadiness', 'progressData', 'renewableEnergy', 'naturalEvents', 'cryptoQuotes',
-    'cryptoSectors', 'defiTokens', 'aiTokens', 'otherTokens', 'gulfQuotes',
-    'stablecoinMarkets', 'unrestEvents', 'ucdpEvents', 'techEvents',
-    'crossStraitActivity', 'securityAdvisories', 'customsRevenue', 'sanctionsPressure',
-    'consumerPricesOverview', 'consumerPricesCategories', 'consumerPricesMovers',
-    'consumerPricesSpread', 'groceryBasket', 'bigmac', 'fuelPrices', 'faoFoodPriceIndex',
-    'nationalDebt', 'euGasStorage', 'eurostatCountryData', 'marketImplications',
-    'fearGreedIndex', 'hyperliquidFlow', 'crudeInventories', 'natGasStorage',
-    'ecbFxRates', 'euFsi', 'pizzint', 'diseaseOutbreaks', 'economicStress',
+    'bisPolicy', 'bisExchange', 'bisCredit', 'climateAnomalies', 'climateDisasters',
+    'co2Monitoring', 'oceanIce', 'climateNews', 'radiationWatch', 'wildfires',
+    'techReadiness', 'naturalEvents', 'cryptoQuotes', 'cryptoSectors', 'defiTokens',
+    'aiTokens', 'otherTokens', 'nationalDebt', 'euGasStorage', 'eurostatCountryData',
+    'crudeInventories', 'natGasStorage', 'ecbFxRates', 'diseaseOutbreaks',
     'oilStocksAnalysis', 'lngVulnerability', 'pipelinesGas', 'pipelinesOil',
-    'storageFacilities', 'fuelShortages', 'energyCrisisPolicies', 'aaiiSentiment',
-    'breadthHistory',
+    'storageFacilities',
   ]),
 });
 
@@ -67,108 +68,44 @@ export const CAPTURED_KEY_DECODED_BYTES = Object.freeze({
   trafficAnomalies: 3_045,
   marketQuotes: 296_547,
   commodityQuotes: 116_985,
-  macroSignals: 3_112,
-  shippingRates: 8_180,
-  chokepoints: 13_837,
-  theaterPosture: 1_302,
-  riskScores: 10_352,
-  flightDelays: 57_826,
-  insights: 10_115,
-  predictions: 24_493,
-  temporalAnomalies: 98,
   weatherAlerts: 52_633,
-  canadaAlerts: 61_389,
-  spending: 4_762,
-  gdeltIntel: 24_612,
-  correlationCards: 87_842,
-  forecasts: 40_048,
-  shippingStress: 4_288,
-  socialVelocity: 10_574,
-  wsbTickers: 4_275,
-  sectors: 4_086,
-  etfFlows: 1_848,
   bisPolicy: 1_395,
   bisExchange: 1_354,
   bisCredit: 1_310,
-  chinaMacro: 44_014,
-  chinaReleaseCalendar: 58_122,
-  chinaCorporateDisclosures: 18_932,
-  minerals: 2_132,
-  giving: 12_544,
   climateAnomalies: 5_031,
   climateDisasters: 21_205,
   co2Monitoring: 822,
   oceanIce: 970,
   climateNews: 51_058,
   radiationWatch: 5_727,
-  thermalEscalation: 18_616,
-  crossSourceSignals: 9_057,
   wildfires: 165_622,
   techReadiness: 45_451,
-  progressData: 6_791,
-  renewableEnergy: 1_893,
   naturalEvents: 200_792,
   cryptoQuotes: 9_713,
   cryptoSectors: 414,
   defiTokens: 831,
   aiTokens: 885,
   otherTokens: 848,
-  gulfQuotes: 47_557,
-  stablecoinMarkets: 1_550,
-  unrestEvents: 85_902,
-  ucdpEvents: 130_821,
-  techEvents: 34_580,
-  crossStraitActivity: 13_601,
-  securityAdvisories: 70_091,
-  customsRevenue: 6_124,
-  sanctionsPressure: 17_603,
-  consumerPricesOverview: 1_216,
-  consumerPricesCategories: 1_074,
-  consumerPricesMovers: 892,
-  consumerPricesSpread: 825,
-  groceryBasket: 52_344,
-  bigmac: 9_506,
-  fuelPrices: 11_592,
-  faoFoodPriceIndex: 1_285,
   nationalDebt: 45_401,
   euGasStorage: 452,
   eurostatCountryData: 2_197,
-  marketImplications: 5_963,
-  fearGreedIndex: 2_557,
-  hyperliquidFlow: 55_977,
   crudeInventories: 558,
   natGasStorage: 519,
   ecbFxRates: 514,
-  euFsi: 13_146,
-  pizzint: 3_495,
   diseaseOutbreaks: 68_863,
-  economicStress: 620,
   oilStocksAnalysis: 4_057,
   lngVulnerability: 2_501,
   pipelinesGas: 193_403,
   pipelinesOil: 221_043,
   storageFacilities: 113_540,
-  fuelShortages: 22_020,
-  energyCrisisPolicies: 28_423,
-  aaiiSentiment: 4_623,
-  breadthHistory: 8_059,
 });
 
 // Absolute final ceilings are the required reductions applied to the complete
-// capture, not to a hand-picked subset: FAST <= 80%, SLOW <= 75% of base.
+// source capture (`sourceDecodedBytes`), not to a hand-picked subset:
+// FAST <= 80%, SLOW <= 75% of base.
 export const FINAL_TIER_DECODED_BYTE_CEILINGS = Object.freeze({
   fast: 737_465,
   slow: 1_482_865,
-});
-
-export const SSE_HISTORY_BUDGET_CAPTURE = Object.freeze({
-  capturedAt: '2026-10-18',
-  basis: 'Producer fixture with two SSE indices; public FAST recapture returned HTTP 403.',
-  baselinePoints: 24,
-  expandedPoints: 56,
-  baselineBytes: 2_453,
-  expandedBytes: 4_885,
-  growthBytes: 2_432,
 });
 
 export const BOOTSTRAP_PAYLOAD_BUDGET_MANIFEST = Object.freeze({
@@ -181,12 +118,7 @@ export const BOOTSTRAP_PAYLOAD_BUDGET_MANIFEST = Object.freeze({
       minimumCapturedKeyCount: CAPTURED_BASE_TIER_KEYS.fast.length,
       materialGrowthRatio: 0.05,
       materialGrowthFloorBytes: 2_048,
-      reviewedExceptions: Object.freeze({
-        shippingRates: Object.freeze({
-          ceilingBytes: CAPTURED_KEY_DECODED_BYTES.shippingRates + SSE_HISTORY_BUDGET_CAPTURE.growthBytes,
-          rationale: 'Owner approved 56 weekly SSE history points for #9351. The producer fixture measures 2,432 extra bytes; the frozen production capture and total tier ceiling stay unchanged.',
-        }),
-      }),
+      reviewedExceptions: Object.freeze({}),
     }),
     slow: Object.freeze({
       preChangeCeilingBytes: PRODUCTION_CAPTURE.tiers.slow.decodedBytes,

@@ -277,12 +277,9 @@ test('bundle member discovery follows runtime truthiness for freshness defaults'
   }]);
 });
 
-const COMPLETION_ATTESTATION_EXEMPT = new Map([
-  [
-    'seed-bundle-static-ref-heavy.mjs:Arms-Suppliers:seed-defense-industrial-suppliers.mjs',
-    'The #6893 chunked sweep stays due until its own terminal marker is written.',
-  ],
-]);
+// The only exemption (static-ref-heavy's Arms-Suppliers chunked sweep, #6893)
+// left with that bundle. Any new entry must name exactly one at-risk member.
+const COMPLETION_ATTESTATION_EXEMPT = new Map();
 
 function attestationIdentity(bundleName, section) {
   return `${bundleName}:${section.label}:${section.script}`;

@@ -19,55 +19,23 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const apiDir = resolve(root, 'docs/api');
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'options', 'head']);
 const JSON_MEDIA = 'application/json';
-const GIVING_PUBLISHED_ESTIMATE_CLAIMS = JSON.parse(
-  readFileSync(resolve(root, 'scripts/shared/giving-published-estimate-claims.json'), 'utf8'),
-);
-const GIVING_CATEGORY_SENTINELS = [
-  'Medical & Health',
-  'Disaster Relief',
-  'Education',
-  'Community',
-  'Memorials',
-  'Animals & Pets',
-  'Environment',
-  'Hunger & Food',
-  'Other',
-];
-
 const serviceSpecs = readdirSync(apiDir)
   .filter((f) => /Service\.openapi\.json$/.test(f))
   .sort();
 
-// Expected accepted-value sets for the curated example overrides, sourced from
-// the SAME server-side constants the injector reads so the test can't drift
-// from the handlers. Read as text (no TS/JSON import) to stay runner-agnostic.
+// Expected accepted-value set for the curated LLM-provider examples, sourced
+// from the SAME server-side constant the injector reads so the test can't
+// drift from the handlers. Read as text (no TS import) to stay runner-agnostic.
+// (The chokepoint, scenario, GDELT, region and consumer-price sets left with
+// their services.)
 const CURATED = (() => {
-  const filterContract = JSON.parse(
-    readFileSync(resolve(root, 'shared/openapi-filter-param-contracts.json'), 'utf8'),
-  );
-  const chokepointIds = new Set(filterContract.intelligenceChokepointIds ?? []);
-  const scenarioSrc = readFileSync(
-    resolve(root, 'server/worldmonitor/supply-chain/v1/scenario-templates.ts'),
-    'utf8',
-  );
-  const scenarioIds = new Set([...scenarioSrc.matchAll(/\bid:\s*['"`]([a-z0-9-]+)['"`]/g)].map((m) => m[1]));
   const llmSrc = readFileSync(resolve(root, 'server/_shared/llm.ts'), 'utf8');
   const llmProviderChain = llmSrc.match(/const PROVIDER_CHAIN = \[([\s\S]*?)\] as const;/);
   assert.ok(llmProviderChain, 'expected PROVIDER_CHAIN in server/_shared/llm.ts');
   assert.match(llmSrc, /export type LlmProviderName = typeof PROVIDER_CHAIN\[number\];/);
   const llmProviders = new Set([...llmProviderChain[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
   assert.ok(llmProviders.size > 0, 'expected at least one provider in PROVIDER_CHAIN');
-  const gdeltSrc = readFileSync(resolve(root, 'scripts/seed-gdelt-intel.mjs'), 'utf8');
-  const gdeltTopics = new Set([...gdeltSrc.matchAll(/\bid:\s*['"`]([a-z0-9-]+)['"`]/g)].map((m) => m[1]));
-  const geographySrc = readFileSync(resolve(root, 'scripts/shared/geography.js'), 'utf8');
-  const regionIdsMatch = geographySrc.match(/\bREGION_IDS\s*=\s*\[([\s\S]*?)\]/);
-  const regionIds = new Set(regionIdsMatch ? [...regionIdsMatch[1].matchAll(/['"`]([a-z0-9-]+)['"`]/g)].map((m) => m[1]) : []);
-  const consumerSrc = readFileSync(resolve(root, 'server/worldmonitor/consumer-prices/v1/get-consumer-price-basket-series.ts'), 'utf8');
-  const consumerRangesMatch = consumerSrc.match(/VALID_RANGES\s*=\s*new Set\(\[([^\]]+)\]\)/);
-  const consumerRanges = new Set(consumerRangesMatch ? [...consumerRangesMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)].map((m) => m[1]) : []);
-  const basketMatch = consumerSrc.match(/\bDEFAULT_BASKET\s*=\s*['"`]([^'"`]+)['"`]/);
-  const consumerBaskets = new Set([basketMatch?.[1] ?? 'essentials-ae']);
-  return { chokepointIds, scenarioIds, llmProviders, gdeltTopics, regionIds, consumerRanges, consumerBaskets };
+  return { llmProviders };
 })();
 
 // Mirror of scripts/openapi-inject-examples.mjs override routing (normalizeKey is
@@ -316,58 +284,6 @@ function assertSummarizeProviderExamples(spec, label) {
   }
 }
 
-function assertConsumerPriceResponseRanges(spec, label) {
-  const operationIds = new Set(['ListConsumerPriceCategories', 'ListConsumerPriceMovers']);
-  const examples = collectTopLevelFieldExamples(
-    spec,
-    label,
-    ({ op }) => operationIds.has(String(op.operationId ?? '')),
-    'range',
-  ).filter(({ where }) => where.includes(' response '));
-  assert.equal(examples.length, operationIds.size, `${label}: expected consumer-price response range examples`);
-  for (const { value, where } of examples) {
-    assert.notEqual(value, 'example', `${where}: placeholder range`);
-    assert.ok(CURATED.consumerRanges.has(value), `${where}: range '${value}' is not an accepted consumer-price range`);
-  }
-}
-
-function assertComputeEnergyShockChokepointEcho(spec, label) {
-  let checked = 0;
-  for (const { path, method, op } of operationEntries(spec)) {
-    if (op.operationId !== 'ComputeEnergyShockScenario') continue;
-    const param = (op.parameters ?? []).find((p) => p?.name === 'chokepoint_id');
-    assert.ok(param, `${label}: ${method.toUpperCase()} ${path} missing chokepoint_id parameter`);
-    assert.notEqual(param.example, 'example', `${label}: ${method.toUpperCase()} ${path} placeholder chokepoint_id`);
-    assert.ok(CURATED.chokepointIds.has(param.example), `${label}: chokepoint_id '${param.example}' is not registered`);
-    const responseChokepointId = op.responses?.['200']?.content?.[JSON_MEDIA]?.example?.chokepointId;
-    assert.equal(
-      responseChokepointId,
-      param.example,
-      `${label}: ${method.toUpperCase()} ${path} chokepoint_id request and chokepointId response examples must match`,
-    );
-    checked++;
-  }
-  assert.ok(checked > 0, `${label}: expected ComputeEnergyShockScenario chokepoint example to check`);
-}
-
-function assertRouteIntelligenceHs2Example(spec, label) {
-  let checked = 0;
-  for (const { path, method, op } of operationEntries(spec)) {
-    if (op.operationId !== 'RouteIntelligence') continue;
-    const param = (op.parameters ?? []).find((p) => p?.name === 'hs2');
-    assert.ok(param, `${label}: ${method.toUpperCase()} ${path} missing hs2 parameter`);
-    assert.equal(param.example, '27', `${label}: ${method.toUpperCase()} ${path} hs2 example must use the 2-digit default`);
-    assert.match(String(param.example), /^\d{2}$/, `${label}: ${method.toUpperCase()} ${path} hs2 example must be two digits`);
-    const cargoParam = (op.parameters ?? []).find((p) => p?.name === 'cargoType');
-    assert.ok(cargoParam, `${label}: ${method.toUpperCase()} ${path} missing cargoType parameter`);
-    assert.equal(cargoParam.example, 'container', `${label}: ${method.toUpperCase()} ${path} cargoType must keep the documented default`);
-    const responseCargoType = op.responses?.['200']?.content?.[JSON_MEDIA]?.example?.cargoType;
-    assert.equal(responseCargoType, cargoParam.example, `${label}: ${method.toUpperCase()} ${path} cargoType request/response examples must match`);
-    checked++;
-  }
-  assert.ok(checked > 0, `${label}: expected RouteIntelligence hs2 example to check`);
-}
-
 function collectParamExamples(spec, label, operationId, paramName) {
   const found = [];
   for (const { path, method, op } of operationEntries(spec)) {
@@ -393,16 +309,6 @@ function collectionForOperation(spec, label, operationId, paramName) {
     for (const value of values) found.push({ value, where: `${label} ${method.toUpperCase()} ${path} param ${paramName}` });
   }
   return found;
-}
-
-function assertParamExampleSet(specs, operationId, paramName, acceptedValues) {
-  for (const [label, spec] of specs) {
-    for (const { value, where } of collectParamExamples(spec, label, operationId, paramName)) {
-      assert.notEqual(value, 'example', `${where}: placeholder example`);
-      assert.notEqual(value, 'example1', `${where}: pattern-only placeholder example`);
-      assert.ok(acceptedValues.has(value), `${where}: '${value}' is not an accepted example value`);
-    }
-  }
 }
 
 function normalizeClosedValue(value) {
@@ -466,26 +372,6 @@ function assertIssue4827Cluster7ResidueFixed(specs) {
       paramName: 'period',
       accepted: new Set(['1d', '1w', '1m']),
     },
-    {
-      operationId: 'SearchGdeltDocuments',
-      paramName: 'timespan',
-      accepted: new Set(['15min', '1h', '24h']),
-    },
-    {
-      operationId: 'GetTradeBarriers',
-      paramName: 'measure_type',
-      accepted: new Set(['SPS', 'TBT']),
-    },
-    {
-      operationId: 'GetPopulationExposure',
-      paramName: 'mode',
-      accepted: new Set(['countries', 'exposure']),
-    },
-    {
-      operationId: 'GetTheaterPosture',
-      paramName: 'theater',
-      accepted: new Set(['indo-pacific', 'european', 'middle-east']),
-    },
   ];
 
   for (const { operationId, paramName, accepted } of cases) {
@@ -503,90 +389,6 @@ function assertIssue4827Cluster7ResidueFixed(specs) {
     }
     assert.ok(found > 0, `expected issue #4827 cluster-7 examples for ${operationId}.${paramName}`);
   }
-}
-
-function assertScenarioStatusPollExample(spec, label) {
-  const example = spec.paths?.['/api/scenario/v1/get-scenario-status']?.get
-    ?.responses?.['200']?.content?.[JSON_MEDIA]?.example;
-  assert.ok(example && typeof example === 'object' && !Array.isArray(example), `${label}: missing get-scenario-status 200 example`);
-  assert.ok(['pending', 'processing', 'done', 'failed'].includes(example.status), `${label}: impossible scenario status '${example.status}'`);
-  if (example.status === 'done') {
-    assert.ok(example.result && typeof example.result === 'object', `${label}: done status must include result`);
-    assert.ok(!Object.hasOwn(example, 'error') || example.error === '', `${label}: done status must not include a populated error`);
-    assert.ok(example.result.template && typeof example.result.template === 'object', `${label}: done result must include template`);
-    assert.notEqual(example.result.template.name, 'WorldMonitor Analyst', `${label}: worker writes a template key, not a display name`);
-    const affected = Array.isArray(example.result.affectedChokepointIds) ? example.result.affectedChokepointIds : [];
-    for (const id of affected) {
-      assert.ok(CURATED.chokepointIds.has(id), `${label}: affected chokepoint '${id}' is not registered`);
-    }
-    const expectedTemplateName = affected.length > 0 ? affected.join('+') : 'tariff_shock';
-    assert.equal(example.result.template.name, expectedTemplateName, `${label}: template.name must match the worker template key`);
-  } else if (example.status === 'failed') {
-    assert.ok(typeof example.error === 'string' && example.error, `${label}: failed status must include error`);
-    assert.ok(!Object.hasOwn(example, 'result'), `${label}: failed status must not include result`);
-  } else {
-    assert.ok(!Object.hasOwn(example, 'result'), `${label}: ${example.status} status must not include result`);
-    assert.ok(!Object.hasOwn(example, 'error') || example.error === '', `${label}: ${example.status} status must not include a populated error`);
-  }
-}
-
-function assertGivingPublishedEstimateExample(spec, label) {
-  const example = spec.paths?.['/api/giving/v1/get-giving-summary']?.get
-    ?.responses?.['200']?.content?.[JSON_MEDIA]?.example;
-  assert.ok(example, `${label}: Giving response example missing`);
-  assert.equal(example.dataAvailable, true, `${label}: populated Giving example must be available`);
-  assert.ok(example.fetchedAt > 0, `${label}: populated Giving example needs a cache-generation time`);
-  assert.equal(example.summary?.dataMode, 'partial_estimate', `${label}: initial Giving mode`);
-  assert.equal(example.summary?.activityIndex, 0, `${label}: activity index is a compatibility sentinel`);
-  assert.equal(example.summary?.activityIndexAvailable, false, `${label}: activity index must be unavailable`);
-  assert.equal(example.summary?.trend, 'stable', `${label}: trend string is a compatibility sentinel`);
-  assert.equal(example.summary?.trendAvailable, false, `${label}: trend must be unavailable`);
-  assert.ok(example.summary?.estimatedDailyFlowUsd > 0, `${label}: verified annualized platform flow missing`);
-  assert.ok(Array.isArray(example.summary?.provenance) && example.summary.provenance.length > 0, `${label}: provenance missing`);
-  assert.deepEqual(
-    example.summary.provenance.map((entry) => entry.subject),
-    GIVING_PUBLISHED_ESTIMATE_CLAIMS.map((entry) => entry.subject),
-    `${label}: Giving provenance must derive from the shared claim registry`,
-  );
-  assert.ok(
-    example.summary.provenance.some((entry) =>
-      entry.sourceName === 'GoFundMe'
-      && entry.status === 'verified'
-      && entry.includedInHighlightedAggregate === true
-      && /^https:\/\//.test(entry.sourceUrl)),
-    `${label}: verified GoFundMe provenance missing`,
-  );
-  assert.ok(
-    example.summary.provenance.some((entry) =>
-      entry.sourceName === 'GlobalGiving'
-      && entry.status === 'verified'
-      && entry.includedInHighlightedAggregate === true
-      && entry.reportedValue === 84_000_000),
-    `${label}: verified GlobalGiving provenance missing`,
-  );
-  for (const platform of example.summary?.platforms ?? []) {
-    assert.equal(platform.activeCampaignsSampled, undefined, `${label}: must not fabricate sampled campaign counts`);
-    assert.equal(platform.newCampaigns24h, undefined, `${label}: must not fabricate 24-hour campaign counts`);
-    assert.equal(platform.donationVelocity, undefined, `${label}: must not fabricate live donation velocity`);
-  }
-  for (const category of example.summary?.categories ?? []) {
-    assert.equal(category.share, 0, `${label}: category share must remain an unavailable sentinel`);
-    assert.equal(category.change24h, 0, `${label}: category change must remain a not-collected sentinel`);
-    assert.equal(category.activeCampaigns, 0, `${label}: category campaign count must remain a not-collected sentinel`);
-    assert.equal(category.trending, false, `${label}: category trend must remain unavailable`);
-  }
-  assert.deepEqual(
-    example.summary?.categories?.map((category) => category.category),
-    GIVING_CATEGORY_SENTINELS,
-    `${label}: Giving category compatibility projection must match the live builder`,
-  );
-  assert.deepEqual(example.summary?.crypto, {
-    dailyInflowUsd: 0,
-    trackedWallets: 0,
-    transactions24h: 0,
-    topReceivers: [],
-    pctOfTotal: 0,
-  }, `${label}: crypto compatibility projection must match the live builder`);
 }
 
 // Honeypot fields are hidden anti-bot inputs (marked by a schema description
@@ -647,12 +449,12 @@ function honeypotRequestViolations(spec, label) {
 describe('OpenAPI examples contract', () => {
   // Bump these exact surface counts when adding or removing proto services/RPCs.
   it('audits the known service operation surface', () => {
-    assert.equal(serviceSpecs.length, 38, `expected 38 service specs, found ${serviceSpecs.length}`);
+    assert.equal(serviceSpecs.length, 12, `expected 12 service specs, found ${serviceSpecs.length}`);
     const total = serviceSpecs.reduce((sum, file) => {
       const spec = JSON.parse(readFileSync(resolve(apiDir, file), 'utf8'));
       return sum + operationEntries(spec).length;
     }, 0);
-    assert.equal(total, 248, `expected 248 OpenAPI operations, found ${total}`);
+    assert.equal(total, 97, `expected 97 OpenAPI operations, found ${total}`);
   });
 
   it('adds schema-valid request and response examples to every service JSON spec', () => {
@@ -664,9 +466,9 @@ describe('OpenAPI examples contract', () => {
       totals.requestExpected += result.requestExpected;
       totals.responseExpected += result.responseExpected;
     }
-    assert.equal(totals.operations, 248);
+    assert.equal(totals.operations, 97);
     assert.ok(totals.requestExpected >= 137, `expected at least 137 request example targets, found ${totals.requestExpected}`);
-    assert.equal(totals.responseExpected, 248);
+    assert.equal(totals.responseExpected, 97);
   });
 
   // record-baseline-snapshot's nested updates[].type is a bare string (no schema
@@ -705,36 +507,14 @@ describe('OpenAPI examples contract', () => {
       const spec = loadYaml(readFileSync(resolve(apiDir, yamlFile), 'utf8'));
       operations += assertOperationExamples(spec, yamlFile).operations;
     }
-    assert.equal(operations, 248);
+    assert.equal(operations, 97);
   });
 
   it('adds request and response examples to the unified OpenAPI bundle', () => {
     const bundle = loadUnifiedOpenApiSpec();
     const result = assertOperationExamples(bundle, 'worldmonitor.openapi.yaml');
-    assert.equal(result.operations, 248);
-    assert.equal(result.responseExpected, 248);
-  });
-
-  it('labels aircraft emergency examples synthetic and documents projected response shapes', () => {
-    const specs = [
-      JSON.parse(readFileSync(resolve(apiDir, 'AviationService.openapi.json'), 'utf8')),
-      loadYaml(readFileSync(resolve(apiDir, 'AviationService.openapi.yaml'), 'utf8')),
-      loadUnifiedOpenApiSpec(),
-    ];
-    for (const spec of specs) {
-      const operation = spec.paths['/api/aviation/v1/list-aircraft-emergencies'].get;
-      const example = operation.responses['200'].content['application/json'].example;
-      assert.equal(example.feeds[0].squawk, '7500');
-      assert.equal(example.feeds[0].status, 'available');
-      assert.equal(example.feeds[0].source, 'adsb.lol');
-      assert.equal(example.observations[0].address, 'a00001');
-      assert.equal(example.observations[0].squawk, '7500');
-      assert.equal(example.observations[0].observedAt, 0);
-      assert.equal(example.observations[0].militaryFlag, 'unknown');
-      assert.match(example.observations[0].description, /Synthetic example/);
-      assert.match(operation.description, /200 schema describes the unprojected response/);
-      assert.match(operation.description, /array, scalar, or null/);
-    }
+    assert.equal(result.operations, 97);
+    assert.equal(result.responseExpected, 97);
   });
 
   // A honeypot field (hidden anti-bot input) is silently discarded by the
@@ -757,7 +537,7 @@ describe('OpenAPI examples contract', () => {
     const bundle = loadUnifiedOpenApiSpec();
     violations.push(...honeypotRequestViolations(bundle, 'worldmonitor.openapi.yaml'));
 
-    assert.ok(guardedFields >= 2, `expected honeypot-marked schema fields to guard, found ${guardedFields}`);
+    assert.ok(guardedFields >= 1, `expected honeypot-marked schema fields to guard, found ${guardedFields}`);
     assert.deepEqual(violations, [], `request examples must omit honeypot fields; populated: ${violations.join(', ')}`);
   });
 
@@ -778,32 +558,13 @@ describe('OpenAPI curated example values', () => {
   // These parameters have accepted-value sets the field-name heuristic can't
   // infer; the injector's override map pins each to a real value the handlers
   // accept. Guards against a regression to a rejected placeholder.
-  it('pins chokepoint / scenario / icao24 / FRED examples to accepted values', () => {
+  it('pins FRED / BLS series examples to accepted values', () => {
     const found = collectCuratedExamples();
     const byCat = (cat) => found.filter((f) => f.cat === cat);
-
-    // chokepointId (4 SupplyChain params) + chokepointIds (register-webhook body).
-    const chokepoints = byCat('chokepoint');
-    assert.ok(chokepoints.length >= 5, `expected >=5 chokepoint id examples, found ${chokepoints.length}`);
-    for (const f of chokepoints) {
-      assert.notEqual(f.value, 'suez-canal', `${f.where}: 'suez-canal' is not a registry chokepoint id`);
-      assert.ok(CURATED.chokepointIds.has(f.value), `${f.where}: chokepoint example '${f.value}' is not an accepted id`);
-    }
-
-    // scenarioId (run-scenario body) must be a registered SCENARIO_TEMPLATES id.
-    const scenarios = byCat('scenario');
-    assert.ok(scenarios.length >= 1, `expected >=1 scenario id example, found ${scenarios.length}`);
-    for (const f of scenarios) {
-      assert.notEqual(f.value, 'oil-price-shock', `${f.where}: 'oil-price-shock' is not a registered scenario template`);
-      assert.ok(CURATED.scenarioIds.has(f.value), `${f.where}: scenario example '${f.value}' is not a SCENARIO_TEMPLATES id`);
-    }
-
-    // icao24 (3 params) + icao24s (aircraft-details-batch body) — lowercase 6-hex.
-    const icaos = byCat('icao24');
-    assert.ok(icaos.length >= 4, `expected >=4 icao24 examples, found ${icaos.length}`);
-    for (const f of icaos) {
-      assert.notEqual(f.value, 'example', `${f.where}: placeholder icao24`);
-      assert.match(String(f.value), /^[0-9a-f]{6}$/, `${f.where}: icao24 example '${f.value}' is not a 6-hex Mode-S address`);
+    // The chokepoint, scenario and icao24 overrides lost their operations with
+    // the supply-chain, scenario and aviation services.
+    for (const cat of ['chokepoint', 'scenario', 'icao24']) {
+      assert.deepEqual(byCat(cat), [], `no surviving operation should carry a ${cat} example`);
     }
 
     // series_id / seriesIds: FRED (no enum) needs a real series; BLS (enum) must stay valid.
@@ -845,21 +606,6 @@ describe('OpenAPI curated example values', () => {
     assert.equal(example, '2026-01-15T12:00:00.000Z');
   });
 
-  it('uses an ISO3 country and a real DTM operation for GetInternalDisplacement', () => {
-    const specs = [
-      ['DisplacementService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'DisplacementService.openapi.json'), 'utf8'))],
-      ['DisplacementService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'DisplacementService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-    for (const [label, spec] of specs) {
-      const op = spec.paths?.['/api/displacement/v1/get-internal-displacement']?.get;
-      assert.equal(op?.parameters?.find((p) => p.name === 'country_code')?.example, 'SDN', `${label}: country_code`);
-      const example = op?.responses?.['200']?.content?.[JSON_MEDIA]?.example;
-      assert.equal(example?.operations?.[0]?.countryCode, 'SDN', `${label}: operation country`);
-      assert.equal(example?.operations?.[0]?.regions?.[0]?.pcode, 'SD11', `${label}: region P-code`);
-    }
-  });
-
   it('uses a published wire id and UTC-midnight epoch for GetUsInterestRates', () => {
     const specs = [
       ['EconomicService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'EconomicService.openapi.json'), 'utf8'))],
@@ -887,57 +633,8 @@ describe('OpenAPI curated example values', () => {
   });
 
   it('uses accepted closed-value parameter examples from prose descriptions', () => {
-    assert.ok(CURATED.gdeltTopics.size > 0, 'expected seeded GDELT topic ids');
-    assert.ok(CURATED.regionIds.size > 0, 'expected regional intelligence ids');
-    assert.ok(CURATED.consumerRanges.size > 0, 'expected consumer-price ranges');
-    assert.ok(CURATED.consumerBaskets.size > 0, 'expected consumer-price basket ids');
-
-    const intelligenceSpecs = [
-      ['IntelligenceService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'IntelligenceService.openapi.json'), 'utf8'))],
-      ['IntelligenceService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'IntelligenceService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-    assertParamExampleSet(intelligenceSpecs, 'GetGdeltTopicTimeline', 'topic', CURATED.gdeltTopics);
-    assertParamExampleSet(intelligenceSpecs, 'GetRegionalSnapshot', 'region_id', CURATED.regionIds);
-    assertParamExampleSet(intelligenceSpecs, 'GetRegimeHistory', 'region_id', CURATED.regionIds);
-    assertParamExampleSet(intelligenceSpecs, 'GetRegionalBrief', 'region_id', CURATED.regionIds);
-    for (const [label, spec] of intelligenceSpecs) {
-      assertComputeEnergyShockChokepointEcho(spec, label);
-    }
-
-    const consumerSpecs = [
-      ['ConsumerPricesService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'ConsumerPricesService.openapi.json'), 'utf8'))],
-      ['ConsumerPricesService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'ConsumerPricesService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-    for (const operationId of ['GetConsumerPriceOverview', 'GetConsumerPriceBasketSeries', 'ListConsumerPriceCategories', 'ListRetailerPriceSpreads']) {
-      assertParamExampleSet(consumerSpecs, operationId, 'basket_slug', CURATED.consumerBaskets);
-    }
-    for (const operationId of ['GetConsumerPriceBasketSeries', 'ListConsumerPriceCategories', 'ListConsumerPriceMovers']) {
-      assertParamExampleSet(consumerSpecs, operationId, 'range', CURATED.consumerRanges);
-    }
-
-    const aviationSpecs = [
-      ['AviationService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'AviationService.openapi.json'), 'utf8'))],
-      ['AviationService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'AviationService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-    const flightOps = ['SearchGoogleFlights', 'SearchGoogleDates'];
-    for (const operationId of flightOps) {
-      assertParamExampleSet(aviationSpecs, operationId, 'cabin_class', new Set(['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST']));
-      assertParamExampleSet(aviationSpecs, operationId, 'max_stops', new Set(['ANY', 'NON_STOP', 'ONE_STOP', 'TWO_PLUS_STOPS']));
-      assertParamExampleSet(aviationSpecs, operationId, 'departure_window', new Set(['6-20']));
-      for (const [label, spec] of aviationSpecs) {
-        for (const { value, where } of collectParamExamples(spec, label, operationId, 'airlines')) {
-          assert.notEqual(value, 'example', `${where}: placeholder airline`);
-          assert.notEqual(value, 'JFK', `${where}: airport-code placeholder is not an airline`);
-          assert.notEqual(value, 'LHR', `${where}: airport-code placeholder is not an airline`);
-          assert.match(String(value), /^[A-Z0-9]{2}$/, `${where}: airline example '${value}' must be an IATA airline code`);
-        }
-      }
-    }
-    assertParamExampleSet(aviationSpecs, 'SearchGoogleFlights', 'sort_by', new Set(['CHEAPEST', 'DURATION', 'DEPARTURE_TIME', 'ARRIVAL_TIME']));
-
+    // The GDELT, regional-intelligence, consumer-price and flight-search
+    // curated sets left with their services; summarize-article remains.
     const newsSpecs = [
       ['NewsService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'NewsService.openapi.json'), 'utf8'))],
       ['NewsService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'NewsService.openapi.yaml'), 'utf8'))],
@@ -947,10 +644,6 @@ describe('OpenAPI curated example values', () => {
       const mode = spec.paths?.['/api/news/v1/summarize-article']?.post
         ?.requestBody?.content?.[JSON_MEDIA]?.example?.mode;
       assert.ok(['brief', 'analysis', 'translate'].includes(mode), `${label}: summarize-article mode '${mode}' is not documented`);
-    }
-
-    for (const [label, spec] of consumerSpecs) {
-      assertConsumerPriceResponseRanges(spec, label);
     }
   });
 
@@ -966,118 +659,17 @@ describe('OpenAPI curated example values', () => {
     }
     const bundle = loadUnifiedOpenApiSpec();
     checked += assertClosedValueParamExamples(bundle, 'worldmonitor.openapi.yaml');
-    assert.ok(checked >= 20, `expected at least 20 prose-enumerated parameter examples, checked ${checked}`);
+    // Re-derived for the trimmed 12-service surface.
+    assert.ok(checked >= 6, `expected at least 6 prose-enumerated parameter examples, checked ${checked}`);
   });
 
   it('keeps the issue #4827 cluster-7 residue examples inside their documented closed sets', () => {
     const specs = [
       ['MarketService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'MarketService.openapi.json'), 'utf8'))],
       ['MarketService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'MarketService.openapi.yaml'), 'utf8'))],
-      ['IntelligenceService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'IntelligenceService.openapi.json'), 'utf8'))],
-      ['IntelligenceService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'IntelligenceService.openapi.yaml'), 'utf8'))],
-      ['TradeService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'TradeService.openapi.json'), 'utf8'))],
-      ['TradeService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'TradeService.openapi.yaml'), 'utf8'))],
-      ['DisplacementService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'DisplacementService.openapi.json'), 'utf8'))],
-      ['DisplacementService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'DisplacementService.openapi.yaml'), 'utf8'))],
-      ['MilitaryService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'MilitaryService.openapi.json'), 'utf8'))],
-      ['MilitaryService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'MilitaryService.openapi.yaml'), 'utf8'))],
       ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
     ];
     assertIssue4827Cluster7ResidueFixed(specs);
-  });
-
-  it('uses a plausible get-scenario-status poll response example', () => {
-    const specs = [
-      ['ScenarioService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'ScenarioService.openapi.json'), 'utf8'))],
-      ['ScenarioService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'ScenarioService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-
-    for (const [label, spec] of specs) {
-      assertScenarioStatusPollExample(spec, label);
-    }
-  });
-
-  it('uses valid available demographics observations in each published example', () => {
-    const specs = [
-      ['ResilienceService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'ResilienceService.openapi.json'), 'utf8'))],
-      ['ResilienceService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'ResilienceService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-    for (const [label, spec] of specs) {
-      const example = spec.paths['/api/resilience/v1/get-demographics-capability'].get.responses['200'].content[JSON_MEDIA].example;
-      let checked = 0;
-      for (const group of Object.values(example)) {
-        if (!group || typeof group !== 'object' || Array.isArray(group)) continue;
-        for (const [field, observation] of Object.entries(group)) {
-          if (!observation || typeof observation !== 'object' || observation.available !== true) continue;
-          checked += 1;
-          assert.ok(Number.isInteger(observation.year) && observation.year >= 1900
-            && observation.year <= new Date().getUTCFullYear() + 50, `${label}: ${field} needs a valid source year`);
-          assert.ok(Number.isFinite(observation.value) && observation.value >= 0, `${label}: ${field} needs a valid value`);
-          assert.ok(observation.source?.trim(), `${label}: ${field} needs source attribution`);
-          const unit = field.endsWith('Years') ? 'years' : field.endsWith('People') ? 'people'
-            : field === 'researchersPerMillion' ? 'people per million' : 'percent';
-          assert.equal(observation.unit, unit, `${label}: ${field} unit must match the reader contract`);
-        }
-      }
-      assert.ok(checked > 0, `${label}: expected available observations`);
-    }
-  });
-
-  it('uses a truthful partial-estimate Giving response example', () => {
-    const specs = [
-      ['GivingService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'GivingService.openapi.json'), 'utf8'))],
-      ['GivingService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'GivingService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-
-    for (const [label, spec] of specs) {
-      assertGivingPublishedEstimateExample(spec, label);
-    }
-  });
-
-  // ProductExporter and CountryProductEvidence have no `required` list and more
-  // fields than MAX_OPTIONAL_PROPERTIES, so the alphabetical slot cap decides
-  // what the GetCountryProducts example shows. Volume and recovery bookkeeping
-  // must not push out the fields each object exists for.
-  it('keeps share, value and source in the GetCountryProducts response example', () => {
-    const specs = [
-      ['SupplyChainService.openapi.json', JSON.parse(readFileSync(resolve(apiDir, 'SupplyChainService.openapi.json'), 'utf8'))],
-      ['SupplyChainService.openapi.yaml', loadYaml(readFileSync(resolve(apiDir, 'SupplyChainService.openapi.yaml'), 'utf8'))],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-
-    for (const [label, spec] of specs) {
-      const ops = operationEntries(spec).filter(({ op }) => op.operationId === 'GetCountryProducts');
-      assert.ok(ops.length > 0, `${label}: expected a GetCountryProducts operation`);
-      for (const { path, op } of ops) {
-        const example = op.responses?.['200']?.content?.[JSON_MEDIA]?.example;
-        const exporter = example?.products?.[0]?.topExporters?.[0];
-        for (const key of ['partnerCode', 'share', 'value']) {
-          assert.ok(exporter && Object.hasOwn(exporter, key), `${label} ${path}: topExporters example drops ${key}`);
-        }
-        assert.ok(example?.evidence && Object.hasOwn(example.evidence, 'source'), `${label} ${path}: evidence example drops source`);
-      }
-    }
-  });
-
-  it('uses a two-digit hs2 example for RouteIntelligence', () => {
-    const specs = [
-      [
-        'ShippingV2Service.openapi.json',
-        JSON.parse(readFileSync(resolve(apiDir, 'ShippingV2Service.openapi.json'), 'utf8')),
-      ],
-      [
-        'ShippingV2Service.openapi.yaml',
-        loadYaml(readFileSync(resolve(apiDir, 'ShippingV2Service.openapi.yaml'), 'utf8')),
-      ],
-      ['worldmonitor.openapi.yaml', loadUnifiedOpenApiSpec()],
-    ];
-
-    for (const [label, spec] of specs) {
-      assertRouteIntelligenceHs2Example(spec, label);
-    }
   });
 
   // ListCommodityQuotes only accepts supported commodity symbols (see #6307);

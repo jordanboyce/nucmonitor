@@ -86,12 +86,6 @@ const SEED_DOMAINS = {
   'energy:pipelines-gas': { key: 'seed-meta:energy:pipelines-gas', intervalMin: 10080 }, // weekly cron (7d); intervalMin = health.js maxStaleMin / 2 (20160 / 2)
   'energy:pipelines-oil': { key: 'seed-meta:energy:pipelines-oil', intervalMin: 10080 }, // weekly cron; same seeder writes both keys
   'energy:storage-facilities': { key: 'seed-meta:energy:storage-facilities', intervalMin: 10080 }, // weekly cron (7d); intervalMin = health.js maxStaleMin / 2 (20160 / 2)
-  'energy:fuel-shortages': { key: 'seed-meta:energy:fuel-shortages', intervalMin: 1440 }, // daily cron; intervalMin = health.js maxStaleMin / 2 (2880 / 2)
-  'intel-history:energy:intelligence': {
-    key: 'seed-meta:intel-history:energy:intelligence',
-    intervalMin: 360,
-    activationKey: 'seed-activated:intel-history:energy:intelligence',
-  },
 };
 
 function parseJsonValue(raw) {

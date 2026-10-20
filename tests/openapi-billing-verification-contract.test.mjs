@@ -139,7 +139,8 @@ describe('OpenAPI billing-verification contracts', () => {
         else nonPublic++;
       }
     }
-    assert.ok(nonPublic >= 150, `expected at least the audited 150 authenticated operations, found ${nonPublic}`);
+    // Re-derived for the trimmed RPC surface (91 operations across 12 services).
+    assert.ok(nonPublic >= 80, `expected at least the audited 80 authenticated operations, found ${nonPublic}`);
     assert.ok(publicOps >= 4, `expected at least the audited 4 public operations, found ${publicOps}`);
   });
 

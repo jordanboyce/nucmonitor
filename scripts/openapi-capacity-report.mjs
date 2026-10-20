@@ -92,11 +92,12 @@ export const TOP_N = 20;
  * `bytes > 0 && operations > 0` only catches the impossible case — a committed
  * 2.6 MB source YAML does not produce an empty document. The plausible failure
  * is a PARTIAL generation: a codegen or injector change that emits a handful of
- * operations, which would report a delighted 900 KB of headroom. The bundle has
- * grown monotonically through 193 -> 217 -> 219 operations; 100 is far below
- * anything real and far above anything a broken generator would produce.
+ * operations, which would report a delighted 900 KB of headroom. The bundle
+ * grew 193 -> 217 -> 219 operations, then the NucMonitor trim cut it to the
+ * 91 surviving RPC operations; 40 is far below anything real and far above
+ * anything a broken generator would produce.
  */
-export const MIN_PLAUSIBLE_OPERATIONS = 100;
+export const MIN_PLAUSIBLE_OPERATIONS = 40;
 
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 
@@ -353,7 +354,7 @@ export function repeatedStructures(spec, { minBytes = MIN_REPEATED_SUBTREE_BYTES
  * walk that regressed to "everything is reachable" would delete nothing AND
  * report nothing — the guard would agree with itself. What catches that is
  * `transforms.<name>.engaged` below, which is computed from the transform's own
- * returned counts, and the `>= 150` floor in
+ * returned counts, and the `>= 80` floor in
  * tests/openapi-unreachable-schemas.test.mjs. This field's job is narrower:
  * surface orphans that a LATER pass reintroduced after the drop ran.
  *
@@ -389,17 +390,9 @@ function transformEngagement(bundle) {
   const engaged = (n) => Number.isFinite(n) && n > 0;
   return {
     errorResponses: { ...bundle.stats, engaged: engaged(bundle.stats?.replacedRefs) },
-    chinaProvenanceSchemas: {
-      ...bundle.schemaStats,
-      engaged: engaged(bundle.schemaStats?.replacedRefs),
-    },
     sharedSchemaSubtrees: {
       ...bundle.schemaSubtreeStats,
       engaged: engaged(bundle.schemaSubtreeStats?.replacedRefs),
-    },
-    chinaDateSchemas: {
-      ...bundle.chinaDateStats,
-      engaged: engaged(bundle.chinaDateStats?.replacedRefs),
     },
     int64Schemas: {
       ...bundle.int64Stats,
@@ -420,9 +413,9 @@ function transformEngagement(bundle) {
 /**
  * Turn a built bundle into the capacity report.
  *
- * @param {{ spec: object, bytes: number, stats: object, schemaStats: object,
+ * @param {{ spec: object, bytes: number, stats: object,
  *   schemaSubtreeStats: object,
- *   chinaDateStats: object, int64Stats: object, headerStats: object,
+ *   int64Stats: object, headerStats: object,
  *   paramStats: object, unreachableStats: object }} bundle
  */
 export function buildCapacityReport(bundle, {

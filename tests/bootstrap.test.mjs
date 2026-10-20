@@ -12,7 +12,6 @@ import {
   BOOTSTRAP_CACHE_KEYS as EDGE_BOOTSTRAP_CACHE_KEYS,
   BOOTSTRAP_TIERS as EDGE_BOOTSTRAP_TIERS,
 } from '../api/_bootstrap-tier-keys.js';
-import { CII_RISK_SCORE_CACHE_KEYS } from '../api/_cii-risk-cache-keys.js';
 import { BOOTSTRAP_TIER_TIMEOUT_MS } from '../src/services/bootstrap.ts';
 import { __testing__ as healthTesting } from '../api/health.js';
 
@@ -45,6 +44,13 @@ const PENDING_CONSUMERS = new Set([ 'chokepointBaselines',
       // listEnergyDisruptions() on drawer open — no getHydratedData()
       // call site. Classifier extends this post-launch.
       'energyDisruptions',
+      // On-demand keys whose dashboard readers left with the nuclear trim: the
+      // IMD cyclone/marine weather overlay, the live video players that read
+      // resolved channel ids, and the energy storage-facility map layer. They
+      // ride no tier (the freight guard below still forbids that), so no
+      // visitor downloads them; they stay registered for their seeders and the
+      // credential-less per-key URL until those producers are retired.
+      'imdCycloneMarine', 'liveVideoResolved', 'storageFacilities',
 ]);
 
 describe('Bootstrap cache key registry', () => {
@@ -83,11 +89,6 @@ describe('Bootstrap cache key registry', () => {
   it('generated edge mirror exactly matches the authored shared registry', () => {
     assert.deepEqual(EDGE_BOOTSTRAP_CACHE_KEYS, CANONICAL_BOOTSTRAP_CACHE_KEYS);
     assert.deepEqual(EDGE_BOOTSTRAP_TIERS, CANONICAL_BOOTSTRAP_TIERS);
-    assert.equal(
-      CANONICAL_BOOTSTRAP_CACHE_KEYS.riskScores,
-      CII_RISK_SCORE_CACHE_KEYS.stale,
-      'the canonical bootstrap registry must track the current CII stale key',
-    );
   });
 
   it('server and edge consumers import their deployment-safe registry module', () => {
@@ -290,7 +291,8 @@ describe('App bootstrap slow-tier lifecycle', () => {
     const slowAwaitIndex = phase6.indexOf('await slowTierReady;');
     const settledGateIndex = phase6.indexOf('if (!settled)');
     const fanoutIndex = phase6.indexOf('this.dataLoader.loadAllData()');
-    const countryGeometryIndex = phase6.indexOf('const countryGeometryReady = this.preloadCountryGeometryForPostLcpWork();');
+    const visibleFanoutIndex = phase6.indexOf('this.runVisibleDataFanout()');
+    const countryGeometryIndex = phase6.indexOf('this.preloadCountryGeometryForPostLcpWork()');
 
     assert.ok(phase6Start >= 0 && phase6End > phase6Start, 'Missing Phase 6 data loading block');
     assert.ok(slowStartIndex >= 0, 'slow-tier checkpoint should still start in the background');
@@ -300,24 +302,25 @@ describe('App bootstrap slow-tier lifecycle', () => {
     assert.ok(settledGateIndex > slowAwaitIndex, 'viewport hydration must stay closed when the slow-tier wait times out');
     assert.ok(phase6.includes('this.slowTierWaitTimedOut = true'), 'a timed-out wait must defer panel primes until onSlowSettled');
     assert.ok(fanoutIndex > slowAwaitIndex, 'visible data fan-out should start after the slow-tier checkpoint settles');
-    assert.ok(countryGeometryIndex > fanoutIndex, 'country geometry preload should start after initial visible data fan-out');
+    assert.ok(visibleFanoutIndex > slowAwaitIndex, 'the settled fan-out should start after the slow-tier checkpoint settles');
+    assert.ok(
+      countryGeometryIndex > fanoutIndex && countryGeometryIndex > visibleFanoutIndex,
+      'country geometry preload should start after initial visible data fan-out',
+    );
     // Country geometry preload must stay deferred — re-introducing a pre-fanout
     // await here is the exact regression this guard exists to catch.
-    const preFanout = phase6.slice(0, fanoutIndex);
+    const preFanout = phase6.slice(0, Math.min(fanoutIndex, visibleFanoutIndex));
     assert.ok(!/await\s+preloadCountryGeometry\s*\(/.test(preFanout), 'country geometry must not be awaited before the fan-out');
     assert.ok(!/await\s+waitForBootstrapSlowTier\s*\(/.test(preFanout), 'raw slow-tier wait must not be inlined before the fan-out');
     assert.ok(!phase6.includes('void slowTierReady;'), 'slow-tier checkpoint must be awaited, not discarded');
-    assert.ok(appSrc.includes('this.startPostLcpIntelligence(countryGeometryReady, geometryReadyBeforeFanout);'), 'post-LCP intelligence should wait on background geometry and know whether geometry was already applied');
-    assert.ok(appSrc.includes('this.dataLoader.refreshGeometryDependentCountryData();'), 'post-geometry replay should restore country-detail attribution without blocking fan-out');
+    assert.match(phase6, /void this\.preloadCountryGeometryForPostLcpWork\(\);/, 'geometry preload runs in the background, never awaited');
   });
 });
 
 describe('Panel hydration consumers', () => {
   const panels = [
-    { name: 'ETFFlowsPanel', path: 'src/components/ETFFlowsPanel.ts', key: 'etfFlows' },
-    { name: 'MacroSignalsPanel', path: 'src/components/MacroSignalsPanel.ts', key: 'macroSignals' },
-    { name: 'ServiceStatusPanel (via infrastructure)', path: 'src/services/infrastructure/index.ts', key: 'serviceStatuses' },
-    { name: 'Sectors (via data-loader)', path: 'src/app/data-loader.ts', key: 'sectors' },
+    { name: 'Service statuses (via infrastructure)', path: 'src/services/infrastructure/index.ts', key: 'serviceStatuses' },
+    { name: 'Internet outages (via infrastructure)', path: 'src/services/infrastructure/index.ts', key: 'outages' },
   ];
 
   for (const panel of panels) {
@@ -476,27 +479,13 @@ describe('Bootstrap tier definitions', () => {
     const fast = tierKeys('fast');
     const onDemand = tierKeys('on-demand');
 
-    assert.ok(onDemand.has('cyberThreats'), 'cyberThreats must stay on-demand: its layer is off by default in every variant');
-    assert.ok(!slow.has('cyberThreats') && !fast.has('cyberThreats'), 'cyberThreats must not ride in a tier');
-  });
-});
-
-describe('Adaptive backoff adopters', () => {
-  it('ServiceStatusPanel.fetchStatus returns Promise<boolean>', () => {
-    const src = readFileSync(join(root, 'src/components/ServiceStatusPanel.ts'), 'utf-8');
-    assert.ok(src.includes('fetchStatus(): Promise<boolean>'), 'fetchStatus should return Promise<boolean> for adaptive backoff');
-    assert.ok(src.includes('lastServicesJson'), 'Missing lastServicesJson for change detection');
-  });
-
-  it('MacroSignalsPanel.fetchData returns Promise<boolean>', () => {
-    const src = readFileSync(join(root, 'src/components/MacroSignalsPanel.ts'), 'utf-8');
-    assert.ok(src.includes('fetchData(): Promise<boolean>'), 'fetchData should return Promise<boolean> for adaptive backoff');
-    assert.ok(src.includes('lastTimestamp'), 'Missing lastTimestamp for change detection');
-  });
-
-  it('StrategicRiskPanel.refresh returns Promise<boolean>', () => {
-    const src = readFileSync(join(root, 'src/components/StrategicRiskPanel.ts'), 'utf-8');
-    assert.ok(src.includes('refresh(): Promise<boolean>'), 'refresh should return Promise<boolean> for adaptive backoff');
-    assert.ok(src.includes('lastRiskFingerprint'), 'Missing lastRiskFingerprint for change detection');
+    // #7046: the pipeline registries back map layers that are off by default,
+    // so every visitor downloading them in a tier was pure freight.
+    for (const key of ['pipelinesGas', 'pipelinesOil']) {
+      assert.ok(onDemand.has(key), `${key} must stay on-demand: its layer is off by default`);
+    }
+    for (const key of onDemand) {
+      assert.ok(!slow.has(key) && !fast.has(key), `${key} must not ride in a tier`);
+    }
   });
 });

@@ -12,7 +12,10 @@ import assert from 'node:assert/strict';
 
 import { __testing__ } from '../api/health.js';
 import { jsonResponse } from '../api/_json-response.js';
-import { buildContentFreshnessAssessment } from '../api/_content-freshness.js';
+import {
+  buildContentFreshnessAssessment,
+  PORTWATCH_CONTENT_FRESHNESS_ACTIVATION_KEY,
+} from '../api/_content-freshness.js';
 
 const {
   readSeedMeta,
@@ -27,6 +30,23 @@ const {
   applyStaleContentGrace,
   healthStatusBucket,
 } = __testing__;
+
+// The PortWatch producer was retired with the supply-chain domain, so no
+// surviving api/health.js check opts into `requireContentFreshness` today. The
+// classifier branch, its activation bridge and the wire projection still ship,
+// and the next producer that declares the contract inherits them unchanged.
+// Register the retired PortWatch configuration as a fixture so this suite keeps
+// exercising that branch through the real classifyKey / readSeedMeta path.
+const FIXTURE_CHECK = 'portwatchPortActivity';
+assert.equal(SEED_META[FIXTURE_CHECK], undefined, 'fixture name must not shadow a real check');
+SEED_META[FIXTURE_CHECK] = {
+  key: 'seed-meta:supply_chain:portwatch-ports',
+  maxStaleMin: 2160,
+  minRecordCount: 174,
+  requireContentFreshness: { countries: ['CN', 'HK'], budgetMinutes: 10 * 24 * 60 },
+  contentFreshnessActivation: 'portwatchContentFreshness',
+};
+ACTIVATION_MARKERS.portwatchContentFreshness ??= PORTWATCH_CONTENT_FRESHNESS_ACTIVATION_KEY;
 
 const NOW = Date.parse('2026-08-03T14:42:58.000Z');
 const MINUTE_MS = 60_000;
@@ -186,7 +206,7 @@ describe('readSeedMeta content-freshness parsing', () => {
 });
 
 describe('portwatchPortActivity classification', () => {
-  it('is registered to require content freshness over a health-pinned scope and budget', () => {
+  it('declares the health-pinned scope and budget through the fixture registration', () => {
     assert.deepEqual(
       SEED_META.portwatchPortActivity.requireContentFreshness,
       { countries: ['CN', 'HK'], budgetMinutes: PORTWATCH_CONTENT_BUDGET_MINUTES },

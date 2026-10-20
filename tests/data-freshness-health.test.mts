@@ -24,12 +24,12 @@ function jsonResponse(body: unknown, status = 200): Response {
 describe('health freshness ingestion', () => {
   it('does not synthesize healthy sources or a Redis outage while refresh is pending', async () => {
     __resetHealthFreshnessForTests();
-    const before = structuredClone(dataFreshness.getSource('gdelt'));
+    const before = structuredClone(dataFreshness.getSource('rss'));
     await assert.rejects(refreshDataFreshnessFromHealth({
       urlResolver: (path) => path,
       fetchFn: async () => jsonResponse({ status: 'REFRESH_PENDING', retryAfterSeconds: 3 }, 503),
     }), /health freshness fetch failed: 503/);
-    assert.deepEqual(dataFreshness.getSource('gdelt'), before);
+    assert.deepEqual(dataFreshness.getSource('rss'), before);
   });
 
   it('identifies the weather source and outage gap as NWS/ECCC/WMO SWIC coverage', async () => {
@@ -74,7 +74,7 @@ describe('health freshness ingestion', () => {
       fetchFn: async () => jsonResponse({
         checkedAt: new Date(checkedAtMs).toISOString(),
         checks: {
-          gdeltIntel: {
+          newsInsights: {
             status: 'OK',
             records: 14,
             seedAgeMin: 30,
@@ -86,7 +86,7 @@ describe('health freshness ingestion', () => {
             seedAgeMin: 60,
             maxStaleMin: 45,
           },
-          cyberThreats: {
+          wildfires: {
             status: 'SEED_ERROR',
             records: 0,
             maxStaleMin: 240,
@@ -97,17 +97,17 @@ describe('health freshness ingestion', () => {
 
     assert.equal(applied, 3);
 
-    const gdelt = dataFreshness.getSource('gdelt');
-    assert.equal(gdelt?.status, 'fresh');
-    assert.equal(gdelt?.itemCount, 14);
-    assert.equal(gdelt?.maxStaleMin, 420);
-    assert.equal(gdelt?.lastUpdate?.toISOString(), new Date(checkedAtMs - 30 * 60_000).toISOString());
+    const rss = dataFreshness.getSource('rss');
+    assert.equal(rss?.status, 'fresh');
+    assert.equal(rss?.itemCount, 14);
+    assert.equal(rss?.maxStaleMin, 420);
+    assert.equal(rss?.lastUpdate?.toISOString(), new Date(checkedAtMs - 30 * 60_000).toISOString());
 
     const weather = dataFreshness.getSource('weather');
     assert.equal(weather?.status, 'stale');
     assert.equal(weather?.healthStatus, 'STALE_SEED');
 
-    const cyber = dataFreshness.getSource('cyber_threats');
+    const cyber = dataFreshness.getSource('firms');
     assert.equal(cyber?.status, 'error');
     assert.equal(cyber?.lastError, 'SEED_ERROR');
   });
@@ -211,9 +211,9 @@ describe('health freshness ingestion', () => {
     });
 
     assert.equal(applied, mappedSources.size);
-    assert.ok(applied > 10);
+    assert.ok(applied >= 5);
 
-    for (const sourceId of ['gdelt', 'weather', 'bis'] as const) {
+    for (const sourceId of ['rss', 'weather', 'bis'] as const) {
       const source = dataFreshness.getSource(sourceId);
       assert.equal(source?.status, 'error');
       assert.equal(source?.healthStatus, 'REDIS_DOWN');
@@ -230,7 +230,7 @@ describe('health freshness ingestion', () => {
       fetchFn: async () => jsonResponse({
         checkedAt: new Date(checkedAtMs).toISOString(),
         checks: {
-          gdeltIntel: {
+          newsInsights: {
             status: 'COVERAGE_PARTIAL',
             records: 12,
             seedAgeMin: 1,
@@ -242,10 +242,10 @@ describe('health freshness ingestion', () => {
 
     assert.equal(applied, 1);
 
-    const gdelt = dataFreshness.getSource('gdelt');
-    assert.equal(gdelt?.status, 'stale');
-    assert.equal(gdelt?.healthStatus, 'COVERAGE_PARTIAL');
-    assert.equal(gdelt?.lastError, null);
+    const rss = dataFreshness.getSource('rss');
+    assert.equal(rss?.status, 'stale');
+    assert.equal(rss?.healthStatus, 'COVERAGE_PARTIAL');
+    assert.equal(rss?.lastError, null);
   });
 
   it('does not classify stale seeds as fresh even when recently seeded', async () => {
@@ -256,7 +256,7 @@ describe('health freshness ingestion', () => {
       fetchFn: async () => jsonResponse({
         checkedAt: new Date(checkedAtMs).toISOString(),
         checks: {
-          gdeltIntel: {
+          newsInsights: {
             status: 'STALE_SEED',
             records: 12,
             seedAgeMin: 1,
@@ -268,10 +268,10 @@ describe('health freshness ingestion', () => {
 
     assert.equal(applied, 1);
 
-    const gdelt = dataFreshness.getSource('gdelt');
-    assert.equal(gdelt?.status, 'stale');
-    assert.equal(gdelt?.healthStatus, 'STALE_SEED');
-    assert.equal(gdelt?.lastError, null);
+    const rss = dataFreshness.getSource('rss');
+    assert.equal(rss?.status, 'stale');
+    assert.equal(rss?.healthStatus, 'STALE_SEED');
+    assert.equal(rss?.lastError, null);
   });
 
   it('uses stale content age instead of seed age for STALE_CONTENT checks', async () => {
@@ -282,7 +282,7 @@ describe('health freshness ingestion', () => {
       fetchFn: async () => jsonResponse({
         checkedAt: new Date(checkedAtMs).toISOString(),
         checks: {
-          blsSeries: {
+          bisDsr: {
             status: 'STALE_CONTENT',
             records: 9,
             seedAgeMin: 1,
@@ -296,7 +296,7 @@ describe('health freshness ingestion', () => {
 
     assert.equal(applied, 1);
 
-    const bls = dataFreshness.getSource('bls');
+    const bls = dataFreshness.getSource('bis');
     assert.equal(bls?.status, 'stale');
     assert.notEqual(bls?.status, 'fresh');
     assert.equal(bls?.healthStatus, 'STALE_CONTENT');
@@ -350,7 +350,7 @@ describe('health freshness ingestion', () => {
         summary: { total: 196, ok: 195, warn: 0, onDemandWarn: 0, staleContent: 0, crit: 1 },
         checkedAt: new Date(checkedAtMs).toISOString(),
         problems: {
-          gdeltIntel: { status: 'STALE_SEED', records: 6, seedAgeMin: 900, maxStaleMin: 720 },
+          newsInsights: { status: 'STALE_SEED', records: 6, seedAgeMin: 900, maxStaleMin: 720 },
         },
       }),
     });
@@ -359,10 +359,10 @@ describe('health freshness ingestion', () => {
     // synthesized server-vouched OK for the rest.
     assert.equal(applied, mappedSources.size);
 
-    const gdelt = dataFreshness.getSource('gdelt');
-    assert.equal(gdelt?.status, 'stale');
-    assert.equal(gdelt?.healthStatus, 'STALE_SEED');
-    assert.equal(gdelt?.itemCount, 6);
+    const rss = dataFreshness.getSource('rss');
+    assert.equal(rss?.status, 'stale');
+    assert.equal(rss?.healthStatus, 'STALE_SEED');
+    assert.equal(rss?.itemCount, 6);
 
     const weather = dataFreshness.getSource('weather');
     assert.equal(weather?.status, 'fresh');
@@ -383,7 +383,7 @@ describe('health freshness ingestion', () => {
         },
         checkedAt: new Date(checkedAtMs).toISOString(),
         problems: {
-          gdeltIntel: {
+          newsInsights: {
             status: 'COVERAGE_PARTIAL', records: 12,
             seedAgeMin: 1, maxStaleMin: 420,
           },
@@ -393,8 +393,8 @@ describe('health freshness ingestion', () => {
 
     const mappedSources = new Set(Object.values(HEALTH_CHECK_SOURCE_MAP).flat());
     assert.equal(applied, mappedSources.size);
-    assert.equal(dataFreshness.getSource('gdelt')?.status, 'stale');
-    assert.equal(dataFreshness.getSource('gdelt')?.healthStatus, 'COVERAGE_PARTIAL');
+    assert.equal(dataFreshness.getSource('rss')?.status, 'stale');
+    assert.equal(dataFreshness.getSource('rss')?.healthStatus, 'COVERAGE_PARTIAL');
     assert.equal(dataFreshness.getSource('weather')?.status, 'fresh');
     assert.equal(dataFreshness.getSource('weather')?.healthStatus, 'OK');
   });
@@ -408,7 +408,7 @@ describe('health freshness ingestion', () => {
         status: 'HEALTHY',
         checkedAt: new Date(checkedAtMs).toISOString(),
         pending: {
-          blsSeries: {
+          bisDsr: {
             status: 'STALE_CONTENT', records: 9,
             seedAgeMin: 1, maxStaleMin: 360,
             contentAgeMin: 90, maxContentAgeMin: 60,
@@ -417,7 +417,7 @@ describe('health freshness ingestion', () => {
       }),
     });
 
-    const bls = dataFreshness.getSource('bls');
+    const bls = dataFreshness.getSource('bis');
     assert.equal(bls?.status, 'stale');
     assert.equal(bls?.healthStatus, 'STALE_CONTENT');
     assert.equal(bls?.itemCount, 9);
@@ -461,7 +461,7 @@ describe('health freshness ingestion', () => {
           weatherAlerts: { status: 'OK', records: 3, seedAgeMin: 5, maxStaleMin: 45 },
         },
         pending: { weatherAlerts: { status: 'STALE_CONTENT' } },
-        problems: { weatherAlerts: { status: 'SEED_ERROR' }, gdeltIntel: { status: 'SEED_ERROR' } },
+        problems: { weatherAlerts: { status: 'SEED_ERROR' }, newsInsights: { status: 'SEED_ERROR' } },
       }),
     });
 
@@ -490,7 +490,7 @@ describe('health freshness ingestion', () => {
 
     // cyber_threats carried SEED_ERROR from an earlier ingest above — a
     // healthy compact snapshot must clear it.
-    const cyber = dataFreshness.getSource('cyber_threats');
+    const cyber = dataFreshness.getSource('firms');
     assert.equal(cyber?.status, 'fresh');
     assert.equal(cyber?.healthStatus, 'OK');
     assert.equal(cyber?.lastError, null);
@@ -541,11 +541,11 @@ describe('health freshness ingestion', () => {
           // instead of passing calculateStatus's age check as 'fresh'.
           weatherAlerts: { status: 'CHINA_UNAVAILABLE', records: 5, seedAgeMin: 1, maxStaleMin: 45 },
           // Server-warn degradation: fresh age but must render 'stale'.
-          gdeltIntel: { status: 'COVERAGE_DEGRADED', records: 10, seedAgeMin: 1, maxStaleMin: 420 },
+          newsInsights: { status: 'COVERAGE_DEGRADED', records: 10, seedAgeMin: 1, maxStaleMin: 420 },
           // Server-ok: an intentionally-blocked source is NOT a degradation and
           // must still render 'fresh' at a fresh age (guards a future edit from
           // folding it in with the warn statuses next to it).
-          cyberThreats: { status: 'SOURCE_BLOCKED', records: 8, seedAgeMin: 1, maxStaleMin: 240 },
+          wildfires: { status: 'SOURCE_BLOCKED', records: 8, seedAgeMin: 1, maxStaleMin: 240 },
         },
       }),
     });
@@ -554,7 +554,7 @@ describe('health freshness ingestion', () => {
     // not an error predicate and COVERAGE_DEGRADED was not in the fresh-age stale
     // set. SOURCE_BLOCKED must stay fresh in both the old and new behavior.
     assert.equal(dataFreshness.getSource('weather')?.status, 'error');
-    assert.equal(dataFreshness.getSource('gdelt')?.status, 'stale');
-    assert.equal(dataFreshness.getSource('cyber_threats')?.status, 'fresh');
+    assert.equal(dataFreshness.getSource('rss')?.status, 'stale');
+    assert.equal(dataFreshness.getSource('firms')?.status, 'fresh');
   });
 });

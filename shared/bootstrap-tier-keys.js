@@ -27,13 +27,11 @@ export const BOOTSTRAP_CACHE_KEYS = Object.freeze({
   wildfires: 'wildfire:fires-bootstrap:v1',
   techReadiness: 'economic:worldbank-techreadiness:v1',
   naturalEvents: 'natural:events:v1',
-  insights: 'news:insights:v1',
   cryptoQuotes: 'market:crypto:v1',
   cryptoSectors: 'market:crypto-sectors:v1',
   defiTokens: 'market:defi-tokens:v1',
   aiTokens: 'market:ai-tokens:v1',
   otherTokens: 'market:other-tokens:v1',
-  temporalAnomalies: 'temporal:anomalies:v1',
   weatherAlerts: 'weather:alerts:v1',
   imdCycloneMarine: 'weather:imd-cyclone-marine:v1',
   liveVideoResolved: 'live-video:resolved:v1',
@@ -52,7 +50,6 @@ export const BOOTSTRAP_CACHE_KEYS = Object.freeze({
   pipelinesGas: 'energy:pipelines:gas:v1',
   pipelinesOil: 'energy:pipelines:oil:v1',
   storageFacilities: 'energy:storage-facilities:v1',
-  fuelShortages: 'energy:fuel-shortages:v1',
 });
 
 const SLOW_KEY_NAMES = new Set([
@@ -71,13 +68,12 @@ const SLOW_KEY_NAMES = new Set([
   'diseaseOutbreaks',
   'oilStocksAnalysis',
   'lngVulnerability',
-  'fuelShortages',
 ]);
 
 const FAST_KEY_NAMES = new Set([
   'earthquakes', 'outages', 'serviceStatuses', 'ddosAttacks', 'trafficAnomalies',
-  'marketQuotes', 'commodityQuotes', 'insights',
-  'temporalAnomalies', 'weatherAlerts',
+  'marketQuotes', 'commodityQuotes',
+  'weatherAlerts',
 ]);
 
 const ON_DEMAND_KEY_NAMES = new Set([

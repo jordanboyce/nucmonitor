@@ -806,7 +806,7 @@ test('public on-demand key URL is CDN-shielded and anonymous', async () => {
     entitlement: activeApiEntitlement(),
     bootstrapPipelineBody: presentOnDemandPipelineBody(),
   }, async () => {
-    const resp = await handler(makePublicOnDemandRequest('cyberThreats'));
+    const resp = await handler(makePublicOnDemandRequest('liveVideoResolved'));
 
     assert.equal(resp.status, 200);
     assertSharedCacheHeaders(resp);
@@ -814,10 +814,10 @@ test('public on-demand key URL is CDN-shielded and anonymous', async () => {
   });
 });
 
-test('FAST-demoted keys serve anonymously with publisher-sized shields', async () => {
+test('on-demand keys with explicit profiles serve anonymously with publisher-sized shields', async () => {
   const expected = {
-    correlationCards: 300,
-    forecasts: 3600,
+    imdCycloneMarine: 900,
+    liveVideoResolved: 1800,
   };
   await withMockedBootstrapAuth({
     entitlement: null,
@@ -844,46 +844,10 @@ test('public on-demand URL keeps ONE contract even when credentials are attached
     entitlement: activeApiEntitlement(),
     bootstrapPipelineBody: presentOnDemandPipelineBody(),
   }, async () => {
-    const resp = await handler(makePublicOnDemandRequest('cyberThreats', { Cookie: 'wm-session=whatever' }));
+    const resp = await handler(makePublicOnDemandRequest('liveVideoResolved', { Cookie: 'wm-session=whatever' }));
 
     assert.equal(resp.status, 200);
     assertSharedCacheHeaders(resp);
-  });
-});
-
-test('every Canada road key serves anonymously with a shield sized to its publisher', async () => {
-  // #6763 moved canadaRoads and albertaRoads off the fast tier so they stop
-  // riding a payload every visitor downloads. A TIERED key is rejected on this
-  // URL — the next test proves tiered keys such as wildfires draw a 401 — so the
-  // move only works if these same requests now qualify. Asserted through the
-  // handler rather than by reading the registry: the registry is what the tier
-  // move edits, so checking it against itself would pass either way.
-  //
-  // The s-maxage values are the second half of the move. Without a profile
-  // these inherit the slow 7200 s shield, which outlives the 45- and 90-minute
-  // freshness budgets api/health.js declares for them.
-  const expected = {
-    canadaRoads: 900,   // seed-provincial-511, 15min member interval
-    albertaRoads: 900,  // same seeder, same interval
-    manitobaRoads: 900, // same seeder, same interval
-    bcOpen511: 1800,    // seed-open511, 30min member interval
-    torontoRoads: 7200, // 2h publisher; the inherited slow shield already fits
-  };
-  await withMockedBootstrapAuth({
-    entitlement: null,
-    bootstrapPipelineBody: presentOnDemandPipelineBody(),
-  }, async () => {
-    for (const [key, sMaxAge] of Object.entries(expected)) {
-      const resp = await handler(makePublicOnDemandRequest(key));
-      assert.equal(resp.status, 200, `keys=${key} must serve without credentials`);
-      assertSharedCacheHeaders(resp);
-      assertPublicCorsHeaders(resp);
-      assert.match(
-        resp.headers.get('cdn-cache-control') || '',
-        new RegExp(`s-maxage=${sMaxAge}\\b`),
-        `keys=${key} must be CDN-shielded for ${sMaxAge}s`,
-      );
-    }
   });
 });
 
@@ -892,11 +856,11 @@ test('a public on-demand miss is no-store so a recovered seeder is not hidden', 
   // 200 at the publisher interval would pin an empty body until the shield
   // expired, and health (which reads Redis) would never page.
   await withMockedBootstrapAuth({ entitlement: null }, async () => {
-    const resp = await handler(makePublicOnDemandRequest('canadaRoads'));
+    const resp = await handler(makePublicOnDemandRequest('imdCycloneMarine'));
     const body = await resp.json();
 
     assert.equal(resp.status, 200);
-    assert.deepEqual(body, { data: {}, missing: ['canadaRoads'] });
+    assert.deepEqual(body, { data: {}, missing: ['imdCycloneMarine'] });
     assert.equal(resp.headers.get('cache-control'), 'no-store');
     assertNonSharedCacheHeaders(resp);
     assertPublicCorsHeaders(resp);
@@ -910,7 +874,7 @@ test('public on-demand URL does not widen into a CDN-amplification vector', asyn
   // the exact amplification the public URLs exist to prevent (#5259).
   await withMockedBootstrapAuth({ entitlement: null }, async () => {
     for (const keys of [
-      'cyberThreats,marketQuotes',   // multi-key
+      'cbrRates,marketQuotes',       // multi-key
       'wildfires',                   // slow-tier key, not on-demand
       'earthquakes',                 // fast-tier key, not on-demand
       'notARealKey',                 // unknown
@@ -934,67 +898,3 @@ test('protected tester cookie names keep implicit weather bootstrap off the publ
   });
 });
 
-// ── IMF WEO datasets: validated before they are served ─────────────────────
-// A malformed IMF snapshot used to ride the publisher-sized CDN shield, so a
-// bad seed stayed cached after the seeder repaired it. A structurally broken
-// dataset now goes to `missing` with no-store; a single malformed country row
-// is dropped on its own and the rest of the dataset is served unchanged.
-for (const [key, field] of Object.entries({ imfMacro: 'inflationPct', imfGrowth: 'realGdpGrowthPct', imfLabor: 'unemploymentPct', imfExternal: 'exportsUsd' })) {
-  test(`${key} sends a structurally malformed dataset to missing with no-store`, async () => {
-    for (const value of [
-      {},
-      [],
-      { countries: {} },
-      { countries: [] },
-      { countries: { UA: { [field]: 1 } }, fallback: true },
-      { countries: { UA: { [field]: 1 } }, error: 'offline' },
-      { countries: { UA: { [field]: 1 } }, dataAvailable: false },
-      { countries: { UA: { [field]: 'bad' } } },
-    ]) {
-      await withMockedBootstrapAuth({ entitlement: null, bootstrapPipelineBody: presentOnDemandPipelineBody(value) }, async () => {
-        const response = await handler(makePublicOnDemandRequest(key));
-        assert.deepEqual(await response.json(), { data: {}, missing: [key] }, JSON.stringify(value));
-        assert.equal(response.headers.get('cache-control'), 'no-store');
-        assertNonSharedCacheHeaders(response);
-      });
-    }
-  });
-
-  test(`${key} drops malformed country rows individually and serves the rest unchanged`, async () => {
-    const good = { [field]: 1, year: 2026, extraField: 'kept' };
-    const value = {
-      countries: {
-        UA: good,
-        AE: { [field]: 2 },
-        XX: { [field]: 'bad' },
-        YY: null,
-        ZZ: { [field]: '1e999' },
-        QQ: { [field]: 3, year: 1776.5 },
-        WW: { year: 2026 },
-        lower: { [field]: 4 },
-      },
-      releases: { [field]: { publishedAt: '2026-08-01T00:00:00Z', updatedAt: null } },
-      seededAt: '2026-09-01T00:00:00Z',
-    };
-    await withMockedBootstrapAuth({ entitlement: null, bootstrapPipelineBody: presentOnDemandPipelineBody(value) }, async () => {
-      const response = await handler(makePublicOnDemandRequest(key));
-      const body = await response.json();
-      assert.deepEqual(body.missing, []);
-      assert.deepEqual(body.data[key], {
-        countries: { UA: good, AE: { [field]: 2 } },
-        releases: { [field]: { publishedAt: '2026-08-01T00:00:00Z', updatedAt: null } },
-        seededAt: '2026-09-01T00:00:00Z',
-      });
-      assertSharedCacheHeaders(response);
-    });
-  });
-
-  test(`${key} serves a well-formed dataset exactly as seeded`, async () => {
-    const repaired = { countries: { UA: { [field]: 1, year: 2026 } }, seededAt: '2026-09-01T00:00:00Z' };
-    await withMockedBootstrapAuth({ entitlement: null, bootstrapPipelineBody: presentOnDemandPipelineBody(repaired) }, async () => {
-      const response = await handler(makePublicOnDemandRequest(key));
-      assert.deepEqual((await response.json()).data[key], repaired);
-      assertSharedCacheHeaders(response);
-    });
-  });
-}

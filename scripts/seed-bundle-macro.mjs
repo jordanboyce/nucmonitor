@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { runBundle, HOUR, DAY } from './_bundle-runner.mjs';
 import { CHINA_MACRO_CACHE_KEY } from './_china-macro-contract.mjs';
-import { orderMacroSections } from './_macro-bundle-order.mjs';
 import { PHYSICAL_PREMIUM_SECTION_TIMEOUT_MS } from './seed-physical-premiums.mjs';
 
 // SGE SHAU/SHAG daily PM benchmarks joined only to the already-seeded
@@ -74,12 +73,7 @@ const MACRO_SECTIONS = [
 // producer cannot starve established production members every day. Give it
 // first priority on the 08:00 Sunday tick. The 09:00 retry always restores
 // Physical to the first slot, even if Education failed and remains due.
-const sections = orderMacroSections(
-  new Date(),
-  EDUCATION_SECTION,
-  PHYSICAL_PREMIUM_SECTION,
-  MACRO_SECTIONS,
-);
+const sections = [PHYSICAL_PREMIUM_SECTION, ...MACRO_SECTIONS];
 
 await runBundle('macro', sections, {
   // Railway kills cron containers at 10 minutes. Defer sections whose full

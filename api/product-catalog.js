@@ -5,7 +5,7 @@
  * tier view model for the /pro pricing page. Cached in Redis with
  * configurable TTL.
  *
- * GET /api/product-catalog → { product, currency, plans, capabilities, tiers, fetchedAt, cachedUntil }
+ * GET /api/product-catalog → { product, currency, plans, tiers, fetchedAt, cachedUntil }
  * DELETE /api/product-catalog → purge cache (requires RELAY_SHARED_SECRET)
  */
 
@@ -26,7 +26,6 @@ import {
   TIER_CONFIG,
 } from './_product-catalog.generated.js';
 // @ts-expect-error — build-generated JS module
-import { PUBLIC_INVENTORY_FACTS } from './_inventory-facts.generated.js';
 // @ts-expect-error — JS module
 import { unwrapEnvelope } from './_seed-envelope.js';
 
@@ -56,10 +55,11 @@ function json(body, status, cors, cacheControl, source) {
 }
 
 function withPublicFacts(payload) {
+  // Cached payloads written before the trim may still carry `capabilities`.
+  const { capabilities: _staleCapabilities, ...rest } = payload ?? {};
   return {
-    ...payload,
+    ...rest,
     ...PUBLIC_PRODUCT_FACTS,
-    capabilities: PUBLIC_INVENTORY_FACTS.capabilities,
   };
 }
 

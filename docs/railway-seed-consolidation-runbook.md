@@ -1052,18 +1052,6 @@ All new services share these settings:
 > showed red on Railway. 13:00 UTC (15:00 CEST) clears €STR (08:00 CET), the
 > yield curve (~12:00 CET) and CISS morning publication. Changed 2026-07-01.
 
-### Bundle 2: seed-bundle-portwatch
-
-| Setting | Value |
-|---|---|
-| **Service name** | `seed-bundle-portwatch` |
-| **Start command** | `node scripts/seed-bundle-portwatch.mjs` |
-| **Cron schedule** | `0 */1 * * *` (hourly) |
-| **Watch paths** | See `scripts/railway-services.json` (exact runtime closure; run `node scripts/audit-railway-watch-paths.mjs`) |
-| **Replaces** | 4 services |
-| **Net savings** | 3 slots |
-| **Members** | Disruptions (hourly), Main (6h), Port Activity (12h), Chokepoints Ref (weekly) |
-
 ### Bundle 3: seed-bundle-static-ref
 
 | Setting | Value |
@@ -1106,97 +1094,6 @@ World Bank WDI, and ILOSTAT industrial workforce data. A failed stage retains
 only its prior section and its original fetch timestamp. The 20-day eligibility
 window keeps the 30-day data TTL alive while the observation-year content clock
 detects old source material.
-
-### Bundle 3 heavy: seed-bundle-static-ref-heavy (live, #6806)
-
-Arms-Suppliers (380s reservation) and Military-Bases (410s) cannot share a 570s
-tick — Railway kills a cron container at 10 minutes, so that ceiling is not
-negotiable. They CAN share a bundle: the runner defers whichever loses the tick
-to the next daily fire, and at 14-day and 30-day cadences a one-day deferral
-costs nothing. One service carries all three heavy members instead of three
-1-section services, because Railway caps a project at 100 and the fleet is at 82.
-
-| Setting | Value |
-|---|---|
-| **Service name** | `seed-bundle-static-ref-heavy` |
-| **Start command** | `node scripts/seed-bundle-static-ref-heavy.mjs` |
-| **Cron schedule** | `0 4 * * *` (daily 04:00 UTC, staggered off leftover's 03:00) |
-| **Lifecycle** | active — service `6285c37b-1327-46f1-bfd0-7454612764fb`, provisioned 2026-08-19, first tick published `bundle:heartbeat:static-ref-heavy` at 2026-08-20T04:01:04Z |
-| **Members** | Supply-Vulnerability (160s / daily), Mineral-Production (180s / 60d), Arms-Suppliers (370s / 14d), and Military-Bases (400s / 30d), ordered by the durable turn policy below |
-| **Wall-time budget** | `maxBundleMs: 570_000` |
-| **Required variable** | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `CLOUDFLARE_R2_ACCOUNT_ID` and one of `CLOUDFLARE_R2_TOKEN` / `CLOUDFLARE_API_TOKEN`. `USPTO_API_KEY` stays on leftover. The R2 pair is NOT optional here: `scripts/data/military-bases-final.json` is gitignored and the service has no volume, so without it Military-Bases falls back to the published version and exits non-zero once that is past its 30-day interval (#6845). |
-| **Heartbeat** | `bundle:heartbeat:static-ref-heavy` |
-
-Supply-Vulnerability is a Redis-only projection with a 170s reservation,
-including kill grace. It does not always run first: Supply-Vulnerability leads
-even durable turns, while the rotated heavy list leads odd turns. This split is
-load-bearing because Supply-Vulnerability and Military-Bases reserve 580s
-together, more than the 570s bundle budget. The admission contract guarantees
-that each cadence class gets a slot within any two consecutive claimed turns.
-
-The scheduler claims the current value of `bundle:turn:static-ref-heavy` under
-a 15-minute lease. It acknowledges and advances that turn after every fully
-completed tick, including a non-zero tick, so a failing lead cannot monopolize
-the next invocation. A process killed or aborted before its terminal summary
-does not acknowledge; after lease expiry, the same unexecuted turn is safe to
-retry. This avoids the missed-day and repeated-parity failures of calendar
-rotation.
-
-Within the heavy list, `turn % 3` rotates Mineral-Production, Arms-Suppliers,
-and Military-Bases. A member that never publishes never stops being due, so a
-fixed order would hand it the first heavy slot every single tick. That is not
-hypothetical: Arms-Suppliers has never written
-`seed-meta:military:arms-suppliers-complete`, and on 2026-08-18 it took 371s of
-leftover's budget, leaving 177s against Mineral-Production's 190s reservation —
-deferring it by 13 seconds on the tick its acknowledgement expired. Durable
-turn rotation means each heavy member leads every third claimed turn and a
-permanently failing member can consume at most one heavy lead slot in three.
-
-Start commands in this table keep the `scripts/` prefix so they match the other
-bundle rows and the registry-coverage grep. Railway's actual start command is
-`node seed-bundle-static-ref-heavy.mjs` because `deployMode:
-nixpacks-root-scripts` sets `rootDirectory` to `scripts/`. It was cloned from
-`seed-bundle-static-ref` and carries its own service id
-`6285c37b-1327-46f1-bfd0-7454612764fb`, not leftover's
-`4dd3934d-e5f7-4af8-b34b-c1796226800b`. The 04:00 stagger is intentional — a
-400s job at 03:00 would contend Redis / R2 / upstreams with leftover.
-
-Provisioning a repository-backed service is only half the job: it must also be
-enrolled in `scripts/railway-native-autodeploy-fleet.json` and lose its
-`lifecycle: planned` row, or `Railway Native Deploy Health` fails closed with
-`unexpected repository service(s)` and stops checking the whole fleet. Set
-`source.checkSuites` to `false` at the same time — a clone inherits Railway's
-`true` default, and wait-for-CI reads the head commit's entire check suite, so
-any red check anywhere strands this service's builds.
-
-### Bundle 4: seed-bundle-resilience
-
-| Setting | Value |
-|---|---|
-| **Service name** | `seed-bundle-resilience` |
-| **Start command** | `node scripts/seed-bundle-resilience.mjs` |
-| **Cron schedule** | `0 */6 * * *` (every 6h) |
-| **Watch paths** | `scripts/**`, `shared/**` |
-| **Replaces** | 2 services |
-| **Net savings** | 1 slot |
-| **Members** | Resilience Scores (2h admission interval), Resilience Static (90d, skips most runs), Food Stocks (monthly USDA PSD + FAOSTAT fill; needs `USDA_FAS_PSD_API_KEY`), Five-Factor Scorecard (daily Redis-only scoring) |
-| **Wall budget** | 570 seconds, below Railway's 10-minute container kill. Section timeouts are 240s / 280s / 480s / 180s, so every member fits alone once the runner's 10s kill grace is added. Resilience Scores stays first because it keeps the ranking and interval caches alive. Five-Factor Scorecard stays last: if a long-cadence section consumes its reservation, the runner defers scorecard before start; it fits on the next normal tick when Static and Food skip. The 180s scorecard reservation contains the 25s source-read deadline, Redis retry ceiling, atomic publication, and process-cleanup headroom. |
-| **Scorecard measurement** | Read-only production-source `--dry-run` on 2026-08-29: 196 countries, 3,716,740 serialized bytes, 1.82s wall time, and 220,577,792-byte maximum RSS. Validation passed and Redis was not modified. This is placement and payload-size evidence, not deployment or production-acceptance evidence. |
-| **Do not** | raise any section timeout above `maxBundleMs - 10_000`. A section whose timeout plus kill grace exceeds the budget is deferred on **every** tick while the bundle still exits 0 — #6556 ran this service dead for six hours behind a green badge. `tests/bundle-budget-admission.test.mjs` fails the PR, and `runBundle` refuses to start, but the arithmetic is worth knowing before you edit. |
-
-### Bundle 5: seed-bundle-derived-signals
-
-| Setting | Value |
-|---|---|
-| **Service name** | `seed-bundle-derived-signals` |
-| **Start command** | `node scripts/seed-bundle-derived-signals.mjs` |
-| **Cron schedule** | `*/5 * * * *` (every 5 min) |
-| **Watch paths** | See `scripts/railway-services.json` (exact runtime closure; run `node scripts/audit-railway-watch-paths.mjs`) |
-| **Replaces** | 2 services |
-| **Net savings** | 1 slot |
-| **Members** | Correlation (5min), Market-Alert-Ledger (5min), Cross-Source Signals (15min), Cross-Strait Activity (3h), China Decision Signals (15min), Regional Snapshots (6h) |
-| **Required env** | `JAPAN_MOD_PROXY_URL` or `PROXY_URL` (Cross-Strait Activity's Japan MOD exit; the section declares an any-of group, so either satisfies it and only an environment with neither fails as `CONFIG_ERROR`) |
-| **Note** | Cross-Strait Activity is the only direct external-source member; it uses bounded MND/Japan MOD requests and a 3h freshness gate. China Decision Signals validates and republishes the bounded public composition after reading its domain lanes. Other members are Redis-derived. The bundle enforces a 570s wall-time admission budget so a non-fitting due section defers before Railway's 10-minute container limit. |
 
 #### Staged correlation runtime modes
 
@@ -1439,32 +1336,6 @@ migrations and should not be counted in the 35-slot savings plan above. They
 are listed here so their Railway start commands are first-class registry-covered
 entries.
 
-### seed-bundle-resilience-recovery
-
-| Setting | Value |
-|---|---|
-| **Service name** | `seed-bundle-resilience-recovery` |
-| **Start command** | `node scripts/seed-bundle-resilience-recovery.mjs` |
-| **Cron schedule** | Monthly recovery cadence; use the active Railway schedule for the existing service |
-| **Watch paths** | `scripts/**`, `shared/**` |
-| **Purpose** | Dedicated Country Resilience recovery inputs bundle |
-| **Members** | Fiscal Space, Reserve Adequacy, External Debt, Import HHI, Fuel Stocks, Re-export Share, Sovereign Wealth |
-| **Note** | This is the service referenced by the Import-HHI controls below. It is registry-covered so nixpacks packaging and start-command drift are tested. |
-
-### seed-bundle-resilience-energy-v2
-
-| Setting | Value |
-|---|---|
-| **Service name** | `seed-bundle-resilience-energy-v2` |
-| **Start command** | `node scripts/seed-bundle-resilience-energy-v2.mjs` |
-| **Cron schedule** | `0 6 * * *` (daily 06:00 UTC; per-slot interval gates real seeds to 7 days) |
-| **Watch paths** | `scripts/**`, `shared/**` |
-| **Purpose** | Dedicated Country Resilience energy-v2 input bundle |
-| **Members** | Low Carbon Generation, Fossil Electricity Share, Power Losses |
-| **Note** | Daily cron avoids the weekly dead window described in `scripts/seed-bundle-resilience-energy-v2.mjs`; the bundle's 7-day section intervals prevent unnecessary World Bank polling. |
-
----
-
 ## Services that STAY unchanged (54 total)
 
 ### Infrastructure (4)
@@ -1582,15 +1453,11 @@ fetch('https://backboard.railway.com/graphql/v2',{method:'POST',
 
 | Service | Start command | Inferred cadence | Domain |
 |---|---|---|---|
-| seed-aaii-sentiment | `node scripts/seed-aaii-sentiment.mjs` | weekly (7d TTL) | AAII bull/bear investor sentiment survey |
 | seed-market-quotes | `node scripts/seed-market-quotes.mjs` | **planned — not provisioned** | Equity index / stock bootstrap quotes (Yahoo + Finnhub + Alpha Vantage) |
 | seed-commodity-quotes | `node scripts/seed-commodity-quotes.mjs` | ~30 min (30m TTL) | Commodity + extended-gold bootstrap quotes |
 | seed-crypto-sectors | `node scripts/seed-crypto-sectors.mjs` | **planned — not provisioned** | CoinGecko crypto sector performance |
-| seed-market-breadth | `node scripts/seed-market-breadth.mjs` | daily (30d history window) | S&P 500 breadth (% above 20/50/200-day, computed from the TradingView constituent scan) |
 | seed-weather-alerts | `node scripts/seed-weather-alerts.mjs` | **planned — not provisioned** | NWS active weather alerts |
 | seed-fx-yoy | `node scripts/seed-fx-yoy.mjs` | daily (25h TTL) | Wide-coverage FX YoY + 24m drawdown (resilience FX-stress inputs) |
-| seed-comtrade-bilateral-hs4 | `node scripts/seed-comtrade-bilateral-hs4.mjs` | **`0 6 1 * *` (monthly, verified 2026-07-27)** | UN Comtrade bilateral HS4 trade flows — only scheduled consumer of the keyed 500/mo Comtrade quota |
-| seed-hs2-chokepoint-exposure | `node scripts/seed-hs2-chokepoint-exposure.mjs` | periodic (TTL-extended) | HS2 chokepoint trade-exposure (derived) |
 | seed-service-statuses | `node scripts/seed-service-statuses.mjs` | **planned — not provisioned** | Service-status warm-ping; primary seeder is the AIS relay loop |
 | seed-live-video-resolved | `node seed-live-video-resolved.mjs` | **`0 */6 * * *` (verified 2026-09-24)** (health budget 1080 min) | The video each catalog YouTube channel has live now, for the Live News and Live Webcams players (#8545); scripts-root service `11581ac4-24ea-4cfc-bf17-471e41305364` (Railpack, `rootDirectory` `scripts`), reads channel `/live` pages through `LIVE_VIDEO_PROXY_URL` or `PROXY_URL` |
 | seed-imd-cyclone-marine | `node seed-imd-cyclone-marine.mjs` | **`*/15 * * * *` (verified 2026-09-05)** | Official IMD sea-area and coastal marine bulletins from public pages; scripts-root Nixpacks service `5f943d96-5f89-4817-941b-fdc36b71722e` |

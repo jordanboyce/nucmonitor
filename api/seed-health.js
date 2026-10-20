@@ -150,17 +150,6 @@ function evaluateDataProbe(cfg, raw) {
   const methodology = typeof parsed.methodology === 'string' ? parsed.methodology : null;
   const formula = typeof parsed._formula === 'string' ? parsed._formula : null;
   const educationState = typeof parsed._educationState === 'string' ? parsed._educationState : null;
-  if (cfg.kind === 'education_coverage') {
-    const rankableRecordCount = parseEducationPayloadRankableRecordCount(parsed);
-    const ok = rankableRecordCount != null && rankableRecordCount >= cfg.minRankableRecordCount;
-    return {
-      ok,
-      status: ok ? 'ok' : 'coverage_partial',
-      key: cfg.key,
-      rankableRecordCount,
-      minRankableRecordCount: cfg.minRankableRecordCount,
-    };
-  }
   if (cfg.methodology && methodology !== cfg.methodology) {
     return {
       ok: false,

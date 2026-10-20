@@ -97,7 +97,6 @@ describe('Railway service registry coverage', () => {
     assert.deepEqual(publisher.requiredEnv, [
       'UPSTASH_REDIS_REST_URL',
       'UPSTASH_REDIS_REST_TOKEN',
-      'IRAN_EVENTS_ENABLED',
       'R2_ACCOUNT_ID',
       'R2_BOOTSTRAP_BUCKET',
       'R2_BOOTSTRAP_ACCESS_KEY_ID',
@@ -148,9 +147,6 @@ describe('Railway service registry coverage', () => {
     const PROXY_FALLBACK_RE =
       /process\.env\.([A-Z][A-Z0-9_]*_PROXY_URL)\s*\|\|\s*process\.env\.(PROXY_URL)\b/g;
     for (const file of [
-      'scripts/_gdelt-fetch.mjs',
-      'scripts/china-corporate-disclosures/adapters.mjs',
-      'scripts/cross-strait-activity/adapters.mjs',
       'scripts/seed-live-video-resolved.mjs',
     ]) {
       const src = readFileSync(resolve(repoRoot, file), 'utf8');
@@ -159,8 +155,8 @@ describe('Railway service registry coverage', () => {
       }
     }
     assert.ok(
-      fallbackPairs.length >= 4,
-      'expected the GDELT, SZSE and Japan MOD adapters and the live video seeder to resolve a source-specific proxy with a PROXY_URL fallback',
+      fallbackPairs.length >= 1,
+      'expected the live video seeder to resolve a source-specific proxy with a PROXY_URL fallback',
     );
 
     for (const [specific, shared] of fallbackPairs) {
@@ -183,26 +179,6 @@ describe('Railway service registry coverage', () => {
         );
       }
     }
-  });
-
-  it('does not require an ineffective proxy route for HAPI', () => {
-    const conflictSeeder = readFileSync(
-      resolve(repoRoot, 'scripts/seed-conflict-intel.mjs'),
-      'utf8',
-    );
-    assert.doesNotMatch(
-      conflictSeeder,
-      /\bHAPI_PROXY_URL\b/,
-      'HAPI must fall back to the official HDX snapshot instead of retrying a blocked API through a proxy',
-    );
-
-    const conflictService = registry.find((entry) => entry.service === 'seed-conflict-intel');
-    assert.ok(conflictService, 'seed-conflict-intel must remain registered');
-    const requiredNames = (conflictService.requiredEnv ?? []).flat();
-    assert.ok(
-      !requiredNames.includes('HAPI_PROXY_URL'),
-      'seed-conflict-intel must not report a removed HAPI proxy route as a Railway dependency',
-    );
   });
 
   it('every Dockerfile.* CMD has a matching registry entry', () => {
@@ -305,24 +281,6 @@ describe('Railway service registry coverage', () => {
           `\n\nAdd the missing entry to the registry or update the documented service header.`,
       );
     }
-  });
-
-  it('every nixpacks-root-scripts entry with watchPatterns lists the GDELT bulk contract for seed-conflict-intel', () => {
-    const conflictIntel = registry.find(
-      (r) => r.service === 'seed-conflict-intel',
-    );
-    assert.ok(conflictIntel, 'seed-conflict-intel must be registered');
-    const watchPatterns = conflictIntel.watchPatterns;
-    assert.ok(
-      Array.isArray(watchPatterns),
-      'seed-conflict-intel must declare watchPatterns',
-    );
-    assert.ok(
-      watchPatterns.includes('scripts/_gdelt-bulk-contract.mjs'),
-      'seed-conflict-intel watchPaths must include scripts/_gdelt-bulk-contract.mjs ' +
-        '(the GDELT bulk Redis key contract shared by the materializer, conflict intel, ' +
-        'and unrest consumers)',
-    );
   });
 
   // Self-fixture: prove BOTH regex shapes match what they're supposed to.

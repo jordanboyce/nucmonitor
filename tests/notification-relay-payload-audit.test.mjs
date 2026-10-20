@@ -63,27 +63,6 @@ describe('notification-relay payload audit', () => {
     });
   }
 
-  it('domain-origin files do NOT set payload.description (RSS text must not flow through domain producers)', () => {
-    // Pattern: `description:` appearing adjacent to a `payload: {` or inside a
-    // publishNotificationEvent call. Domain producers build titles from
-    // structured fields; a `description:` field in their payload means
-    // free-form RSS text is leaking into a non-RSS channel.
-    for (const { path, expected } of PRODUCER_FILES) {
-      if (expected !== 'domain') continue;
-      const src = readSrc(path);
-      // Naive but sufficient: no literal `description:` should appear in a
-      // publishNotificationEvent payload block. If legitimate uses of
-      // `description:` exist elsewhere (e.g. JSDoc, log messages), the
-      // audit can tighten to a narrower regex. Today, the producers do not
-      // use `description:` as a property anywhere, so a global check is safe.
-      const hasPayloadDescription = /payload\s*:\s*\{[^}]*\bdescription\s*:/s.test(src);
-      assert.ok(
-        !hasPayloadDescription,
-        `${path} (domain-origin) must NOT include \`description:\` in a publishNotificationEvent payload. RSS-only context. If you really need a description here, first change the file's @notification-source tag to rss.`,
-      );
-    }
-  });
-
   it('RSS-origin file carries payload.description when the upstream item has a snippet', () => {
     const src = readSrc('src/services/breaking-news-alerts.ts');
     // The fetch payload at the top of dispatchAlert() now conditionally

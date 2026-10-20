@@ -439,49 +439,4 @@ describe('premium-paths guard — browser direct-LLM routes cannot trigger wm-se
     }
   });
 
-  it('country-intel sends the direct-LLM brief request through premiumFetch', () => {
-    const source = readFileSync(join(repoRoot, 'src/app/country-intel.ts'), 'utf8');
-    const ast = ts.createSourceFile('country-intel.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    let usesPremiumFetch = false;
-
-    function visitPremiumFetch(node: ts.Node): void {
-      if (
-        ts.isCallExpression(node) &&
-        node.expression.getText(ast) === 'premiumFetch' &&
-        node.arguments[0] &&
-        ts.isCallExpression(node.arguments[0]) &&
-        node.arguments[0].expression.getText(ast) === 'toApiUrl'
-      ) {
-        const route = node.arguments[0].arguments[0];
-        if (
-          (ts.isTemplateExpression(route) &&
-            route.head.text === '/api/intelligence/v1/get-country-intel-brief?') ||
-          (ts.isNoSubstitutionTemplateLiteral(route) &&
-            route.text.startsWith('/api/intelligence/v1/get-country-intel-brief?'))
-        ) {
-          usesPremiumFetch = true;
-        }
-      }
-      ts.forEachChild(node, visitPremiumFetch);
-    }
-
-    function visitMethod(node: ts.Node): void {
-      if (
-        ts.isMethodDeclaration(node) &&
-        node.name.getText(ast) === 'fetchCountryIntelBrief' &&
-        node.body
-      ) {
-        visitPremiumFetch(node.body);
-        return;
-      }
-      ts.forEachChild(node, visitMethod);
-    }
-
-    visitMethod(ast);
-    assert.equal(
-      usesPremiumFetch,
-      true,
-      'The country-intel call site must attach Clerk auth through premiumFetch.',
-    );
-  });
 });

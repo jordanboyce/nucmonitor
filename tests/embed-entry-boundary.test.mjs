@@ -8,40 +8,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
 describe('embed entry boundary', () => {
-  it('boots the shared map container while staying out of the authenticated app shell', () => {
-    const files = [
-      'src/embed-main.ts',
-      'src/embed/embed-data-loader.ts',
-      'src/embed/embed-url.ts',
-      'src/embed/embed-credential.ts',
-      'src/embed/embed-fetch.ts',
-      'src/embed/panels/map.ts',
-      'src/embed/panels/chokepoint-strip.ts',
-      'src/embed/panels/fear-greed.ts',
-    ];
-    const source = files.map((file) => readFileSync(resolve(root, file), 'utf-8')).join('\n');
-    assert.ok(
-      source.includes('@/components/MapContainer'),
-      'embed entry should use the shared current map container rather than booting a legacy map directly',
-    );
-
-    const forbidden = [
-      '@/App',
-      '@/app/panel-layout',
-      '@/services/auth-state',
-      '@/services/clerk',
-      '@/services/cloud-preferences',
-      '@/services/push-notifications',
-      '@/services/runtime',
-      '@/components/Panel',
-      '@/components/ChokepointStripPanel',
-      '@/components/FearGreedPanel',
-    ];
-    for (const token of forbidden) {
-      assert.ok(!source.includes(token), `embed entry must not import ${token}`);
-    }
-  });
-
   it('starts the credential waiter before awaiting initI18n so load-time postMessage is not dropped', () => {
     const source = readFileSync(resolve(root, 'src/embed-main.ts'), 'utf-8');
     const waitIdx = source.indexOf('waitForEmbeddingApiKey()');

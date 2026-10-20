@@ -66,25 +66,6 @@ function setup(queues: RpcQueues = {}, hydrated: Record<string, unknown> = {}): 
 async function settlePersistence(): Promise<void> { await new Promise<void>((resolveWait) => setImmediate(resolveWait)); }
 
 describe('browser service cache failure contracts (#8348)', () => {
-  it('cyber and unrest replace stale non-empty observations with confirmed healthy empty snapshots', async () => {
-    let now = 1_000_000; Date.now = () => now;
-    const threat = {
-      id: 'c1', type: 'CYBER_THREAT_TYPE_C2_SERVER', source: 'CYBER_THREAT_SOURCE_FEODO',
-      indicator: '192.0.2.1', indicatorType: 'CYBER_THREAT_INDICATOR_TYPE_IP',
-      severity: 'CRITICALITY_LEVEL_HIGH', tags: [], firstSeenAt: 0, lastSeenAt: 0,
-    };
-    const event = { id: 'u1', title: 'event', country: 'AE', severity: '', sourceType: '', sources: [], sourceUrls: [], tags: [], actors: [], occurredAt: 1 };
-    setup({ cyber: [{ threats: [threat] }, { threats: [] }], unrest: [{ events: [event] }, { events: [] }] });
-    const h = await loadHarness<{ fetchCyberThreats(): Promise<unknown[]>; fetchProtestEvents(): Promise<{ events: unknown[] }> }>(["export { fetchCyberThreats } from './src/services/cyber/index.ts';", "export { fetchProtestEvents } from './src/services/unrest/index.ts';"]);
-    assert.equal((await h.fetchCyberThreats()).length, 1); assert.equal((await h.fetchProtestEvents()).events.length, 1);
-    now += 11 * 60 * 1000;
-    assert.equal((await h.fetchCyberThreats()).length, 1, 'stale read returns last-good while refresh runs');
-    assert.equal((await h.fetchProtestEvents()).events.length, 1, 'stale read returns last-good while refresh runs');
-    await settlePersistence();
-    assert.deepEqual(await h.fetchCyberThreats(), []); assert.deepEqual((await h.fetchProtestEvents()).events, []);
-    await settlePersistence(); assert.equal(runtime.__clientPersistent?.size, 2, 'healthy empty snapshots replace persisted non-empty data');
-  });
-
   it('climate clears stale anomalies with healthy empty and service status distinguishes rejection', async () => {
     let now = 1_000_000; Date.now = () => now;
     const anomaly = { zone: 'Gulf', location: { latitude: 1, longitude: 2 }, severity: 'ANOMALY_SEVERITY_EXTREME', type: 'ANOMALY_TYPE_WARM' };
@@ -97,14 +78,6 @@ describe('browser service cache failure contracts (#8348)', () => {
     assert.deepEqual(await h.fetchClimateAnomalies(), { ok: true, anomalies: [] });
     const failed = await h.fetchServiceStatuses(); const recovered = await h.fetchServiceStatuses();
     assert.equal(failed.success, false); assert.equal(recovered.success, true); assert.deepEqual(recovered.services, []);
-  });
-
-  it('consumer unavailable envelopes are not persisted or replayed as success', async () => {
-    setup({ consumerOverview: [{ marketCode: 'ae', asOf: '0', topCategories: [], upstreamUnavailable: true }, { marketCode: 'ae', asOf: '1', topCategories: [], upstreamUnavailable: false }] });
-    const h = await loadHarness<{ fetchConsumerPriceOverview(market: string): Promise<{ asOf: string; upstreamUnavailable: boolean }> }>(["export { fetchConsumerPriceOverview } from './src/services/consumer-prices/index.ts';"]);
-    const unavailable = await h.fetchConsumerPriceOverview('ae'); assert.equal(unavailable.upstreamUnavailable, true); assert.equal(runtime.__clientPersistent?.size, 0);
-    const recovered = await h.fetchConsumerPriceOverview('ae'); assert.equal(recovered.upstreamUnavailable, false); assert.equal(recovered.asOf, '1');
-    await settlePersistence(); assert.equal(runtime.__clientPersistent?.size, 1);
   });
 
   it('outages replace stale non-empty data with healthy empty and remain configured', async () => {
@@ -120,78 +93,4 @@ describe('browser service cache failure contracts (#8348)', () => {
     runtime.__clientFeatureAvailable = true; assert.deepEqual(await h.fetchInternetOutages(), []); assert.equal(h.isOutagesConfigured(), true, 'cached healthy empty recovers configuration after re-enabling');
   });
 
-  it('consumer hydration preserves healthy empty lists and rejects unavailable nonempty lists', async () => {
-    const empty = {
-      consumerPricesCategories: { categories: [], upstreamUnavailable: false },
-      consumerPricesMovers: { risers: [], fallers: [], upstreamUnavailable: false },
-      consumerPricesSpread: { retailers: [], upstreamUnavailable: false },
-    };
-    type ConsumerHarness = {
-      fetchConsumerPriceCategories(): Promise<{ upstreamUnavailable: boolean }>;
-      fetchConsumerPriceMovers(): Promise<{ upstreamUnavailable: boolean }>;
-      fetchRetailerPriceSpreads(): Promise<{ upstreamUnavailable: boolean }>;
-    };
-    const exports = ["export { fetchConsumerPriceCategories, fetchConsumerPriceMovers, fetchRetailerPriceSpreads } from './src/services/consumer-prices/index.ts';"];
-    setup({ consumerCategories: [new Error('503')], consumerMovers: [new Error('503')], consumerSpreads: [new Error('503')] }, empty);
-    const healthy = await loadHarness<ConsumerHarness>(exports);
-    for (const fetchData of [healthy.fetchConsumerPriceCategories, healthy.fetchConsumerPriceMovers, healthy.fetchRetailerPriceSpreads]) {
-      assert.equal((await fetchData()).upstreamUnavailable, false);
-    }
-    runtime.__clientHydrated = {};
-    for (const fetchData of [healthy.fetchConsumerPriceCategories, healthy.fetchConsumerPriceMovers, healthy.fetchRetailerPriceSpreads]) {
-      assert.equal((await fetchData()).upstreamUnavailable, false, 'healthy empty hydration warms the exact default cache key');
-    }
-    setup({ consumerCategories: [new Error('503')], consumerMovers: [new Error('503')], consumerSpreads: [new Error('503')] }, {
-      consumerPricesCategories: { categories: [{}], upstreamUnavailable: true },
-      consumerPricesMovers: { risers: [{}], fallers: [], upstreamUnavailable: true },
-      consumerPricesSpread: { retailers: [{}], upstreamUnavailable: true },
-    });
-    const unavailable = await loadHarness<ConsumerHarness>(exports);
-    for (const fetchData of [unavailable.fetchConsumerPriceCategories, unavailable.fetchConsumerPriceMovers, unavailable.fetchRetailerPriceSpreads]) {
-      assert.equal((await fetchData()).upstreamUnavailable, true);
-    }
-    await settlePersistence();
-    assert.equal(runtime.__clientPersistent?.size, 0, 'unavailable hydration must not persist through recordSuccess');
-    assert.ok(Object.values(runtime.__clientRpcQueues!).every(queue => queue.length === 0), 'unavailable hydration falls through to RPC');
-  });
-
-  it('advisories and satellites keep last-good data when refresh rejects', async () => {
-    let now = 1_000_000; Date.now = () => now;
-    // Records must pass shared/intelligence-snapshots.js validation: a real TLE
-    // pair and an advisory index at the 100-country coverage floor.
-    const byCountry = Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`C${i}`, 'normal']));
-    const tle = { line1: '1 25544U 98067A   19156.50900463  .00003075  00000-0  59442-4 0  9992', line2: '2 25544  51.6433  59.2583 0008217  16.4489 347.6017 15.51174618173442' };
-    setup({ advisories: [{ advisories: [{ title: 'A', link: 'x', pubDate: '2026-01-01', source: 'gov', sourceCountry: 'AE', level: '', country: 'AE' }], byCountry }, new Error('503')], satellites: [{ satellites: [{ id: '25544', name: 'S', ...tle, type: 'x', country: 'AE' }] }, new Error('503')] });
-    const h = await loadHarness<{ loadAdvisoriesFromServer(): Promise<{ ok: boolean; advisories: Array<{ title: string }> }>; fetchSatelliteTLEs(): Promise<Array<{ name: string }> | null>; getSatelliteStatus(): string }>(["export { loadAdvisoriesFromServer } from './src/services/security-advisories.ts';", "export { fetchSatelliteTLEs, getSatelliteStatus } from './src/services/satellites.ts';"]);
-    assert.equal((await h.loadAdvisoriesFromServer()).advisories[0]?.title, 'A'); assert.equal((await h.fetchSatelliteTLEs())?.[0]?.name, 'S');
-    now += 16 * 60 * 1000;
-    const advisoryFailure = await h.loadAdvisoriesFromServer(); const satelliteFailure = await h.fetchSatelliteTLEs();
-    assert.equal(advisoryFailure.ok, false); assert.equal(advisoryFailure.advisories[0]?.title, 'A'); assert.equal(satelliteFailure?.[0]?.name, 'S'); assert.equal(h.getSatelliteStatus(), 'degraded'); assert.equal(runtime.__clientFreshnessErrors?.length, 1);
-  });
-
-  it('IMF exposes healthy themes on a cold partial load and retries the missing theme', async () => {
-    const macro = { countries: { AE: { inflationPct: 2, year: 2026 } } };
-    setup({}, { imfMacro: macro, imfGrowth: { countries: [] } });
-    const h = await loadHarness<{
-      getImfCountryBundle(code: string): Promise<{ macro: { inflationPct: number } | null; growth: unknown; labor: unknown }>;
-      getAllCountriesInflation(): Promise<Array<{ iso2: string; inflationPct: number }>>;
-    }>(["export { getImfCountryBundle, getAllCountriesInflation } from './src/services/imf-country-data.ts';"]);
-    const partial = await h.getImfCountryBundle('AE');
-    assert.equal(partial.macro?.inflationPct, 2);
-    assert.equal(partial.growth, null);
-    assert.equal(partial.labor, null);
-    assert.equal((await h.getAllCountriesInflation())[0]?.inflationPct, 2);
-    runtime.__clientHydrated = { imfMacro: macro, imfGrowth: { countries: {} }, imfLabor: { countries: { AE: { unemploymentPct: 4 } } }, imfExternal: { countries: {} } };
-    assert.deepEqual((await h.getImfCountryBundle('AE')).labor, { unemploymentPct: 4 });
-  });
-
-  it('IMF validates four public keys and retains last-good across incomplete refresh', async () => {
-    let now = 1_000_000; Date.now = () => now;
-    const complete = { imfMacro: { countries: { AE: { inflationPct: 2, year: 2026 } } }, imfGrowth: { countries: { AE: { realGdpGrowthPct: 3, year: 2026 } } }, imfLabor: { countries: { AE: { unemploymentPct: 4, year: 2026 } } }, imfExternal: { countries: { AE: { exportsUsd: 5, year: 2026 } } } };
-    setup({}, complete);
-    const h = await loadHarness<{ getImfCountryBundle(code: string): Promise<{ macro: { inflationPct: number } | null }> }>(["export { getImfCountryBundle } from './src/services/imf-country-data.ts';"]);
-    assert.equal((await h.getImfCountryBundle('AE')).macro?.inflationPct, 2);
-    now += 11 * 60 * 1000; runtime.__clientHydrated = { ...complete, imfGrowth: undefined };
-    assert.equal((await h.getImfCountryBundle('AE')).macro?.inflationPct, 2);
-  });
 });

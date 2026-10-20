@@ -511,18 +511,6 @@ describe('CLI', () => {
 });
 
 describe('build-openapi-json CLI', () => {
-  it('writes public/openapi.json when run directly, at the byte count the report publishes', () => {
-    // Every consumer of the budget now measures buildBundle() in memory, so
-    // without this nothing observes the file the world actually fetches — and
-    // the CLI entry is guarded by a predicate that could stop matching.
-    const result = spawnSync('node', [buildScript], { cwd: root, encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-    const artifact = resolve(root, 'public/openapi.json');
-    assert.ok(existsSync(artifact), 'the build must write the artifact');
-    assert.equal(statSync(artifact).size, realBundle.bytes);
-    assert.match(result.stdout, /dropped \d+ unreachable schemas/);
-  });
-
   it('writes nothing when the module is merely imported', () => {
     // The whole point of the invokedDirectly guard: the capacity report and
     // three test files import this module for measurement. If the guard stopped

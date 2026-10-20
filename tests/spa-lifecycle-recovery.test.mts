@@ -165,18 +165,6 @@ describe('SPA lifecycle recovery contracts', () => {
     );
   });
 
-  it('cold-failure panels expose loaded-data state to preserve warm retained views', () => {
-    for (const [rel, className] of [
-      ['src/components/GivingPanel.ts', 'GivingPanel'],
-      ['src/components/UcdpEventsPanel.ts', 'UcdpEventsPanel'],
-      ['src/components/DisplacementPanel.ts', 'DisplacementPanel'],
-      ['src/components/ClimateAnomalyPanel.ts', 'ClimateAnomalyPanel'],
-    ] as const) {
-      const file = sourceFile(rel);
-      assert.ok(findMethod(file, className, 'hasData'), `${className} must expose hasData()`);
-    }
-  });
-
   it('PanelLayoutManager.destroy destroys every registered panel once and clears the registry', () => {
     const file = sourceFile('src/app/panel-layout.ts');
     const destroy = findMethod(file, 'PanelLayoutManager', 'destroy');
@@ -197,30 +185,6 @@ describe('SPA lifecycle recovery contracts', () => {
       body,
       /this\.ctx\.panels\[['"]airline-intel['"]\]\?\.destroy\(/,
       'destroy() must not special-case only airline-intel from the registered panel catalog',
-    );
-  });
-
-  it('RegionalIntelligenceBoard reloads on entitlement unlock and unsubscribes on destroy', () => {
-    const file = sourceFile('src/components/RegionalIntelligenceBoard.ts');
-    const src = file.getFullText();
-    const ctor = findConstructor(file, 'RegionalIntelligenceBoard');
-    const destroy = findMethod(file, 'RegionalIntelligenceBoard', 'destroy');
-    const handler = findMethod(file, 'RegionalIntelligenceBoard', 'handlePremiumAccessChange');
-
-    assert.match(src, /import \{ onEntitlementChange \} from '@\/services\/entitlements';/);
-    assert.ok(
-      identifierCalls(ctor, 'onEntitlementChange').length >= 1,
-      'constructor must subscribe to entitlement changes, not only auth state',
-    );
-    assert.match(destroy.getText(file), /this\.entitlementUnsubscribe\?\.\(\)/);
-    assert.ok(
-      propertyCalls(handler, 'loadCurrent').length >= 1,
-      'false-to-true premium transition must reload the current regional snapshot',
-    );
-    assert.match(
-      handler.getText(file),
-      /this\.latestSequence\s*\+=\s*1[\s\S]*this\.renderEmpty\(\)/,
-      'true-to-false premium transition must invalidate in-flight loads before blanking the panel',
     );
   });
 

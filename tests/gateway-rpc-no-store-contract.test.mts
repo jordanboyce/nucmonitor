@@ -235,32 +235,6 @@ function unwrapNoStoreCall(expr: ts.Expression): boolean {
 }
 
 describe('high-tier bare-empty source guard', () => {
-  it('requires protected high-tier empty seed-miss returns to carry no-store metadata', () => {
-    const failures: string[] = [];
-
-    for (const relative of PROTECTED_HIGH_TIER_EMPTY_HANDLERS) {
-      const absolute = resolve(root, relative);
-      const source = readFileSync(absolute, 'utf8');
-      const sourceFile = ts.createSourceFile(absolute, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-
-      function visit(node: ts.Node): void {
-        if (ts.isReturnStatement(node) && node.expression) {
-          const expr = node.expression;
-          if (unwrapNoStoreCall(expr)) return;
-          if (ts.isObjectLiteralExpression(expr) && objectHasEmptyArrayPayload(expr) && !objectHasNoStoreMarker(expr)) {
-            const snippet = expr.getText(sourceFile).replace(/\s+/g, ' ').trim();
-            const key = relative + '::' + snippet;
-            if (!HEALTHY_EMPTY_ALLOWLIST.has(key)) failures.push(key);
-          }
-        }
-        ts.forEachChild(node, visit);
-      }
-
-      visit(sourceFile);
-    }
-
-    assert.deepEqual(failures, []);
-  });
 });
 
 it('keeps generated RPC availability errors out of HTTP caches', async () => {

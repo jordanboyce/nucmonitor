@@ -51,51 +51,48 @@ async function setup(t: TestContext) {
 
 test('session RPC rejects unbounded and ambiguous selectors before reading seeds', async t => {
   const { request, reads } = await setup(t);
-  for (const query of ['', '?tier=unknown', '?keys=insights&keys=forecasts', '?tier=fast&keys=insights', '?keys=not-a-key', '?keys=insights&keys=not-a-key']) {
+  for (const query of ['', '?tier=unknown', '?keys=earthquakes&keys=cbrRates', '?tier=fast&keys=earthquakes', '?keys=not-a-key', '?keys=earthquakes&keys=not-a-key']) {
     const response = await request(query);
     assert.equal(response.status, 400, query || 'empty request');
   }
   assert.deepEqual(reads, []);
 });
 
-test('explicit MCP insights request preserves JSON-string response and raw seed reads', async t => {
+test('explicit single-key request preserves JSON-string response and raw seed reads', async t => {
   const { request, reads, values } = await setup(t);
-  values.set(BOOTSTRAP_CACHE_KEYS.insights, { headlines: ['fixture'] });
-  const response = await request('?keys=insights');
+  values.set(BOOTSTRAP_CACHE_KEYS.earthquakes, { earthquakes: [{ id: 'fixture' }] });
+  const response = await request('?keys=earthquakes');
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.deepEqual(JSON.parse(body.data.insights), { headlines: ['fixture'] });
-  assert.deepEqual(reads, [BOOTSTRAP_CACHE_KEYS.insights]);
+  assert.deepEqual(JSON.parse(body.data.earthquakes), { earthquakes: [{ id: 'fixture' }] });
+  assert.deepEqual(reads, [BOOTSTRAP_CACHE_KEYS.earthquakes]);
 });
 
 test('several fast/slow keys are served together; on-demand keys still go one at a time', async t => {
   const { request, reads, values } = await setup(t);
-  values.set(BOOTSTRAP_CACHE_KEYS.insights, { headlines: ['fixture'] });
-  const response = await request('?keys=insights&keys=wildfires&keys=insights');
+  values.set(BOOTSTRAP_CACHE_KEYS.earthquakes, { earthquakes: [{ id: 'fixture' }] });
+  const response = await request('?keys=earthquakes&keys=wildfires&keys=earthquakes');
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.deepEqual(Object.keys(body.data), ['insights']);
+  assert.deepEqual(Object.keys(body.data), ['earthquakes']);
   assert.deepEqual(body.missing, ['wildfires']);
-  assert.deepEqual(reads.toSorted(), [BOOTSTRAP_CACHE_KEYS.insights, BOOTSTRAP_CACHE_KEYS.wildfires].toSorted());
+  assert.deepEqual(reads.toSorted(), [BOOTSTRAP_CACHE_KEYS.earthquakes, BOOTSTRAP_CACHE_KEYS.wildfires].toSorted());
 
   reads.length = 0;
-  const onDemand = await request('?keys=insights&keys=torontoRoads');
+  const onDemand = await request('?keys=earthquakes&keys=cbrRates');
   assert.equal(onDemand.status, 400);
   assert.deepEqual(reads, []);
-  assert.equal((await request('?keys=torontoRoads')).status, 200);
+  assert.equal((await request('?keys=cbrRates')).status, 200);
 });
 
-test('RPC, public bootstrap and publisher apply the same transforms and cutover fallback', async t => {
+test('RPC, public bootstrap and publisher apply the same transforms', async t => {
   const { request, values } = await setup(t);
   const fixtures = {
-    forecasts: { forecasts: [], enrichmentMeta: { internal: 'fixture' } },
     wildfires: { fireDetections: Array.from({ length: 501 }, (_, i) => ({ id: String(i) })) },
     naturalEvents: { events: [{ id: 'storm', conePolygon: [{ points: Array.from({ length: 401 }, (_, i) => ({ lon: Math.cos(i * Math.PI / 200), lat: Math.sin(i * Math.PI / 200) })) }] }] },
-    chokepoints: { chokepoints: [{ transitSummary: { riskSummary: 'internal', riskReportAction: 'internal', count: 2 } }] },
-    canadaAlerts: { alerts: [{ id: 'fallback' }] },
   };
   for (const [name, value] of Object.entries(fixtures)) {
-    values.set(name === 'canadaAlerts' ? 'alerts:canada:alberta-aea:v1' : BOOTSTRAP_CACHE_KEYS[name], value);
+    values.set(BOOTSTRAP_CACHE_KEYS[name], value);
   }
   for (const name of Object.keys(fixtures)) {
     const response = await request('?keys=' + name);
@@ -107,20 +104,10 @@ test('RPC, public bootstrap and publisher apply the same transforms and cutover 
     assert.deepEqual(actual, JSON.parse(JSON.stringify(published.data[name])));
     if (name in publicData) assert.deepEqual(actual, publicData[name]);
     if (name === 'naturalEvents') assert.ok(actual.events[0].conePolygon[0].points.length <= 96);
-    if (name === 'forecasts') assert.equal('enrichmentMeta' in actual, false);
     if (name === 'wildfires') assert.equal(actual.fireDetections.length, 500);
-    if (name === 'chokepoints') assert.equal(actual.chokepoints[0].transitSummary.riskSummary, '');
-    if (name === 'canadaAlerts') assert.deepEqual(actual, fixtures.canadaAlerts);
   }
 });
 
-
-// ── IMF WEO datasets: validated on the RPC path too (#8514 follow-up) ──────
-// api/bootstrap.js validates imfMacro/imfGrowth/imfLabor/imfExternal before
-// serving them; this RPC reads the same seeds and must not hand a malformed
-// snapshot to MCP/session callers. The RPC is gateway no-store, so a
-// malformed dataset is reported `missing`, exactly as bootstrap does.
-const IMF_FIELDS = { imfMacro: 'inflationPct', imfGrowth: 'realGdpGrowthPct', imfLabor: 'unemploymentPct', imfExternal: 'exportsUsd' } as const;
 
 test('public payload helpers stay equivalent across Edge and worker packaging', () => {
   const edge = readFileSync(new URL('../api/_bootstrap-public-payload.js', import.meta.url), 'utf8');
@@ -146,7 +133,7 @@ test('fast and slow selectors stay within their tier; missing values retain thei
 
 test('RPC still requires a session and does not expose arbitrary Redis keys', async t => {
   const { request, reads } = await setup(t);
-  const anonymous = await rpc(new Request(PATH + '?keys=insights'));
+  const anonymous = await rpc(new Request(PATH + '?keys=earthquakes'));
   assert.equal(anonymous.status, 401);
   const unknown = await request('?keys=seed-meta%3Aprivate');
   assert.equal(unknown.status, 400);

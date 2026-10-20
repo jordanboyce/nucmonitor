@@ -10,7 +10,7 @@
 //
 //   ?keys=crossStraitActivity&public=1   no cookie -> 401
 //   ?keys=crossStraitActivity&public=1   w/ cookie -> 200
-//   ?keys=chinaDecisionSignals&public=1  no cookie -> 200   (on-demand)
+//   ?keys=cbrRates&public=1  no cookie -> 200   (on-demand)
 //
 // So a non-on-demand key can never be served by this URL, and the request is
 // guaranteed-dead work. Worse, it is not inert: the wm-session interceptor only
@@ -62,12 +62,12 @@ afterEach(() => {
 describe('ensureHydrated public on-demand key guard (WORLDMONITOR-XP)', () => {
   it('does not issue a guaranteed-401 public read for a key outside the on-demand tier', async () => {
     assert.equal(
-      ON_DEMAND.has('crossStraitActivity'),
+      ON_DEMAND.has('naturalEvents'),
       false,
-      'precondition: crossStraitActivity is a slow-tier key, so the public URL cannot serve it',
+      'precondition: naturalEvents is a slow-tier key, so the public URL cannot serve it',
     );
 
-    const value = await ensureHydrated('crossStraitActivity');
+    const value = await ensureHydrated('naturalEvents');
 
     assert.equal(value, undefined, 'callers already treat a miss as "fall back to your own path"');
     assert.deepEqual(
@@ -82,14 +82,14 @@ describe('ensureHydrated public on-demand key guard (WORLDMONITOR-XP)', () => {
     // Guard rail: the fix keys off the registry, so every real on-demand key
     // must keep its CDN-cached path. A fix that simply stopped fetching would
     // pass the test above and silently disable #5300 hydration everywhere.
-    const onDemandKey = 'chinaDecisionSignals';
+    const onDemandKey = 'cbrRates';
     assert.equal(ON_DEMAND.has(onDemandKey), true, 'precondition: this key IS on-demand');
 
     const value = await ensureHydrated(onDemandKey);
 
     assert.deepEqual(value, { ok: true }, 'the on-demand payload still hydrates');
     assert.equal(requested.length, 1, 'exactly one CDN read');
-    assert.match(requested[0] ?? '', /\/api\/bootstrap\?keys=chinaDecisionSignals&public=1$/);
+    assert.match(requested[0] ?? '', /\/api\/bootstrap\?keys=cbrRates&public=1$/);
   });
 
   it('serves the live video resolved map through its public key URL (#8545)', async () => {

@@ -301,7 +301,7 @@ test('shadow ignores on-demand requests but uses the Vercel scheduler without ha
   const background = makeWaitUntilCtx();
   __testing__.setWaitUntilForTests(background.ctx.waitUntil);
 
-  const onDemandResponse = await handler(makeRequest('keys=bisDsr&public=1'), onDemand.ctx);
+  const onDemandResponse = await handler(makeRequest('keys=cbrRates&public=1'), onDemand.ctx);
   const noContextResponse = await handler(makeRequest('tier=fast&public=1'));
   await background.settle();
 

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 import { compactWildfireBootstrapPayload } from '../api/bootstrap.js';
-import { resolveBootstrapRegistry } from '../api/_bootstrap-tier-keys.js';
+import { BOOTSTRAP_CACHE_KEYS } from '../api/_bootstrap-tier-keys.js';
 import {
   WILDFIRE_DASHBOARD_DETECTION_LIMIT,
   listFireDetections,
@@ -133,7 +133,7 @@ describe('wildfire dashboard payload cap', () => {
 
   it('publishes and hydrates a dedicated pre-compacted bootstrap key', () => {
     const seeder = readFileSync(new URL('../scripts/seed-fire-detections.mjs', import.meta.url), 'utf8');
-    const { cacheKeys } = resolveBootstrapRegistry({ iranEventsEnabled: false });
+    const cacheKeys = BOOTSTRAP_CACHE_KEYS;
 
     assert.match(seeder, /wildfire:fires-bootstrap:v1/);
     assert.match(seeder, /extraKeys\s*:/);

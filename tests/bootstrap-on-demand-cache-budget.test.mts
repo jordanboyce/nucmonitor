@@ -106,15 +106,14 @@ function completeCacheServingWindowSeconds(header: string, shared: boolean): num
 test('SEED_META budgets are actually readable, or this whole suite is vacuous', () => {
   // Without this, a rename in api/health.js would turn every budget into null
   // and the guard below would pass by having nothing to check.
-  assert.equal(healthMaxStaleMin('bcOpen511'), 90, 'plain digits');
+  assert.equal(healthMaxStaleMin('climateAnomalies'), 540, 'plain digits');
   // A nested cutover block sits between the key and its closing brace.
-  assert.equal(healthMaxStaleMin('torontoRoads'), 360, 'budget declared before a nested cutover');
-  // The three shapes that defeat a `\d+` read. Each of these was reported as a
+  assert.equal(healthMaxStaleMin('staticRefBundleTick'), 2880, 'budget declared before a nested cutover');
+  // The shapes that defeat a `\d+` read. Each of these was reported as a
   // violation by the first version of this guard: 2_160 read as 2, and
   // 60 * 24 * 14 read as 60.
-  assert.equal(healthMaxStaleMin('chinaPolicyEvents'), 2160, 'underscore-separated digits');
-  assert.equal(healthMaxStaleMin('portwatchChokepointsRef'), 20160, 'multiplied expression');
-  assert.equal(healthMaxStaleMin('energyDisruptions'), 20160, 'underscore-separated, five digits');
+  assert.equal(healthMaxStaleMin('pipelinesGas'), 20160, 'underscore-separated, five digits');
+  assert.equal(healthMaxStaleMin('eurostatGovDebtQ'), 20160, 'multiplied expression');
   assert.equal(healthMaxStaleMin('__not_a_key__'), null, 'an unprobed key must read as null, not 0');
 });
 

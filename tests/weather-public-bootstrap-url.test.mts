@@ -33,6 +33,7 @@ import {
   BOOTSTRAP_CACHE_KEYS,
   BOOTSTRAP_TIERS,
 } from '../shared/bootstrap-tier-keys.js';
+import { ACCESS_MODE, bootstrapReadPath, SHARED_READ_CREDENTIALS } from '../src/config/access-mode.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const weatherSrc = readFileSync(join(root, 'src/services/weather.ts'), 'utf-8');
@@ -45,15 +46,26 @@ describe('weather bootstrap read targets the public CDN-shielded URL (#5386)', (
     const call = weatherSrc.match(/const resp = await fetch\(([\s\S]*?)\n {4}\);/);
     assert.ok(call, 'could not locate the weather bootstrap fetch call in src/services/weather.ts');
 
+    // The URL and credentials now come from the access-mode helpers, so a
+    // partner build (session-gated, no anonymous reads) can swap both at once.
+    // Pin the call to those helpers, then pin what they resolve to in the
+    // default public-demo build.
     const callArgs = call[1]!;
     assert.match(
       callArgs,
-      /toApiUrl\('\/api\/bootstrap\?keys=weatherAlerts&public=1'\)/,
+      /toApiUrl\(bootstrapReadPath\('keys=weatherAlerts'\)\)/,
       `weather must read the marked public URL; got: ${callArgs.trim()}`,
     );
     assert.match(
       callArgs,
-      /credentials: 'omit'/,
+      /credentials: SHARED_READ_CREDENTIALS/,
+      'credentials must follow the shared-read policy, not a hardcoded value',
+    );
+    assert.equal(ACCESS_MODE, 'public-demo', 'node runs see the default public-demo build');
+    assert.equal(bootstrapReadPath('keys=weatherAlerts'), '/api/bootstrap?keys=weatherAlerts&public=1');
+    assert.equal(
+      SHARED_READ_CREDENTIALS,
+      'omit',
       'credentials must be omitted: the marked URL answers every caller identically, and the '
       + 'wm-session interceptor only waves through credential-less public reads',
     );
@@ -80,7 +92,7 @@ describe('weather bootstrap read targets the public CDN-shielded URL (#5386)', (
     );
     // The URL the client builds must carry that same registered name.
     assert.ok(
-      weatherSrc.includes(`keys=${PUBLIC_WEATHER_BOOTSTRAP_KEY}&public=1`),
+      weatherSrc.includes(`bootstrapReadPath('keys=${PUBLIC_WEATHER_BOOTSTRAP_KEY}')`),
       'the client URL must use the registered key name',
     );
   });

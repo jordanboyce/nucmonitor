@@ -134,7 +134,6 @@ describe('publisher-families map data', () => {
       reuters: 'reuters.com plus tier-only "Reuters" and a Google News keyword feed',
       'the-verge': 'theverge.com plus tier-only podcast labels and a Google News shows feed',
       a16z: 'a16z.com / a16z.news plus Google News keyword feeds — no single host',
-      asharq: 'asharqbusiness.com and asharq.com — one newsroom, two properties',
       interfax: 'interfax.ru Russian feed and interfax.com English edition — one Interfax newsroom',
       ndtv: 'both labels arrive via feedburner, which identifies no publisher',
       'sightline-media': 'defensenews.com and militarytimes.com — two Sightline Media Group titles, one owner',
@@ -238,6 +237,11 @@ describe('publisher-families map data', () => {
         assert.deepEqual(entry.labels, [], `${familyId} must stay domain-only (no label folding)`);
         continue;
       }
+      // A one-label family that also declares article domains is not dead
+      // weight: the label is how the ingest/relay link gates reach those
+      // domains (chatham-house kept only "Chatham House Tech" after the
+      // NucMonitor trim). Without domains it is what the unmapped default does.
+      if (entry.labels.length === 1 && familyId in PUBLISHER_FAMILY_DOMAIN_TABLE) continue;
       assert.ok(
         entry.labels.length >= 2,
         `${familyId} lists ${entry.labels.length} label(s) — a one-label family is what the ` +

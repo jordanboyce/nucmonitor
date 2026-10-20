@@ -85,16 +85,12 @@ describe('runtime env guards', () => {
 });
 
 describe('variant env guards', () => {
-  it('computes the build variant through a guarded import.meta.env access', () => {
-    assert.match(
-      variantSrc,
-      /const buildVariant: SiteVariant = \(\(\) => \{\s*try \{\s*const value = import\.meta\.env\.VITE_VARIANT \|\| 'nuclear';\s*return isSiteVariant\(value\) \? value : 'nuclear';\s*\} catch \{\s*return 'nuclear';\s*\}\s*\}\)\(\);/s,
-    );
-  });
-
-  it('reuses buildVariant for SSR, Tauri, missing-location, and localhost fallback paths', () => {
-    const buildVariantUses = variantSrc.match(/return buildVariant;/g) ?? [];
-    assert.equal(buildVariantUses.length, 4, `Expected four buildVariant fallbacks, got ${buildVariantUses.length}`);
-    assert.ok(variantSrc.includes("if (typeof window === 'undefined') return buildVariant;"), 'SSR should fall back to buildVariant');
+  // NucMonitor ships one dashboard: SITE_VARIANT is a constant, so variant.ts no
+  // longer resolves a build variant from import.meta.env or location fallbacks.
+  // The guard that survives is that it never touches import.meta.env at all,
+  // which keeps it importable from node test runners and SSR.
+  it('pins the single nuclear variant without reading import.meta.env', () => {
+    assert.match(variantSrc, /export const SITE_VARIANT: SiteVariant = 'nuclear';/);
+    assert.doesNotMatch(variantSrc, /import\.meta\.env/);
   });
 });

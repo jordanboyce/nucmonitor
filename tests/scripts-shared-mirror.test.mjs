@@ -21,7 +21,6 @@ const MIRRORED_FILES = [
   'china-corporate-disclosure-policy.js',
   'correlation-runtime-mode.js',
   'geography.js',
-  'hapi-app-identifier.json',
   'iso2-to-region.json',
   'iso3-to-iso2.json',
   'publisher-families.js',
@@ -73,7 +72,9 @@ describe('scripts/shared/ mirrors shared/', () => {
   });
 });
 
-describe('regional snapshot seed scripts use scripts/shared/ (not repo-root shared/)', () => {
+// The regional-snapshot seeder and the HAPI identifier left with the NucMonitor
+// trim; the Railway seeders that remain keep the same mirror rule.
+describe('Railway seed scripts use scripts/shared/ (not repo-root shared/)', () => {
   // Guards the Railway rootDirectory=scripts runtime: an import whose
   // resolved absolute path falls OUTSIDE scripts/shared/ (e.g. repo-root
   // shared/) will ERR_MODULE_NOT_FOUND at runtime on Railway because the
@@ -81,12 +82,7 @@ describe('regional snapshot seed scripts use scripts/shared/ (not repo-root shar
   const FILES_THAT_MUST_USE_MIRROR = [
     'scripts/_seed-utils.mjs',
     'scripts/_clustering.mjs',
-    'scripts/seed-regional-snapshots.mjs',
     'scripts/seed-wb-indicators.mjs',
-    'scripts/regional-snapshot/actor-scoring.mjs',
-    'scripts/regional-snapshot/balance-vector.mjs',
-    'scripts/regional-snapshot/evidence-collector.mjs',
-    'scripts/regional-snapshot/scenario-builder.mjs',
   ];
 
   const scriptsSharedAbs = resolve(repoRoot, 'scripts/shared');

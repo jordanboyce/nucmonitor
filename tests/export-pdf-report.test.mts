@@ -51,13 +51,10 @@ function fixture(overrides: Record<string, unknown> = {}) {
       },
     ],
     markets: [{ symbol: 'BRENT', name: 'Brent Crude', display: '$80', price: 80.12, change: -1.4 }],
-    predictions: [{ title: 'Ceasefire by year end', yesPrice: 42, volume: 120000 }],
     intelligence: {
-      protests: { events: [{ title: 'Rally in capital', country: 'FR', eventType: 'Protest', severity: 'medium', time: new Date(TS) }] },
+      outages: [{ title: 'Regional fibre cut', link: 'https://example.com/o', country: 'US', severity: 'major', pubDate: new Date(TS) }],
       earthquakes: [{ place: 'Off the coast', magnitude: 6.1, depthKm: 10, occurredAt: TS / 1000, sourceUrl: 'https://example.com/q' }],
     },
-    cyberThreats: [{ indicator: '1.2.3.4', indicatorType: 'ip', severity: 3, country: 'RU', source: 'OTX', firstSeen: '2026-07-24' }],
-    convergenceCards: [{ domain: 'energy', title: 'Convergence card', score: 71, trend: 'rising', countries: ['IR', 'SA'] }],
     monitors: [{ name: 'Hormuz watch', keywords: ['hormuz', 'tanker'], color: '#ff0000' }],
     ...overrides,
   } as never;
@@ -68,14 +65,15 @@ describe('buildDataReportDocument — content', () => {
     const html = buildDataReportDocument(fixture());
     assert.ok(html.length > 500, 'report should carry real content');
     assert.match(html, /<!DOCTYPE html>/i);
-    assert.ok(html.includes('WorldMonitor Data Report'));
+    assert.ok(html.includes('NucMonitor Data Report'));
     assert.ok(html.includes('Export reflects all active sources.'));
     assert.ok(html.includes('Baseline headline'));
     assert.ok(html.includes('Cluster headline'));
     assert.ok(html.includes('Brent Crude'));
-    assert.ok(html.includes('Ceasefire by year end'));
-    assert.ok(html.includes('Rally in capital'));
-    assert.ok(html.includes('Convergence card'));
+    // Predictions, protests and convergence cards left the NucMonitor export;
+    // the surviving intelligence sections are earthquakes and outages.
+    assert.ok(html.includes('Off the coast'));
+    assert.ok(html.includes('Regional fibre cut'));
     assert.ok(html.includes('Hormuz watch'));
   });
 
@@ -86,7 +84,7 @@ describe('buildDataReportDocument — content', () => {
 
   it('renders an empty export without throwing', () => {
     const html = buildDataReportDocument({ timestamp: TS } as never);
-    assert.ok(html.includes('WorldMonitor Data Report'));
+    assert.ok(html.includes('NucMonitor Data Report'));
     assert.ok(html.length > 200);
   });
 
@@ -181,8 +179,10 @@ describe('buildDataReportDocument — escaping (untrusted feed strings)', () => 
         isAlert: false,
       }],
       markets: [{ symbol: payload, name: payload, display: payload, price: 1, change: 1 }],
-      predictions: [{ title: payload, yesPrice: 1, volume: 1 }],
-      convergenceCards: [{ domain: payload, title: payload, score: 1, trend: payload, countries: [payload] }],
+      intelligence: {
+        earthquakes: [{ place: payload, magnitude: 1, depthKm: 1, occurredAt: TS / 1000, sourceUrl: payload }],
+        outages: [{ title: payload, link: payload, country: payload, severity: payload, pubDate: new Date(TS) }],
+      },
       monitors: [{ name: payload, keywords: [payload], color: payload }],
       meta: { exportedAt: payload, note: payload },
     }));

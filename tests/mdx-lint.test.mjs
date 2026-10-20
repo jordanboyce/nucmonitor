@@ -126,11 +126,14 @@ function findBareCurlyBraces(lines) {
 describe('MDX lint covers the whole published tree', () => {
   it('includes nested public sources and excludes engineering records', () => {
     const names = docFiles.map(f => relative(DOCS_DIR, f).split(sep).join('/'));
-    for (const page of ['documentation.mdx', 'methodology/financial-system-exposure.md', 'zh/panels/telegram-intel.mdx']) {
+    // NucMonitor's docs tree: top-level pages plus nested methodology/ and
+    // panels/ sources. The World Monitor pages this list used to name (and the
+    // .mintignore'd engineering records) were removed with the trim.
+    for (const page of ['nuclear-hub.mdx', 'methodology/news-credibility.mdx', 'panels/radiation-watch.mdx']) {
       assert.ok(names.includes(page), `published source missing from MDX lint: ${page}`);
     }
-    for (const page of ['local-backend-audit.md', 'methodology/financial-system-exposure-flag-flip-runbook.md']) {
-      assert.ok(!names.includes(page), `excluded source still in MDX lint: ${page}`);
+    for (const page of names) {
+      assert.ok(!isIgnored(page), `excluded source still in MDX lint: ${page}`);
     }
   });
 

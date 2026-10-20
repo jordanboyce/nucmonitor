@@ -130,7 +130,7 @@ async function loadRealChangeLanguage(): Promise<ChangeLanguage> {
 
 async function loadPreferencesModule(): Promise<PreferencesModule> {
   const stubs = new Map<string, string>([
-    ['@/services/i18n', 'export const LANGUAGES = []; export function getCurrentLanguageTag(){ return "en"; } export function changeLanguage(value){ return globalThis.__settingsChangeLanguage?.(value) ?? Promise.resolve(true); } export function t(key){ return key; }'],
+    ['@/services/i18n', 'export function getCurrentLanguageTag(){ return "en"; } export function t(key){ return key; }'],
     ['@/services/ai-flow-settings', 'export const STREAM_QUALITY_OPTIONS = []; export function getAiFlowSettings(){ return { cloudLlm: false, browserModel: false, mapNewsFlash: false, headlineMemory: false, badgeAnimation: false }; } export function getStreamQuality(){ return "auto"; } export function setStreamQuality(value){ globalThis.__settingsSavedQuality = value; } export function setAiFlowSetting(){}'],
     ['@/config/basemap', 'export const MAP_PROVIDER_OPTIONS = []; export const MAP_THEME_OPTIONS = { carto: [] }; export function getMapProvider(){ return "carto"; } export function setMapProvider(){} export function getMapTheme(){ return "dark"; } export function setMapTheme(){}'],
     ['@/services/live-stream-settings', 'export const LIVE_MEDIA_IDLE_STOP_OPTIONS = [15, 30, 60, 120, 240, "never"]; export function getLiveStreamsAlwaysOn(){ return false; } export function setLiveStreamsAlwaysOn(){} export function getLiveMediaIdleStop(){ return 60; } export function setLiveMediaIdleStop(value){ globalThis.__settingsSavedIdleStop = value; } export function parseLiveMediaIdleStop(value){ return LIVE_MEDIA_IDLE_STOP_OPTIONS.find((option) => String(option) === value); } export function formatIdleStopMinutes(minutes){ return `${minutes} min`; }'],
@@ -217,75 +217,6 @@ describe('settings save feedback', () => {
         ['never', false, 'components.insights.streamIdleStopNever'],
       ]);
     } finally {
-      restoreGlobal('window', originalWindow);
-    }
-  });
-
-  it('announces a language save only after persistence succeeds', async () => {
-    const runtime = globalThis as typeof globalThis & {
-      __settingsChangeLanguage?: (value: string) => Promise<boolean>;
-    };
-    const originalWindow = globalThis.window;
-    let changeListener: ((event: Event) => void) | undefined;
-    let resolveLanguage: ((saved: boolean) => void) | undefined;
-    let savedCalls = 0;
-
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: {
-        addEventListener: () => undefined,
-        dispatchEvent: () => true,
-        location: { reload: () => undefined },
-      },
-      writable: true,
-    });
-
-    const container = {
-      addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => {
-        if (type === 'change' && typeof listener === 'function') changeListener = listener;
-      },
-      querySelector: () => null,
-    } as unknown as HTMLElement;
-
-    try {
-      const pendingLanguage = new Promise<boolean>((resolvePending) => {
-        resolveLanguage = resolvePending;
-      });
-      runtime.__settingsChangeLanguage = () => pendingLanguage;
-
-      const { renderPreferences } = await loadPreferencesModule();
-      const detach = renderPreferences({
-        isDesktopApp: false,
-        onSettingSaved: () => { savedCalls += 1; },
-      }).attach(container);
-
-      assert.ok(changeListener);
-      changeListener({ target: { id: 'us-language', value: 'fr' } } as unknown as Event);
-      assert.equal(savedCalls, 0);
-
-      resolveLanguage?.(true);
-      await pendingLanguage;
-      await Promise.resolve();
-      assert.equal(savedCalls, 1);
-
-      changeListener({ target: { id: 'us-font-scale', value: 'invalid' } } as unknown as Event);
-      assert.equal(savedCalls, 1);
-
-      runtime.__settingsChangeLanguage = async () => false;
-      changeListener({ target: { id: 'us-language', value: 'es' } } as unknown as Event);
-      await Promise.resolve();
-      await Promise.resolve();
-      assert.equal(savedCalls, 1);
-
-      runtime.__settingsChangeLanguage = async () => { throw new Error('language load failed'); };
-      changeListener({ target: { id: 'us-language', value: 'de' } } as unknown as Event);
-      await Promise.resolve();
-      await Promise.resolve();
-      assert.equal(savedCalls, 1);
-
-      detach();
-    } finally {
-      delete runtime.__settingsChangeLanguage;
       restoreGlobal('window', originalWindow);
     }
   });

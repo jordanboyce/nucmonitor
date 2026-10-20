@@ -89,67 +89,6 @@ function extractFeedRouting(filePath) {
   return out;
 }
 
-/**
- * Extract feed names by their containing category array.
- *
- * A global name match is insufficient here: the digest truncates and the
- * client filters within each category, so a same-name client feed in another
- * category cannot make a server item visible. The client intentionally uses
- * CANONICAL_FEEDS, the cross-variant union for a category, when a user enables
- * a custom panel; this extractor mirrors that behavior by unioning catalogs
- * by category. Use the TypeScript AST so multiline entries remain visible.
- *
- * Returns a Map<category, Set<name>>.
- */
-function extractFeedNamesByCategory(filePath) {
-  const src = readFileSync(filePath, 'utf-8');
-  const ast = ts.createSourceFile(filePath, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const out = new Map();
-
-  const propertyName = (node) => {
-    if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text;
-    return null;
-  };
-
-  const collectNames = (category, elements) => {
-    for (const element of elements) {
-      if (!ts.isObjectLiteralExpression(element)) continue;
-      const nameProperty = element.properties.find(
-        property =>
-          ts.isPropertyAssignment(property) &&
-          propertyName(property.name) === 'name' &&
-          ts.isStringLiteral(property.initializer),
-      );
-      if (!nameProperty || !ts.isPropertyAssignment(nameProperty) || !ts.isStringLiteral(nameProperty.initializer)) {
-        continue;
-      }
-      const names = out.get(category) ?? new Set();
-      names.add(nameProperty.initializer.text);
-      out.set(category, names);
-    }
-  };
-
-  const visit = (node) => {
-    if (ts.isPropertyAssignment(node) && ts.isArrayLiteralExpression(node.initializer)) {
-      const category = propertyName(node.name);
-      if (category) collectNames(category, node.initializer.elements);
-    }
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === 'INTEL_SOURCES' &&
-      node.initializer &&
-      ts.isArrayLiteralExpression(node.initializer)
-    ) {
-      collectNames('intel', node.initializer.elements);
-    }
-    ts.forEachChild(node, visit);
-  };
-
-  visit(ast);
-  return out;
-}
-
 const stringArgument = (expression, index) => {
   const argument = expression.arguments[index];
   return ts.isStringLiteralLike(argument) ? argument.text : null;
@@ -227,30 +166,44 @@ function findVariableInitializer(filePath, variableName) {
 }
 
 /**
- * Extract the full-variant catalog with enough context to compare URLs.
+ * Extract the shipped catalog with enough context to compare URLs.
  *
  * The routing test above intentionally ignores query differences, but a shared
  * name whose sides point at different publishers is still two different feeds.
- * Scope this strict comparison to FULL_FEEDS versus VARIANT_FEEDS.full; the
- * variant-specific catalogs are not required to duplicate the full catalog.
+ * NucMonitor ships one dashboard, so the strict comparison is NUCLEAR_FEEDS
+ * (client) versus VARIANT_FEEDS.nuclear (the digest the client requests). The
+ * server's remaining `full` variant only feeds server-side headline search and
+ * is never filtered by the client, so it is out of scope here.
  */
-function extractFullFeedsByCategory(filePath, side) {
+function extractShippedFeedsByCategory(filePath, side) {
   const initializer = findVariableInitializer(
     filePath,
-    side === 'client' ? 'FULL_FEEDS' : 'VARIANT_FEEDS',
+    side === 'client' ? 'NUCLEAR_FEEDS' : 'VARIANT_FEEDS',
   );
-  assert.ok(initializer, `Unable to locate the ${side} full-feed declaration in ${filePath}`);
+  assert.ok(initializer, `Unable to locate the ${side} shipped feed declaration in ${filePath}`);
   const record = ts.isObjectLiteralExpression(initializer) ? initializer : null;
   if (side === 'server') {
-    const fullVariant = record?.properties.find(
-      property => ts.isPropertyAssignment(property) && property.name.getText() === 'full',
+    const nuclearVariant = record?.properties.find(
+      property => ts.isPropertyAssignment(property) && property.name.getText() === 'nuclear',
     );
-    assert.ok(ts.isPropertyAssignment(fullVariant), 'VARIANT_FEEDS must contain a full variant');
-    assert.ok(ts.isObjectLiteralExpression(fullVariant.initializer));
-    return extractFeedRecord(fullVariant.initializer, filePath);
+    assert.ok(ts.isPropertyAssignment(nuclearVariant), 'VARIANT_FEEDS must contain a nuclear variant');
+    assert.ok(ts.isObjectLiteralExpression(nuclearVariant.initializer));
+    return extractFeedRecord(nuclearVariant.initializer, filePath);
   }
   assert.ok(record);
   return extractFeedRecord(record, filePath);
+}
+
+function namesByCategory(feeds) {
+  const out = new Map();
+  for (const key of feeds.keys()) {
+    const separator = key.indexOf(':');
+    const category = key.slice(0, separator);
+    const names = out.get(category) ?? new Set();
+    names.add(key.slice(separator + 1));
+    out.set(category, names);
+  }
+  return out;
 }
 
 function extractFeedRecord(record, filePath) {
@@ -258,7 +211,7 @@ function extractFeedRecord(record, filePath) {
   for (const categoryProperty of record.properties) {
     assert.ok(
       ts.isPropertyAssignment(categoryProperty),
-      `${filePath} full-feed catalog contains an unsupported category entry: ${categoryProperty.getText()}`,
+      `${filePath} feed catalog contains an unsupported category entry: ${categoryProperty.getText()}`,
     );
     const category = categoryProperty.name.getText().replace(/^['"]|['"]$/g, '');
     assert.ok(
@@ -322,8 +275,8 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
   it('extracted feeds from both files', () => {
     assert.ok(client.size > 0, 'client feed extraction must not be empty');
     assert.ok(server.size > 0, 'server feed extraction must not be empty');
-    assert.ok(client.has('CBC News'), 'client feed extraction must retain the critical CBC News member');
-    assert.ok(server.has('CBC News'), 'server feed extraction must retain the critical CBC News member');
+    assert.ok(client.has('NRC News'), 'client feed extraction must retain the critical NRC News member');
+    assert.ok(server.has('NRC News'), 'server feed extraction must retain the critical NRC News member');
   });
 
   // Snapshot of feeds that ALREADY drift between client and server at PR #3715
@@ -331,24 +284,9 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
   // Google News on one side because the direct URL recently broke). The test
   // fails for NEW drift, not historic drift. This set should SHRINK over time
   // as feeds get reconciled — not grow.
-  const KNOWN_DRIFTS = new Set([
-    'The National',
-    'CSIS',
-    'South China Morning Post',
-    'a16z Blog',
-    'EU Startups',
-    'Tech in Asia',
-    'SemiAnalysis',
-    'EIA Reports',
-    'Northern Miner',
-    // Mixed-locale routing: client uses direct rss() for en+de and a Google
-    // News query for es; server uses pure direct for en. The classifier
-    // treats any-locale-is-GoogleNews as Google News, so it flags this as a
-    // drift even though both sides do agree on en. Worth reconciling
-    // (probably: server should fall back to gn() for the same es query) but
-    // out of scope for the #3717 review fix.
-    'DW News',
-  ]);
+  // The World Monitor entries grandfathered here (The National, CSIS, DW News,
+  // ...) left the client with the NucMonitor trim, so none is shared any more.
+  const KNOWN_DRIFTS = new Set([]);
 
   it('every NEW shared feed name uses consistent routing (grandfathered drift snapshot)', () => {
     const newDrift = [];
@@ -407,8 +345,8 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
   // Commodity-Trade-Mantra failure mode the #3717 reviewer caught.
   //
   it('every server feed has a client home in the same category before MAX_ITEMS_PER_CATEGORY truncation', () => {
-    const clientByCategory = extractFeedNamesByCategory(CLIENT_PATH);
-    const serverByCategory = extractFeedNamesByCategory(SERVER_PATH);
+    const clientByCategory = namesByCategory(extractShippedFeedsByCategory(CLIENT_PATH, 'client'));
+    const serverByCategory = namesByCategory(extractShippedFeedsByCategory(SERVER_PATH, 'server'));
     const clientNameCount = [...clientByCategory.values()].reduce((sum, names) => sum + names.size, 0);
     const serverNameCount = [...serverByCategory.values()].reduce((sum, names) => sum + names.size, 0);
     assert.ok(clientNameCount > 0, 'client category parser must not be empty');
@@ -444,42 +382,14 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
     );
   });
 
-  // Existing full-catalog differences are deliberate or grandfathered with a
+  // Catalog differences are deliberate or grandfathered with a
   // reason. New differences must either be aligned or get a new reviewed entry
   // here; silently adding another exception in product code is not allowed.
-  const INTENTIONAL_URL_DIVERGENCES = new Map([
-    ['politics:AP News', 'The server digest adds a one-day Google News window.'],
-    ['politics:Reuters World', 'The server digest adds a one-day Google News window.'],
-    ['us:Reuters US', 'The server digest adds a one-day Google News window.'],
-    ['europe:ANSA', 'The server uses ANSA’s site-wide feed; the client uses its top-news feed.'],
-    ['europe:DW News', 'Locale variants intentionally select language-specific DW feeds.'],
-    ['europe:France 24', 'Locale variants intentionally select language-specific France 24 feeds.'],
-    ['europe:EuroNews', 'Locale variants intentionally select language-specific EuroNews feeds.'],
-    ['europe:Le Monde', 'Locale variants intentionally select language-specific Le Monde feeds.'],
-    ['europe:Meduza', 'Locale variants intentionally select language-specific Meduza feeds.'],
-    ['europe:Suspilne', 'Locale variants intentionally select language-specific Suspilne feeds.'],
-    ['europe:Ukrinform', 'Locale variants intentionally select language-specific Ukrinform feeds.'],
-    ['middleeast:Al Arabiya', 'Locale variants intentionally select language-specific Al Arabiya feeds.'],
-    ['middleeast:Al Jazeera', 'Locale variants intentionally select language-specific Al Jazeera feeds.'],
-    ['middleeast:Rudaw', 'The client requests the en edition explicitly; the server relies on the default edition.'],
-    ['middleeast:The National', 'Grandfathered direct-versus-Google-News drift tracked by the routing test.'],
-    ['finance:Reuters Business', 'The server digest adds a one-day Google News window.'],
-    ['gov:State Dept', 'The server digest narrows the query and adds a one-day window.'],
-    ['gov:Treasury', 'The server digest narrows the query and adds a one-day window.'],
-    ['gov:DOJ', 'The server digest narrows the query and adds a one-day window.'],
-    ['layoffs:Layoffs.fyi', 'The server adds broader terms and a three-day window.'],
-    ['thinktanks:CSIS', 'Grandfathered direct-versus-Google-News drift tracked by the routing test.'],
-    ['thinktanks:War on the Rocks', 'The two sides differ only by a documented trailing slash.'],
-    ['africa:Africanews', 'Locale variants intentionally select language-specific Africanews feeds.'],
-    ['asia:Asia News', 'The client uses a broad Asia query; the server targets AsiaNews.it.'],
-    ['asia:South China Morning Post', 'Grandfathered direct-versus-Google-News drift tracked by the routing test.'],
-    ['asia:The Hindu', 'The client uses the national feed; the server uses the site-wide feed.'],
-    ['asia:RFE/RL Central Asia', 'The client spells the phrase; the server URL-encodes a plus in the same phrase.'],
-    ['energy:Nuclear Energy', 'The server uses a narrower reactor-focused query.'],
-    ['energy:Reuters Energy', 'The server uses a narrower, more recent energy query.'],
-  ]);
+  // The World Monitor full-catalog exceptions went with that catalog; the
+  // nuclear catalogs currently agree feed for feed.
+  const INTENTIONAL_URL_DIVERGENCES = new Map([]);
 
-  it('REGRESSION (#6427): full-feed extraction rejects unsupported catalog shapes', () => {
+  it('REGRESSION (#6427): shipped-feed extraction rejects unsupported catalog shapes', () => {
     const unsupportedCatalogs = [
       'const FULL_FEEDS = { ...baseCategories };',
       'const FULL_FEEDS = { us: sharedFeeds };',
@@ -505,10 +415,10 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
     );
   });
 
-  it('REGRESSION (#6427): shared full-variant feeds resolve to the same upstream', () => {
+  it('REGRESSION (#6427): shared shipped feeds resolve to the same upstream', () => {
     assertReasonedExceptions(INTENTIONAL_URL_DIVERGENCES, 'URL-divergence exception');
-    const clientFullFeeds = extractFullFeedsByCategory(CLIENT_PATH, 'client');
-    const serverFullFeeds = extractFullFeedsByCategory(SERVER_PATH, 'server');
+    const clientFullFeeds = extractShippedFeedsByCategory(CLIENT_PATH, 'client');
+    const serverFullFeeds = extractShippedFeedsByCategory(SERVER_PATH, 'server');
     assert.ok(clientFullFeeds.size > 0);
     assert.ok(serverFullFeeds.size > 0);
 
@@ -549,63 +459,10 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
     );
   });
 
-  it('REGRESSION (#6427): new client-only full-variant feeds require a reviewed server decision', () => {
-    const clientFullFeeds = extractFullFeedsByCategory(CLIENT_PATH, 'client');
-    const serverFullFeeds = extractFullFeedsByCategory(SERVER_PATH, 'server');
-    const INTENTIONAL_CLIENT_ONLY = new Map([
-      ['europe:El País', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:El Mundo', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:BBC Mundo', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Bild', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Der Spiegel', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Die Zeit', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Corriere della Sera', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Repubblica', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:NRC', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:De Telegraaf', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Dagens Nyheter', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Svenska Dagbladet', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:BBC Turkce', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:DW Turkish', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:BBC Russian', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:Novaya Gazeta Europe', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:TASS', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:RT', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['europe:RT Russia', 'Locale-specific client catalog entry; the full digest serves its English feed set.'],
-      ['middleeast:Fars News', 'Intentionally client-only regional source.'],
-      ['middleeast:IRNA', 'Intentionally client-only regional source.'],
-      ['middleeast:Mehr News', 'Intentionally client-only regional source.'],
-      ['middleeast:Asharq News', 'Intentionally client-only regional source.'],
-      ['gov:CDC', 'Intentionally client-only catalog source.'],
-      ['gov:FEMA', 'Intentionally client-only catalog source.'],
-      ['gov:DHS', 'Intentionally client-only catalog source.'],
-      ['thinktanks:RAND', 'Intentionally client-only catalog source.'],
-      ['thinktanks:Brookings', 'Intentionally client-only catalog source.'],
-      ['thinktanks:Carnegie', 'Intentionally client-only catalog source.'],
-      ['thinktanks:Responsible Statecraft', 'Intentionally client-only catalog source.'],
-      ['thinktanks:RUSI', 'Intentionally client-only catalog source.'],
-      ['thinktanks:FPRI', 'Intentionally client-only catalog source.'],
-      ['thinktanks:Jamestown', 'Intentionally client-only catalog source.'],
-      ['crisis:UNHCR', 'Intentionally client-only catalog source.'],
-      ['africa:BBC Afrique', 'Intentionally client-only catalog source.'],
-      ['latam:Latin America', 'Intentionally client-only catalog source.'],
-      ['latam:Reuters LatAm', 'Intentionally client-only catalog source.'],
-      ['latam:O Globo', 'Intentionally client-only catalog source.'],
-      ['latam:Folha de S.Paulo', 'Intentionally client-only catalog source.'],
-      ['latam:Brasil Paralelo', 'Intentionally client-only catalog source.'],
-      ['latam:El Tiempo', 'Intentionally client-only catalog source.'],
-      ['latam:La Silla Vacía', 'Intentionally client-only catalog source.'],
-      ['latam:Mexico Security', 'Intentionally client-only catalog source.'],
-      ['latam:AP Mexico', 'Intentionally client-only catalog source.'],
-      ['asia:Indian Express', 'Intentionally client-only catalog source.'],
-      ['asia:India News Network', 'Intentionally client-only catalog source.'],
-      ['asia:Thai PBS', 'Intentionally client-only catalog source.'],
-      ['asia:Tuoi Tre News', 'Intentionally client-only catalog source.'],
-      ['asia:Chosun Ilbo', 'Intentionally client-only catalog source.'],
-      ['asia:ABC News Australia', 'Intentionally client-only catalog source.'],
-      ['asia:Guardian Australia', 'Intentionally client-only catalog source.'],
-      ['energy:Mining & Resources', 'Intentionally client-only catalog source.'],
-    ]);
+  it('REGRESSION (#6427): new client-only shipped feeds require a reviewed server decision', () => {
+    const clientFullFeeds = extractShippedFeedsByCategory(CLIENT_PATH, 'client');
+    const serverFullFeeds = extractShippedFeedsByCategory(SERVER_PATH, 'server');
+    const INTENTIONAL_CLIENT_ONLY = new Map([]);
     assertReasonedExceptions(INTENTIONAL_CLIENT_ONLY, 'client-only exception');
     const unreviewed = [];
     for (const key of clientFullFeeds.keys()) {
@@ -618,7 +475,7 @@ describe('feed parity: client vs server (PR #3715 follow-up)', () => {
     assert.equal(
       unreviewed.length,
       0,
-      'Client-only full-variant feeds are invisible to the server digest. Add the feed to both sides, or record a reviewed client-only decision:\n' +
+      'Client-only feeds are invisible to the server digest. Add the feed to both sides, or record a reviewed client-only decision:\n' +
         unreviewed.map(key => `  - ${key}: ${INTENTIONAL_CLIENT_ONLY.get(key) ?? ''}`).join('\n'),
     );
     assert.equal(

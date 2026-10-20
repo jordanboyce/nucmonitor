@@ -51,13 +51,11 @@
 const PUBLISHER_FAMILY_DATA = {
   'miit': { publisher: "MIIT (China)", labels: [] },
   'a16z': { publisher: "Andreessen Horowitz", labels: ["a16z Blog", "a16z Podcast"] },
-  'ap-news': { publisher: "Associated Press", labels: ["AP Mexico", "AP News", "AP Nuclear"] },
-  'asharq': { publisher: "Asharq News", labels: ["Asharq Business", "Asharq News"] },
+  'ap-news': { publisher: "Associated Press", labels: ["AP News", "AP Nuclear"] },
   'bbc': {
     publisher: "BBC",
     labels: [
       "BBC Africa",
-      "BBC Afrique",
       "BBC Asia",
       "BBC Hindi",
       "BBC Latin America",
@@ -73,7 +71,7 @@ const PUBLISHER_FAMILY_DATA = {
     ],
   },
   'brookings': { publisher: "Brookings Institution", labels: ["Brookings", "Brookings Tech"] },
-  'chatham-house': { publisher: "Chatham House", labels: ["Chatham House", "Chatham House Tech"] },
+  'chatham-house': { publisher: "Chatham House", labels: ["Chatham House Tech"] },
   'csis': { publisher: "CSIS", labels: ["CSIS", "CSIS Tech"] },
   'doe': { publisher: "US Department of Energy", labels: ["DOE Environmental Management", "DOE Nuclear Energy", "NNSA"] },
   'dw': { publisher: "Deutsche Welle", labels: ["DW News", "DW Turkish"] },
@@ -121,7 +119,6 @@ const PUBLISHER_FAMILY_DATA = {
       "Reuters Business",
       "Reuters Energy",
       "Reuters India",
-      "Reuters LatAm",
       "Reuters Nuclear",
       "Reuters Science",
       "Reuters US",

@@ -1,77 +1,18 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import {
-  LOCALES,
-  baselinePathFor,
-  classifyKeys,
-  expectedKeysForLocale,
-  findPluralBases,
-  flatten,
-  getPluralCategories,
-  localesRootFor,
-} from '../scripts/translate-locales.mjs';
+import { localesRootFor } from '../scripts/translate-locales.mjs';
 
+// NucMonitor ships English only: the 27 translated app locales were deleted,
+// so there is no translation pass to keep fresh and no provenance baseline to
+// hold in step with en.json. What survives is the invariant that the locale
+// root holds exactly the English bundle and its shell split.
 const LOCALES_DIR = localesRootFor(false);
-const BASELINE_PATH = baselinePathFor(false);
-const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
-const enFlat = flatten(readJson(`${LOCALES_DIR}/en.json`));
-const REFRESH_HINT =
-  'Run the app translation pass, then regenerate zh-TW: ' +
-  'ANTHROPIC_API_KEY=... node scripts/translate-locales.mjs && npm run locales:zh-tw';
-
-const NEW_TRANSLATED_KEYS = [
-  'countryBrief.chips.normalPrecautions',
-  'popups.militaryFlight.climbRate',
-  'popups.militaryFlight.manufacturer',
-  'popups.militaryFlight.owner',
-  'popups.militaryFlight.builtYear',
-  'popups.militaryCluster.showLess',
-  'preferences.panelFontScale',
-  'preferences.followGlobalFontScale',
-  ...['waiting', 'offline', 'updated', 'saved', 'savedOffline', 'emptySaved', 'localSignals']
-    .map(key => `components.correlation.${key}`),
-];
-
-// Current English-identity counts plus three values of reviewable headroom.
-// A translation improvement should lower its locale's ceiling. A legitimate
-// English product term may raise one explicitly, but bulk placeholder copies
-// must not pass only because their keys exist.
-const ENGLISH_CEILING = {
-  // de 276 -> 277: the publisher roster's tier chip codes ("T{{tier}}", "T?")
-  // are the same in German, which keeps the "Tier" term the catalogue uses.
-  // PizzINT's "NORMAL" is also the correct German and Romanian spelling.
-  // Each locale gains exactly one legitimate English-identical label.
-  ar: 359, bg: 250, cs: 292, de: 278, el: 359, es: 433,
-  // fr 425 -> 426: "Concentration" (supply vulnerability) and "Normal"
-  // (divergence regime) are spelled identically in French. Both are correct
-  // translations, not placeholder copies.
-  fa: 2576, fr: 426, hi: 141, hr: 281, hu: 255, it: 242,
-  ja: 390, ko: 239, nl: 513, pl: 460, pt: 466, ro: 391,
-  ru: 377, sv: 490, sw: 393, th: 307, tr: 404, uk: 2708,
-  vi: 185, zh: 358, 'zh-TW': 358,
-};
-
-function lookup(value, dotted) {
-  return dotted.split('.').reduce((current, part) => current?.[part], value);
-}
 
 describe('app locale freshness', () => {
-  it('tracks every shipped app locale', () => {
-    const shipped = readdirSync(LOCALES_DIR)
-      .filter((name) => name.endsWith('.json') && !['en.json', 'en.shell.json'].includes(name))
-      .map((name) => name.replace(/\.json$/, ''))
-      .sort();
-    assert.deepEqual(shipped, [...LOCALES].sort());
+  it('ships only the English app locale', () => {
+    const shipped = readdirSync(LOCALES_DIR).filter((name) => name.endsWith('.json')).sort();
+    assert.deepEqual(shipped, ['en.json', 'en.shell.json']);
   });
-
-  it('keeps the English provenance baseline in step with en.json', () => {
-    assert.ok(existsSync(BASELINE_PATH), `${BASELINE_PATH} is missing. ${REFRESH_HINT}`);
-    const baseline = readJson(BASELINE_PATH);
-    const drifted = Object.keys(enFlat).filter((key) => baseline[key] !== enFlat[key]);
-    const dropped = Object.keys(baseline).filter((key) => !(key in enFlat));
-    assert.deepEqual({ drifted, dropped }, { drifted: [], dropped: [] }, REFRESH_HINT);
-  });
-
 });

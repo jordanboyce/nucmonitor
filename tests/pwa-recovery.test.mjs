@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -135,38 +134,15 @@ describe('PWA navigation recovery', () => {
 });
 
 describe('offline Retry CSP', () => {
+  // NucMonitor's offline page needs no script: Retry is a same-page link
+  // (href="" reloads the current URL), so there is no inline script to hash
+  // into the Vercel/nginx CSPs and nothing for script-src to allow.
   const offlineHtml = readFileSync(resolve(ROOT, 'public/offline.html'), 'utf8');
-  const inlineScripts = [...offlineHtml.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
-  const retryButton = offlineHtml.match(/<button\b[^>]*\bid=["']t-retry["'][^>]*>/i)?.[0] ?? '';
-  const scriptHash = `'sha256-${createHash('sha256').update(inlineScripts[0]?.[1] ?? '').digest('base64')}'`;
 
-  it('binds Retry from the trusted inline script instead of an inline event attribute', () => {
-    assert.equal(inlineScripts.length, 1, 'offline page should contain one CSP-hashed inline script');
-    assert.doesNotMatch(retryButton, /\son\w+\s*=/i);
-    assert.match(inlineScripts[0][1], /getElementById\('t-retry'\)\.addEventListener\('click'/);
-  });
-
-  it('ships the Retry script hash on Vercel and both nginx dashboard CSP surfaces', () => {
-    const vercel = JSON.parse(readFileSync(resolve(ROOT, 'vercel.json'), 'utf8'));
-    const vercelCsp = vercel.headers
-      .find((entry) => entry.headers?.some(
-        (header) => header.key === 'X-Frame-Options' && header.value === 'SAMEORIGIN',
-      ))
-      ?.headers.find((header) => header.key === 'Content-Security-Policy')?.value;
-    const nginxSources = [
-      readFileSync(resolve(ROOT, 'docker/nginx-security-headers.conf'), 'utf8'),
-      readFileSync(resolve(ROOT, 'docker/nginx.conf'), 'utf8'),
-    ];
-    const nginxCsps = nginxSources.flatMap((source) =>
-      [...source.matchAll(/add_header Content-Security-Policy "([^"]+)"/g)]
-        .map((match) => match[1])
-        .filter((csp) => csp.includes("'strict-dynamic'")),
-    );
-
-    assert.ok(vercelCsp?.includes(scriptHash), `Vercel CSP is missing ${scriptHash}`);
-    assert.equal(nginxCsps.length, 2, 'expected both nginx dashboard CSP surfaces');
-    for (const csp of nginxCsps) {
-      assert.ok(csp.includes(scriptHash), `nginx CSP is missing ${scriptHash}`);
-    }
+  it('offers Retry without inline scripts or inline event attributes', () => {
+    assert.doesNotMatch(offlineHtml, /<script\b/i, 'offline page should stay script-free');
+    assert.doesNotMatch(offlineHtml, /\son\w+\s*=/i, 'offline page must not use inline event handlers');
+    const retry = offlineHtml.match(/<a\b[^>]*\bid=["']t-retry["'][^>]*>/i)?.[0] ?? '';
+    assert.match(retry, /\bhref=""/, 'Retry should reload the current page through a same-page link');
   });
 });

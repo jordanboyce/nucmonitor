@@ -204,7 +204,8 @@
     "nuclearPolicy": "Nuclear Policy & Security",
     "nuclearReactorStatus": "NRC Reactor Power Status",
     "nuclearHazards": "Facility All-Hazards Watch",
-    "nuclearFacilities": "US Nuclear Facility Directory"
+    "nuclearFacilities": "US Nuclear Facility Directory",
+    "nuclearHeadlines": "Nuclear Headlines"
   },
   "common": {
     "dismiss": "Dismiss",

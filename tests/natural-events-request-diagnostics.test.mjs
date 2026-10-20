@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { channel } from 'node:diagnostics_channel';
 import { gzipSync } from 'node:zlib';
 import { withSourceRequestDiagnostics } from '../scripts/natural/source-request-diagnostics.mjs';
+import { expectedWireBytes } from './helpers/undici-chunk-events.mjs';
 
 async function fixture(t, handler) {
   const server = createServer(handler);
@@ -37,9 +38,9 @@ test('concurrent requests to one origin keep complete, incomplete and header-wai
   ]);
   assert.deepEqual(complete.value, { ok: true });
   assert.equal(complete.progress.wireBodyComplete, true);
-  assert.equal(complete.progress.wireBodyBytes, 11);
+  assert.equal(complete.progress.wireBodyBytes, expectedWireBytes(11));
   assert.equal(partial.error, 'TimeoutError');
-  assert.equal(partial.progress.wireBodyBytes, 11);
+  assert.equal(partial.progress.wireBodyBytes, expectedWireBytes(11));
   assert.equal(partial.progress.responseHeadersObserved, true);
   assert.equal(partial.progress.wireBodyComplete, false);
   assert.equal(headers.error, 'TimeoutError');
@@ -59,7 +60,7 @@ test('wire counters measure compressed bytes and keep complete malformed JSON di
   });
   const result = await observe(origin);
   assert.equal(result.error, 'SyntaxError');
-  assert.equal(result.progress.wireBodyBytes, body.byteLength);
+  assert.equal(result.progress.wireBodyBytes, expectedWireBytes(body.byteLength));
   assert.equal(result.progress.wireBodyComplete, true);
   assert.doesNotMatch(JSON.stringify(result.progress), /private|data|127\.0\.0\.1/);
 });
@@ -72,7 +73,7 @@ test('a complete gzip payload without HTTP completion remains incomplete', async
   });
   const result = await observe(origin);
   assert.equal(result.error, 'TimeoutError');
-  assert.equal(result.progress.wireBodyBytes, body.byteLength);
+  assert.equal(result.progress.wireBodyBytes, expectedWireBytes(body.byteLength));
   assert.equal(result.progress.wireBodyComplete, false);
 });
 
@@ -84,7 +85,7 @@ test('redirects describe the final hop without adding earlier response bytes', a
   const result = await observe(`${origin}/redirect`);
   assert.equal(result.error, 'TimeoutError');
   assert.equal(result.progress.requestCount, 2);
-  assert.equal(result.progress.wireBodyBytes, 1);
+  assert.equal(result.progress.wireBodyBytes, expectedWireBytes(1));
   assert.equal(result.progress.wireBodyComplete, false);
 });
 

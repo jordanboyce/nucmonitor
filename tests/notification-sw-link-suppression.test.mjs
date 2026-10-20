@@ -264,7 +264,7 @@ describe('push-handler.js notificationclick suppression (#8401)', () => {
     for (const p of ev.waits) await p;
     assert.equal(box.opened, null, 'blocked click must not openWindow');
     assert.equal(box.shown.length, 1);
-    assert.equal(box.shown[0].title, 'Link blocked by WorldMonitor');
+    assert.equal(box.shown[0].title, 'Link blocked by NucMonitor');
   });
 
   it('never opens a blocked URL when the replacement notice rejects', async () => {

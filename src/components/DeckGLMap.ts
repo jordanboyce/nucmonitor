@@ -446,6 +446,8 @@ export class DeckGLMap {
   private onStateChange?: (state: DeckMapState) => void;
 
   // Highlighted assets
+  /** NucMonitor — facility whose 10/50-mile EPZ rings are drawn (null = none). */
+  private selectedUsNuclearFacility: UsNuclearFacility | null = null;
   private highlightedAssets: Record<AssetType, Set<string>> = {
     pipeline: new Set(),
     cable: new Set(),
@@ -1265,6 +1267,7 @@ export class DeckGLMap {
 
     // NucMonitor — US nuclear facility registry (always visible; small dataset)
     if (mapLayers.usNuclearFacilities) {
+      if (this.selectedUsNuclearFacility) layers.push(this.createEpzRingsLayer(this.selectedUsNuclearFacility));
       layers.push(this.createUsNuclearFacilitiesLayer());
     }
 
@@ -1631,6 +1634,41 @@ export class DeckGLMap {
       sizeMaxPixels: 16,
       pickable: true,
     });
+  }
+
+  /**
+   * 10-mile plume and 50-mile ingestion emergency planning zone rings around
+   * one facility. Radii are in meters so the rings stay true to scale at any
+   * zoom.
+   */
+  private createEpzRingsLayer(facility: UsNuclearFacility): ScatterplotLayer {
+    const rings = [
+      { radiusMeters: 50 * 1609.344, color: [52, 152, 219, 200] as [number, number, number, number] },
+      { radiusMeters: 10 * 1609.344, color: [231, 76, 60, 230] as [number, number, number, number] },
+    ];
+    return new ScatterplotLayer({
+      id: 'us-nuclear-epz-rings-layer',
+      data: rings,
+      getPosition: () => [facility.lon, facility.lat],
+      getRadius: (d: (typeof rings)[number]) => d.radiusMeters,
+      radiusUnits: 'meters',
+      stroked: true,
+      filled: true,
+      getFillColor: (d: (typeof rings)[number]) => [d.color[0], d.color[1], d.color[2], 18] as [number, number, number, number],
+      getLineColor: (d: (typeof rings)[number]) => d.color,
+      lineWidthUnits: 'pixels',
+      getLineWidth: 2,
+      pickable: false,
+      updateTriggers: { getPosition: facility.id },
+    });
+  }
+
+  /** Draw (or clear with null) the EPZ rings for a registry facility. */
+  public setSelectedUsNuclearFacility(facilityId: string | null): void {
+    const next = facilityId ? US_NUCLEAR_FACILITIES.find((f) => f.id === facilityId) ?? null : null;
+    if (next === this.selectedUsNuclearFacility) return;
+    this.selectedUsNuclearFacility = next;
+    this.render();
   }
 
   private createIrradiatorsLayer(): ScatterplotLayer {
@@ -2405,6 +2443,11 @@ export class DeckGLMap {
 
     const popupType = layerToPopupType[layerId];
     if (!popupType) return;
+
+    // Clicking a registry facility also draws its emergency planning zones.
+    if (layerId === 'us-nuclear-facilities-layer') {
+      this.setSelectedUsNuclearFacility((info.object as UsNuclearFacility).id);
+    }
 
     // For synthetic storm layers, unwrap the backing NaturalEvent
     const data = info.object?._event ?? info.object;

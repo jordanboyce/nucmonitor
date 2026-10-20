@@ -2335,14 +2335,22 @@ export class PanelLayoutManager implements AppModule {
     this.lazyPanel('nuclear-hazards', () =>
       this.importPanel('nuclear-hazards', () => import('@/components/NuclearFacilityHazardsPanel'), 'NuclearFacilityHazardsPanel', (NuclearFacilityHazardsPanel) => {
         const p = new NuclearFacilityHazardsPanel();
-        p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
+        p.setLocationClickHandler((lat: number, lon: number, facilityId?: string) => {
+          // Zoom 7 frames the 50-mile ingestion EPZ ring drawn around the site.
+          this.ctx.map?.setCenter(lat, lon, facilityId ? 7 : 6);
+          if (facilityId) this.ctx.map?.setSelectedUsNuclearFacility(facilityId);
+        });
         return p;
       }),
     );
     this.lazyPanel('nuclear-facilities', () =>
       this.importPanel('nuclear-facilities', () => import('@/components/NuclearFacilityDirectoryPanel'), 'NuclearFacilityDirectoryPanel', (NuclearFacilityDirectoryPanel) => {
         const p = new NuclearFacilityDirectoryPanel();
-        p.setLocationClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 6); });
+        p.setLocationClickHandler((lat: number, lon: number, facilityId?: string) => {
+          // Zoom 7 frames the 50-mile ingestion EPZ ring drawn around the site.
+          this.ctx.map?.setCenter(lat, lon, facilityId ? 7 : 6);
+          if (facilityId) this.ctx.map?.setSelectedUsNuclearFacility(facilityId);
+        });
         return p;
       }),
     );

@@ -12,18 +12,7 @@
  * because the tracking issue was deprioritised or closed unimplemented. Nothing here
  * reads GitHub, so the date is the only thing that forces a human to re-affirm.
  */
-export const DEFERRED_GENERATED_SERVICES = new Map([
-  [
-    'company_monitoring/v1',
-    {
-      removalIssue: '#6003',
-      owner: '@koala73',
-      // Re-affirm or remove by this date. Chosen as ~3 months from the contract landing
-      // (2026-08-05); shorten it if #6003 is scheduled sooner.
-      reviewBy: '2026-11-05',
-    },
-  ],
-]);
+export const DEFERRED_GENERATED_SERVICES = new Map();
 
 /**
  * Classifies every deferred entry against what the tree actually contains.

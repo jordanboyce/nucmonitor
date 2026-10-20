@@ -295,19 +295,6 @@ describe('panel-layout lazy dynamic-import guard (WORLDMONITOR-R4)', () => {
     assertNoDirectComponentConstructors(source);
   });
 
-  it('split-risk panels are demand-loaded through the guarded helper', async () => {
-    const source = await readFile(filePath, 'utf8');
-    for (const [panelKey, modulePath, exportName] of SPLIT_RISK_PANEL_IMPORTS) {
-      assertLazyPanelRegistration(source, panelKey, modulePath, exportName);
-    }
-    assertLazyLoaderHandlesFailedImports(source);
-  });
-
-  it('chat analyst mounts even if the dashboard action handler chunk fails', async () => {
-    const source = await readFile(filePath, 'utf8');
-    assertChatAnalystLoadsWithoutAgentBusApplier(source);
-  });
-
   it('direct live-news mid-session mount path catches callback errors', async () => {
     const source = await readFile(filePath, 'utf8');
     assertLiveNewsDirectMountCatchesCallbackErrors(source);

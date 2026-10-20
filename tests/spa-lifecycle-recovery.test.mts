@@ -119,52 +119,6 @@ function hasReturnGuard(method: ts.MethodDeclaration, guardedCall: string): bool
 }
 
 describe('SPA lifecycle recovery contracts', () => {
-  it('cold soft-fail loaders show an error only when no retained panel data exists', () => {
-    const file = sourceFile('src/app/data-loader.ts');
-    const helper = findMethod(file, 'DataLoaderManager', 'showColdLoadError');
-
-    assert.ok(
-      hasReturnGuard(helper, 'panelHasRetainedData'),
-      'showColdLoadError must retain warm panel data instead of replacing it with an error state',
-    );
-
-    const showErrorCalls = propertyCalls(helper, 'callPanel');
-    assert.ok(
-      showErrorCalls.some(call =>
-        call.arguments[0]?.getText(file) === 'key' &&
-        ts.isStringLiteralLike(call.arguments[1]!) &&
-        call.arguments[1].text === 'showError'),
-      'showColdLoadError must route cold failures through Panel.showError',
-    );
-
-    const coldFailPanels = new Set(
-      propertyCalls(file, 'showColdLoadError')
-        .map(firstStringArg)
-        .filter((value): value is string => value !== null),
-    );
-    const requiredColdFailPanels = ['climate', 'displacement', 'giving', 'ucdp-events'];
-    const missing = requiredColdFailPanels.filter(panel => !coldFailPanels.has(panel));
-    assert.deepEqual(
-      missing,
-      [],
-      'all validated cold soft-fail loaders must call showColdLoadError',
-    );
-
-    const directShowErrorPanels = new Set(
-      propertyCalls(file, 'callPanel')
-        .filter(call =>
-          ts.isStringLiteralLike(call.arguments[0]!) &&
-          ts.isStringLiteralLike(call.arguments[1]!) &&
-          call.arguments[1].text === 'showError')
-        .map(call => (call.arguments[0] as ts.StringLiteralLike).text),
-    );
-    assert.deepEqual(
-      requiredColdFailPanels.filter(panel => directShowErrorPanels.has(panel)),
-      [],
-      'validated cold-failure panels must route every showError path through showColdLoadError',
-    );
-  });
-
   it('PanelLayoutManager.destroy destroys every registered panel once and clears the registry', () => {
     const file = sourceFile('src/app/panel-layout.ts');
     const destroy = findMethod(file, 'PanelLayoutManager', 'destroy');

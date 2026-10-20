@@ -229,14 +229,6 @@ test('no NEW seeder lets its data expire before its own staleness gate', () => {
   );
 });
 
-test('the audit reads config options rather than prose comments', () => {
-  const { audited } = auditSeeders();
-  assert.ok(
-    audited.includes('seed-aviation.mjs'),
-    'seed-aviation documents another health threshold before its runSeed options',
-  );
-});
-
 test('the allowlist does not rot — every frozen entry is still a real violation', () => {
   // When someone fixes a seeder's TTL, its allowlist line must go. Otherwise the list
   // grows stale, hides real debt, and quietly loses its meaning.

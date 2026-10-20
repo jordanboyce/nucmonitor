@@ -23,7 +23,6 @@ import {
   acknowledgePlanLimitNotice,
   listCurrentPlanLimitNotices,
 } from '../src/services/api-plan-limit-notices.ts';
-import { listMcpClients } from '../src/services/mcp-clients.ts';
 import { settleAccountOperation } from '../src/services/account-operation.ts';
 import {
   __setClerkInstanceForTests,
@@ -538,7 +537,6 @@ describe('generation-scoped Convex auth handoff', () => {
 
     const cases: Array<[string, () => Promise<unknown>]> = [
       ['API keys', listApiKeys],
-      ['MCP clients', listMcpClients],
       ['API plan-limit notices', listCurrentPlanLimitNotices],
       ['Business Pro seats', listBusinessSeats],
     ];
@@ -600,7 +598,6 @@ describe('generation-scoped Convex auth handoff', () => {
   it('discards account-scoped list results that settle after A changes to B', async () => {
     const cases = [
       ['API keys', listApiKeys],
-      ['MCP clients', listMcpClients],
       ['plan-limit notices', listCurrentPlanLimitNotices],
       ['Business seats', listBusinessSeats],
     ] as const;

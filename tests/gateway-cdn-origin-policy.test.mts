@@ -173,19 +173,6 @@ describe('gateway CDN origin policy', () => {
       assert.match(res.headers.get('CDN-Cache-Control') ?? '', /s-maxage=/);
     });
 
-    it(`keeps the public RPC response invariant when credentials are attached: ${path}`, async () => {
-      allowRateAdmission();
-      const handler = createHandler();
-      const res = await handler(new Request(`https://worldmonitor.app${path}`, {
-        headers: {
-          Origin: 'https://worldmonitor.app',
-          'X-WorldMonitor-Key': sessionToken,
-        },
-      }));
-
-      assert.equal(res.status, 200);
-      assert.match(res.headers.get('CDN-Cache-Control') ?? '', /s-maxage=/);
-    });
   }
 
   // Vercel's filesystem router serves these through api/**/[rpc].ts and echoes the

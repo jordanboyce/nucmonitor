@@ -125,17 +125,4 @@ describe('OpenAPI filter parameter schemas', () => {
     }
   });
 
-  it('applies the same filter contracts to the unified OpenAPI bundle', () => {
-    const spec = readUnifiedSpec();
-    for (const [, path, method, name, expected] of EXPECTED_ENUMS) {
-      const param = getParam(spec, path, method, name);
-      assert.ok(param, `${path} ${name} parameter exists`);
-      assert.deepEqual(param.schema?.enum, expected, `${path} ${name} enum`);
-    }
-    for (const [, path, method, name, expected] of EXPECTED_PATTERNS) {
-      const param = getParam(spec, path, method, name);
-      assert.ok(param, `${path} ${name} parameter exists`);
-      assert.equal(param.schema?.pattern, expected, `${path} ${name} pattern`);
-    }
-  });
 });

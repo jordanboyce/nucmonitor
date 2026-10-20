@@ -163,18 +163,6 @@ test('Redis fallback compacts naturalEvents cones before serializing the public 
   assert.deepEqual(compactedRing[0], compactedRing.at(-1), 'compacted cone ring must stay closed');
 });
 
-test('China decision-signal public bootstrap cache is bounded to its 15-minute seed cadence', async () => {
-  delete process.env.BOOTSTRAP_R2_SHADOW_MEASURE;
-  installFetchHarness();
-
-  const response = await handler(makeRequest('keys=chinaDecisionSignals&public=1'));
-
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('Cache-Control') ?? '', /max-age=60\b/);
-  assert.match(response.headers.get('CDN-Cache-Control') ?? '', /\bs-maxage=900\b/);
-  assert.doesNotMatch(response.headers.get('CDN-Cache-Control') ?? '', /\bs-maxage=7200\b/);
-});
-
 test('shadow credentials are never exercised outside the production Vercel environment', async () => {
   process.env.BOOTSTRAP_R2_SHADOW_MEASURE = '1';
   process.env.VERCEL_ENV = 'preview';

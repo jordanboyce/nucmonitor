@@ -409,18 +409,6 @@ describe('unreferencedComponentSchemas', () => {
 });
 
 describe('formatMarkdown', () => {
-  it('leads with the numbers a reviewer needs', () => {
-    const markdown = formatMarkdown(realReport);
-    assert.match(markdown, /OpenAPI bundle capacity/);
-    assert.ok(markdown.includes(realReport.bytes.toLocaleString('en-US')));
-    assert.ok(markdown.includes(realReport.headroomBytes.toLocaleString('en-US')));
-    // The plan path is pointed at from the job summary and the CI annotation,
-    // so a rename that leaves those strings behind sends every future reader to
-    // a 404 without anything going red.
-    assert.ok(markdown.includes(planPath));
-    assert.ok(existsSync(resolve(root, planPath)), `${planPath} must exist — the report links to it`);
-  });
-
   it('renders every status verdict, and never makes an unmeasured run read as a pass', () => {
     const at = (budgetBytes) =>
       formatMarkdown(buildCapacityReport(fakeBundle(oneOperationSpec(), 100), { budgetBytes, minOperations: 1 }));

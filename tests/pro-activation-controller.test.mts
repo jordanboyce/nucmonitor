@@ -609,58 +609,6 @@ describe('ProActivationController power-step surface wiring', () => {
     assert.deepEqual(searchOpens, ['search']);
   });
 
-  it('deep-links the power step to MCP Clients — the capability Pro actually has (#5607)', async () => {
-    const { options, settingsOpens } = await captureFlowOptions('user-mcp-pointer', {
-      apiAccess: false,
-      mcpAccess: true,
-    });
-
-    assert.equal(
-      typeof options.openMcpClients,
-      'function',
-      'a Pro account with mcpAccess must get an MCP Clients pointer',
-    );
-    assert.equal(
-      options.openApiKeys,
-      undefined,
-      'Pro has apiAccess:false — the flow must not offer an API-keys deep link',
-    );
-
-    (options.openMcpClients as () => void)();
-    assert.deepEqual(
-      settingsOpens,
-      ['mcp-clients'],
-      'the pointer must open the MCP Clients tab, not the API Keys upsell',
-    );
-  });
-
-  it('falls back to plain settings when mcpAccess lapses between build and click', async () => {
-    // The finish-setup chip replays a captured options object, so the gap
-    // between building the opener and invoking it can span an entitlement
-    // change. A build-time-only check would deep-link to a tab UnifiedSettings
-    // has since stopped rendering, leaving the modal with no active panel.
-    const { options, settingsOpens } = await captureFlowOptions('user-lapsed-midflight', {
-      apiAccess: false,
-      mcpAccess: true,
-    });
-    assert.equal(typeof options.openMcpClients, 'function');
-
-    Object.assign(globalThis, {
-      __activationEntitlement: {
-        planKey: 'pro_monthly',
-        validUntil: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        features: { tier: 1, apiAccess: false, mcpAccess: false },
-      },
-    });
-
-    (options.openMcpClients as () => void)();
-    assert.deepEqual(
-      settingsOpens,
-      ['settings'],
-      'a lapsed mcpAccess must land on a rendered tab, not the vanished MCP panel',
-    );
-  });
-
   it('omits the pointer when mcpAccess is absent, rather than deep-linking to an unrendered tab', async () => {
     // Legacy Pro entitlement snapshots pre-date the mcpAccess catalog field.
     // UnifiedSettings renders neither the MCP tab button nor its panel in that

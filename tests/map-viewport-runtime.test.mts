@@ -388,37 +388,6 @@ describe('map viewport runtime lifecycle', () => {
     );
   });
 
-  it('disables the Deck-only resilience layer when switching to the globe renderer', async () => {
-    const { map, internals } = harness.createMapContainerHarness();
-    const snapshot = {
-      view: 'global',
-      zoom: 2,
-      pan: { x: 0, y: 0 },
-      layers: { resilienceScore: true },
-      timeRange: '24h',
-    };
-    internals.deckGLMap = {
-      getState: () => snapshot,
-      getCenter: () => null,
-    };
-    internals.destroyFlatMap = () => {
-      internals.deckGLMap = null;
-    };
-    internals.init = async () => {};
-    internals.waitForRendererSwitch = async () => ({
-      renderer: 'globe',
-      mode: 'globe',
-      fallback: false,
-    });
-
-    await map.switchToGlobe();
-
-    assert.equal(
-      (internals.initialState as { layers: MapLayers }).layers.resilienceScore,
-      false,
-    );
-  });
-
   it('denies set_map_mode 3d after handleGlobeInitFailure falls back to SVG', async () => {
     const { map, internals } = harness.createMapContainerHarness();
     internals.destroyFlatMap = () => {

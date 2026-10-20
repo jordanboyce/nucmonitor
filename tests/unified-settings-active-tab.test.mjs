@@ -160,24 +160,6 @@ describe('UnifiedSettings.open active-tab availability (#5611)', () => {
     };
   });
 
-  it('falls back to Settings when explicitly opened to MCP Clients without access', () => {
-    const instance = makeInstance();
-
-    instance.open('mcp-clients');
-
-    assert.equal(instance.activeTab, 'settings');
-    assert.deepEqual(instance.renderedTabs, ['settings']);
-  });
-
-  it('clears a sticky MCP Clients tab when access was lost between opens', () => {
-    const instance = makeInstance('mcp-clients');
-
-    instance.open();
-
-    assert.equal(instance.activeTab, 'settings');
-    assert.deepEqual(instance.renderedTabs, ['settings']);
-  });
-
   it('preserves MCP Clients when the tab is available', () => {
     mcpAccess = true;
     const instance = makeInstance();

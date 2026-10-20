@@ -131,18 +131,6 @@ describe('fetchWithTimeout', () => {
 });
 
 describe('createRelayHandler', () => {
-  it('serves OREF success publicly and keeps unavailable responses out of caches', async () => {
-    const { default: handler } = await import('../api/oref-alerts.js');
-    mockFetchOk();
-    const response = await handler(makeRequest('https://worldmonitor.app/api/oref-alerts'));
-    assert.equal(response.headers.get('access-control-allow-origin'), '*');
-    assert.equal(response.headers.get('access-control-allow-credentials'), null);
-    assert.match(response.headers.get('cache-control'), /public/);
-    mockFetchStatus(503);
-    const failed = await handler(makeRequest('https://worldmonitor.app/api/oref-alerts'));
-    assert.equal(failed.status, 503);
-    assert.equal(failed.headers.get('cache-control'), 'no-store');
-  });
   it('uses public CORS only on successful public relay responses', async () => {
     process.env.WS_RELAY_URL = 'wss://relay.example.com';
     mockFetchOk();

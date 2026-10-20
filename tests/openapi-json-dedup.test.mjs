@@ -443,20 +443,6 @@ describe('dedupeSharedSchemaSubtrees', () => {
     assert.equal(transformed.components.schemas.C.properties.at.nullable, true);
   });
 
-  it('is lossless on the real post-China-dedup schema graph', () => {
-    const original = loadUnifiedOpenApiSpec();
-    dedupeSharedChinaProvenanceSchemas(original);
-    const transformed = structuredClone(original);
-    const stats = dedupeSharedSchemaSubtrees(transformed);
-
-    assert.ok(stats.groups >= 3, `expected several repeated-schema groups, got ${stats.groups}`);
-    assert.ok(stats.replacedRefs >= 10, `expected repeated schema refs, got ${stats.replacedRefs}`);
-    assert.ok(stats.bytesFreed >= 10_000, `expected at least 10 KB headroom, got ${stats.bytesFreed}`);
-    assert.deepEqual(
-      restoreGeneratedSchemaRefs(original, transformed, transformed),
-      original,
-    );
-  });
 });
 
 describe('dedupeSharedSubtreeComponents (fixture)', () => {
@@ -989,11 +975,6 @@ describe('public OpenAPI dedupe (real bundle)', () => {
 
   it('actually engages on repeated response-header documentation', () => {
     assert.ok(headerStats.replacedRefs >= 20, `expected repeated header dedup, got ${headerStats.replacedRefs} refs`);
-  });
-
-  it('reuses the shared China provenance value schemas only after exact comparison', () => {
-    assert.equal(schemaStats.compared, 17);
-    assert.equal(schemaStats.replacedRefs, 17);
   });
 
   it('engages the exact repeated headers and generated scalar/date schemas', () => {

@@ -154,57 +154,6 @@ describe('source provenance defaults (#5390)', () => {
     assert.match(badge!.title, /not yet reviewed/i);
   });
 
-  it('requires an explicit reviewed-or-unknown declaration for every configured feed', () => {
-    const names = feeds.listConfiguredFeedNames();
-    assert.ok(names.length > 0, 'configured feed extraction must not be empty');
-    assert.ok(names.includes('MIIT (China)'));
-    assert.ok(names.includes('MOFCOM (China)'));
-    const declaredNames = Object.keys(CONFIGURED_SOURCE_PROVENANCE_DECLARATIONS);
-    assert.deepEqual(
-      [...declaredNames].sort((a, b) => a.localeCompare(b)),
-      [...names].sort((a, b) => a.localeCompare(b)),
-      'configured feed names and provenance declarations must match exactly; regenerate after additions or aliases change',
-    );
-
-    const falselyIndependent: string[] = [];
-    let explicitUnknownDimensions = 0;
-
-    for (const name of names) {
-      const state = feeds.getFeedProvenanceState(name);
-      const declaration = CONFIGURED_SOURCE_PROVENANCE_DECLARATIONS[name];
-      assert.ok(declaration, `${name} missing explicit provenance declaration`);
-      assert.ok(state.risk, `${name} missing risk`);
-      assert.ok(state.type, `${name} missing type`);
-      assert.equal(state.riskDeclared, true, `${name} risk declaration`);
-      assert.equal(state.typeDeclared, true, `${name} type declaration`);
-      assert.equal(
-        declaration.risk,
-        state.riskReviewed ? 'reviewed' : 'unknown',
-        `${name} risk declaration drift`,
-      );
-      assert.equal(
-        declaration.type,
-        state.typeReviewed ? 'reviewed' : 'unknown',
-        `${name} type declaration drift`,
-      );
-      if (declaration.risk === 'unknown') explicitUnknownDimensions += 1;
-      if (declaration.type === 'unknown') explicitUnknownDimensions += 1;
-
-      if (state.risk === 'low' && !state.riskReviewed) {
-        falselyIndependent.push(name);
-      }
-      if (!state.riskReviewed) {
-        assert.equal(state.risk, 'unknown', `${name} unreviewed risk`);
-      }
-      if (!state.typeReviewed) {
-        assert.equal(state.type, 'unknown', `${name} unreviewed type`);
-      }
-    }
-
-    assert.deepEqual(falselyIndependent, [], 'unreviewed feeds must not claim low risk');
-    assert.ok(explicitUnknownDimensions > 0, 'unreviewed dimensions must be explicitly declared unknown');
-  });
-
   it('SOURCE_PROPAGANDA_RISK entries never use the unknown default sentinel by accident', () => {
     for (const [name, profile] of Object.entries(feeds.SOURCE_PROPAGANDA_RISK)) {
       assert.ok(

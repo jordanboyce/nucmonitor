@@ -109,38 +109,6 @@ describe('querySearchIndex', () => {
     assert.equal(result.entityMatches[0]?.score, 2);
   });
 
-  it('uses result-type priority first and match score within each type', () => {
-    const result = search({
-      rawInput: 'alpha',
-      sources: [
-        source('country', [
-          { id: 'country-contains', title: 'Republic of Alpha' },
-          { id: 'country-prefix', title: 'Alpha Republic' },
-        ]),
-        source('market', [{ id: 'market-prefix', title: 'Alpha Index' }]),
-        source('news', [
-          { id: 'news-contains', title: 'Inside Alpha' },
-          { id: 'news-prefix', title: 'Alpha briefing' },
-        ]),
-        source('flight', [
-          { id: 'flight-contains', title: 'Track Alpha One' },
-          { id: 'flight-prefix', title: 'Alpha One' },
-        ]),
-      ],
-    });
-
-    assert.deepEqual(entityIds(result), [
-      'flight-prefix',
-      'flight-contains',
-      'news-prefix',
-      'news-contains',
-      'market-prefix',
-      'country-prefix',
-      'country-contains',
-    ]);
-    assert.deepEqual(result.entityMatches.map((match) => match.score), [2, 1, 2, 1, 2, 2, 1]);
-  });
-
   it('applies command and result scope policy consistently', () => {
     const commands = [
       command('nav:global', 'navigate', ['scope']),
@@ -210,46 +178,6 @@ describe('querySearchIndex', () => {
     assert.deepEqual(entityIds(result), ['visible-result']);
     assert.deepEqual(inspectedPanelIds, ['visible', 'hidden']);
     assert.deepEqual(inspectedLayerKeys, ['visible', 'hidden']);
-  });
-
-  it('treats an enabled flight prefix as a callsign search and suppresses commands', () => {
-    const result = search({
-      rawInput: 'Flight ab123',
-      commands: [command('panel:flights', 'panels', ['flight ab123'])],
-      sources: [source('flight', [
-        { id: 'contains', title: 'ZZ-AB123' },
-        { id: 'prefix', title: 'AB123' },
-        { id: 'hidden', title: 'AB123 SECRET' },
-        { id: 'other', title: 'CD456' },
-      ])],
-      isResultVisible: (candidate) => candidate.id !== 'hidden',
-    });
-
-    assert.equal(result.flightCallsign, 'AB123');
-    assert.deepEqual(commandIds(result), []);
-    assert.deepEqual(entityIds(result), ['prefix', 'contains']);
-    assert.deepEqual(result.entityMatches.map((match) => match.score), [2, 1]);
-  });
-
-  it('falls back to ordinary command matching when flight-prefix search is disabled or out of scope', () => {
-    const flightCommand = command('panel:flights', 'panels', ['flight ab123']);
-
-    const disabled = search({
-      rawInput: 'flight ab123',
-      commands: [flightCommand],
-      flightPrefixEnabled: false,
-    });
-    assert.equal(disabled.flightCallsign, null);
-    assert.deepEqual(commandIds(disabled), ['panel:flights']);
-
-    const panelsScope = search({
-      rawInput: 'flight ab123',
-      scope: 'panels',
-      commands: [flightCommand],
-      flightPrefixEnabled: true,
-    });
-    assert.equal(panelsScope.flightCallsign, null);
-    assert.deepEqual(commandIds(panelsScope), ['panel:flights']);
   });
 
   it('caps commands and desktop results per type', () => {

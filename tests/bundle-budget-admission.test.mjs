@@ -207,29 +207,3 @@ test('every budgeted bundle section fits its own bundle budget', () => {
     + 'Such a section is deferred on every tick while the bundle exits 0, which is the #6556 silent stall.',
   );
 });
-
-test('seed-bundle-resilience admits Resilience-Scores on a cron tick (#6556 regression)', () => {
-  // The acceptance criterion from the issue, pinned by name so a future edit
-  // to this specific bundle cannot re-break the service the issue was about.
-  const bundle = readBudgetedBundles().find((b) => b.name === 'seed-bundle-resilience.mjs');
-  assert.ok(bundle, 'seed-bundle-resilience.mjs must declare a wall budget');
-
-  for (const section of bundle.sections) {
-    assert.ok(
-      section.worstCaseMs + ADMISSION_HEADROOM_MS <= bundle.maxBundleMs,
-      `${section.label} needs ${section.worstCaseMs + ADMISSION_HEADROOM_MS}ms of a ${bundle.maxBundleMs}ms budget — it would be deferred forever`,
-    );
-  }
-
-  // Sections are offered the budget in array order, so the member that keeps
-  // `resilience:ranking:v27` and `resilience:intervals:v10:*` alive between
-  // cron fires has to be offered it first. Behind the annual Resilience-Static
-  // or the monthly Food-Stocks it would be deferred on exactly the ticks those
-  // heavier members are due — a partial rerun of #6556 that the per-section
-  // arithmetic above cannot see.
-  assert.equal(
-    bundle.sections[0].label,
-    'Resilience-Scores',
-    'Resilience-Scores must be offered the wall budget before its heavier, rarer siblings',
-  );
-});

@@ -52,10 +52,10 @@ const KEY = 'test-key';
 // The gateway auth chain 401s keyless requests here (auth before cache), so
 // the behavioural layer below asserts the classifier predicate directly on
 // the production sets rather than driving unauthenticated responses.
-const PRIVATE_PATH = '/api/aviation/v1/list-airport-flights'; // declared 'static'
+const PRIVATE_PATH = '/api/market/v1/get-insider-transactions'; // declared 'static'
 // The public no-auth path proves the negative half: public stays public even
 // WITH a credential attached, so a credential can never widen a shared entry.
-const PUBLIC_PATH = '/api/intelligence/v1/get-china-decision-signals'; // declared 'fast'
+const PUBLIC_PATH = '/api/news/v1/list-label-changes'; // declared 'fast'
 
 function publicGateway() {
   return createDomainGateway([{
@@ -161,18 +161,12 @@ describe('credential-bearing headers force a private tier (#8400)', () => {
     const credentialReads: Array<{ file: string; header: string }> = [
       { file: 'api/_api-key.js', header: 'X-WorldMonitor-Key' },
       { file: 'api/_api-key.js', header: 'X-Api-Key' },
-      { file: 'api/widget-agent.ts', header: 'X-WorldMonitor-Key' },
-      { file: 'api/widget-agent.ts', header: 'X-Api-Key' },
-      { file: 'api/widget-agent.ts', header: 'X-Widget-Key' },
-      { file: 'api/widget-agent.ts', header: 'X-Pro-Key' },
       // api/embed/{entitlement,session}.ts resolve through this helper;
       // tests/embed-session.test.mts pins that delegation.
       { file: 'server/_shared/embed-key.ts', header: 'X-WorldMonitor-Key' },
       { file: 'server/_shared/embed-key.ts', header: 'X-Api-Key' },
       { file: 'server/_shared/premium-check.ts', header: 'X-WorldMonitor-Key' },
       { file: 'server/_shared/premium-check.ts', header: 'X-Api-Key' },
-      { file: 'server/worldmonitor/shipping/v2/webhook-shared.ts', header: 'X-WorldMonitor-Key' },
-      { file: 'server/worldmonitor/shipping/v2/webhook-shared.ts', header: 'X-Api-Key' },
     ];
 
     // Auth paths that resolve the same credentials through the shared

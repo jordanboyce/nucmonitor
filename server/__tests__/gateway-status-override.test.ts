@@ -35,7 +35,7 @@ import { createDomainGateway } from '../gateway';
 import { setResponseHeader, setSuccessStatusOverride } from '../_shared/response-headers';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from '../_shared/idempotency';
 
-const PATH = '/api/leads/v1/submit-contact';
+const PATH = '/api/news/v1/submit-error-report';
 const STATUS_URL = '/api/scenario/v1/get-scenario-status?jobId=scenario%3A1717200000000%3Aabcd1234';
 const ctx = { waitUntil: () => {} };
 

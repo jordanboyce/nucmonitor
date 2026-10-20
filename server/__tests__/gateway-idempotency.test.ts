@@ -35,7 +35,7 @@ import { createDomainGateway } from '../gateway';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_REPLAYED_HEADER } from '../_shared/idempotency';
 import { markRetryableResponse, setResponseHeader } from '../_shared/response-headers';
 
-const PATH = '/api/leads/v1/submit-contact';
+const PATH = '/api/news/v1/submit-error-report';
 const ctx = { waitUntil: () => {} };
 
 const handler = vi.fn(

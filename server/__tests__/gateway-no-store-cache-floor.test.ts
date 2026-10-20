@@ -77,7 +77,7 @@ afterEach(() => {
 
 describe('gateway no-store floor + credentialed privacy (#6771)', () => {
   test('a route declared no-store stays no-store even with a credential and a healthy body', async () => {
-    const path = '/api/aviation/v1/track-aircraft'; // RPC_CACHE_TIER: 'no-store'
+    const path = '/api/webcam/v1/list-webcams'; // RPC_CACHE_TIER: 'no-store'
     const res = await gatewayFor(path, { aircraft: [{ icao24: 'abc123', lat: 1, lon: 2 }] })(
       credentialedRequest(path),
       ctx,
@@ -92,7 +92,7 @@ describe('gateway no-store floor + credentialed privacy (#6771)', () => {
   test('a credentialed non-public GET is marked private and not shared-cacheable', async () => {
     // list-airport-flights is declared 'static', but a credentialed non-public
     // GET is forced to slow-browser by the audience overwrite regardless.
-    const path = '/api/aviation/v1/list-airport-flights';
+    const path = '/api/market/v1/get-insider-transactions';
     const res = await gatewayFor(path, { flights: [{ id: 1 }], totalAvailable: 1, source: 'relay' })(
       credentialedRequest(path),
       ctx,
@@ -110,7 +110,7 @@ describe('gateway no-store floor + credentialed privacy (#6771)', () => {
   test('an anonymous request to a public route is NOT marked private (no over-broadening)', async () => {
     // Public no-auth route, no credential -> the private gate must not fire, so
     // shared/CDN caching of public data is preserved.
-    const path = '/api/intelligence/v1/get-china-decision-signals';
+    const path = '/api/news/v1/list-label-changes';
     const res = await createDomainGateway([
       { method: 'GET', path, handler: healthyHandler({ events: [{ id: 1 }] }) },
     ])(
@@ -127,61 +127,15 @@ describe('gateway no-store floor + credentialed privacy (#6771)', () => {
   test('a map-declared no-store route stays no-store even under a CACHE_TIER_OVERRIDE (#6771)', async () => {
     // An operator env override must not be able to downgrade an account-private
     // no-store route to a browser-cacheable tier.
-    process.env.CACHE_TIER_OVERRIDE_GET_COMPANY_COVERAGE = 'slow-browser';
+    process.env.CACHE_TIER_OVERRIDE_GET_IP_GEO = 'slow-browser';
     try {
-      const path = '/api/company-monitoring/v1/get-company-coverage'; // RPC_CACHE_TIER: 'no-store'
+      const path = '/api/infrastructure/v1/get-ip-geo'; // RPC_CACHE_TIER: 'no-store'
       const res = await gatewayFor(path, { coverage: [{ id: 1 }] })(credentialedRequest(path), ctx);
       expect(res.headers.get('Cache-Control')).toBe('no-store');
       expect(res.headers.get('X-Cache-Tier')).toBe('no-store');
     } finally {
-      delete process.env.CACHE_TIER_OVERRIDE_GET_COMPANY_COVERAGE;
+      delete process.env.CACHE_TIER_OVERRIDE_GET_IP_GEO;
     }
   });
 
-  test('audience-dependent vulnerability reads cannot populate a credential-agnostic browser cache', async () => {
-    const paths = [
-      '/api/supply-chain/v1/get-country-vulnerabilities',
-      '/api/supply-chain/v1/get-chokepoint-dependencies',
-      '/api/supply-chain/v1/list-vulnerability-rankings',
-    ];
-    for (const path of paths) {
-      let calls = 0;
-      const handler = createDomainGateway([{
-        method: 'GET',
-        path,
-        handler: async (request) => {
-          calls += 1;
-          return new Response(JSON.stringify({ audience: request.headers.get('X-Test-Audience') }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        },
-      }]);
-      const cache = new Map<string, Response>();
-      const fetchThroughBrowserCache = async (audience: 'dashboard' | 'api-key') => {
-        const url = `https://worldmonitor.app${path}?_debug=1`;
-        const cached = cache.get(url);
-        if (cached) return cached.clone();
-        const response = await handler(new Request(url, {
-          headers: {
-            'X-WorldMonitor-Key': KEY,
-            'X-Test-Audience': audience,
-            'cf-connecting-ip': '203.0.113.7',
-          },
-        }), ctx);
-        if (!/\bno-store\b/i.test(response.headers.get('Cache-Control') ?? '')) {
-          cache.set(url, response.clone());
-        }
-        return response;
-      };
-
-      const dashboard = await fetchThroughBrowserCache('dashboard');
-      const apiKey = await fetchThroughBrowserCache('api-key');
-      expect(dashboard.headers.get('Cache-Control')).toBe('no-store');
-      expect(apiKey.headers.get('Cache-Control')).toBe('no-store');
-      expect(await dashboard.json()).toEqual({ audience: 'dashboard' });
-      expect(await apiKey.json()).toEqual({ audience: 'api-key' });
-      expect(calls).toBe(2);
-    }
-  });
 });

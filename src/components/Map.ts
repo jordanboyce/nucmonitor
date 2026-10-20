@@ -18,7 +18,6 @@ import {
   GAMMA_IRRADIATORS,
   PIPELINES,
   PIPELINE_COLORS,
-  SITE_VARIANT,
 } from '@/config';
 // ai-datacenters + geo-map tables imported directly so their chunks stay
 // off the eager @/config barrel and load only with this lazy renderer (#4404).
@@ -466,26 +465,18 @@ export class MapComponent {
     toggles.className = 'layer-toggles';
     toggles.id = 'layerToggles';
 
-    // Variant-aware layer buttons
-    const fullLayers: (keyof MapLayers)[] = [
-      'nuclear', 'irradiators',                          // strategic
-      'cables', 'pipelines', 'outages', 'datacenters',   // infrastructure
-      'natural', 'weather', 'fires',                     // natural
-    ];
-    // Nuclear variant — SVG/mobile fallback. Facilities registry plus the
-    // hazard layers this renderer can paint.
+    // SVG/mobile fallback picker: the facilities registry plus the hazard
+    // layers this renderer can paint.
     const nuclearLayers: (keyof MapLayers)[] = [
       'usNuclearFacilities',                  // NucMonitor registry
       'radiationWatch',                       // EPA RadNet / Safecast watch
       'natural', 'weather', 'fires',          // all-hazards inputs
       'outages',                              // grid status
       'nuclear', 'irradiators',               // global strategic context
-      'pipelines', 'cables', 'datacenters',   // infrastructure
     ];
     // Filter renderer-incompatible layers so the SVG/mobile picker cannot
     // expose a toggle whose layer has no SVG paint path.
-    const layers = (SITE_VARIANT === 'nuclear' ? nuclearLayers
-                 : fullLayers).filter((key) => isLayerExecutable(key, 'svg'));
+    const layers = nuclearLayers.filter((key) => isLayerExecutable(key, 'svg'));
     const MAX_SVG_LAYERS = 9;
     const enforceLayerLimit = () => {
       const allBtns = Array.from(toggles.querySelectorAll<HTMLButtonElement>('.layer-toggle'));
@@ -2456,7 +2447,7 @@ export class MapComponent {
     // Pan: +x = west, -x = east, +y = north, -y = south
     const viewSettings: Record<MapView, { zoom: number; pan: { x: number; y: number } }> = {
       global: { zoom: 1, pan: { x: 0, y: 0 } },
-      america: { zoom: 1.8, pan: { x: 180, y: 30 } },
+      america: { zoom: 3.2, pan: { x: 263, y: 60 } },
       mena: { zoom: 3.5, pan: { x: -100, y: 50 } },
       eu: { zoom: 2.4, pan: { x: -30, y: 100 } },
       asia: { zoom: 2.0, pan: { x: -320, y: 40 } },
@@ -2467,7 +2458,7 @@ export class MapComponent {
 
     const settings = viewSettings[view];
     this.state.zoom = zoom ?? settings.zoom;
-    this.state.pan = settings.pan;
+    this.state.pan = { ...settings.pan };
     this.applyTransform();
     this.render();
   }
@@ -2563,14 +2554,8 @@ export class MapComponent {
   }
 
   public reset(): void {
-    this.state.zoom = 1;
-    this.state.pan = { x: 0, y: 0 };
-    if (this.state.view !== 'global') {
-      this.state.view = 'global';
-      this.render();
-    } else {
-      this.applyTransform();
-    }
+    // Home is the continental US: every registry facility is domestic.
+    this.setView('america');
     this.resumeMobileLabelVisibility();
   }
 

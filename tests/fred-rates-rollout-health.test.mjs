@@ -14,7 +14,6 @@ const {
   ACTIVATION_MARKERS,
   FRED_RATES_ROLLOUT_DEADLINE_KEY,
   FRED_RATES_ROLLOUT_DURATION_MS,
-  CHINA_COVERAGE_SUMMARY_KEY,
   fredRatesRolloutCommands,
   parseFredRatesRolloutUntil,
 } = __testing__;
@@ -89,7 +88,6 @@ test('retained FRED data becomes STALE_SEED at each unchanged health budget', ()
   for (const { name, recordCount, maxStaleMin } of [
     { name: 'fredRatesSeeder', recordCount: 24, maxStaleMin: 180 },
     { name: 'fredBatch', recordCount: 1, maxStaleMin: 1500 },
-    { name: 'economicStress', recordCount: 1, maxStaleMin: 180 },
   ]) {
     const entry = classifyRetained(name, {
       now,
@@ -157,25 +155,10 @@ test('missing or malformed durable rollout state fails closed', () => {
 
 function installHealthPipelineMock(recordCount, {
   metaOverrides = {},
-  chinaCoverageSummary,
 } = {}) {
   let sweepCommands;
   let failureSignature = '';
   let failureLogPushes = 0;
-  const educationCountries = Object.fromEntries(
-    Array.from({ length: 26 * 26 }, (_, index) => {
-      const code = String.fromCharCode(65 + Math.floor(index / 26), 65 + (index % 26));
-      return [code, { value: 50, year: 2025 }];
-    }),
-  );
-  const healthyChinaSummary = {
-    schemaVersion: 1,
-    countryCode: 'CN',
-    status: 'healthy',
-    evaluatedAt: new Date(DEPLOYED_AT).toISOString(),
-    counts: { total: 1, launched: 1, planned: 0, blocked: 0, healthy: 1, degraded: 0, unavailable: 0 },
-    entries: [{ id: 'market.mock', launchStatus: 'launched', status: 'healthy', reasonCodes: [] }],
-  };
   const configsByMetaKey = Object.values(SEED_META).reduce((map, config) => {
     const configs = map.get(config.key) ?? [];
     configs.push(config);
@@ -188,7 +171,6 @@ function installHealthPipelineMock(recordCount, {
       fetchedAt: DEPLOYED_AT,
       recordCount: Math.max(10_000, ...configs.map((config) => config.minRecordCount ?? 0)),
     };
-    if (key === SEED_META.globalTendersContractsFinder.key) meta.sourceState = 'ok';
     for (const config of configs) {
       if (config.requiredRedistributionPolicyVersion != null) {
         meta.redistributionPolicyVersion = config.requiredRedistributionPolicyVersion;
@@ -262,12 +244,6 @@ function installHealthPipelineMock(recordCount, {
             ? null
             : JSON.stringify({ fetchedAt: DEPLOYED_AT, recordCount }),
         };
-      }
-      if (op === 'GET' && key === CHINA_COVERAGE_SUMMARY_KEY) {
-        return { result: JSON.stringify(chinaCoverageSummary ?? healthyChinaSummary) };
-      }
-      if (op === 'GET' && key === STANDALONE_KEYS.educationAttainment) {
-        return { result: JSON.stringify({ countries: educationCountries }) };
       }
       if (op === 'GET' && String(key).includes('health:verdict')) return { result: null };
       if (op === 'GET' && key === 'health:failure-log-sig') return { result: failureSignature };
@@ -410,10 +386,14 @@ test('handler contains multiple served warnings up to the 3% fleet boundary', as
       [SEED_META.ecbEstr.key]: { sourceState: 'degraded' },
     } });
     const bundle = await read();
-    assert.equal(bundle.status, 'HEALTHY');
+    // One shared ECB seed-meta degrades four served checks at once. On the
+    // trimmed (~120-check) fleet four contained warnings sit just past the 3%
+    // boundary, so the verdict stays WARNING even though each one is contained.
+    assert.equal(bundle.status, 'WARNING');
     assert.equal(bundle.summary.warn, 4);
     assert.equal(bundle.summary.containedWarn, 4);
-    assert.ok(bundle.summary.warn / bundle.summary.total < 0.03);
+    assert.ok(bundle.summary.containedWarn / bundle.summary.total > 0.03);
+    assert.ok(3 / bundle.summary.total <= 0.03, 'three contained warnings remain inside the boundary');
     for (const name of ['ecbEstr', 'ecbEuribor3m', 'ecbEuribor6m', 'ecbEuribor1y']) {
       assert.equal(bundle.problems[name].status, 'SEED_ERROR');
     }
@@ -428,70 +408,16 @@ test('handler contains multiple served warnings up to the 3% fleet boundary', as
         recordCount: 17,
         fetchedAt: DEPLOYED_AT - 3_170 * 60_000,
       },
-      [SEED_META.portwatchPortActivity.key]: { recordCount: 168 },
     } });
     const current = await read();
     assert.equal(current.status, 'HEALTHY');
-    assert.equal(current.summary.warn, 3);
-    assert.equal(current.summary.containedWarn, 3);
+    assert.equal(current.summary.warn, 2);
+    assert.equal(current.summary.containedWarn, 2);
     assert.deepEqual(Object.fromEntries(Object.entries(current.problems)
       .map(([name, entry]) => [name, entry.status])), {
       diseaseOutbreaks: 'STALE_CONTENT',
       electricityPrices: 'STALE_SEED',
-      portwatchPortActivity: 'COVERAGE_PARTIAL',
     });
-
-    const chinaProblems = [{
-      id: 'market.china-corporate-disclosures',
-      status: 'degraded',
-      reasonCodes: ['CHINA_COVERAGE_PARTIAL'],
-    }];
-    const degradedSummary = {
-      schemaVersion: 1,
-      countryCode: 'CN',
-      status: 'degraded',
-      evaluatedAt: new Date(DEPLOYED_AT - 60_000).toISOString(),
-      counts: { total: 1, launched: 1, planned: 0, blocked: 0, healthy: 0, degraded: 1, unavailable: 0 },
-      entries: chinaProblems.map((problem) => ({ ...problem, launchStatus: 'launched' })),
-      degradedStreak: 4,
-      degradedProblemKey: JSON.stringify(chinaProblems),
-      lastHealthyAt: DEPLOYED_AT - 181 * 60_000,
-    };
-    installHealthPipelineMock(24, { chinaCoverageSummary: degradedSummary });
-    const body = await read();
-    assert.equal(body.status, 'HEALTHY');
-    assert.equal(body.summary.warn, 1);
-    assert.equal(body.summary.containedWarn, 1);
-    assert.equal(body.problems?.chinaCoverage?.status, 'CHINA_DEGRADED');
-    assert.equal(body.pending?.chinaCoverage, undefined);
-
-    installHealthPipelineMock(24, { chinaCoverageSummary: {
-      ...degradedSummary,
-      evaluatedAt: new Date(DEPLOYED_AT + 1).toISOString(),
-    } });
-    const futureBody = await read();
-    assert.equal(futureBody.status, 'WARNING');
-    assert.equal(futureBody.summary.containedWarn, 0);
-    assert.equal(futureBody.problems?.chinaCoverage?.status, 'CHINA_DEGRADED');
-
-    installHealthPipelineMock(24, { chinaCoverageSummary: {
-      ...degradedSummary,
-      counts: { total: 2, launched: 2, planned: 0, blocked: 0, healthy: 1, degraded: 0, unavailable: 1 },
-      entries: [
-        { id: 'market.china-healthy', launchStatus: 'launched', status: 'healthy', reasonCodes: [] },
-        { id: 'market.china-unavailable', launchStatus: 'launched', status: 'unavailable', reasonCodes: ['UPSTREAM_UNAVAILABLE'] },
-      ],
-    } });
-    const unavailableBody = await read();
-    assert.equal(unavailableBody.status, 'WARNING');
-    assert.equal(unavailableBody.summary.warn, 1);
-    assert.equal(unavailableBody.summary.containedWarn, 0);
-    assert.equal(unavailableBody.problems?.chinaCoverage?.status, 'CHINA_DEGRADED');
-    assert.deepEqual(unavailableBody.problems?.chinaCoverage?.problems, [{
-      id: 'market.china-unavailable',
-      status: 'unavailable',
-      reasonCodes: ['UPSTREAM_UNAVAILABLE'],
-    }]);
   } finally {
     globalThis.fetch = originalFetch;
     Date.now = originalDateNow;

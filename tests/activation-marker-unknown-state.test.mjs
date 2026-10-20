@@ -39,9 +39,27 @@ const {
   CONTENT_FRESHNESS_ROLLOUT_UNTIL_MS,
 } = __testing__;
 
+// PortWatch was retired with the supply-chain domain, so no surviving
+// /api/health check declares a content-freshness activation today. The
+// three-valued marker read and its fail-closed content-freshness gate still
+// ship, so register the retired PortWatch configuration as a fixture check and
+// keep driving that gate through the real handler. /api/seed-health has no
+// content-freshness domain left; its unknown-marker policy is covered through
+// the ON_DEMAND feed-health arm below.
+const { PORTWATCH_CONTENT_FRESHNESS_ACTIVATION_KEY } = await import('../api/_content-freshness.js');
+assert.equal(SEED_META.portwatchPortActivity, undefined, 'fixture name must not shadow a real check');
+STANDALONE_KEYS.portwatchPortActivity = 'supply_chain:portwatch-ports:v1:_countries';
+SEED_META.portwatchPortActivity = {
+  key: 'seed-meta:supply_chain:portwatch-ports',
+  maxStaleMin: 2160,
+  minRecordCount: 174,
+  requireContentFreshness: { countries: ['CN', 'HK'], budgetMinutes: 10 * 24 * 60 },
+  contentFreshnessActivation: 'portwatchContentFreshness',
+};
+ACTIVATION_MARKERS.portwatchContentFreshness = PORTWATCH_CONTENT_FRESHNESS_ACTIVATION_KEY;
+
 const PORTWATCH_META_KEY = SEED_META.portwatchPortActivity.key;
 const PORTWATCH_MARKER = ACTIVATION_MARKERS.portwatchContentFreshness;
-const PORTWATCH_DOMAIN = 'supply_chain:portwatch-ports';
 const TEST_NOW = Date.parse('2026-08-03T14:42:58.000Z');
 const PORTWATCH_PENDING_UNTIL = new Date(
   CONTENT_FRESHNESS_ROLLOUT_UNTIL_MS[PORTWATCH_MARKER],
@@ -363,7 +381,6 @@ function installSeedHealthPipelineMock(
       }
       assert.equal(op, 'GET');
       if (missing.has(key)) return { result: null };
-      if (key === PORTWATCH_META_KEY) return { result: blockLessPortwatchMeta(now) };
       // Keep every unrelated coverage-gated feed above its floor so only the
       // entry under test can move.
       return { result: JSON.stringify({ fetchedAt: now, recordCount: 10_000 }) };
@@ -390,96 +407,6 @@ async function seedHealthResponseFor(markerEntries, options) {
 async function seedHealthEntries(markerEntries, options) {
   return (await seedHealthResponseFor(markerEntries, options)).body.seeds ?? {};
 }
-
-async function portwatchSeedHealthEntry(markerEntry) {
-  const seeds = await seedHealthEntries({ [PORTWATCH_MARKER]: markerEntry });
-  return seeds[PORTWATCH_DOMAIN];
-}
-
-describe('#6095 — /api/seed-health treats an unreadable activation marker as unknown', () => {
-  it('graces a block-less run only when the marker was read and came back absent', async () => {
-    const entry = await portwatchSeedHealthEntry(ABSENT);
-    assert.equal(entry?.status, 'ok');
-    assert.equal(entry?.stale, false);
-    assert.equal(entry?.contentFreshness, undefined, 'a graced block publishes no content verdict');
-    assert.equal(entry?.contentFreshnessPendingUntil, PORTWATCH_PENDING_UNTIL);
-  });
-
-  it('classifies against the wall clock after the Redis batch completes', async () => {
-    let clock = CONTENT_FRESHNESS_ROLLOUT_UNTIL_MS[PORTWATCH_MARKER] - 1;
-    Date.now = () => clock;
-
-    const { body } = await seedHealthResponseFor(
-      { [PORTWATCH_MARKER]: ABSENT },
-      {
-        useProductionClock: true,
-        onFetch: () => {
-          clock = CONTENT_FRESHNESS_ROLLOUT_UNTIL_MS[PORTWATCH_MARKER] + 1;
-        },
-      },
-    );
-    const entry = body.seeds?.[PORTWATCH_DOMAIN];
-
-    assert.equal(
-      entry?.status,
-      'coverage_degraded',
-      'a batch that crosses the deadline must use the post-read strict verdict',
-    );
-    assert.equal(entry?.stale, true);
-    assert.equal(entry?.contentFreshnessPendingUntil, undefined);
-    assert.equal(body.checkedAt, clock);
-  });
-
-  it('fails closed once the marker proves the producer has published the block', async () => {
-    const entry = await portwatchSeedHealthEntry(PRESENT);
-    assert.equal(entry?.status, 'coverage_degraded');
-    assert.equal(entry?.stale, true);
-  });
-
-  it('does not let an errored EXISTS entry re-enter the grace', async () => {
-    const entry = await portwatchSeedHealthEntry(ERRORED);
-    assert.equal(
-      entry?.status,
-      'coverage_degraded',
-      'an errored marker read is unknown state, not proof of a producer that never ran',
-    );
-    assert.equal(entry?.stale, true);
-    // Pins the flag on the has-meta path, not just the pending-activation
-    // branch: this is the entry an operator actually triages, and without the
-    // flag it is identical to a producer that genuinely stopped publishing.
-    assert.equal(entry?.activationUnknown, true);
-  });
-
-  it('leaves the flag off when the marker was read cleanly', async () => {
-    for (const outcome of [ABSENT, PRESENT]) {
-      const entry = await portwatchSeedHealthEntry(outcome);
-      assert.equal(entry?.activationUnknown, undefined);
-    }
-  });
-
-  it('does not treat an empty pipeline entry as read-absent', async () => {
-    const entry = await portwatchSeedHealthEntry(EMPTY_ENTRY);
-    assert.equal(
-      entry?.status,
-      'coverage_degraded',
-      'an entry without a result is unknown state, not a marker read and found absent',
-    );
-    assert.equal(entry?.activationUnknown, true);
-  });
-
-  for (const [label, malformedPipelineBody] of [
-    ['object', {}],
-    ['string', 'ok'],
-    ['null', null],
-    ['wrong-length array', []],
-  ]) {
-    it(`does not produce a marker verdict from a malformed ${label} pipeline body`, async () => {
-      const { res, body } = await seedHealthResponseFor({}, { malformedPipelineBody });
-      assert.equal(res.status, 503, `${label} must fail the seed-health request closed`);
-      assert.equal(body.error, 'Redis unavailable', `${label} must not produce a marker verdict`);
-    });
-  }
-});
 
 // ── The deliberate asymmetry ────────────────────────────────────────────────
 

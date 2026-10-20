@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { handleHealth, __testing__ } from '../api/health.js';
 
 const {
+  BOOTSTRAP_KEYS,
   STANDALONE_KEYS,
   SEED_META,
   KEY_VERSION_ROLLOUT_DEADLINE_PREFIX,
@@ -17,23 +18,23 @@ const {
 // Production on 2026-10-08: #9044 moved this reader from v11 to v12 at 08:55
 // UTC. Its writer is a Railway cron (`0 */6 * * *`) that a deploy does not
 // run, so v12 stayed absent until 12:00 and health read EMPTY (crit) beside a
-// fresh seed-meta written by the v11 code.
-const NAME = 'resilienceIntervals';
-const KEY = STANDALONE_KEYS[NAME];
+// fresh seed-meta written by the v11 code. That resilience reader was retired
+// with the trim; the window is generic over every versioned data key, so the
+// suite now drives it through a surviving versioned key (climate:anomalies:v2,
+// written by a 3-hourly bundle cron a deploy does not run either).
+const NAME = 'climateAnomalies';
+const KEY = BOOTSTRAP_KEYS[NAME] ?? STANDALONE_KEYS[NAME];
 const META_KEY = SEED_META[NAME].key;
 const DEADLINE_KEY = `${KEY_VERSION_ROLLOUT_DEADLINE_PREFIX}${KEY}`;
 const NOW = Date.parse('2026-10-08T09:12:00Z');
 const BUDGET_MS = SEED_META[NAME].maxStaleMin * 60_000;
-const PREVIOUS_KEY = KEY.replace(/:v(\d+):/, (_, v) => `:v${Number(v) - 1}:`);
+const PREVIOUS_KEY = KEY.replace(/:v(\d+)(?=:|$)/, (_, v) => `:v${Number(v) - 1}`);
 
 function writerMeta(sourceKey, overrides = {}) {
   return {
     fetchedAt: NOW - 189 * 60_000,
     recordCount: 196,
-    sourceVersion: `resilience-intervals:${sourceKey.replace(/US$/, '')}weight-perturbation-sensitivity-v3`,
-    _formula: 'pc',
-    _educationState: 'education-on',
-    _intervalMethodology: 'weight-perturbation-sensitivity-v3',
+    sourceVersion: `climate-anomalies:${sourceKey}`,
     ...overrides,
   };
 }
@@ -162,8 +163,8 @@ test('present data is classified on its own merits', async () => {
 });
 
 test('a rollout window also covers keys whose missing data is otherwise a failure', () => {
-  const { classifyKey, BOOTSTRAP_KEYS, MISSING_DATA_IS_FAILURE_KEYS } = __testing__;
-  const name = 'canadaRoads';
+  const { classifyKey, MISSING_DATA_IS_FAILURE_KEYS } = __testing__;
+  const name = 'wildfiresBootstrap';
   assert.ok(MISSING_DATA_IS_FAILURE_KEYS.has(name));
   const key = BOOTSTRAP_KEYS[name] ?? STANDALONE_KEYS[name];
   const ctx = (rolloutUntil) => ({
@@ -179,11 +180,11 @@ test('a rollout window also covers keys whose missing data is otherwise a failur
   assert.equal(classifyKey(name, key, { allowOnDemand: false }, ctx(NOW + 60_000)).status, 'ROLLOUT_PENDING');
 });
 
-// Review on #9046: staleness budgets reach 400 days (resilienceStaticIndex).
+// Review on #9046: staleness budgets reach 70 days (imfMacro).
 // A writer that never moves to the new version would keep an absent key at
 // warn for that long. The gap being covered is one writer tick, not the budget.
 test('the window is the staleness budget, capped at one day', () => {
   assert.equal(KEY_VERSION_ROLLOUT_MAX_MS, 24 * 60 * 60 * 1_000);
   assert.equal(keyVersionRolloutDurationMs(SEED_META[NAME]), BUDGET_MS);
-  assert.equal(keyVersionRolloutDurationMs(SEED_META.resilienceStaticIndex), KEY_VERSION_ROLLOUT_MAX_MS);
+  assert.equal(keyVersionRolloutDurationMs(SEED_META.imfMacro), KEY_VERSION_ROLLOUT_MAX_MS);
 });

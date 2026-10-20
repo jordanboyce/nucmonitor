@@ -17,7 +17,6 @@ export * from './StatusPanel';
 export * from './SearchModal';
 export * from './MobilePanelNav';
 export * from './LlmStatusIndicator';
-export * from './LiveNewsPanel';
 export * from './RuntimeConfigPanel';
 export * from './SatelliteFiresPanel';
 export * from './ClimateAnomalyPanel';

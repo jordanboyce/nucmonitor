@@ -494,7 +494,8 @@
     "fearGreed": "Frică și lacómie",
     "marketBreadth": "Amploarea pieței",
     "climateNews": "Știri despre climă",
-    "fx": "Cursuri de schimb valutar"
+    "fx": "Cursuri de schimb valutar",
+    "gridAlerts": "Alerte rețea electrică"
   },
   "commands": {
     "prefixes": {
@@ -1302,7 +1303,8 @@
         "radiationSpike": "Vârf de radiații",
         "radiationElevated": "Radiații ridicate",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Alerte rețea electrică"
       },
       "tooltip": {
         "earthquake": "Cutremur",
@@ -2975,6 +2977,79 @@
       "rosterPublishers_one": "{{count}} editor",
       "rosterPublishers_few": "{{count}} editori",
       "rosterPublishers_other": "{{count}} de editori"
+    },
+    "gridAlerts": {
+      "loading": "Se încarcă alertele rețelei…",
+      "unavailable": "Sursele de alerte ale rețelei sunt indisponibile momentan.",
+      "notPublished": "Instantaneul alertelor rețelei nu a fost încă publicat. Workerul seed-grid-alerts îl scrie la fiecare 10 minute.",
+      "noAlerts": "Nicio alertă de rețea activă pentru acest filtru.",
+      "allRegions": "Toate regiunile",
+      "truncated": "Se afișează cele {{shown}} alerte de pericol cu ponderea cea mai mare din {{total}} active.",
+      "views": {
+        "alerts": "Alerte",
+        "regions": "Regiuni",
+        "hazards": "Impactul pericolelor",
+        "space": "Meteorologie spațială"
+      },
+      "overall": {
+        "normal": "Normal",
+        "watch": "Supraveghere",
+        "elevated": "Ridicat",
+        "critical": "Critic"
+      },
+      "summary": {
+        "regionsStressed": "regiuni sub stres",
+        "emergencies": "urgențe",
+        "worst": "Cel mai grav"
+      },
+      "filters": {
+        "all": "Toate"
+      },
+      "kinds": {
+        "operator": "Operator",
+        "weather": "Meteo",
+        "space": "Meteorologie spațială"
+      },
+      "levels": {
+        "emergency": "Urgență",
+        "warning": "Avertizare",
+        "advisory": "Atenționare",
+        "info": "Info"
+      },
+      "regions": {
+        "region": "Regiune",
+        "status": "Stare",
+        "demand": "Consum",
+        "impact": "Impact",
+        "ofForecast": "din prognoză",
+        "noDrivers": "Nu s-au detectat factori de stres.",
+        "footprint": "Zonă deservită"
+      },
+      "metrics": {
+        "forecastPeak": "Vârf prognozat",
+        "capacity": "Capacitate angajată",
+        "netGeneration": "Producție netă",
+        "interchange": "Schimb",
+        "reserve": "Rezervă",
+        "gic": "Expunere la GIC"
+      },
+      "exposure": {
+        "high": "Ridicată",
+        "moderate": "Moderată",
+        "low": "Scăzută",
+        "unknown": "Necunoscută"
+      },
+      "hazards": {
+        "none": "Niciun pericol meteo relevant pentru rețea nu este activ în zonele evaluate.",
+        "weight": "Ponderea pericolului",
+        "legend": "Celulele arată ponderea celei mai puternice alerte NWS active pe familie de pericole (0–40, scalată după severitate). Rândurile se combină cu starea operatorului, presiunea consumului și expunerea geomagnetică în scorul de impact."
+      },
+      "space": {
+        "now": "Furtună geomagnetică acum",
+        "unavailable": "Scalele NOAA SWPC sunt indisponibile.",
+        "noProducts": "Nicio veghe sau avertizare geomagnetică în ultimele 72 de ore.",
+        "mechanism": "Curenții induși geomagnetic saturează transformatoarele și declanșează protecțiile pe liniile lungi est–vest. Expunerea crește spre ovalul auroral, astfel încât zonele de echilibrare nordice poartă cel mai mare risc la același nivel G."
+      }
     }
   },
   "popups": {

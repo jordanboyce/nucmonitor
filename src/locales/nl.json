@@ -108,7 +108,8 @@
     "fearGreed": "Angst & Hebzucht",
     "marketBreadth": "Marktbreedte",
     "climateNews": "Klimaatnieuws",
-    "fx": "Wisselkoersen"
+    "fx": "Wisselkoersen",
+    "gridAlerts": "Stroomnetwaarschuwingen"
   },
   "commands": {
     "prefixes": {
@@ -601,7 +602,8 @@
         "radiationSpike": "Stralingspiek",
         "radiationElevated": "Verhoogde straling",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Stroomnetwaarschuwingen"
       },
       "layersTitle": "Lagen",
       "layerSearch": "Lagen zoeken...",
@@ -2571,6 +2573,79 @@
       "rosterSummaryTier1": "Gemeld door {{publishers}}, waaronder {{tier1}} tier-1",
       "rosterPublishers_one": "{{count}} uitgever",
       "rosterPublishers_other": "{{count}} uitgevers"
+    },
+    "gridAlerts": {
+      "loading": "Netwaarschuwingen laden…",
+      "unavailable": "De bronnen voor netwaarschuwingen zijn momenteel niet beschikbaar.",
+      "notPublished": "De momentopname van netwaarschuwingen is nog niet gepubliceerd. De worker seed-grid-alerts schrijft deze elke 10 minuten.",
+      "noAlerts": "Geen actieve netwaarschuwingen voor dit filter.",
+      "allRegions": "Alle regio's",
+      "truncated": "De {{shown}} zwaarst wegende gevaarwaarschuwingen van {{total}} actieve worden getoond.",
+      "views": {
+        "alerts": "Waarschuwingen",
+        "regions": "Regio's",
+        "hazards": "Gevaarimpact",
+        "space": "Ruimteweer"
+      },
+      "overall": {
+        "normal": "Normaal",
+        "watch": "Oplettend",
+        "elevated": "Verhoogd",
+        "critical": "Kritiek"
+      },
+      "summary": {
+        "regionsStressed": "regio's onder druk",
+        "emergencies": "noodsituaties",
+        "worst": "Ergste"
+      },
+      "filters": {
+        "all": "Alles"
+      },
+      "kinds": {
+        "operator": "Netbeheerder",
+        "weather": "Weer",
+        "space": "Ruimteweer"
+      },
+      "levels": {
+        "emergency": "Noodsituatie",
+        "warning": "Waarschuwing",
+        "advisory": "Advies",
+        "info": "Info"
+      },
+      "regions": {
+        "region": "Regio",
+        "status": "Status",
+        "demand": "Vraag",
+        "impact": "Impact",
+        "ofForecast": "van de prognose",
+        "noDrivers": "Geen stressfactoren gedetecteerd.",
+        "footprint": "Verzorgingsgebied"
+      },
+      "metrics": {
+        "forecastPeak": "Verwachte piek",
+        "capacity": "Toegezegde capaciteit",
+        "netGeneration": "Netto-opwekking",
+        "interchange": "Uitwisseling",
+        "reserve": "Reserve",
+        "gic": "GIC-blootstelling"
+      },
+      "exposure": {
+        "high": "Hoog",
+        "moderate": "Matig",
+        "low": "Laag",
+        "unknown": "Onbekend"
+      },
+      "hazards": {
+        "none": "In geen enkel beoordeeld verzorgingsgebied zijn netrelevante weergevaren actief.",
+        "weight": "Gevaargewicht",
+        "legend": "Cellen tonen het gewicht van de zwaarste actieve NWS-waarschuwing per gevaarfamilie (0–40, geschaald naar ernst). Rijen worden met de status van de netbeheerder, de vraagdruk en de geomagnetische blootstelling gecombineerd tot de impactscore."
+      },
+      "space": {
+        "now": "Geomagnetische storm nu",
+        "unavailable": "De NOAA SWPC-schalen zijn niet beschikbaar.",
+        "noProducts": "Geen geomagnetische watches of waarschuwingen in de afgelopen 72 uur.",
+        "mechanism": "Geomagnetisch geïnduceerde stromen verzadigen transformatoren en laten beveiligingen op lange oost-westlijnen aanspreken. De blootstelling neemt toe richting het poollichtovaal, dus noordelijke regelzones lopen bij hetzelfde G-niveau het grootste risico."
+      }
     }
   },
   "popups": {

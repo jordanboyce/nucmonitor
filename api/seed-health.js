@@ -246,6 +246,7 @@ const SEED_DOMAINS = {
   },
   'thermal:escalation':       { key: 'seed-meta:thermal:escalation',       intervalMin: 180 },
   'radiation:observations':   { key: 'seed-meta:radiation:observations',   intervalMin: 15 },
+  'energy:grid-alerts':       { key: 'seed-meta:energy:grid-alerts',       intervalMin: 10 },
   'sanctions:pressure':       { key: 'seed-meta:sanctions:pressure',       intervalMin: 360 },
   'sanctions:entities':       { key: 'seed-meta:sanctions:entities',       intervalMin: 360 },
   'health:air-quality':       { key: 'seed-meta:health:air-quality',       intervalMin: 60 },  // hourly cron (shared seeder writes health + climate keys)

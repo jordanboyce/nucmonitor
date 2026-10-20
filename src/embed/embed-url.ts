@@ -152,6 +152,7 @@ export function createBlankMapLayers(): MapLayers {
     diseaseOutbreaks: false,
     storageFacilities: false,
     fuelShortages: false,
+    gridAlerts: false,
     liveTankers: false,
   };
 }

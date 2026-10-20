@@ -492,7 +492,8 @@
     "fearGreed": "Korku & Açgözlülük",
     "marketBreadth": "Pazar Genişliği",
     "climateNews": "İklim Haberleri",
-    "fx": "Döviz kurları"
+    "fx": "Döviz kurları",
+    "gridAlerts": "Elektrik Şebekesi Uyarıları"
   },
   "commands": {
     "prefixes": {
@@ -1299,7 +1300,8 @@
         "radiationSpike": "Radyasyon artışı",
         "radiationElevated": "Yükseltilmiş radyasyon",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Elektrik Şebekesi Uyarıları"
       },
       "tooltip": {
         "earthquake": "Deprem",
@@ -2955,6 +2957,79 @@
       "rosterSummaryTier1": "{{publishers}} tarafından bildirildi; bunların {{tier1}} tanesi seviye 1",
       "rosterPublishers_one": "{{count}} yayıncı",
       "rosterPublishers_other": "{{count}} yayıncı"
+    },
+    "gridAlerts": {
+      "loading": "Şebeke uyarıları yükleniyor…",
+      "unavailable": "Şebeke uyarı kaynakları şu anda kullanılamıyor.",
+      "notPublished": "Şebeke uyarıları anlık görüntüsü henüz yayımlanmadı. seed-grid-alerts çalışanı bunu her 10 dakikada bir yazar.",
+      "noAlerts": "Bu filtre için etkin şebeke uyarısı yok.",
+      "allRegions": "Tüm bölgeler",
+      "truncated": "{{total}} etkin uyarıdan en yüksek ağırlıklı {{shown}} tehlike uyarısı gösteriliyor.",
+      "views": {
+        "alerts": "Uyarılar",
+        "regions": "Bölgeler",
+        "hazards": "Tehlike etkisi",
+        "space": "Uzay havası"
+      },
+      "overall": {
+        "normal": "Normal",
+        "watch": "İzleme",
+        "elevated": "Yüksek",
+        "critical": "Kritik"
+      },
+      "summary": {
+        "regionsStressed": "bölge baskı altında",
+        "emergencies": "acil durum",
+        "worst": "En kötü"
+      },
+      "filters": {
+        "all": "Tümü"
+      },
+      "kinds": {
+        "operator": "İşletmeci",
+        "weather": "Hava",
+        "space": "Uzay havası"
+      },
+      "levels": {
+        "emergency": "Acil durum",
+        "warning": "Uyarı",
+        "advisory": "Bilgilendirme",
+        "info": "Bilgi"
+      },
+      "regions": {
+        "region": "Bölge",
+        "status": "Durum",
+        "demand": "Talep",
+        "impact": "Etki",
+        "ofForecast": "tahminin",
+        "noDrivers": "Baskı etkeni saptanmadı.",
+        "footprint": "Hizmet alanı"
+      },
+      "metrics": {
+        "forecastPeak": "Tahmini tepe",
+        "capacity": "Taahhüt edilen kapasite",
+        "netGeneration": "Net üretim",
+        "interchange": "Değişim",
+        "reserve": "Rezerv",
+        "gic": "GIC maruziyeti"
+      },
+      "exposure": {
+        "high": "Yüksek",
+        "moderate": "Orta",
+        "low": "Düşük",
+        "unknown": "Bilinmiyor"
+      },
+      "hazards": {
+        "none": "Değerlendirilen hiçbir alanda şebekeyi ilgilendiren etkin bir hava tehlikesi yok.",
+        "weight": "Tehlike ağırlığı",
+        "legend": "Hücreler, her tehlike ailesi için en güçlü etkin NWS uyarısının ağırlığını gösterir (0–40, şiddete göre ölçeklenir). Satırlar işletmeci durumu, talep baskısı ve jeomanyetik maruziyetle birleşerek etki puanını oluşturur."
+      },
+      "space": {
+        "now": "Şu anda jeomanyetik fırtına",
+        "unavailable": "NOAA SWPC ölçekleri kullanılamıyor.",
+        "noProducts": "Son 72 saatte jeomanyetik izleme ya da uyarı yok.",
+        "mechanism": "Jeomanyetik kaynaklı akımlar transformatörleri doyurur ve uzun doğu-batı hatlarında korumaları açtırır. Maruziyet kutup ışığı ovaline doğru arttığından, aynı G düzeyinde en yüksek riski kuzeydeki dengeleme bölgeleri taşır."
+      }
     }
   },
   "popups": {

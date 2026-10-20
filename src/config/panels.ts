@@ -95,6 +95,7 @@ const FULL_PANELS: Record<string, PanelConfig> = {
   'pipeline-status': { name: 'Oil & Gas Pipeline Status', enabled: true, priority: 2 },
   'storage-facility-map': { name: 'Strategic Storage Atlas', enabled: true, priority: 2 },
   'fuel-shortages': { name: 'Global Fuel Shortage Registry', enabled: true, priority: 2 },
+  'grid-alerts': { name: 'Power Grid Alerts', enabled: false, priority: 2 },
   'energy-disruptions': { name: 'Energy Disruptions Log', enabled: true, priority: 2 },
   'energy-risk-overview': { name: 'Global Energy Risk Overview', enabled: false, priority: 2 },
   'gulf-economies': { name: 'Gulf Economies', enabled: false, priority: 2 },
@@ -152,6 +153,7 @@ const FULL_MAP_LAYERS: MapLayers = {
   pipelines: false,
   storageFacilities: false,
   fuelShortages: false,
+  gridAlerts: false,
   hotspots: true,
   ais: false,
   nuclear: true,
@@ -223,6 +225,7 @@ const FULL_MOBILE_MAP_LAYERS: MapLayers = {
   pipelines: false,
   storageFacilities: false,
   fuelShortages: false,
+  gridAlerts: false,
   hotspots: true,
   ais: false,
   nuclear: false,
@@ -994,6 +997,7 @@ const ENERGY_PANELS: Record<string, PanelConfig> = {
   'pipeline-status': { name: 'Oil & Gas Pipeline Status', enabled: true, priority: 1 },
   'storage-facility-map': { name: 'Strategic Storage Atlas', enabled: true, priority: 1 },
   'fuel-shortages': { name: 'Global Fuel Shortage Registry', enabled: true, priority: 1 },
+  'grid-alerts': { name: 'Power Grid Alerts', enabled: false, priority: 1 },
   'energy-disruptions': { name: 'Energy Disruptions Log', enabled: true, priority: 1 },
   'live-news': { name: 'Energy Headlines', enabled: true, priority: 1 },
   insights: { name: 'AI Energy Insights', enabled: true, priority: 1 },
@@ -1086,6 +1090,7 @@ const ENERGY_MAP_LAYERS: MapLayers = {
   diseaseOutbreaks: false,
   storageFacilities: true, // UGS / SPR / LNG / crude hubs (Day 9-10 registry)
   fuelShortages: true,     // Global fuel shortage alerts (Day 11-12 registry)
+  gridAlerts: false,
   liveTankers: true,       // AIS ship type 80-89 inside chokepoint bboxes (parity-push PR 3)
 };
 
@@ -1146,6 +1151,7 @@ const ENERGY_MOBILE_MAP_LAYERS: MapLayers = {
   diseaseOutbreaks: false,
   storageFacilities: true,
   fuelShortages: true,
+  gridAlerts: false,
   liveTankers: true,
 };
 
@@ -1531,7 +1537,7 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
   },
   marketsFinance: {
     labelKey: 'header.panelCatMarketsFinance',
-    panelKeys: ['commodities', 'energy-complex', 'energy-risk-overview', 'pipeline-status', 'storage-facility-map', 'oil-inventories', 'fuel-prices', 'chokepoint-strip', 'fuel-shortages', 'energy-disruptions', 'hormuz-tracker', 'energy-crisis', 'markets', 'economic', 'global-procurement', 'trade-policy', 'sanctions-pressure', 'supply-chain', 'china-corridors', 'china-activity-nowcast', 'finance', 'polymarket', 'macro-signals', 'gulf-economies', 'etf-flows', 'stablecoins', 'crypto', 'heatmap', 'aaii-sentiment', 'cot-positioning', 'earnings-calendar', 'material-events', 'economic-calendar', 'fear-greed', 'fsi', 'macro-tiles', 'market-breadth', 'news-market-correlation', 'liquidity-shifts', 'national-debt', 'positioning-247', 'wsb-ticker-scanner', 'yield-curve', 'gold-intelligence', 'bigmac', 'fx', 'market-implications'],
+    panelKeys: ['commodities', 'energy-complex', 'energy-risk-overview', 'pipeline-status', 'storage-facility-map', 'oil-inventories', 'fuel-prices', 'chokepoint-strip', 'fuel-shortages', 'grid-alerts', 'energy-disruptions', 'hormuz-tracker', 'energy-crisis', 'markets', 'economic', 'global-procurement', 'trade-policy', 'sanctions-pressure', 'supply-chain', 'china-corridors', 'china-activity-nowcast', 'finance', 'polymarket', 'macro-signals', 'gulf-economies', 'etf-flows', 'stablecoins', 'crypto', 'heatmap', 'aaii-sentiment', 'cot-positioning', 'earnings-calendar', 'material-events', 'economic-calendar', 'fear-greed', 'fsi', 'macro-tiles', 'market-breadth', 'news-market-correlation', 'liquidity-shifts', 'national-debt', 'positioning-247', 'wsb-ticker-scanner', 'yield-curve', 'gold-intelligence', 'bigmac', 'fx', 'market-implications'],
     variants: ['full', 'energy'],
   },
   topical: {

@@ -561,7 +561,8 @@
     "fearGreed": "Fear & Greed",
     "marketBreadth": "Market Breadth",
     "climateNews": "Climate News",
-    "fx": "نرخ تبادل ارز"
+    "fx": "نرخ تبادل ارز",
+    "gridAlerts": "هشدارهای شبکه برق"
   },
   "commands": {
     "prefixes": {
@@ -1441,7 +1442,8 @@
         "speciesRecovery": "Species Recovery",
         "renewableInstallations": "Clean Energy",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "هشدارهای شبکه برق"
       },
       "tooltip": {
         "earthquake": "Earthquake",
@@ -3024,6 +3026,79 @@
       "rosterSummaryTier1": "گزارش‌شده توسط {{publishers}}، شامل {{tier1}} ناشر درجه ۱",
       "rosterPublishers_one": "{{count}} ناشر",
       "rosterPublishers_other": "{{count}} ناشر"
+    },
+    "gridAlerts": {
+      "loading": "در حال بارگذاری هشدارهای شبکه…",
+      "unavailable": "منابع هشدار شبکه در حال حاضر در دسترس نیستند.",
+      "notPublished": "تصویر لحظه‌ای هشدارهای شبکه هنوز منتشر نشده است. کارگر seed-grid-alerts آن را هر ۱۰ دقیقه می‌نویسد.",
+      "noAlerts": "هیچ هشدار فعالی برای این فیلتر وجود ندارد.",
+      "allRegions": "همه مناطق",
+      "truncated": "{{shown}} هشدار خطر با بیشترین وزن از {{total}} هشدار فعال نمایش داده می‌شود.",
+      "views": {
+        "alerts": "هشدارها",
+        "regions": "مناطق",
+        "hazards": "اثر مخاطرات",
+        "space": "آب‌وهوای فضایی"
+      },
+      "overall": {
+        "normal": "عادی",
+        "watch": "مراقبت",
+        "elevated": "بالا",
+        "critical": "بحرانی"
+      },
+      "summary": {
+        "regionsStressed": "منطقه تحت فشار",
+        "emergencies": "وضعیت اضطراری",
+        "worst": "بدترین"
+      },
+      "filters": {
+        "all": "همه"
+      },
+      "kinds": {
+        "operator": "بهره‌بردار",
+        "weather": "آب‌وهوا",
+        "space": "آب‌وهوای فضایی"
+      },
+      "levels": {
+        "emergency": "اضطراری",
+        "warning": "هشدار",
+        "advisory": "توصیه",
+        "info": "اطلاع"
+      },
+      "regions": {
+        "region": "منطقه",
+        "status": "وضعیت",
+        "demand": "تقاضا",
+        "impact": "اثر",
+        "ofForecast": "نسبت به پیش‌بینی",
+        "noDrivers": "عامل فشاری شناسایی نشد.",
+        "footprint": "محدوده خدمات"
+      },
+      "metrics": {
+        "forecastPeak": "اوج پیش‌بینی‌شده",
+        "capacity": "ظرفیت تعهدشده",
+        "netGeneration": "تولید خالص",
+        "interchange": "تبادل",
+        "reserve": "ذخیره",
+        "gic": "در معرض جریان‌های القایی"
+      },
+      "exposure": {
+        "high": "زیاد",
+        "moderate": "متوسط",
+        "low": "کم",
+        "unknown": "نامشخص"
+      },
+      "hazards": {
+        "none": "در هیچ محدوده ارزیابی‌شده‌ای مخاطره جوی مؤثر بر شبکه فعال نیست.",
+        "weight": "وزن مخاطره",
+        "legend": "خانه‌ها وزن قوی‌ترین هشدار فعال NWS را برای هر خانواده مخاطره نشان می‌دهند (۰ تا ۴۰، بر اساس شدت). ردیف‌ها همراه با وضعیت بهره‌بردار، فشار تقاضا و در معرض بودن ژئومغناطیسی امتیاز اثر را می‌سازند."
+      },
+      "space": {
+        "now": "توفان ژئومغناطیسی هم‌اکنون",
+        "unavailable": "مقیاس‌های NOAA SWPC در دسترس نیستند.",
+        "noProducts": "در ۷۲ ساعت گذشته هیچ هشدار ژئومغناطیسی صادر نشده است.",
+        "mechanism": "جریان‌های القایی ژئومغناطیسی ترانسفورماتورها را اشباع می‌کنند و حفاظت‌های خطوط طولانی شرقی–غربی را فعال می‌کنند. این در معرض بودن به سمت بیضی شفقی افزایش می‌یابد، بنابراین در یک سطح G یکسان، مناطق تعادل شمالی بیشترین ریسک را دارند."
+      }
     }
   },
   "popups": {

@@ -490,7 +490,8 @@
     "fearGreed": "恐怖と貪欲",
     "marketBreadth": "市場の広がり",
     "climateNews": "気候ニュース",
-    "fx": "外国為替レート"
+    "fx": "外国為替レート",
+    "gridAlerts": "送電網アラート"
   },
   "commands": {
     "prefixes": {
@@ -1296,7 +1297,8 @@
         "radiationSpike": "放射線スパイク",
         "radiationElevated": "放射線上昇",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "送電網アラート"
       },
       "tooltip": {
         "earthquake": "地震",
@@ -2935,6 +2937,79 @@
       "rosterSummary": "{{publishers}}が報道",
       "rosterSummaryTier1": "{{publishers}}が報道（うちティア1は{{tier1}}社）",
       "rosterPublishers_other": "{{count}}社の報道機関"
+    },
+    "gridAlerts": {
+      "loading": "送電網アラートを読み込み中…",
+      "unavailable": "送電網アラートのソースは現在利用できません。",
+      "notPublished": "送電網アラートのスナップショットはまだ公開されていません。seed-grid-alerts ワーカーが10分ごとに書き込みます。",
+      "noAlerts": "このフィルターに該当する有効な送電網アラートはありません。",
+      "allRegions": "すべての地域",
+      "truncated": "有効な{{total}}件のうち、重みの高い{{shown}}件のハザードアラートを表示しています。",
+      "views": {
+        "alerts": "アラート",
+        "regions": "地域",
+        "hazards": "ハザード影響",
+        "space": "宇宙天気"
+      },
+      "overall": {
+        "normal": "正常",
+        "watch": "注意",
+        "elevated": "高め",
+        "critical": "重大"
+      },
+      "summary": {
+        "regionsStressed": "地域が逼迫",
+        "emergencies": "件の緊急事態",
+        "worst": "最悪"
+      },
+      "filters": {
+        "all": "すべて"
+      },
+      "kinds": {
+        "operator": "系統運用者",
+        "weather": "気象",
+        "space": "宇宙天気"
+      },
+      "levels": {
+        "emergency": "緊急",
+        "warning": "警報",
+        "advisory": "注意報",
+        "info": "情報"
+      },
+      "regions": {
+        "region": "地域",
+        "status": "状態",
+        "demand": "需要",
+        "impact": "影響",
+        "ofForecast": "（予測比）",
+        "noDrivers": "逼迫要因は検出されていません。",
+        "footprint": "供給エリア"
+      },
+      "metrics": {
+        "forecastPeak": "予測ピーク",
+        "capacity": "供給力",
+        "netGeneration": "正味発電量",
+        "interchange": "連系線潮流",
+        "reserve": "予備力",
+        "gic": "GIC曝露"
+      },
+      "exposure": {
+        "high": "高",
+        "moderate": "中",
+        "low": "低",
+        "unknown": "不明"
+      },
+      "hazards": {
+        "none": "評価対象のどの供給エリアにも、送電網に関わる有効な気象ハザードはありません。",
+        "weight": "ハザードの重み",
+        "legend": "セルはハザード区分ごとに最も強い有効なNWS警報の重み（0〜40、深刻度で調整）を示します。各行は運用者の状態、需要の逼迫、地磁気曝露と組み合わされて影響スコアになります。"
+      },
+      "space": {
+        "now": "現在の地磁気嵐",
+        "unavailable": "NOAA SWPCのスケールは利用できません。",
+        "noProducts": "過去72時間に地磁気嵐の監視情報や警報はありません。",
+        "mechanism": "地磁気誘導電流は変圧器を飽和させ、長距離の東西送電線で保護装置を動作させます。曝露はオーロラ帯に近づくほど増すため、同じGレベルでは北部の系統が最も高いリスクを負います。"
+      }
     }
   },
   "popups": {

@@ -496,7 +496,8 @@
     "fearGreed": "Strach a chamtivost",
     "marketBreadth": "Šíře trhu",
     "climateNews": "Zprávy o klimatu",
-    "fx": "Kurzy zahraniční měny"
+    "fx": "Kurzy zahraniční měny",
+    "gridAlerts": "Výstrahy elektrické sítě"
   },
   "commands": {
     "prefixes": {
@@ -1293,7 +1294,8 @@
         "radiationSpike": "Skokový nárůst radiace",
         "radiationElevated": "Zvýšená radiace",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Výstrahy elektrické sítě"
       },
       "tooltip": {
         "earthquake": "Zemětřesení",
@@ -2995,6 +2997,79 @@
       "rosterPublishers_few": "{{count}} vydavatelé",
       "rosterPublishers_many": "{{count}} vydavatelů",
       "rosterPublishers_other": "{{count}} vydavatelů"
+    },
+    "gridAlerts": {
+      "loading": "Načítání výstrah sítě…",
+      "unavailable": "Zdroje výstrah sítě jsou momentálně nedostupné.",
+      "notPublished": "Snímek výstrah sítě zatím nebyl publikován. Worker seed-grid-alerts jej zapisuje každých 10 minut.",
+      "noAlerts": "Pro tento filtr nejsou žádné aktivní výstrahy sítě.",
+      "allRegions": "Všechny regiony",
+      "truncated": "Zobrazeno {{shown}} výstrah před nebezpečím s nejvyšší vahou z {{total}} aktivních.",
+      "views": {
+        "alerts": "Výstrahy",
+        "regions": "Regiony",
+        "hazards": "Dopad nebezpečí",
+        "space": "Kosmické počasí"
+      },
+      "overall": {
+        "normal": "Normální",
+        "watch": "Sledování",
+        "elevated": "Zvýšený",
+        "critical": "Kritický"
+      },
+      "summary": {
+        "regionsStressed": "regionů pod zátěží",
+        "emergencies": "nouzových stavů",
+        "worst": "Nejhorší"
+      },
+      "filters": {
+        "all": "Vše"
+      },
+      "kinds": {
+        "operator": "Provozovatel",
+        "weather": "Počasí",
+        "space": "Kosmické počasí"
+      },
+      "levels": {
+        "emergency": "Nouzový stav",
+        "warning": "Varování",
+        "advisory": "Upozornění",
+        "info": "Informace"
+      },
+      "regions": {
+        "region": "Region",
+        "status": "Stav",
+        "demand": "Poptávka",
+        "impact": "Dopad",
+        "ofForecast": "prognózy",
+        "noDrivers": "Nebyly zjištěny žádné faktory zátěže.",
+        "footprint": "Oblast působnosti"
+      },
+      "metrics": {
+        "forecastPeak": "Předpokládaná špička",
+        "capacity": "Nasazená kapacita",
+        "netGeneration": "Čistá výroba",
+        "interchange": "Výměna",
+        "reserve": "Rezerva",
+        "gic": "Expozice GIC"
+      },
+      "exposure": {
+        "high": "Vysoká",
+        "moderate": "Střední",
+        "low": "Nízká",
+        "unknown": "Neznámá"
+      },
+      "hazards": {
+        "none": "V žádné hodnocené oblasti nejsou aktivní povětrnostní nebezpečí významná pro síť.",
+        "weight": "Váha nebezpečí",
+        "legend": "Buňky ukazují váhu nejsilnější aktivní výstrahy NWS v každé rodině nebezpečí (0–40, škálováno podle závažnosti). Řádky se spolu se stavem provozovatele, tlakem poptávky a geomagnetickou expozicí skládají do skóre dopadu."
+      },
+      "space": {
+        "now": "Geomagnetická bouře nyní",
+        "unavailable": "Stupnice NOAA SWPC jsou nedostupné.",
+        "noProducts": "Za posledních 72 hodin žádná geomagnetická varování ani upozornění.",
+        "mechanism": "Geomagneticky indukované proudy saturují transformátory a vybavují ochrany na dlouhých vedeních východ–západ. Expozice roste směrem k aurorálnímu oválu, takže při stejném stupni G nesou největší riziko severní regulační oblasti."
+      }
     }
   },
   "popups": {

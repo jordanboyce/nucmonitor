@@ -108,7 +108,8 @@
     "fearGreed": "Medo e Ganância",
     "marketBreadth": "Amplitude de Mercado",
     "climateNews": "Notícias Climáticas",
-    "fx": "Taxas de câmbio"
+    "fx": "Taxas de câmbio",
+    "gridAlerts": "Alertas da rede elétrica"
   },
   "commands": {
     "prefixes": {
@@ -602,7 +603,8 @@
         "radiationSpike": "Pico de radiação",
         "radiationElevated": "Radiação elevada",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Alertas da rede elétrica"
       },
       "layersTitle": "Camadas",
       "layerSearch": "Pesquisar camadas...",
@@ -2589,6 +2591,79 @@
       "rosterPublishers_one": "{{count}} veículo",
       "rosterPublishers_many": "{{count}} veículos",
       "rosterPublishers_other": "{{count}} veículos"
+    },
+    "gridAlerts": {
+      "loading": "Carregando alertas da rede…",
+      "unavailable": "As fontes de alertas da rede estão indisponíveis no momento.",
+      "notPublished": "O instantâneo de alertas da rede ainda não foi publicado. O worker seed-grid-alerts o grava a cada 10 minutos.",
+      "noAlerts": "Nenhum alerta de rede ativo para este filtro.",
+      "allRegions": "Todas as regiões",
+      "truncated": "Exibindo os {{shown}} alertas de perigo de maior peso entre {{total}} ativos.",
+      "views": {
+        "alerts": "Alertas",
+        "regions": "Regiões",
+        "hazards": "Impacto de perigos",
+        "space": "Clima espacial"
+      },
+      "overall": {
+        "normal": "Normal",
+        "watch": "Observação",
+        "elevated": "Elevado",
+        "critical": "Crítico"
+      },
+      "summary": {
+        "regionsStressed": "regiões sob estresse",
+        "emergencies": "emergências",
+        "worst": "Pior"
+      },
+      "filters": {
+        "all": "Todos"
+      },
+      "kinds": {
+        "operator": "Operador",
+        "weather": "Clima",
+        "space": "Clima espacial"
+      },
+      "levels": {
+        "emergency": "Emergência",
+        "warning": "Aviso",
+        "advisory": "Advertência",
+        "info": "Info"
+      },
+      "regions": {
+        "region": "Região",
+        "status": "Status",
+        "demand": "Demanda",
+        "impact": "Impacto",
+        "ofForecast": "da previsão",
+        "noDrivers": "Nenhum fator de estresse detectado.",
+        "footprint": "Área de atendimento"
+      },
+      "metrics": {
+        "forecastPeak": "Pico previsto",
+        "capacity": "Capacidade comprometida",
+        "netGeneration": "Geração líquida",
+        "interchange": "Intercâmbio",
+        "reserve": "Reserva",
+        "gic": "Exposição a GIC"
+      },
+      "exposure": {
+        "high": "Alta",
+        "moderate": "Moderada",
+        "low": "Baixa",
+        "unknown": "Desconhecida"
+      },
+      "hazards": {
+        "none": "Nenhum perigo meteorológico relevante para a rede está ativo nas áreas avaliadas.",
+        "weight": "Peso do perigo",
+        "legend": "As células mostram o peso do alerta NWS ativo mais forte por família de perigo (0–40, ajustado pela gravidade). As linhas se combinam com o estado do operador, a pressão de demanda e a exposição geomagnética na pontuação de impacto."
+      },
+      "space": {
+        "now": "Tempestade geomagnética agora",
+        "unavailable": "As escalas do NOAA SWPC estão indisponíveis.",
+        "noProducts": "Nenhuma vigilância ou aviso geomagnético nas últimas 72 horas.",
+        "mechanism": "Correntes induzidas geomagneticamente saturam transformadores e disparam proteções em longas linhas leste-oeste. A exposição cresce em direção ao oval auroral, então as áreas de balanceamento do norte carregam o maior risco para um mesmo nível G."
+      }
     }
   },
   "popups": {

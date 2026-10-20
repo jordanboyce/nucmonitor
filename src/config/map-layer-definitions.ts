@@ -129,6 +129,7 @@ export const LAYER_REGISTRY: Record<keyof MapLayers, LayerDefinition> = {
   // Add 'svg'/'globe' here once those renderers gain real support.
   storageFacilities:        def('storageFacilities',        '&#127959;', 'storageFacilities',        'Storage Facilities', ['deck']),
   fuelShortages:            def('fuelShortages',            '&#9881;',   'fuelShortages',            'Fuel Shortages', ['deck']),
+  gridAlerts:               def('gridAlerts',               '&#9889;',   'gridAlerts',               'Power Grid Alerts', ['deck']),
   liveTankers:              def('liveTankers',              '&#128674;', 'liveTankers',              'Live Tanker Positions', ['deck']),
 };
 
@@ -362,7 +363,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
   full: [
     'iranAttacks', 'hotspots', 'conflicts',
     'bases', 'nuclear', 'irradiators', 'radiationWatch', 'spaceports',
-    'cables', 'pipelines', 'storageFacilities', 'fuelShortages', 'datacenters', 'military',
+    'cables', 'pipelines', 'storageFacilities', 'fuelShortages', 'gridAlerts', 'datacenters', 'military',
     'ais', 'tradeRoutes', 'flights', 'aircraftEmergencies', 'protests',
     'ucdpEvents', 'displacement', 'climate', 'weather', 'canadaRoads', 'canadaAlerts',
     'outages', 'cyberThreats', 'natural', 'fires',
@@ -393,7 +394,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
   ],
   energy: [
     // Core energy infrastructure — mirror of ENERGY_MAP_LAYERS in panels.ts
-    'pipelines', 'storageFacilities', 'fuelShortages', 'waterways', 'commodityPorts', 'commodityHubs',
+    'pipelines', 'storageFacilities', 'fuelShortages', 'gridAlerts', 'waterways', 'commodityPorts', 'commodityHubs',
     'ais', 'liveTankers', 'tradeRoutes', 'minerals',
     // Energy-adjacent context
     'sanctions', 'fires', 'climate', 'weather', 'canadaRoads', 'outages', 'natural', 'canadaAlerts',
@@ -642,6 +643,10 @@ export const LAYER_SYNONYMS: Record<string, Array<keyof MapLayers>> = {
   nuke: ['nuclear'],
   radiation: ['radiationWatch', 'nuclear', 'irradiators'],
   radnet: ['radiationWatch'],
+  grid: ['gridAlerts', 'pipelines'],
+  blackout: ['gridAlerts', 'outages'],
+  ercot: ['gridAlerts'],
+  geomagnetic: ['gridAlerts'],
   safecast: ['radiationWatch'],
   anomaly: ['radiationWatch', 'climate'],
   space: ['spaceports', 'satellites'],

@@ -2774,6 +2774,9 @@ export class PanelLayoutManager implements AppModule {
     this.lazyPanel('fuel-shortages', () =>
       this.importPanel('fuel-shortages', () => import('@/components/FuelShortagePanel'), 'FuelShortagePanel', (FuelShortagePanel) => new FuelShortagePanel()),
     );
+    this.lazyPanel('grid-alerts', () =>
+      this.importPanel('grid-alerts', () => import('@/components/GridAlertsPanel'), 'GridAlertsPanel', (GridAlertsPanel) => new GridAlertsPanel()),
+    );
     this.lazyPanel('energy-disruptions', () =>
       this.importPanel('energy-disruptions', () => import('@/components/EnergyDisruptionsPanel'), 'EnergyDisruptionsPanel', (EnergyDisruptionsPanel) => new EnergyDisruptionsPanel()),
     );

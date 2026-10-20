@@ -55,6 +55,7 @@ import type { SpeciesRecovery } from '@/services/conservation-data';
 import type { RenewableInstallation } from '@/services/renewable-installations';
 import type { ResilienceRankingItem } from '@/services/resilience';
 import type { RadiationObservation } from '@/services/radiation';
+import type { GridRegion } from '@/services/grid-alerts';
 import type { GpsJamHex } from '@/services/gps-interference';
 import type { SatellitePosition } from '@/services/satellites';
 import type { IranEvent } from '@/services/conflict';
@@ -249,6 +250,7 @@ export class MapContainer {
   private cachedCrossBorderArrivals: CrossBorderData | null = null;
   private cachedClimateAnomalies: ClimateAnomaly[] | null = null;
   private cachedRadiationObservations: RadiationObservation[] | null = null;
+  private cachedGridAlerts: GridRegion[] | null = null;
   private cachedGpsJamming: GpsJamHex[] | null = null;
   private cachedSatellites: SatellitePosition[] | null = null;
   private cachedDiseaseOutbreaks: DiseaseOutbreakItem[] | null = null;
@@ -834,6 +836,7 @@ export class MapContainer {
     if (this.cachedCrossBorderArrivals) this.setCrossBorderArrivals(this.cachedCrossBorderArrivals);
     if (this.cachedClimateAnomalies) this.setClimateAnomalies(this.cachedClimateAnomalies);
     if (this.cachedRadiationObservations) this.setRadiationObservations(this.cachedRadiationObservations);
+    if (this.cachedGridAlerts) this.setGridAlerts(this.cachedGridAlerts);
     if (this.cachedGpsJamming) {
       void this.setGpsJamming(this.cachedGpsJamming).catch(err => {
         console.warn('[MapContainer] GPS jamming re-init failed:', (err as Error)?.message);
@@ -1286,6 +1289,12 @@ export class MapContainer {
     if (this.useDeckGL) {
       this.deckGLMap?.setClimateAnomalies(anomalies);
     }
+  }
+
+  /** Grid alert region markers are DeckGL-only (renderers: ['deck']); SVG and globe ignore them. */
+  public setGridAlerts(regions: GridRegion[]): void {
+    this.cachedGridAlerts = regions;
+    if (this.useDeckGL && !this.useGlobe) this.deckGLMap?.setGridAlerts(regions);
   }
 
   public setRadiationObservations(observations: RadiationObservation[]): void {

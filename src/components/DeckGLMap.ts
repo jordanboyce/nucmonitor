@@ -76,6 +76,7 @@ import {
 } from '@/shared/storage-evidence';
 import { getCachedStorageFacilityRegistry } from '@/shared/storage-facility-registry-store';
 import { getCachedFuelShortageRegistry } from '@/shared/fuel-shortage-registry-store';
+import { gridBandColor, type GridRegion } from '@/services/grid-alerts';
 // getCountryCentroid is imported lower in the file alongside other
 // country-geometry helpers; don't re-import it here.
 import { tokenizeForMatch, matchKeyword, matchesAnyKeyword, findMatchingKeywords } from '@/utils/keyword-match';
@@ -653,6 +654,7 @@ export class DeckGLMap {
   private gpsJammingLoadSeq = 0;
   private climateAnomalies: ClimateAnomaly[] = [];
   private radiationObservations: RadiationObservation[] = [];
+  private gridAlertRegions: GridRegion[] = [];
   private diseaseOutbreaks: DiseaseOutbreakItem[] = [];
   private tradeRouteSegments: TradeRouteSegment[] = resolveTradeRouteSegments();
   private tradeTrips: TripData[] = [];
@@ -2023,6 +2025,14 @@ export class DeckGLMap {
       if (shortageLayer) layers.push(shortageLayer);
     } else {
       this.layerCache.delete('fuel-shortages-layer');
+    }
+
+    // Power grid alert markers: one per ISO/BA region, colored by the seeded
+    // hazard-impact band. Click focuses the region in GridAlertsPanel via event.
+    if (mapLayers.gridAlerts && this.gridAlertRegions.length > 0) {
+      layers.push(this.createGridAlertsLayer());
+    } else {
+      this.layerCache.delete('grid-alerts-layer');
     }
 
     // Live tanker positions inside chokepoint bounding boxes. AIS ship type
@@ -3667,6 +3677,34 @@ export class DeckGLMap {
     });
   }
 
+  private createGridAlertsLayer(): ScatterplotLayer<GridRegion> {
+    return new ScatterplotLayer<GridRegion>({
+      id: 'grid-alerts-layer',
+      data: this.gridAlertRegions,
+      getPosition: (d) => d.centroid,
+      // ISOs span many states; BAs are smaller. Score lifts the radius so a
+      // critical region is pre-attentively larger than a quiet neighbour.
+      getRadius: (d) => (d.kind === 'iso' ? 90000 : 55000) * (1 + d.impact.score / 150),
+      getFillColor: (d) => gridBandColor(d.impact.band),
+      getLineColor: (d) => (d.status.startsWith('eea') ? [255, 255, 255, 255] : [255, 255, 255, 170]) as [number, number, number, number],
+      stroked: true,
+      lineWidthMinPixels: 1.5,
+      radiusMinPixels: 6,
+      radiusMaxPixels: 30,
+      pickable: true,
+      onClick: (info) => {
+        const region = info?.object as GridRegion | undefined;
+        if (!region?.id) return false;
+        try {
+          window.dispatchEvent(new CustomEvent('grid:focus-region', { detail: { regionId: region.id } }));
+        } catch {
+          // Silent no-op on non-browser runtimes.
+        }
+        return true;
+      },
+    });
+  }
+
   private createRadiationLayer(items: RadiationObservation[]): ScatterplotLayer<RadiationObservation> {
     return new ScatterplotLayer<RadiationObservation>({
       id: 'radiation-watch-layer',
@@ -5058,6 +5096,13 @@ export class DeckGLMap {
         const badge = String(obj.badge || 'disputed').toUpperCase();
         const cap = text(obj.capacityDisplay || '—');
         return { html: `<div class="deckgl-tooltip"><strong>${text(obj.name)}</strong><br/>${typeLabel} · ${text(obj.country)} · ${cap}<br/><strong>${text(badge)}</strong></div>` };
+      }
+      case 'grid-alerts-layer': {
+        const region = obj as GridRegion;
+        const band = String(region.impact?.band || 'low').toUpperCase();
+        const demand = region.metrics?.demandMw != null ? `${(region.metrics.demandMw / 1000).toFixed(1)} GW` : '';
+        const driver = region.impact?.drivers?.[0] ? `<br/><span style="opacity:.75">${text(region.impact.drivers[0].slice(0, 110))}</span>` : '';
+        return { html: `<div class="deckgl-tooltip"><strong>${text(region.id)} · ${text(region.name)}</strong><br/>${text(region.statusText)}${demand ? ` · ${demand}` : ''}<br/><strong>${text(band)}</strong> ${text(String(region.impact?.score ?? 0))}/100${driver}</div>` };
       }
       case 'fuel-shortages-layer': {
         const severity = String(obj.severity || 'watch').toUpperCase();
@@ -7435,6 +7480,11 @@ export class DeckGLMap {
 
   public setRadiationObservations(observations: RadiationObservation[]): void {
     this.radiationObservations = observations;
+    this.render();
+  }
+
+  public setGridAlerts(regions: GridRegion[]): void {
+    this.gridAlertRegions = regions;
     this.render();
   }
 

@@ -565,7 +565,8 @@
     "fearGreed": "Fear & Greed",
     "marketBreadth": "Market Breadth",
     "climateNews": "Climate News",
-    "fx": "Курси іноземних валют"
+    "fx": "Курси іноземних валют",
+    "gridAlerts": "Сповіщення енергомережі"
   },
   "commands": {
     "prefixes": {
@@ -1449,7 +1450,8 @@
         "speciesRecovery": "Species Recovery",
         "renewableInstallations": "Clean Energy",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Сповіщення енергомережі"
       },
       "tooltip": {
         "earthquake": "Earthquake",
@@ -3064,6 +3066,79 @@
       "rosterPublishers_few": "{{count}} видавці",
       "rosterPublishers_many": "{{count}} видавців",
       "rosterPublishers_other": "{{count}} видавців"
+    },
+    "gridAlerts": {
+      "loading": "Завантаження сповіщень енергомережі…",
+      "unavailable": "Джерела сповіщень енергомережі зараз недоступні.",
+      "notPublished": "Знімок сповіщень енергомережі ще не опубліковано. Воркер seed-grid-alerts записує його кожні 10 хвилин.",
+      "noAlerts": "Немає активних сповіщень енергомережі для цього фільтра.",
+      "allRegions": "Усі регіони",
+      "truncated": "Показано {{shown}} сповіщень про небезпеку з найбільшою вагою з {{total}} активних.",
+      "views": {
+        "alerts": "Сповіщення",
+        "regions": "Регіони",
+        "hazards": "Вплив загроз",
+        "space": "Космічна погода"
+      },
+      "overall": {
+        "normal": "Норма",
+        "watch": "Спостереження",
+        "elevated": "Підвищений",
+        "critical": "Критичний"
+      },
+      "summary": {
+        "regionsStressed": "регіонів під навантаженням",
+        "emergencies": "надзвичайних",
+        "worst": "Найгірший"
+      },
+      "filters": {
+        "all": "Усі"
+      },
+      "kinds": {
+        "operator": "Оператор",
+        "weather": "Погода",
+        "space": "Космічна погода"
+      },
+      "levels": {
+        "emergency": "НС",
+        "warning": "Попередження",
+        "advisory": "Повідомлення",
+        "info": "Інфо"
+      },
+      "regions": {
+        "region": "Регіон",
+        "status": "Статус",
+        "demand": "Попит",
+        "impact": "Вплив",
+        "ofForecast": "від прогнозу",
+        "noDrivers": "Чинників навантаження не виявлено.",
+        "footprint": "Зона обслуговування"
+      },
+      "metrics": {
+        "forecastPeak": "Прогнозний пік",
+        "capacity": "Задіяна потужність",
+        "netGeneration": "Чисте виробництво",
+        "interchange": "Перетік",
+        "reserve": "Резерв",
+        "gic": "Вразливість до ГІС"
+      },
+      "exposure": {
+        "high": "Висока",
+        "moderate": "Помірна",
+        "low": "Низька",
+        "unknown": "Невідомо"
+      },
+      "hazards": {
+        "none": "У жодній оцінюваній зоні немає активних погодних загроз, значущих для енергомережі.",
+        "weight": "Вага загрози",
+        "legend": "Комірки показують вагу найсильнішого активного попередження NWS для кожного сімейства загроз (0–40 з урахуванням серйозності). Рядки разом зі станом оператора, тиском попиту та геомагнітною вразливістю утворюють оцінку впливу."
+      },
+      "space": {
+        "now": "Геомагнітна буря зараз",
+        "unavailable": "Шкали NOAA SWPC недоступні.",
+        "noProducts": "За останні 72 години геомагнітних попереджень не було.",
+        "mechanism": "Геомагнітно-індуковані струми насичують трансформатори та спричиняють спрацювання захистів на довгих лініях схід–захід. Вразливість зростає до аврорального овалу, тому за однакового рівня G найбільший ризик несуть північні балансувальні зони."
+      }
     }
   },
   "popups": {

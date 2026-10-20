@@ -490,7 +490,8 @@
     "consumerPrices": "消費者價格",
     "marketBreadth": "市場廣度",
     "climateNews": "氣候新聞",
-    "fx": "外匯匯率"
+    "fx": "外匯匯率",
+    "gridAlerts": "電網警報"
   },
   "commands": {
     "prefixes": {
@@ -1296,7 +1297,8 @@
         "radiationSpike": "輻射峰值",
         "radiationElevated": "輻射升高",
         "canadaRoads": "Canada 道路",
-        "canadaAlerts": "加拿大警報（AB + BC + SK）"
+        "canadaAlerts": "加拿大警報（AB + BC + SK）",
+        "gridAlerts": "電網警報"
       },
       "tooltip": {
         "earthquake": "地震",
@@ -2935,6 +2937,79 @@
       "rosterSummary": "由{{publishers}}報道",
       "rosterSummaryTier1": "由{{publishers}}報道，其中{{tier1}}家為一級來源",
       "rosterPublishers_other": "{{count}}家媒體"
+    },
+    "gridAlerts": {
+      "loading": "正在載入電網警報…",
+      "unavailable": "電網警報資料來源當前不可用。",
+      "notPublished": "電網警報快照尚未釋出。seed-grid-alerts 工作程序每 10 分鐘寫入一次。",
+      "noAlerts": "此篩選條件下沒有活躍的電網警報。",
+      "allRegions": "所有區域",
+      "truncated": "顯示 {{total}} 條活躍災害警報中權重最高的 {{shown}} 條。",
+      "views": {
+        "alerts": "警報",
+        "regions": "區域",
+        "hazards": "災害影響",
+        "space": "空間天氣"
+      },
+      "overall": {
+        "normal": "正常",
+        "watch": "關注",
+        "elevated": "偏高",
+        "critical": "嚴重"
+      },
+      "summary": {
+        "regionsStressed": "個區域承壓",
+        "emergencies": "起緊急事件",
+        "worst": "最嚴重"
+      },
+      "filters": {
+        "all": "全部"
+      },
+      "kinds": {
+        "operator": "電網運營商",
+        "weather": "天氣",
+        "space": "空間天氣"
+      },
+      "levels": {
+        "emergency": "緊急",
+        "warning": "警告",
+        "advisory": "提示",
+        "info": "資訊"
+      },
+      "regions": {
+        "region": "區域",
+        "status": "狀態",
+        "demand": "需求",
+        "impact": "影響",
+        "ofForecast": "（相對預測）",
+        "noDrivers": "未檢測到壓力因素。",
+        "footprint": "供電範圍"
+      },
+      "metrics": {
+        "forecastPeak": "預測峰值",
+        "capacity": "可用容量",
+        "netGeneration": "淨發電量",
+        "interchange": "聯絡線交換",
+        "reserve": "備用",
+        "gic": "GIC 暴露"
+      },
+      "exposure": {
+        "high": "高",
+        "moderate": "中",
+        "low": "低",
+        "unknown": "未知"
+      },
+      "hazards": {
+        "none": "所有評估區域內均沒有活躍的電網相關氣象災害。",
+        "weight": "災害權重",
+        "legend": "單元格顯示每類災害中最強活躍 NWS 警報的權重（0–40，按嚴重程度加權）。各行與運營商狀態、需求壓力和地磁暴露共同構成影響評分。"
+      },
+      "space": {
+        "now": "當前地磁暴",
+        "unavailable": "NOAA SWPC 等級資料不可用。",
+        "noProducts": "過去 72 小時內沒有地磁暴監視或警告。",
+        "mechanism": "地磁感應電流會使變壓器飽和，並觸發長距離東西向線路的保護動作。暴露程度向極光橢圓帶方向遞增，因此在相同 G 級別下，北部平衡區域承擔的風險最大。"
+      }
     }
   },
   "popups": {

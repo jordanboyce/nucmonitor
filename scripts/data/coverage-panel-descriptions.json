@@ -19,6 +19,7 @@
   "fuel-shortages": "Lists confirmed and watch-level fuel shortages by country and fuel product from a curated registry, ranked by strength of evidence.",
   "gcc-investments": "Lists Saudi and UAE investments in critical infrastructure worldwide from a built-in database, filterable by investor and sector and linked to the map.",
   "global-procurement": "Lists open public tenders from SAM.gov, EU TED, UK Contracts Finder, CanadaBuys and the World Bank, searchable by buyer, country and source.",
+  "grid-alerts": "Wraps every public power-grid alert channel into one view: ISO and RTO operating conditions from ERCOT, CAISO and SPP, real-time load and forecasts from MISO, NYISO and the EIA-930 hourly grid monitor for 34 balancing authorities, grid-relevant National Weather Service hazard alerts mapped onto operator footprints, and NOAA SWPC geomagnetic storm state. Each region gets a transparent hazard-impact score with named drivers; scores are heuristics, not operator declarations.",
   "intel": "Lists defense and foreign-policy news and analysis from sources such as Defense One, The War Zone, Foreign Policy and RAND.",
   "latest-brief": "Shows the cover card of your latest World Monitor Brief, the AI-written intelligence digest, with a link to read the full edition.",
   "live-news": "Streams live news video channels from YouTube, such as Bloomberg, Sky News, DW and Al Jazeera, in a switchable player.",

@@ -108,7 +108,8 @@
     "fearGreed": "Rädsla & Girighet",
     "marketBreadth": "Marknadsbredd",
     "climateNews": "Klimatnyheter",
-    "fx": "Valutakurser"
+    "fx": "Valutakurser",
+    "gridAlerts": "Elnätsvarningar"
   },
   "commands": {
     "prefixes": {
@@ -601,7 +602,8 @@
         "radiationSpike": "Strålningsökning",
         "radiationElevated": "Förhöjd strålning",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Elnätsvarningar"
       },
       "layersTitle": "Lager",
       "layerSearch": "Sök lager...",
@@ -2571,6 +2573,79 @@
       "rosterSummaryTier1": "Rapporterat av {{publishers}}, varav {{tier1}} på nivå 1",
       "rosterPublishers_one": "{{count}} utgivare",
       "rosterPublishers_other": "{{count}} utgivare"
+    },
+    "gridAlerts": {
+      "loading": "Läser in elnätsvarningar…",
+      "unavailable": "Källorna för elnätsvarningar är inte tillgängliga just nu.",
+      "notPublished": "Ögonblicksbilden av elnätsvarningar har inte publicerats än. Arbetaren seed-grid-alerts skriver den var tionde minut.",
+      "noAlerts": "Inga aktiva elnätsvarningar för det här filtret.",
+      "allRegions": "Alla regioner",
+      "truncated": "Visar de {{shown}} farovarningar med högst vikt av {{total}} aktiva.",
+      "views": {
+        "alerts": "Varningar",
+        "regions": "Regioner",
+        "hazards": "Faropåverkan",
+        "space": "Rymdväder"
+      },
+      "overall": {
+        "normal": "Normalt",
+        "watch": "Bevakning",
+        "elevated": "Förhöjt",
+        "critical": "Kritiskt"
+      },
+      "summary": {
+        "regionsStressed": "regioner under press",
+        "emergencies": "nödlägen",
+        "worst": "Värst"
+      },
+      "filters": {
+        "all": "Alla"
+      },
+      "kinds": {
+        "operator": "Systemoperatör",
+        "weather": "Väder",
+        "space": "Rymdväder"
+      },
+      "levels": {
+        "emergency": "Nödläge",
+        "warning": "Varning",
+        "advisory": "Meddelande",
+        "info": "Information"
+      },
+      "regions": {
+        "region": "Region",
+        "status": "Status",
+        "demand": "Efterfrågan",
+        "impact": "Påverkan",
+        "ofForecast": "av prognosen",
+        "noDrivers": "Inga belastningsfaktorer upptäckta.",
+        "footprint": "Försörjningsområde"
+      },
+      "metrics": {
+        "forecastPeak": "Prognostiserad topp",
+        "capacity": "Tillgängliggjord kapacitet",
+        "netGeneration": "Nettoproduktion",
+        "interchange": "Utbyte",
+        "reserve": "Reserv",
+        "gic": "GIC-exponering"
+      },
+      "exposure": {
+        "high": "Hög",
+        "moderate": "Måttlig",
+        "low": "Låg",
+        "unknown": "Okänd"
+      },
+      "hazards": {
+        "none": "Inga nätrelevanta väderfaror är aktiva i något bedömt försörjningsområde.",
+        "weight": "Farovikt",
+        "legend": "Cellerna visar vikten för den starkaste aktiva NWS-varningen per farofamilj (0–40, skalad efter allvarlighet). Raderna vägs samman med operatörsläge, efterfrågetryck och geomagnetisk exponering till påverkanspoängen."
+      },
+      "space": {
+        "now": "Geomagnetisk storm nu",
+        "unavailable": "NOAA SWPC-skalorna är inte tillgängliga.",
+        "noProducts": "Inga geomagnetiska bevakningar eller varningar de senaste 72 timmarna.",
+        "mechanism": "Geomagnetiskt inducerade strömmar mättar transformatorer och löser ut skydd på långa öst–västliga ledningar. Exponeringen ökar mot norrskensovalen, så nordliga balansområden bär den största risken vid samma G-nivå."
+      }
     }
   },
   "popups": {

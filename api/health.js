@@ -437,6 +437,9 @@ const STANDALONE_KEYS = {
   // Seeded by seed-cross-border-arrivals (#9023); read by the displacement
   // panel and map layer through the on-demand bootstrap URL.
   crossBorderArrivals: BOOTSTRAP_CACHE_KEYS.crossBorderArrivals,
+  // Seeded by seed-grid-alerts (10-minute Railway cron); read by the opt-in
+  // Power Grid Alerts panel and map layer through the on-demand bootstrap URL.
+  gridAlerts: BOOTSTRAP_CACHE_KEYS.gridAlerts,
   canadaAlertsAbSource: 'alerts:canada:alberta-aea:v1',
   canadaAlertsBcSource: 'alerts:canada:bc-evacuation:v1',
   canadaAlertsSkSource: 'alerts:canada:saskalert:v1',
@@ -1545,6 +1548,22 @@ const SEED_META = {
       activationKey: 'seed-activated:displacement:cross-border',
     },
   },
+  // Power grid alerts envelope (seed-grid-alerts.mjs, standalone 10-minute
+  // cron). 30 = 3x cadence per project convention. The record floor is the
+  // region table (34 rows) so a snapshot that lost every source reads as
+  // COVERAGE_PARTIAL rather than a healthy quiet grid.
+  gridAlerts: {
+    key: 'seed-meta:energy:grid-alerts',
+    maxStaleMin: 30,
+    minRecordCount: 34,
+    activationKey: 'seed-activated:energy:grid-alerts',
+    cutover: {
+      mode: 'activation-marker',
+      fromKey: null,
+      issue: null,
+      activationKey: 'seed-activated:energy:grid-alerts',
+    },
+  },
   // IOM DTM operations (seed-dtm-displacement.mjs, daily health bundle, #9014).
   // 48h = two missed ticks; round age is checked by maxContentAgeMin.
   dtmDisplacement: {
@@ -2094,6 +2113,9 @@ const ON_DEMAND_KEYS = new Set([
   'dtmDisplacement',
   // Same bridge for the UNHCR cross-border movements (#9023).
   'crossBorderArrivals',
+  // Same deploy-before-first-tick bridge for the grid alerts envelope; the
+  // panel ships disabled on every variant so it is never on a default homepage.
+  'gridAlerts',
   // Same deploy-before-first-tick bridge as cbrRates for the two Canada
   // national-statistics seeders: bocValet (#6616) and statcanWds (#6676).
   // Softening lifts once the durable activation marker exists.
@@ -2241,6 +2263,8 @@ const ACTIVATION_MARKERS = {
   dtmDisplacement: SEED_META.dtmDisplacement.activationKey,
   // Written by scripts/seed-cross-border-arrivals.mjs in runSeed's afterPublish hook.
   crossBorderArrivals: SEED_META.crossBorderArrivals.activationKey,
+  // Written by scripts/seed-grid-alerts.mjs in runSeed's afterPublish hook.
+  gridAlerts: SEED_META.gridAlerts.activationKey,
   bocValet: 'seed-activated:economic:boc-valet',
   statcanWds: 'seed-activated:economic:statcan-wds',
   // Written by scripts/seed-live-video-resolved.mjs in runSeed's afterPublish hook.

@@ -75,6 +75,10 @@ export const BOOTSTRAP_CACHE_KEYS = Object.freeze({
   imdCycloneMarine: 'weather:imd-cyclone-marine:v1',
   liveVideoResolved: 'live-video:resolved:v1',
   crossBorderArrivals: 'displacement:cross-border:v1',
+  // Power grid alerts envelope (scripts/seed-grid-alerts.mjs): ISO/RTO
+  // conditions, EIA-930 demand, NWS hazard alerts mapped to grid regions and
+  // SWPC geomagnetic state. Opt-in panel + map layer read it on demand.
+  gridAlerts: 'energy:grid-alerts:v1',
   canadaRoads: 'infra:ontario-511:v1',
   albertaRoads: 'infra:alberta-511:v1',
   manitobaRoads: 'infra:manitoba-511:v1',
@@ -250,6 +254,8 @@ const ON_DEMAND_KEY_NAMES = new Set([
   // UNHCR Operational Data Portal cross-border movements (#9023), read by the
   // displacement panel and map layer only when they are open.
   'crossBorderArrivals',
+  // Opt-in Power Grid Alerts panel and map layer: never on a default homepage.
+  'gridAlerts',
 ]);
 
 /**

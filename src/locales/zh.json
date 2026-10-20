@@ -490,7 +490,8 @@
     "consumerPrices": "消费者价格",
     "marketBreadth": "市场广度",
     "climateNews": "气候新闻",
-    "fx": "外汇汇率"
+    "fx": "外汇汇率",
+    "gridAlerts": "电网警报"
   },
   "commands": {
     "prefixes": {
@@ -1296,7 +1297,8 @@
         "radiationSpike": "辐射峰值",
         "radiationElevated": "辐射升高",
         "canadaRoads": "Canada 道路",
-        "canadaAlerts": "加拿大警报（AB + BC + SK）"
+        "canadaAlerts": "加拿大警报（AB + BC + SK）",
+        "gridAlerts": "电网警报"
       },
       "tooltip": {
         "earthquake": "地震",
@@ -2935,6 +2937,79 @@
       "rosterSummary": "由{{publishers}}报道",
       "rosterSummaryTier1": "由{{publishers}}报道，其中{{tier1}}家为一级来源",
       "rosterPublishers_other": "{{count}}家媒体"
+    },
+    "gridAlerts": {
+      "loading": "正在加载电网警报…",
+      "unavailable": "电网警报数据源当前不可用。",
+      "notPublished": "电网警报快照尚未发布。seed-grid-alerts 工作进程每 10 分钟写入一次。",
+      "noAlerts": "此筛选条件下没有活跃的电网警报。",
+      "allRegions": "所有区域",
+      "truncated": "显示 {{total}} 条活跃灾害警报中权重最高的 {{shown}} 条。",
+      "views": {
+        "alerts": "警报",
+        "regions": "区域",
+        "hazards": "灾害影响",
+        "space": "空间天气"
+      },
+      "overall": {
+        "normal": "正常",
+        "watch": "关注",
+        "elevated": "偏高",
+        "critical": "严重"
+      },
+      "summary": {
+        "regionsStressed": "个区域承压",
+        "emergencies": "起紧急事件",
+        "worst": "最严重"
+      },
+      "filters": {
+        "all": "全部"
+      },
+      "kinds": {
+        "operator": "电网运营商",
+        "weather": "天气",
+        "space": "空间天气"
+      },
+      "levels": {
+        "emergency": "紧急",
+        "warning": "警告",
+        "advisory": "提示",
+        "info": "信息"
+      },
+      "regions": {
+        "region": "区域",
+        "status": "状态",
+        "demand": "需求",
+        "impact": "影响",
+        "ofForecast": "（相对预测）",
+        "noDrivers": "未检测到压力因素。",
+        "footprint": "供电范围"
+      },
+      "metrics": {
+        "forecastPeak": "预测峰值",
+        "capacity": "可用容量",
+        "netGeneration": "净发电量",
+        "interchange": "联络线交换",
+        "reserve": "备用",
+        "gic": "GIC 暴露"
+      },
+      "exposure": {
+        "high": "高",
+        "moderate": "中",
+        "low": "低",
+        "unknown": "未知"
+      },
+      "hazards": {
+        "none": "所有评估区域内均没有活跃的电网相关气象灾害。",
+        "weight": "灾害权重",
+        "legend": "单元格显示每类灾害中最强活跃 NWS 警报的权重（0–40，按严重程度加权）。各行与运营商状态、需求压力和地磁暴露共同构成影响评分。"
+      },
+      "space": {
+        "now": "当前地磁暴",
+        "unavailable": "NOAA SWPC 等级数据不可用。",
+        "noProducts": "过去 72 小时内没有地磁暴监视或警告。",
+        "mechanism": "地磁感应电流会使变压器饱和，并触发长距离东西向线路的保护动作。暴露程度向极光椭圆带方向递增，因此在相同 G 级别下，北部平衡区域承担的风险最大。"
+      }
     }
   },
   "popups": {

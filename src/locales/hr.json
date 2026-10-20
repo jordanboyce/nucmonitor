@@ -564,7 +564,8 @@
     "fearGreed": "Strah & Pohlepa",
     "marketBreadth": "Širina Tržišta",
     "climateNews": "Klimatske Vijesti",
-    "fx": "Tečajevi deviza"
+    "fx": "Tečajevi deviza",
+    "gridAlerts": "Upozorenja elektroenergetske mreže"
   },
   "commands": {
     "prefixes": {
@@ -1449,7 +1450,8 @@
         "speciesRecovery": "Oporavak vrsta",
         "renewableInstallations": "Čista energija",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Upozorenja elektroenergetske mreže"
       },
       "tooltip": {
         "earthquake": "Zemljotres",
@@ -3051,6 +3053,79 @@
       "rosterPublishers_one": "{{count}} izdavač",
       "rosterPublishers_few": "{{count}} izdavača",
       "rosterPublishers_other": "{{count}} izdavača"
+    },
+    "gridAlerts": {
+      "loading": "Učitavanje upozorenja mreže…",
+      "unavailable": "Izvori upozorenja mreže trenutačno nisu dostupni.",
+      "notPublished": "Snimka upozorenja mreže još nije objavljena. Worker seed-grid-alerts zapisuje je svakih 10 minuta.",
+      "noAlerts": "Nema aktivnih upozorenja mreže za ovaj filtar.",
+      "allRegions": "Sve regije",
+      "truncated": "Prikazano je {{shown}} upozorenja o opasnosti najveće težine od {{total}} aktivnih.",
+      "views": {
+        "alerts": "Upozorenja",
+        "regions": "Regije",
+        "hazards": "Utjecaj opasnosti",
+        "space": "Svemirsko vrijeme"
+      },
+      "overall": {
+        "normal": "Normalno",
+        "watch": "Praćenje",
+        "elevated": "Povišeno",
+        "critical": "Kritično"
+      },
+      "summary": {
+        "regionsStressed": "regija pod opterećenjem",
+        "emergencies": "hitnih stanja",
+        "worst": "Najgore"
+      },
+      "filters": {
+        "all": "Sve"
+      },
+      "kinds": {
+        "operator": "Operator",
+        "weather": "Vrijeme",
+        "space": "Svemirsko vrijeme"
+      },
+      "levels": {
+        "emergency": "Hitno stanje",
+        "warning": "Upozorenje",
+        "advisory": "Napomena",
+        "info": "Informacija"
+      },
+      "regions": {
+        "region": "Regija",
+        "status": "Stanje",
+        "demand": "Potražnja",
+        "impact": "Utjecaj",
+        "ofForecast": "prognoze",
+        "noDrivers": "Nisu otkriveni čimbenici opterećenja.",
+        "footprint": "Područje opsluživanja"
+      },
+      "metrics": {
+        "forecastPeak": "Prognozirani vrh",
+        "capacity": "Angažirani kapacitet",
+        "netGeneration": "Neto proizvodnja",
+        "interchange": "Razmjena",
+        "reserve": "Rezerva",
+        "gic": "Izloženost GIC-u"
+      },
+      "exposure": {
+        "high": "Visoka",
+        "moderate": "Umjerena",
+        "low": "Niska",
+        "unknown": "Nepoznata"
+      },
+      "hazards": {
+        "none": "Ni u jednom procijenjenom području nema aktivnih vremenskih opasnosti važnih za mrežu.",
+        "weight": "Težina opasnosti",
+        "legend": "Ćelije prikazuju težinu najjačeg aktivnog NWS upozorenja po obitelji opasnosti (0–40, skalirano prema ozbiljnosti). Redci se zajedno sa stanjem operatora, pritiskom potražnje i geomagnetskom izloženošću spajaju u ocjenu utjecaja."
+      },
+      "space": {
+        "now": "Geomagnetska oluja sada",
+        "unavailable": "Ljestvice NOAA SWPC nisu dostupne.",
+        "noProducts": "Nema geomagnetskih upozorenja ni najava u posljednja 72 sata.",
+        "mechanism": "Geomagnetski inducirane struje zasićuju transformatore i aktiviraju zaštite na dugim vodovima istok–zapad. Izloženost raste prema auroralnom ovalu, pa pri istoj razini G najveći rizik nose sjeverna regulacijska područja."
+      }
     }
   },
   "popups": {

@@ -195,7 +195,8 @@
     "consumerPrices": "Consumer Prices",
     "fearGreed": "Fear & Greed",
     "marketBreadth": "Market Breadth",
-    "climateNews": "Climate News"
+    "climateNews": "Climate News",
+    "gridAlerts": "Power Grid Alerts"
   },
   "common": {
     "dismiss": "Dismiss",

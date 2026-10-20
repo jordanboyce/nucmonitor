@@ -719,6 +719,9 @@
           "path": "scripts/backfill-fuel-prices-prev.mjs"
         },
         {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
+        },
+        {
           "path": "scripts/seed-economy.mjs"
         },
         {
@@ -948,6 +951,20 @@
       "references": [
         {
           "path": "scripts/seo-indexnow-submit.mjs"
+        }
+      ]
+    },
+    {
+      "host": "api.misoenergy.org",
+      "provider": "api.misoenergy.org",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit api.misoenergy.org and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
         }
       ]
     },
@@ -1353,6 +1370,9 @@
       "references": [
         {
           "path": "scripts/_weather-alert-select.mjs"
+        },
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
         }
       ]
     },
@@ -6543,6 +6563,20 @@
       ]
     },
     {
+      "host": "mis.nyiso.com",
+      "provider": "mis.nyiso.com",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit mis.nyiso.com and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
+        }
+      ]
+    },
+    {
       "host": "mm.usembassy.gov",
       "provider": "mm.usembassy.gov",
       "kind": "structured",
@@ -8815,6 +8849,20 @@
         },
         {
           "path": "scripts/lib/tps-open-data.mjs"
+        }
+      ]
+    },
+    {
+      "host": "services.swpc.noaa.gov",
+      "provider": "services.swpc.noaa.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit services.swpc.noaa.gov and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
         }
       ]
     },
@@ -11504,6 +11552,23 @@
       ]
     },
     {
+      "host": "www.caiso.com",
+      "provider": "www.caiso.com",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.caiso.com and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
+        },
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
+        }
+      ]
+    },
+    {
       "host": "www.caracaschronicles.com",
       "provider": "Caracas Chronicles",
       "kind": "feed",
@@ -12128,12 +12193,15 @@
     {
       "host": "www.eia.gov",
       "provider": "www.eia.gov",
-      "kind": "feed",
+      "kind": "feed+structured",
       "observed": true,
       "license": "Provider terms for this feed publisher; verify before redistribution",
       "attribution": "Credit www.eia.gov and link to the original feed publisher.",
       "status": "terms-review",
       "references": [
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
+        },
         {
           "path": "src/config/feeds.ts"
         }
@@ -12184,6 +12252,23 @@
         },
         {
           "path": "src/config/variants/tech.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.ercot.com",
+      "provider": "www.ercot.com",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.ercot.com and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
+        },
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
         }
       ]
     },
@@ -13224,6 +13309,20 @@
       ]
     },
     {
+      "host": "www.misoenergy.org",
+      "provider": "www.misoenergy.org",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.misoenergy.org and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
+        }
+      ]
+    },
+    {
       "host": "www.mnd.gov.tw",
       "provider": "www.mnd.gov.tw",
       "kind": "structured",
@@ -13465,6 +13564,20 @@
         },
         {
           "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.nyiso.com",
+      "provider": "www.nyiso.com",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.nyiso.com and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
         }
       ]
     },
@@ -14182,6 +14295,23 @@
       ]
     },
     {
+      "host": "www.spp.org",
+      "provider": "www.spp.org",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.spp.org and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/adapters.mjs"
+        },
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
+        }
+      ]
+    },
+    {
       "host": "www.statcan.gc.ca",
       "provider": "www.statcan.gc.ca",
       "kind": "structured",
@@ -14313,6 +14443,20 @@
       "references": [
         {
           "path": "scripts/seed-sovereign-wealth.mjs"
+        }
+      ]
+    },
+    {
+      "host": "www.swpc.noaa.gov",
+      "provider": "www.swpc.noaa.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.swpc.noaa.gov and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
         }
       ]
     },
@@ -14854,6 +14998,20 @@
         },
         {
           "path": "src/config/feeds.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.weather.gov",
+      "provider": "www.weather.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.weather.gov and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/lib/grid-alerts/assess.mjs"
         }
       ]
     },

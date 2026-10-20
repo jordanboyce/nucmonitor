@@ -561,7 +561,8 @@
     "fearGreed": "Félelem és mohóság",
     "marketBreadth": "Piaci szélesség",
     "climateNews": "Klíma hírek",
-    "fx": "Devizaárfolyamok"
+    "fx": "Devizaárfolyamok",
+    "gridAlerts": "Villamoshálózati riasztások"
   },
   "commands": {
     "prefixes": {
@@ -1441,7 +1442,8 @@
         "speciesRecovery": "Fajmegmentés",
         "renewableInstallations": "Tiszta energia",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Villamoshálózati riasztások"
       },
       "tooltip": {
         "earthquake": "Földrengés",
@@ -3024,6 +3026,79 @@
       "rosterSummaryTier1": "{{publishers}} által közölve, köztük {{tier1}} 1. szintű",
       "rosterPublishers_one": "{{count}} kiadó",
       "rosterPublishers_other": "{{count}} kiadó"
+    },
+    "gridAlerts": {
+      "loading": "Hálózati riasztások betöltése…",
+      "unavailable": "A hálózati riasztások forrásai jelenleg nem érhetők el.",
+      "notPublished": "A hálózati riasztások pillanatképe még nem jelent meg. A seed-grid-alerts worker 10 percenként írja.",
+      "noAlerts": "Ehhez a szűrőhöz nincs aktív hálózati riasztás.",
+      "allRegions": "Minden régió",
+      "truncated": "A {{total}} aktív közül a {{shown}} legnagyobb súlyú veszélyriasztás látható.",
+      "views": {
+        "alerts": "Riasztások",
+        "regions": "Régiók",
+        "hazards": "Veszélyhatás",
+        "space": "Űridőjárás"
+      },
+      "overall": {
+        "normal": "Normál",
+        "watch": "Figyelés",
+        "elevated": "Emelt",
+        "critical": "Kritikus"
+      },
+      "summary": {
+        "regionsStressed": "terhelt régió",
+        "emergencies": "vészhelyzet",
+        "worst": "Legrosszabb"
+      },
+      "filters": {
+        "all": "Mind"
+      },
+      "kinds": {
+        "operator": "Rendszerirányító",
+        "weather": "Időjárás",
+        "space": "Űridőjárás"
+      },
+      "levels": {
+        "emergency": "Vészhelyzet",
+        "warning": "Figyelmeztetés",
+        "advisory": "Tájékoztatás",
+        "info": "Infó"
+      },
+      "regions": {
+        "region": "Régió",
+        "status": "Állapot",
+        "demand": "Igény",
+        "impact": "Hatás",
+        "ofForecast": "az előrejelzéshez képest",
+        "noDrivers": "Nem észlelhető terhelési tényező.",
+        "footprint": "Ellátási terület"
+      },
+      "metrics": {
+        "forecastPeak": "Előrejelzett csúcs",
+        "capacity": "Lekötött kapacitás",
+        "netGeneration": "Nettó termelés",
+        "interchange": "Csere",
+        "reserve": "Tartalék",
+        "gic": "GIC-kitettség"
+      },
+      "exposure": {
+        "high": "Magas",
+        "moderate": "Mérsékelt",
+        "low": "Alacsony",
+        "unknown": "Ismeretlen"
+      },
+      "hazards": {
+        "none": "Egyetlen értékelt területen sincs aktív, a hálózat szempontjából lényeges időjárási veszély.",
+        "weight": "Veszélysúly",
+        "legend": "A cellák veszélycsaládonként a legerősebb aktív NWS-riasztás súlyát mutatják (0–40, súlyosság szerint skálázva). A sorok a rendszerirányító állapotával, az igénynyomással és a geomágneses kitettséggel együtt adják a hatáspontszámot."
+      },
+      "space": {
+        "now": "Geomágneses vihar most",
+        "unavailable": "A NOAA SWPC skálák nem érhetők el.",
+        "noProducts": "Az elmúlt 72 órában nem volt geomágneses figyelmeztetés vagy riasztás.",
+        "mechanism": "A geomágnesesen indukált áramok telítik a transzformátorokat, és kioldják a védelmeket a hosszú kelet–nyugati vezetékeken. A kitettség a sarkifény-ovál felé nő, így azonos G-szinten az északi szabályozási területek viselik a legnagyobb kockázatot."
+      }
     }
   },
   "popups": {

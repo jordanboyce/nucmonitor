@@ -496,7 +496,8 @@
     "fearGreed": "Strach i Chciwość",
     "marketBreadth": "Szerokość Rynku",
     "climateNews": "Wiadomości Klimatyczne",
-    "fx": "Kursy walutowe"
+    "fx": "Kursy walutowe",
+    "gridAlerts": "Alerty sieci energetycznej"
   },
   "commands": {
     "prefixes": {
@@ -1110,7 +1111,8 @@
         "radiationSpike": "Skok radioaktywności",
         "radiationElevated": "Podwyższona radioaktywność",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Alerty sieci energetycznej"
       },
       "layersTitle": "Warstwy",
       "layerSearch": "Szukaj warstw...",
@@ -2995,6 +2997,79 @@
       "rosterPublishers_few": "{{count}} wydawcy",
       "rosterPublishers_many": "{{count}} wydawców",
       "rosterPublishers_other": "{{count}} wydawców"
+    },
+    "gridAlerts": {
+      "loading": "Ładowanie alertów sieci…",
+      "unavailable": "Źródła alertów sieci są obecnie niedostępne.",
+      "notPublished": "Migawka alertów sieci nie została jeszcze opublikowana. Worker seed-grid-alerts zapisuje ją co 10 minut.",
+      "noAlerts": "Brak aktywnych alertów sieci dla tego filtra.",
+      "allRegions": "Wszystkie regiony",
+      "truncated": "Wyświetlono {{shown}} alertów o zagrożeniach o największej wadze z {{total}} aktywnych.",
+      "views": {
+        "alerts": "Alerty",
+        "regions": "Regiony",
+        "hazards": "Wpływ zagrożeń",
+        "space": "Pogoda kosmiczna"
+      },
+      "overall": {
+        "normal": "Normalny",
+        "watch": "Obserwacja",
+        "elevated": "Podwyższony",
+        "critical": "Krytyczny"
+      },
+      "summary": {
+        "regionsStressed": "regionów pod obciążeniem",
+        "emergencies": "sytuacji awaryjnych",
+        "worst": "Najgorszy"
+      },
+      "filters": {
+        "all": "Wszystkie"
+      },
+      "kinds": {
+        "operator": "Operator",
+        "weather": "Pogoda",
+        "space": "Pogoda kosmiczna"
+      },
+      "levels": {
+        "emergency": "Awaria",
+        "warning": "Ostrzeżenie",
+        "advisory": "Zalecenie",
+        "info": "Informacja"
+      },
+      "regions": {
+        "region": "Region",
+        "status": "Stan",
+        "demand": "Zapotrzebowanie",
+        "impact": "Wpływ",
+        "ofForecast": "prognozy",
+        "noDrivers": "Nie wykryto czynników obciążenia.",
+        "footprint": "Obszar działania"
+      },
+      "metrics": {
+        "forecastPeak": "Prognozowany szczyt",
+        "capacity": "Zadeklarowana moc",
+        "netGeneration": "Generacja netto",
+        "interchange": "Wymiana",
+        "reserve": "Rezerwa",
+        "gic": "Narażenie na GIC"
+      },
+      "exposure": {
+        "high": "Wysokie",
+        "moderate": "Umiarkowane",
+        "low": "Niskie",
+        "unknown": "Nieznane"
+      },
+      "hazards": {
+        "none": "W żadnym ocenianym obszarze nie występują aktywne zagrożenia pogodowe istotne dla sieci.",
+        "weight": "Waga zagrożenia",
+        "legend": "Komórki pokazują wagę najsilniejszego aktywnego alertu NWS w każdej rodzinie zagrożeń (0–40, skalowaną wg powagi). Wiersze łączą się ze stanem operatora, presją zapotrzebowania i narażeniem geomagnetycznym w ocenę wpływu."
+      },
+      "space": {
+        "now": "Burza geomagnetyczna teraz",
+        "unavailable": "Skale NOAA SWPC są niedostępne.",
+        "noProducts": "Brak geomagnetycznych ostrzeżeń ani komunikatów z ostatnich 72 godzin.",
+        "mechanism": "Prądy indukowane geomagnetycznie nasycają transformatory i wyzwalają zabezpieczenia na długich liniach wschód–zachód. Narażenie rośnie w stronę owalu zorzowego, więc przy tym samym poziomie G największe ryzyko ponoszą północne obszary bilansowania."
+      }
     }
   },
   "popups": {

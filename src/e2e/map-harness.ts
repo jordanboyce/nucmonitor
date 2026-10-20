@@ -291,6 +291,7 @@ const allLayersEnabled: MapLayers = {
   diseaseOutbreaks: true,
   storageFacilities: false,
   fuelShortages: false,
+  gridAlerts: false,
   liveTankers: false,
 };
 
@@ -353,6 +354,7 @@ const allLayersDisabled: MapLayers = {
   diseaseOutbreaks: false,
   storageFacilities: false,
   fuelShortages: false,
+  gridAlerts: false,
   liveTankers: false,
 };
 
@@ -488,6 +490,7 @@ const energyAllLayersEnabled: MapLayers = {
   commodityPorts: true,
   storageFacilities: true,
   fuelShortages: true,
+  gridAlerts: false,
   liveTankers: true,
 };
 

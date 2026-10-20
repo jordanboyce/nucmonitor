@@ -176,6 +176,7 @@ const PANEL_CLUSTER: Record<string, PanelChunkName> = {
   TechEvents: 'panels-risk',
   ThreatTimeline: 'panels-risk',
   TechHubs: 'panels-risk', TechReadiness: 'panels-risk', TorontoSafety: 'panels-risk',
+  GridAlerts: 'panels-energy',
   WorldClock: 'panels-risk',
 };
 

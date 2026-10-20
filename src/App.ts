@@ -93,6 +93,7 @@ import type { OilInventoriesPanel } from '@/components/OilInventoriesPanel';
 import type { PipelineStatusPanel } from '@/components/PipelineStatusPanel';
 import type { StorageFacilityMapPanel } from '@/components/StorageFacilityMapPanel';
 import type { FuelShortagePanel } from '@/components/FuelShortagePanel';
+import type { GridAlertsPanel } from '@/components/GridAlertsPanel';
 import type { EnergyDisruptionsPanel } from '@/components/EnergyDisruptionsPanel';
 import type { EnergyRiskOverviewPanel } from '@/components/EnergyRiskOverviewPanel';
 import type { ChokepointStripPanel } from '@/components/ChokepointStripPanel';
@@ -843,6 +844,10 @@ export class App {
     if (shouldPrime('fuel-shortages')) {
       const panel = this.state.panels['fuel-shortages'] as FuelShortagePanel | undefined;
       if (panel) primeTask('fuel-shortages', () => panel.fetchData());
+    }
+    if (shouldPrime('grid-alerts')) {
+      const panel = this.state.panels['grid-alerts'] as GridAlertsPanel | undefined;
+      if (panel) primeTask('grid-alerts', () => panel.fetchData());
     }
     if (shouldPrime('energy-disruptions')) {
       const panel = this.state.panels['energy-disruptions'] as EnergyDisruptionsPanel | undefined;
@@ -4164,6 +4169,13 @@ export class App {
       () => (this.state.panels['fuel-shortages'] as FuelShortagePanel).fetchData(),
       REFRESH_INTERVALS.fuelShortages,
       () => this.isPanelNearViewport('fuel-shortages')
+    );
+
+    this.refreshScheduler.scheduleRefresh(
+      'grid-alerts',
+      () => (this.state.panels['grid-alerts'] as GridAlertsPanel).fetchData(),
+      REFRESH_INTERVALS.gridAlerts,
+      () => this.isPanelNearViewport('grid-alerts')
     );
 
     this.refreshScheduler.scheduleRefresh(

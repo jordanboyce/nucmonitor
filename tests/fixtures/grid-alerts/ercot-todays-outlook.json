@@ -1,0 +1,7 @@
+{"lastUpdated":"2026-10-20T20:50:00","data":[
+ {"timestamp":"2026-10-20 18:00","capacity":71000,"demand":66500,"forecast":0,"dstFlag":0},
+ {"timestamp":"2026-10-20 19:00","capacity":70500,"demand":67900,"forecast":0,"dstFlag":0},
+ {"timestamp":"2026-10-20 20:00","capacity":70100,"demand":68200,"forecast":0,"dstFlag":0},
+ {"timestamp":"2026-10-20 21:00","capacity":70000,"demand":69800,"forecast":1,"dstFlag":0},
+ {"timestamp":"2026-10-20 22:00","capacity":69800,"demand":68900,"forecast":1,"dstFlag":0}
+]}

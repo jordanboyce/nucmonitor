@@ -500,7 +500,8 @@
     "consumerPrices": "أسعار المستهلك",
     "marketBreadth": "اتساع السوق",
     "climateNews": "أخبار المناخ",
-    "fx": "أسعار الصرف الأجنبي"
+    "fx": "أسعار الصرف الأجنبي",
+    "gridAlerts": "تنبيهات شبكة الكهرباء"
   },
   "commands": {
     "prefixes": {
@@ -1262,7 +1263,8 @@
         "radiationSpike": "ارتفاع حاد في الإشعاع",
         "radiationElevated": "إشعاع مرتفع",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "تنبيهات شبكة الكهرباء"
       },
       "tooltip": {
         "earthquake": "زلزال",
@@ -3035,6 +3037,79 @@
       "rosterPublishers_few": "{{count}} ناشرين",
       "rosterPublishers_many": "{{count}} ناشراً",
       "rosterPublishers_other": "{{count}} ناشر"
+    },
+    "gridAlerts": {
+      "loading": "جارٍ تحميل تنبيهات الشبكة…",
+      "unavailable": "مصادر تنبيهات الشبكة غير متاحة حاليًا.",
+      "notPublished": "لم تُنشر لقطة تنبيهات الشبكة بعد. يكتبها العامل seed-grid-alerts كل 10 دقائق.",
+      "noAlerts": "لا توجد تنبيهات شبكة نشطة لهذا المرشّح.",
+      "allRegions": "كل المناطق",
+      "truncated": "تُعرض {{shown}} من تنبيهات المخاطر الأعلى وزنًا من أصل {{total}} نشطة.",
+      "views": {
+        "alerts": "التنبيهات",
+        "regions": "المناطق",
+        "hazards": "أثر المخاطر",
+        "space": "طقس الفضاء"
+      },
+      "overall": {
+        "normal": "طبيعي",
+        "watch": "مراقبة",
+        "elevated": "مرتفع",
+        "critical": "حرج"
+      },
+      "summary": {
+        "regionsStressed": "مناطق تحت الضغط",
+        "emergencies": "حالات طوارئ",
+        "worst": "الأسوأ"
+      },
+      "filters": {
+        "all": "الكل"
+      },
+      "kinds": {
+        "operator": "المشغّل",
+        "weather": "الطقس",
+        "space": "طقس الفضاء"
+      },
+      "levels": {
+        "emergency": "طوارئ",
+        "warning": "تحذير",
+        "advisory": "إرشاد",
+        "info": "معلومات"
+      },
+      "regions": {
+        "region": "المنطقة",
+        "status": "الحالة",
+        "demand": "الطلب",
+        "impact": "الأثر",
+        "ofForecast": "من التوقع",
+        "noDrivers": "لم تُرصد عوامل ضغط.",
+        "footprint": "نطاق الخدمة"
+      },
+      "metrics": {
+        "forecastPeak": "الذروة المتوقعة",
+        "capacity": "القدرة الملتزم بها",
+        "netGeneration": "صافي التوليد",
+        "interchange": "التبادل",
+        "reserve": "الاحتياطي",
+        "gic": "التعرّض للتيارات المستحثّة"
+      },
+      "exposure": {
+        "high": "مرتفع",
+        "moderate": "متوسط",
+        "low": "منخفض",
+        "unknown": "غير معروف"
+      },
+      "hazards": {
+        "none": "لا توجد مخاطر جوية مؤثرة على الشبكة نشطة في أي نطاق مُقيَّم.",
+        "weight": "وزن الخطر",
+        "legend": "تُظهر الخلايا وزن أقوى تنبيه نشط من NWS لكل فئة مخاطر (0–40 مع مراعاة الشدة). تُجمع الصفوف مع حالة المشغّل وضغط الطلب والتعرّض الجيومغناطيسي في درجة الأثر."
+      },
+      "space": {
+        "now": "عاصفة جيومغناطيسية الآن",
+        "unavailable": "مقاييس NOAA SWPC غير متاحة.",
+        "noProducts": "لا توجد تحذيرات أو مراقبات جيومغناطيسية خلال آخر 72 ساعة.",
+        "mechanism": "تُشبع التيارات المستحثّة جيومغناطيسيًا المحوّلات وتُفعّل الحمايات على الخطوط الطويلة الممتدة شرقًا وغربًا. يزداد التعرّض باتجاه البيضاوي الشفقي، لذا تتحمّل مناطق الموازنة الشمالية أكبر خطر عند مستوى G نفسه."
+      }
     }
   },
   "popups": {

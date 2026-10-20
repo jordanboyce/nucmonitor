@@ -1142,6 +1142,9 @@ export class DataLoaderManager implements AppModule {
     if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.canadaRoads) tasks.push({ name: 'canadaRoads', task: () => runGuarded('canadaRoads', () => this.loadCanadaRoads()) });
     if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.pipelines) tasks.push({ name: 'pipelineRegistries', task: () => runGuarded('pipelineRegistries', () => this.loadPipelineRegistries()) });
     if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.storageFacilities) tasks.push({ name: 'storageFacilities', task: () => runGuarded('storageFacilities', () => this.loadStorageFacilities()) });
+    // Grid alert markers only load when the layer is on: the panel fetches for
+    // itself and both readers share one circuit-breaker cache (#grid-alerts).
+    if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.gridAlerts) tasks.push({ name: 'gridAlerts', task: () => runGuarded('gridAlerts', () => this.loadGridAlerts()) });
     if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.canadaAlerts) tasks.push({ name: 'canadaAlerts', task: () => runGuarded('canadaAlerts', () => this.loadCanadaAlerts()) });
     if (SITE_VARIANT !== 'happy' && !isDesktopRuntime() && this.ctx.mapLayers.ais) tasks.push({ name: 'ais', task: () => runGuarded('ais', () => this.loadAisSignals()) });
     if (SITE_VARIANT !== 'happy' && this.ctx.mapLayers.cables) tasks.push({ name: 'cables', task: () => runGuarded('cables', () => this.loadCableActivity()) });
@@ -1236,6 +1239,9 @@ export class DataLoaderManager implements AppModule {
           break;
         case 'storageFacilities':
           await this.loadStorageFacilities();
+          break;
+        case 'gridAlerts':
+          await this.loadGridAlerts();
           break;
         case 'canadaAlerts':
           await this.loadCanadaAlerts();
@@ -3290,6 +3296,18 @@ export class DataLoaderManager implements AppModule {
       this.ctx.map?.render();
     } catch {
       this.ctx.map?.setLayerReady('pipelines', false);
+    }
+  }
+
+  async loadGridAlerts(): Promise<void> {
+    try {
+      const { fetchGridAlerts } = await import('@/services/grid-alerts');
+      const envelope = await fetchGridAlerts();
+      this.ctx.map?.setGridAlerts(envelope.regions);
+      this.ctx.map?.setLayerReady('gridAlerts', envelope.regions.length > 0);
+    } catch (error) {
+      console.error('[App] Grid alerts fetch failed:', error);
+      this.ctx.map?.setLayerReady('gridAlerts', false);
     }
   }
 

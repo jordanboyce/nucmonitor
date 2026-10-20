@@ -561,7 +561,8 @@
     "fearGreed": "Hofu & Uchoyo",
     "marketBreadth": "Upana wa Soko",
     "climateNews": "Habari za Hali ya Hewa",
-    "fx": "Kiwango cha ubadilishaji wa fedha za kigeni"
+    "fx": "Kiwango cha ubadilishaji wa fedha za kigeni",
+    "gridAlerts": "Tahadhari za Gridi ya Umeme"
   },
   "commands": {
     "prefixes": {
@@ -1441,7 +1442,8 @@
         "speciesRecovery": "Urejeshaji wa Aina",
         "renewableInstallations": "Nishati Safi",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Tahadhari za Gridi ya Umeme"
       },
       "tooltip": {
         "earthquake": "Tetemeko la ardhi",
@@ -3024,6 +3026,79 @@
       "rosterSummaryTier1": "Imeripotiwa na {{publishers}}, wakiwemo {{tier1}} wa kiwango cha 1",
       "rosterPublishers_one": "mchapishaji {{count}}",
       "rosterPublishers_other": "wachapishaji {{count}}"
+    },
+    "gridAlerts": {
+      "loading": "Inapakia tahadhari za gridi…",
+      "unavailable": "Vyanzo vya tahadhari za gridi havipatikani kwa sasa.",
+      "notPublished": "Picha ya tahadhari za gridi bado haijachapishwa. Mfanyakazi seed-grid-alerts huiandika kila dakika 10.",
+      "noAlerts": "Hakuna tahadhari za gridi zinazoendelea kwa kichujio hiki.",
+      "allRegions": "Maeneo yote",
+      "truncated": "Inaonyesha tahadhari {{shown}} za hatari zenye uzito mkubwa zaidi kati ya {{total}} zinazoendelea.",
+      "views": {
+        "alerts": "Tahadhari",
+        "regions": "Maeneo",
+        "hazards": "Athari za hatari",
+        "space": "Hali ya hewa ya anga"
+      },
+      "overall": {
+        "normal": "Kawaida",
+        "watch": "Ufuatiliaji",
+        "elevated": "Imeongezeka",
+        "critical": "Hatari kubwa"
+      },
+      "summary": {
+        "regionsStressed": "maeneo yenye msongo",
+        "emergencies": "dharura",
+        "worst": "Mbaya zaidi"
+      },
+      "filters": {
+        "all": "Zote"
+      },
+      "kinds": {
+        "operator": "Mwendeshaji",
+        "weather": "Hali ya hewa",
+        "space": "Hali ya hewa ya anga"
+      },
+      "levels": {
+        "emergency": "Dharura",
+        "warning": "Onyo",
+        "advisory": "Ushauri",
+        "info": "Taarifa"
+      },
+      "regions": {
+        "region": "Eneo",
+        "status": "Hali",
+        "demand": "Mahitaji",
+        "impact": "Athari",
+        "ofForecast": "ya utabiri",
+        "noDrivers": "Hakuna visababishi vya msongo vilivyogunduliwa.",
+        "footprint": "Eneo la huduma"
+      },
+      "metrics": {
+        "forecastPeak": "Kilele kilichotabiriwa",
+        "capacity": "Uwezo uliotengwa",
+        "netGeneration": "Uzalishaji halisi",
+        "interchange": "Ubadilishanaji",
+        "reserve": "Akiba",
+        "gic": "Mwangaza wa GIC"
+      },
+      "exposure": {
+        "high": "Juu",
+        "moderate": "Wastani",
+        "low": "Chini",
+        "unknown": "Haijulikani"
+      },
+      "hazards": {
+        "none": "Hakuna hatari za hali ya hewa zinazohusu gridi zinazoendelea katika eneo lolote lililotathminiwa.",
+        "weight": "Uzito wa hatari",
+        "legend": "Visanduku vinaonyesha uzito wa tahadhari kali zaidi ya NWS inayoendelea kwa kila kundi la hatari (0–40, ikipimwa kwa ukali). Safu huunganishwa na hali ya mwendeshaji, shinikizo la mahitaji na mwangaza wa sumaku ya dunia kuwa alama ya athari."
+      },
+      "space": {
+        "now": "Dhoruba ya sumaku ya dunia sasa",
+        "unavailable": "Vipimo vya NOAA SWPC havipatikani.",
+        "noProducts": "Hakuna uangalizi wala onyo la sumaku ya dunia katika saa 72 zilizopita.",
+        "mechanism": "Mikondo inayochochewa na sumaku ya dunia hujaza transfoma na kuamsha vilinzi kwenye njia ndefu za mashariki–magharibi. Mwangaza huongezeka kuelekea duara la aurora, hivyo katika kiwango sawa cha G maeneo ya kaskazini ya usawazishaji hubeba hatari kubwa zaidi."
+      }
     }
   },
   "popups": {

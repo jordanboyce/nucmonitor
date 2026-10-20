@@ -490,7 +490,8 @@
     "fearGreed": "Sợ hãi & Tham lam",
     "marketBreadth": "Độ rộng Thị trường",
     "climateNews": "Tin tức về Khí hậu",
-    "fx": "Tỷ giá ngoại hối"
+    "fx": "Tỷ giá ngoại hối",
+    "gridAlerts": "Cảnh báo lưới điện"
   },
   "commands": {
     "prefixes": {
@@ -1296,7 +1297,8 @@
         "radiationSpike": "Đột tăng bức xạ",
         "radiationElevated": "Bức xạ tăng cao",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Cảnh báo lưới điện"
       },
       "tooltip": {
         "earthquake": "Động đất",
@@ -2935,6 +2937,79 @@
       "rosterSummary": "Được đưa tin bởi {{publishers}}",
       "rosterSummaryTier1": "Được đưa tin bởi {{publishers}}, trong đó {{tier1}} thuộc cấp 1",
       "rosterPublishers_other": "{{count}} nhà xuất bản"
+    },
+    "gridAlerts": {
+      "loading": "Đang tải cảnh báo lưới điện…",
+      "unavailable": "Các nguồn cảnh báo lưới điện hiện không khả dụng.",
+      "notPublished": "Ảnh chụp cảnh báo lưới điện chưa được xuất bản. Worker seed-grid-alerts ghi nó mỗi 10 phút.",
+      "noAlerts": "Không có cảnh báo lưới điện nào đang hoạt động cho bộ lọc này.",
+      "allRegions": "Tất cả khu vực",
+      "truncated": "Đang hiển thị {{shown}} cảnh báo nguy cơ có trọng số cao nhất trong {{total}} cảnh báo đang hoạt động.",
+      "views": {
+        "alerts": "Cảnh báo",
+        "regions": "Khu vực",
+        "hazards": "Tác động nguy cơ",
+        "space": "Thời tiết không gian"
+      },
+      "overall": {
+        "normal": "Bình thường",
+        "watch": "Theo dõi",
+        "elevated": "Tăng cao",
+        "critical": "Nguy cấp"
+      },
+      "summary": {
+        "regionsStressed": "khu vực căng thẳng",
+        "emergencies": "tình trạng khẩn cấp",
+        "worst": "Nặng nhất"
+      },
+      "filters": {
+        "all": "Tất cả"
+      },
+      "kinds": {
+        "operator": "Đơn vị vận hành",
+        "weather": "Thời tiết",
+        "space": "Thời tiết không gian"
+      },
+      "levels": {
+        "emergency": "Khẩn cấp",
+        "warning": "Cảnh báo",
+        "advisory": "Khuyến cáo",
+        "info": "Thông tin"
+      },
+      "regions": {
+        "region": "Khu vực",
+        "status": "Trạng thái",
+        "demand": "Phụ tải",
+        "impact": "Tác động",
+        "ofForecast": "so với dự báo",
+        "noDrivers": "Không phát hiện yếu tố gây căng thẳng.",
+        "footprint": "Phạm vi cấp điện"
+      },
+      "metrics": {
+        "forecastPeak": "Đỉnh dự báo",
+        "capacity": "Công suất huy động",
+        "netGeneration": "Sản lượng ròng",
+        "interchange": "Trao đổi",
+        "reserve": "Dự phòng",
+        "gic": "Phơi nhiễm GIC"
+      },
+      "exposure": {
+        "high": "Cao",
+        "moderate": "Trung bình",
+        "low": "Thấp",
+        "unknown": "Không rõ"
+      },
+      "hazards": {
+        "none": "Không có nguy cơ thời tiết liên quan đến lưới điện đang hoạt động trong bất kỳ phạm vi nào được đánh giá.",
+        "weight": "Trọng số nguy cơ",
+        "legend": "Các ô hiển thị trọng số của cảnh báo NWS mạnh nhất đang hoạt động theo từng nhóm nguy cơ (0–40, điều chỉnh theo mức độ nghiêm trọng). Các hàng kết hợp với trạng thái đơn vị vận hành, áp lực phụ tải và phơi nhiễm địa từ thành điểm tác động."
+      },
+      "space": {
+        "now": "Bão địa từ hiện tại",
+        "unavailable": "Thang đo NOAA SWPC không khả dụng.",
+        "noProducts": "Không có theo dõi hay cảnh báo địa từ trong 72 giờ qua.",
+        "mechanism": "Dòng điện cảm ứng địa từ làm bão hòa máy biến áp và kích hoạt bảo vệ trên các đường dây dài theo hướng đông–tây. Mức phơi nhiễm tăng về phía vành đai cực quang, nên ở cùng cấp G, các khu vực cân bằng phía bắc chịu rủi ro lớn nhất."
+      }
     }
   },
   "popups": {

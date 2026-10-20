@@ -492,7 +492,8 @@
     "fearGreed": "Angst & Gier",
     "marketBreadth": "Marktbreite",
     "climateNews": "Klimanachrichten",
-    "fx": "Devisenkurse"
+    "fx": "Devisenkurse",
+    "gridAlerts": "Stromnetz-Warnungen"
   },
   "commands": {
     "prefixes": {
@@ -1141,7 +1142,8 @@
         "radiationSpike": "Strahlungsspitze",
         "radiationElevated": "Erhöhte Strahlung",
         "canadaRoads": "Canada Roads",
-        "canadaAlerts": "Canada Alerts (AB + BC + SK)"
+        "canadaAlerts": "Canada Alerts (AB + BC + SK)",
+        "gridAlerts": "Stromnetz-Warnungen"
       },
       "layersTitle": "Ebenen",
       "layerSearch": "Ebenen suchen...",
@@ -2955,6 +2957,79 @@
       "rosterSummaryTier1": "Berichtet von {{publishers}}, darunter {{tier1}} Tier-1",
       "rosterPublishers_one": "{{count}} Verleger",
       "rosterPublishers_other": "{{count}} Verlegern"
+    },
+    "gridAlerts": {
+      "loading": "Netzwarnungen werden geladen…",
+      "unavailable": "Die Netzwarnquellen sind derzeit nicht verfügbar.",
+      "notPublished": "Der Netzwarnungs-Schnappschuss wurde noch nicht veröffentlicht. Der Worker seed-grid-alerts schreibt ihn alle 10 Minuten.",
+      "noAlerts": "Keine aktiven Netzwarnungen für diesen Filter.",
+      "allRegions": "Alle Regionen",
+      "truncated": "Angezeigt werden die {{shown}} Gefahrenwarnungen mit dem höchsten Gewicht von {{total}} aktiven.",
+      "views": {
+        "alerts": "Warnungen",
+        "regions": "Regionen",
+        "hazards": "Gefahrenwirkung",
+        "space": "Weltraumwetter"
+      },
+      "overall": {
+        "normal": "Normal",
+        "watch": "Beobachtung",
+        "elevated": "Erhöht",
+        "critical": "Kritisch"
+      },
+      "summary": {
+        "regionsStressed": "Regionen unter Belastung",
+        "emergencies": "Notfälle",
+        "worst": "Am stärksten betroffen"
+      },
+      "filters": {
+        "all": "Alle"
+      },
+      "kinds": {
+        "operator": "Netzbetreiber",
+        "weather": "Wetter",
+        "space": "Weltraumwetter"
+      },
+      "levels": {
+        "emergency": "Notfall",
+        "warning": "Warnung",
+        "advisory": "Hinweis",
+        "info": "Info"
+      },
+      "regions": {
+        "region": "Region",
+        "status": "Status",
+        "demand": "Nachfrage",
+        "impact": "Auswirkung",
+        "ofForecast": "der Prognose",
+        "noDrivers": "Keine Belastungsfaktoren erkannt.",
+        "footprint": "Versorgungsgebiet"
+      },
+      "metrics": {
+        "forecastPeak": "Prognostizierte Spitze",
+        "capacity": "Verfügbare Kapazität",
+        "netGeneration": "Nettoerzeugung",
+        "interchange": "Austausch",
+        "reserve": "Reserve",
+        "gic": "GIC-Exposition"
+      },
+      "exposure": {
+        "high": "Hoch",
+        "moderate": "Mittel",
+        "low": "Niedrig",
+        "unknown": "Unbekannt"
+      },
+      "hazards": {
+        "none": "In keinem bewerteten Versorgungsgebiet sind netzrelevante Wettergefahren aktiv.",
+        "weight": "Gefahrengewicht",
+        "legend": "Die Zellen zeigen das Gewicht der stärksten aktiven NWS-Warnung je Gefahrenfamilie (0–40, nach Schwere skaliert). Die Zeilen fließen zusammen mit Betreiberstatus, Nachfragedruck und geomagnetischer Exposition in den Wirkungswert ein."
+      },
+      "space": {
+        "now": "Geomagnetischer Sturm jetzt",
+        "unavailable": "Die NOAA-SWPC-Skalen sind nicht verfügbar.",
+        "noProducts": "Keine geomagnetischen Warnungen oder Vorwarnungen in den letzten 72 Stunden.",
+        "mechanism": "Geomagnetisch induzierte Ströme sättigen Transformatoren und lösen Schutzauslösungen auf langen Ost-West-Leitungen aus. Die Exposition nimmt zum Polarlichtoval hin zu, daher tragen nördliche Regelzonen bei gleicher G-Stufe das größte Risiko."
+      }
     }
   },
   "popups": {

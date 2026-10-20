@@ -33,19 +33,22 @@ describe('intelligence command deck scopes', () => {
     assert.equal(resultMatchesSearchScope('all', 'news'), true);
     assert.equal(resultMatchesSearchScope('signals', 'news'), true);
     assert.equal(resultMatchesSearchScope('signals', 'market'), true);
-    assert.equal(resultMatchesSearchScope('signals', 'flight'), true);
+    assert.equal(resultMatchesSearchScope('signals', 'earthquake'), true);
+    assert.equal(resultMatchesSearchScope('signals', 'outage'), true);
+    assert.equal(resultMatchesSearchScope('signals', 'nuclear'), true);
     assert.equal(resultMatchesSearchScope('signals', 'country'), false);
+    assert.equal(resultMatchesSearchScope('signals', 'irradiator'), false);
     assert.equal(resultMatchesSearchScope('map', 'country'), true);
     assert.equal(resultMatchesSearchScope('map', 'pipeline'), true);
-    assert.equal(resultMatchesSearchScope('map', 'exchange'), true);
-    assert.equal(resultMatchesSearchScope('map', 'financialcenter'), true);
-    assert.equal(resultMatchesSearchScope('map', 'centralbank'), true);
-    assert.equal(resultMatchesSearchScope('map', 'commodityhub'), true);
+    assert.equal(resultMatchesSearchScope('map', 'nuclear'), true);
+    assert.equal(resultMatchesSearchScope('map', 'irradiator'), true);
+    assert.equal(resultMatchesSearchScope('map', 'earthquake'), true);
     assert.equal(resultMatchesSearchScope('map', 'market'), false);
+    assert.equal(resultMatchesSearchScope('map', 'news'), false);
     assert.equal(resultMatchesSearchScope('panels', 'news'), false);
-    assert.equal(resultMatchesSearchScope('panels', 'flight'), false);
-    assert.equal(resultMatchesSearchScope('actions', 'hotspot'), false);
-    assert.equal(resultMatchesSearchScope('actions', 'flight'), false);
+    assert.equal(resultMatchesSearchScope('panels', 'nuclear'), false);
+    assert.equal(resultMatchesSearchScope('actions', 'nuclear'), false);
+    assert.equal(resultMatchesSearchScope('actions', 'earthquake'), false);
   });
 });
 
@@ -82,7 +85,7 @@ describe('intelligence command deck pure helpers', () => {
     );
   });
 
-  it('keeps the pre-deck All-channel empty tip inventory', () => {
+  it('keeps the pre-deck All-channel empty tip inventory (live-flight tip left with flights)', () => {
     assert.deepEqual([...ALL_CHANNEL_TIP_KEYS], [
       'commands.tips.map',
       'commands.tips.panel',
@@ -90,7 +93,6 @@ describe('intelligence command deck pure helpers', () => {
       'commands.tips.layers',
       'commands.tips.time',
       'commands.tips.settings',
-      'commands.tips.flight',
     ]);
   });
 

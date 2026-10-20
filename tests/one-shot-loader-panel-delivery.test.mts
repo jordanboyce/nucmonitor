@@ -145,8 +145,9 @@ function extractMethod(source: string, name: string): string {
  * Adding a key here is a claim that must be true in panel-layout.ts.
  */
 const DIRECT_LOOKUP_ALLOWLIST: Record<string, string> = {
-  'geo-hubs': 'GeoHubsPanel pulls ctx.latestClusters in its lazy factory, gated on clustersSettled',
-  'tech-hubs': 'TechHubsPanel pulls ctx.latestClusters in its lazy factory (deferred tech-geo chunk, #4404)',
+  // Empty: the cluster consumers that backfilled from ctx.latestClusters at
+  // mount (geo-hubs, tech-hubs) left with the upstream dashboards, so no panel
+  // may be looked up directly inside a one-shot loader.
 };
 
 describe('one-shot loader panel delivery', () => {
@@ -182,24 +183,17 @@ describe('one-shot loader panel delivery', () => {
     });
   }
 
-  it('queues the cluster fan-out in both arms of the clustering try/catch', async () => {
+  it('keeps the clustering pass free of panel fan-out', async () => {
+    // The insights/threat-timeline cluster fan-out went with those panels. The
+    // clustering pass now only feeds the map; if a panel delivery returns here
+    // it must be queued through callPanel (asserted for the whole method above)
+    // in BOTH arms of the try/catch, so reintroduce the per-arm guard with it.
     const source = await readFile(DATA_LOADER, 'utf8');
     const loadNews = extractMethod(source, 'loadNews');
-
-    // Slice each arm: a whole-method match passes with the queued call wired
-    // into only one of them, and the catch arm is where a regression hides —
-    // it runs only when clustering throws.
-    const tryArm = loadNews.match(/this\.ctx\.clustersSettled = true;[\s\S]*?hydrateGeoHubPanelFromClusters\(/);
-    const catchArm = loadNews.match(/console\.error\('\[App\] Clustering failed[\s\S]*?\n {4}\}/);
-    assert.ok(tryArm, 'could not slice the try arm of the clustering pass');
-    assert.ok(catchArm, 'could not slice the catch arm of the clustering pass');
-
-    for (const [name, arm] of [['try', tryArm[0]], ['catch', catchArm[0]]] as const) {
-      assert.match(arm, /this\.callPanel\('insights', 'updateInsights',/,
-        `the ${name} arm must queue the insights fan-out`);
-      assert.match(arm, /isPanelInVariantDefaults\('threat-timeline'\)[\s\S]*?this\.callPanel\('threat-timeline', 'refresh',/,
-        `the ${name} arm must queue the threat-timeline fan-out, behind the variant-defaults gate`);
-    }
+    const clustering = loadNews.slice(loadNews.indexOf('this.clusterNewsForGeneration('));
+    assert.ok(clustering.length > 0, 'could not slice the clustering pass');
+    assert.doesNotMatch(clustering, /callPanel\(|panels\[/,
+      'a panel delivery was added to the clustering pass; queue it in both the try and catch arms');
   });
 
   it('keeps the allowlisted panels' + " backed by a real mount-time pull", async () => {

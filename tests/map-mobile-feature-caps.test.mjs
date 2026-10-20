@@ -20,7 +20,9 @@ function sliceBetween(start, end) {
 describe('mobile SVG map feature caps and label reflow skip (#4463 / U7)', () => {
   it('declares the signed-off mobile caps as named constants', () => {
     assert.match(mapSrc, /private static readonly MOBILE_MIN_EARTHQUAKE_MAGNITUDE = 5/);
-    assert.match(mapSrc, /private static readonly MOBILE_MAX_IRAN_EVENTS = 50/);
+    // The Iran-events cap left with the Iran layer; the earthquake floor still
+    // has to reach the marker filter, not just exist as a constant.
+    assert.match(mapSrc, /eq\.magnitude >= MapComponent\.MOBILE_MIN_EARTHQUAKE_MAGNITUDE/);
   });
 
   it('keeps label overlap measurement disabled on mobile until movement or zoom needs it', () => {

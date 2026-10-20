@@ -112,7 +112,7 @@ describe('querySearchIndex', () => {
   it('applies command and result scope policy consistently', () => {
     const commands = [
       command('nav:global', 'navigate', ['scope']),
-      command('layer:bases', 'layers', ['scope']),
+      command('layer:radiationWatch', 'layers', ['scope']),
       command('panel:news', 'panels', ['scope']),
       command('view:dark', 'view', ['scope']),
       command('action:refresh', 'actions', ['scope']),
@@ -121,7 +121,7 @@ describe('querySearchIndex', () => {
     const sources = [
       source('news', [{ id: 'news', title: 'Scope news' }]),
       source('country', [{ id: 'country', title: 'Scope country' }]),
-      source('base', [{ id: 'base', title: 'Scope base' }]),
+      source('irradiator', [{ id: 'irradiator', title: 'Scope irradiator' }]),
     ];
     const expectations: Array<{
       scope: SearchScope;
@@ -129,7 +129,7 @@ describe('querySearchIndex', () => {
       entities: string[];
     }> = [
       { scope: 'signals', commands: ['country:US'], entities: ['news'] },
-      { scope: 'map', commands: ['nav:global', 'layer:bases'], entities: ['country', 'base'] },
+      { scope: 'map', commands: ['nav:global', 'layer:radiationWatch'], entities: ['country', 'irradiator'] },
       { scope: 'panels', commands: ['panel:news'], entities: [] },
       { scope: 'actions', commands: ['view:dark', 'action:refresh'], entities: [] },
     ];
@@ -211,41 +211,44 @@ describe('querySearchIndex', () => {
       rawInput: 'match',
       isMobile: true,
       sources: [
+        repeatedSource('earthquake', 3),
         repeatedSource('market', 3),
-        repeatedSource('prediction', 3),
         repeatedSource('news', 3),
       ],
     });
 
     assert.equal(result.entityMatches.length, 5);
-    assert.deepEqual(entityTypes(result), ['news', 'news', 'prediction', 'prediction', 'market']);
+    assert.deepEqual(entityTypes(result), ['news', 'news', 'market', 'market', 'earthquake']);
   });
 
   it('caps desktop entities globally after applying type priority', () => {
     const result = search({
       rawInput: 'match',
       sources: [
+        repeatedSource('datacenter', 3),
+        repeatedSource('cable', 3),
+        repeatedSource('pipeline', 3),
+        repeatedSource('irradiator', 3),
+        repeatedSource('nuclear', 3),
         repeatedSource('country', 3),
-        repeatedSource('hotspot', 3),
-        repeatedSource('conflict', 3),
         repeatedSource('outage', 3),
         repeatedSource('earthquake', 3),
         repeatedSource('market', 3),
-        repeatedSource('prediction', 3),
         repeatedSource('news', 3),
-        repeatedSource('flight', 3),
       ],
     });
 
     assert.equal(result.entityMatches.length, 24);
     assert.deepEqual(entityTypes(result).slice(0, 6), [
-      'flight',
-      'flight',
-      'flight',
       'news',
       'news',
       'news',
+      'market',
+      'market',
+      'market',
     ]);
-    assert.equal(entityTypes(result).includes('country'), false);
+    assert.equal(entityTypes(result).includes('pipeline'), true);
+    assert.equal(entityTypes(result).includes('cable'), false, 'lowest-priority types fall past the global cap');
+    assert.equal(entityTypes(result).includes('datacenter'), false);
   });
 });

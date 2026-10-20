@@ -35,44 +35,9 @@ function constNumber(path: string, name: string): number {
   return evalNumberExpression(match[1]);
 }
 
-function refreshIntervalMinutes(name: string): number {
-  const block = readSource('src/config/variants/base.ts').match(/export const REFRESH_INTERVALS = \{([\s\S]*?)\n\};/);
-  assert.ok(block, 'src/config/variants/base.ts must define REFRESH_INTERVALS');
-  const match = block[1].match(new RegExp(`\\n\\s*${name}:\\s*([^,\\n]+),`));
-  assert.ok(match, `REFRESH_INTERVALS must define ${name}`);
-  return evalNumberExpression(match[1]) / 60_000;
-}
-
 function relayConstMinutes(name: string): number {
   const match = relaySource.match(new RegExp(`const\\s+${name}\\s*=\\s*([^;\\n]+);`));
   assert.ok(match, `scripts/ais-relay.cjs must define ${name}`);
-  return evalNumberExpression(match[1]) / 60_000;
-}
-
-function relayFunctionConstNumber(functionName: string, name: string): number {
-  const start = relaySource.indexOf(`async function ${functionName}(`);
-  assert.notEqual(start, -1, `scripts/ais-relay.cjs must define ${functionName}()`);
-  const nextFunction = relaySource.indexOf('\nasync function ', start + 1);
-  const body = relaySource.slice(start, nextFunction === -1 ? undefined : nextFunction);
-  const match = body.match(new RegExp(`const\\s+${name}\\s*=\\s*([^;\\n]+);`));
-  assert.ok(match, `scripts/ais-relay.cjs ${functionName}() must define ${name}`);
-  return evalNumberExpression(match[1]);
-}
-
-function cyberRollingWindowMinutes(): number {
-  return relayFunctionConstNumber('seedCyberThreats', 'days') * 24 * 60;
-}
-
-function relayEnvDefaultMinutes(name: string): number {
-  const match = relaySource.match(new RegExp(`const\\s+${name}\\s*=\\s*Math\\.max\\([^|]+\\|\\|\\s*([0-9_]+)\\)\\)`));
-  assert.ok(match, `scripts/ais-relay.cjs must define numeric env default for ${name}`);
-  return evalNumberExpression(match[1]) / 60_000;
-}
-
-function aviationBreakerCacheMinutes(name: string): number {
-  const source = readSource('src/services/aviation/index.ts');
-  const match = source.match(new RegExp(`const\\s+${name}\\s*=\\s*createCircuitBreaker<[^>]+>\\(\\{[^}]*cacheTtlMs:\\s*([^,}\\n]+)`));
-  assert.ok(match, `src/services/aviation/index.ts must define ${name}.cacheTtlMs`);
   return evalNumberExpression(match[1]) / 60_000;
 }
 
@@ -119,19 +84,8 @@ function assertDuration(text: string, pattern: RegExp, expectedMinutes: number, 
 describe('layer explanation metadata', () => {
   test('v1 high-adoption layers have curated structured cards', () => {
     const expected = new Set([
-      'conflicts',
-      'ucdpEvents',
-      'ciiChoropleth',
       'natural',
       'weather',
-      'canadaRoads', 'canadaAlerts',
-      'flights',
-      'aircraftEmergencies',
-      'ais',
-      'waterways',
-      'tradeRoutes',
-      'cyberThreats',
-      'hotspots',
       'usNuclearFacilities',
     ]);
 
@@ -184,54 +138,12 @@ describe('layer explanation metadata', () => {
     assertDuration(renderedFreshnessText('weather'), /every\s+([0-9]+)\s+(minute)s?/i, relayConstMinutes('WEATHER_SEED_INTERVAL_MS'), 'weather relay seed cadence');
     assertDuration(renderedFreshnessText('weather'), /([0-9]+)-\s*(minute)\s+freshness budget/i, healthMaxStale('weatherAlerts'), 'weather health freshness budget');
 
-    assertDuration(renderedFreshnessText('canadaRoads'), /every\s+([0-9]+)\s+(minute)s?/i, 15, 'ontario 511 seed cadence');
-    assert.equal(healthMaxStale('albertaRoads'), healthMaxStale('canadaRoads'), 'Alberta 511 shares the 45-minute 3x cron budget');
-    assert.equal(healthMaxStale('manitobaRoads'), healthMaxStale('canadaRoads'), 'Manitoba 511 shares the 45-minute 3x cron budget');
-    assertDuration(renderedFreshnessText('canadaRoads'), /([0-9]+)-\s*(minute)\s+freshness budget/i, healthMaxStale('canadaRoads'), 'ontario 511 health freshness budget');
-    assertDuration(renderedFreshnessText('canadaAlerts'), /every\s+([0-9]+)\s+(minute)s?/i, 15, 'alberta AEA seed cadence');
-    assertDuration(renderedFreshnessText('canadaAlerts'), /([0-9]+)-\s*(minute)\s+freshness budget/i, healthMaxStale('canadaAlerts'), 'alberta AEA health freshness budget');
-    assert.equal(healthMaxStale('canadaAlerts'), maxStaleMin('scripts/seed-alberta-emergency-alert.mjs', 'alberta-aea'), 'canadaAlerts health budget must match seeder maxStaleMin');
 
-    const aviationCadenceMin = maxStaleMin('scripts/seed-aviation.mjs', 'intl') / 3;
-    assertDuration(renderedFreshnessText('flights'), /([0-9]+)-\s*(minute)\s+cadence/i, aviationCadenceMin, 'aviation disruption seed cadence');
-    assertDuration(
-      renderedFreshnessText('flights'),
-      /([0-9]+)-\s*(minute)\s+polling cycle/i,
-      aviationBreakerCacheMinutes('breakerFlights'),
-      'aviation panel polling cycle',
-    );
-
-    assertDuration(renderedFreshnessText('ucdpEvents'), /every\s+([0-9]+)\s+(hour)s?/i, relayConstMinutes('UCDP_POLL_INTERVAL_MS'), 'UCDP relay seed cadence');
-    assert.equal(healthMaxStale('ucdpEvents'), relayConstMinutes('UCDP_POLL_INTERVAL_MS') + 60, 'UCDP health budget should be cadence plus one hour grace');
-
-    assertDuration(renderedFreshnessText('cyberThreats'), /every\s+([0-9]+)\s+(hour)s?/i, relayConstMinutes('CYBER_SEED_INTERVAL_MS'), 'cyber relay seed cadence');
-    assertDuration(renderedFreshnessText('cyberThreats'), /([0-9]+)-\s*(day)\s+rolling window/i, cyberRollingWindowMinutes(), 'cyber IOC rolling window');
-    assert.equal(healthMaxStale('cyberThreats'), relayConstMinutes('CYBER_SEED_INTERVAL_MS') * 2, 'cyber health budget should stay 2x relay cadence');
-
-    assertDuration(renderedFreshnessText('ciiChoropleth'), /every\s+([0-9]+)\s+(minute)s?/i, relayConstMinutes('CII_WARM_PING_INTERVAL_MS'), 'CII warm-ping cadence');
-    assertDuration(renderedFreshnessText('ciiChoropleth'), /([0-9]+)-\s*(minute)\s+freshness budget/i, healthMaxStale('riskScores'), 'CII health freshness budget');
-
-    assertDuration(renderedFreshnessText('ais'), /every\s+([0-9]+)\s+(second)s?/i, relayEnvDefaultMinutes('SNAPSHOT_INTERVAL_MS'), 'AIS relay snapshot cadence');
-    assertDuration(
-      renderedFreshnessText('ais'),
-      /([0-9]+)\s+(minute)s?/i,
-      constNumber('server/worldmonitor/maritime/v1/get-vessel-snapshot.ts', 'SNAPSHOT_CACHE_TTL_BASE_MS') / 60_000,
-      'AIS base snapshot server cache',
-    );
-
-    for (const layer of ['waterways', 'tradeRoutes'] as const) {
-      const text = renderedFreshnessText(layer);
-      assertDuration(text, /every\s+([0-9]+)\s+(minute)s?/i, relayConstMinutes('CHOKEPOINT_WARM_PING_INTERVAL_MS'), `${layer} chokepoint warm-ping cadence`);
-      assertDuration(text, /refresh\s+every\s+([0-9]+)\s+(minute)s?/i, relayConstMinutes('TRANSIT_SUMMARY_INTERVAL_MS'), `${layer} transit-summary cadence`);
-    }
-
-    // Hotspot levels are recomputed from the dashboard news, which reloads on the feeds refresh loop.
-    assertDuration(
-      renderedFreshnessText('hotspots'),
-      /around\s+([0-9]+)\s+(minute)s?\s+apart/i,
-      refreshIntervalMinutes('feeds'),
-      'hotspot news refresh cadence',
-    );
+    // The facility registry is static: its card must say so rather than claim a
+    // live seed cadence the registry does not have.
+    const facilities = renderedFreshnessText('usNuclearFacilities');
+    assert.match(facilities, /Static registry/i);
+    assert.doesNotMatch(facilities, /every\s+[0-9]+\s+(second|minute|hour)/i);
   });
 
   test('freshness contract assertions fail on stale copied cadence values', () => {

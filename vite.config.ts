@@ -98,81 +98,19 @@ const LAZY_HTML_PRELOAD_RE = new RegExp(
 // clusters. New panel files must be assigned here before the build can split
 // them; otherwise they would silently fall back into an eager catch-all chunk.
 const PANEL_CLUSTER: Record<string, PanelChunkName> = {
-  // Markets / equities / crypto positioning
-  AAIISentiment: 'panels-markets', CotPositioning: 'panels-markets',
-  ETFFlows: 'panels-markets', EarningsCalendar: 'panels-markets', MaterialEvents: 'panels-markets',
-  EconomicCalendar: 'panels-markets', FearGreed: 'panels-markets',
-  Fx: 'panels-markets',
-  GoldIntelligence: 'panels-markets', LiquidityShifts: 'panels-markets',
-  MacroSignals: 'panels-markets', Market: 'panels-markets',
-  MarketBreadth: 'panels-markets', MarketImplications: 'panels-markets',
-  NewsMarketCorrelation: 'panels-markets',
-  NqCatalysts: 'panels-markets', NqPulse: 'panels-markets',
-  Positioning: 'panels-markets', Stablecoin: 'panels-markets',
-  StockAnalysis: 'panels-markets', StockBacktest: 'panels-markets',
-  WsbTickerScanner: 'panels-markets', YieldCurve: 'panels-markets',
-  // Energy / commodities / supply infra
-  ChokepointStrip: 'panels-energy', EnergyComplex: 'panels-energy',
-  EnergyCrisis: 'panels-energy', EnergyDisruptions: 'panels-energy',
-  EnergyRiskOverview: 'panels-energy', FuelPrices: 'panels-energy',
-  FuelShortage: 'panels-energy', Hormuz: 'panels-energy',
-  OilInventories: 'panels-energy', PipelineStatus: 'panels-energy',
-  StorageFacilityMap: 'panels-energy', RenewableEnergy: 'panels-energy',
-  // Defense / military / aviation
-  AirlineIntel: 'panels-defense', DefensePatents: 'panels-defense',
-  OrefSirens: 'panels-defense', StrategicPosture: 'panels-defense',
-  StrategicRisk: 'panels-defense', ThermalEscalation: 'panels-defense',
-  UcdpEvents: 'panels-defense',
-  // News / feeds / briefs
-  BreakthroughsTicker: 'panels-news', ClimateNews: 'panels-news',
-  DailyMarketBrief: 'panels-news', GdeltIntel: 'panels-news',
-  GoodThingsDigest: 'panels-news', LatestBrief: 'panels-news',
-  LiveNews: 'panels-news', News: 'panels-news',
-  PositiveNewsFeed: 'panels-news', TelegramIntel: 'panels-news', XIntel: 'panels-news',
-  // Macro / prices / trade
-  BigMac: 'panels-economy', ConsumerPrices: 'panels-economy',
-  Economic: 'panels-economy', GlobalProcurement: 'panels-economy',
-  FaoFoodPriceIndex: 'panels-economy', FSI: 'panels-economy',
-  GroceryBasket: 'panels-economy', GulfEconomies: 'panels-economy',
-  Investments: 'panels-economy', MacroTiles: 'panels-economy',
-  NationalDebt: 'panels-economy', SanctionsPressure: 'panels-economy',
-  ChinaActivityNowcast: 'panels-economy', ChinaCorridor: 'panels-economy',
-  SupplyChain: 'panels-economy',
-  TradePolicy: 'panels-economy',
-  // Country briefs / signals / monitors / agent surfaces.
-  // CorrelationPanel base lives here, so all *Correlation consumers MUST stay
-  // in this cluster — splitting them across clusters caused TDZ on init.
-  ChatAnalyst: 'panels-intel', CII: 'panels-intel',
-  Cascade: 'panels-intel', Correlation: 'panels-intel',
-  CountryBrief: 'panels-intel', CountryBriefPage: 'panels-intel',
-  CountryDeepDive: 'panels-intel',
-  CrossSourceSignals: 'panels-intel', CustomWidget: 'panels-intel',
-  Deduction: 'panels-intel',
-  DisasterCorrelation: 'panels-intel',
-  EconomicCorrelation: 'panels-intel',
-  EscalationCorrelation: 'panels-intel',
-  MilitaryCorrelation: 'panels-intel',
-  Forecast: 'panels-intel',
-  HeroSpotlight: 'panels-intel', Insights: 'panels-intel',
-  LiveWebcams: 'panels-intel', McpData: 'panels-intel',
-  Monitor: 'panels-intel', PinnedWebcams: 'panels-intel',
-  Prediction: 'panels-intel', ProgressCharts: 'panels-intel',
-  RegionalIntelligenceBoard: 'panels-intel',
-  Regulation: 'panels-intel',
-  // Disasters / climate / connectivity / society
-  ClimateAnomaly: 'panels-risk', Counters: 'panels-risk',
-  DiseaseOutbreaks: 'panels-risk',
-  Displacement: 'panels-risk', GeoHubs: 'panels-risk',
-  Giving: 'panels-risk', InternetDisruptions: 'panels-risk',
-  PopulationExposure: 'panels-risk', RadiationWatch: 'panels-risk',
+  // Markets / commodities
+  Market: 'panels-markets',
+  // News / feeds
+  ClimateNews: 'panels-news',
+  News: 'panels-news',
+  // Monitors
+  Monitor: 'panels-intel',
+  // Disasters / climate / radiation
+  ClimateAnomaly: 'panels-risk',
+  RadiationWatch: 'panels-risk',
   // NucMonitor nuclear hub
   NuclearReactorStatus: 'panels-risk', NuclearEventReports: 'panels-risk', NuclearFacilityHazards: 'panels-risk', NuclearFacilityDirectory: 'panels-risk',
   RuntimeConfig: 'panels-risk', SatelliteFires: 'panels-risk',
-  SecurityAdvisories: 'panels-risk', ServiceStatus: 'panels-risk',
-  SocialVelocity: 'panels-risk', SpeciesComeback: 'panels-risk',
-  TechEvents: 'panels-risk',
-  ThreatTimeline: 'panels-risk',
-  TechHubs: 'panels-risk', TechReadiness: 'panels-risk', TorontoSafety: 'panels-risk',
   WorldClock: 'panels-risk',
 };
 

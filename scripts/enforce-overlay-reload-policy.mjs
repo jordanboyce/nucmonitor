@@ -118,8 +118,12 @@ export const SAFE_DECLARATION_RE = /\bdeclareOverlay\(\s*([^,{]+?)\s*,\s*\{\s*re
 /** Hits this close together are one element's attributes, not two sites. */
 export const SITE_CLUSTER_RADIUS_LINES = 3;
 
-/** 21 sites in 19 files when this gate landed; 22 with the sign-up resume overlay. A scan that finds fewer has drifted. */
-export const MIN_SITE_COUNT = 22;
+/**
+ * 21 sites in 19 files when this gate landed; 22 with the sign-up resume overlay;
+ * 10 after the NucMonitor trim removed the upstream dashboards' modals. A scan
+ * that finds fewer has drifted.
+ */
+export const MIN_SITE_COUNT = 10;
 
 /** The module that defines the vocabulary; its selector strings are not sites. */
 export const EXCLUDED_FILES = new Set(['src/utils/open-modal.ts']);
@@ -447,7 +451,7 @@ function main() {
 
   if (scan.sites.length < MIN_SITE_COUNT) {
     problems.push(
-      `Expected >= ${MIN_SITE_COUNT} overlay creation sites under src/ (21 when this gate landed), found ${scan.sites.length}: the scan or the creation idioms have drifted.`,
+      `Expected >= ${MIN_SITE_COUNT} overlay creation sites under src/ (10 after the NucMonitor trim), found ${scan.sites.length}: the scan or the creation idioms have drifted.`,
     );
   }
 

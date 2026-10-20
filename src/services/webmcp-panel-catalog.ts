@@ -141,7 +141,7 @@ export function listDashboardPanelCatalog(
   if (!isSiteVariant(currentVariant)) {
     throw new DashboardPanelCatalogError(
       'invalid_variant',
-      'variant must be one of: full, tech, finance, commodity, energy, happy.',
+      `variant must be one of: ${SITE_VARIANTS.join(', ')}.`,
     );
   }
 
@@ -150,7 +150,7 @@ export function listDashboardPanelCatalog(
     if (typeof variantFilter !== 'string' || !isSiteVariant(variantFilter)) {
       throw new DashboardPanelCatalogError(
         'invalid_variant',
-        'variant must be one of: full, tech, finance, commodity, energy, happy.',
+        `variant must be one of: ${SITE_VARIANTS.join(', ')}.`,
       );
     }
   }

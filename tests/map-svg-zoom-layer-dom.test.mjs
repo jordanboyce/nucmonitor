@@ -95,7 +95,9 @@ describe('SVG map zoom-hidden layer DOM allocation', () => {
       1,
       'applyTransform must reach scheduleRender() exactly once, on the zoom-visibility branch only',
     );
-    assert.ok(mapSrc.includes("SVG_MARKER_DOM_ZOOM_LAYERS = new Set<keyof MapLayers>(['bases', 'nuclear'])"));
+    // bases left with the military layers; the global nuclear-sites layer is the
+    // one zoom-thresholded layer whose markers are built as SVG-overlay DOM.
+    assert.ok(mapSrc.includes("SVG_MARKER_DOM_ZOOM_LAYERS = new Set<keyof MapLayers>(['nuclear'])"));
     assert.match(updateBody, /let visibilityChanged = false/);
     assert.match(updateBody, /const wasVisible = !this\.wrapper\.hasAttribute\(hiddenAttr\)/);
     assert.match(updateBody, /const affectsSvgMarkerDom = MapComponent\.SVG_MARKER_DOM_ZOOM_LAYERS\.has\(layer\)/);
@@ -114,7 +116,6 @@ describe('SVG map zoom-hidden layer DOM allocation', () => {
 
   for (const { layer, markerClass } of [
     { layer: 'nuclear', markerClass: 'nuclear-marker' },
-    { layer: 'bases', markerClass: 'base-marker' },
   ]) {
     it(`does not create ${markerClass} nodes while ${layer} is zoom-hidden`, () => {
       const renderOverlays = findClassMethod('MapComponent', 'renderOverlays');

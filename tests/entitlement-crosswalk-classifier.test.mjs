@@ -112,7 +112,9 @@ describe('entitlement crosswalk gate-count baseline', () => {
   });
 
   it('catches a SECOND gate of the same kind in the same file', () => {
-    const key = 'src/app/panel-layout.ts::hasPremiumAccess';
+    // panel-layout.ts no longer calls hasPremiumAccess(); data-loader.ts is the
+    // surviving app-layer site of that predicate kind.
+    const key = 'src/app/data-loader.ts::hasPremiumAccess';
     assert.ok(key in SITE_BASELINE, `${key} should be pinned in the baseline`);
     const drift = diffSiteCounts({ ...SITE_BASELINE, [key]: SITE_BASELINE[key] + 1 });
     assert.equal(drift.length, 1, 'an added same-kind gate must be reported');

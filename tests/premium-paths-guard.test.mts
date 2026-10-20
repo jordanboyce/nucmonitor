@@ -40,10 +40,6 @@ import { PREMIUM_RPC_PATHS } from '../src/shared/premium-paths.ts';
 // gated Bearer injection isn't the right mechanism for that endpoint.
 
 const PREMIUM_FETCH_BYPASS_ALLOWLIST: Record<string, string> = {
-  '/api/widget-agent':
-    'WidgetChatModal.ts and McpDataPanel.ts call widgetAgentUrl() via plain ' +
-    'fetch() with their own auth surface (X-Widget-Key / X-Pro-Key / Bearer) ' +
-    'rather than premiumFetch.',
   '/api/me/entitlement':
     'checkout.ts attaches the Clerk Bearer ' +
     'manually. premiumFetch would short-circuit on tester keys and break the ' +

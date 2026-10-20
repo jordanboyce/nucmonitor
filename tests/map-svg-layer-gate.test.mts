@@ -64,59 +64,68 @@ function extractMethods(): new () => {
 
 const MapHarness = extractMethods();
 
-function makeMap(initialLayers: Partial<MapLayers> = {}) {
+function makeMap(initialLayers: Partial<MapLayers> = {}, policy?: (layer: keyof MapLayers, currentlyEnabled: boolean) => boolean) {
   const changes: Array<[keyof MapLayers, boolean, string]> = [];
   const map = new MapHarness();
   map.state = {
     zoom: 3,
-    layers: { resilienceScore: false, ciiChoropleth: false, ...initialLayers } as MapLayers,
+    layers: { usNuclearFacilities: false, radiationWatch: false, ...initialLayers } as MapLayers,
   };
   map.container = { querySelector: () => null };
   map.layerZoomOverrides = {};
-  map.canToggleLayer = (layer, currentlyEnabled) => isLayerToggleAllowed(layer, currentlyEnabled === true, tier.premium);
+  map.canToggleLayer = (layer, currentlyEnabled) => (policy
+    ? policy(layer, currentlyEnabled === true)
+    : isLayerToggleAllowed(layer, currentlyEnabled === true, tier.premium));
   map.onLayerChange = (layer, enabled, source) => changes.push([layer, enabled, source]);
   map.scheduleRender = () => {};
   map.render = () => {};
   return { map, changes };
 }
 
+// NucMonitor registers no premium-locked layer, so the registry policy admits
+// every layer. The SVG toggle paths must still consult canToggleLayer, which a
+// stand-in "locked" policy proves: it blocks activation but keeps the off-ramp
+// for stale enabled state (#6045).
+const lockedRadiationPolicy = (layer: keyof MapLayers, currentlyEnabled: boolean) =>
+  layer !== 'radiationWatch' || currentlyEnabled;
+
 describe('SVG map premium layer toggle gate (#6045)', () => {
-  it('blocks free activation but preserves stale locked-layer off-ramp', () => {
-    tier.premium = false;
-    const fresh = makeMap();
-    fresh.map.toggleLayer('resilienceScore');
-    assert.equal(fresh.map.state.layers.resilienceScore, false);
+  it('blocks gated activation but preserves the stale-layer off-ramp', () => {
+    const fresh = makeMap({}, lockedRadiationPolicy);
+    fresh.map.toggleLayer('radiationWatch');
+    assert.equal(fresh.map.state.layers.radiationWatch, false);
     assert.deepEqual(fresh.changes, []);
 
-    const stale = makeMap({ resilienceScore: true });
-    stale.map.toggleLayer('resilienceScore');
-    assert.equal(stale.map.state.layers.resilienceScore, false);
-    assert.deepEqual(stale.changes, [['resilienceScore', false, 'user']]);
+    const stale = makeMap({ radiationWatch: true }, lockedRadiationPolicy);
+    stale.map.toggleLayer('radiationWatch');
+    assert.equal(stale.map.state.layers.radiationWatch, false);
+    assert.deepEqual(stale.changes, [['radiationWatch', false, 'user']]);
   });
 
-  it('keeps enhanced layers available to free users', () => {
+  it('keeps every registered layer available to free users under the registry policy', () => {
     tier.premium = false;
     const map = makeMap();
-    map.map.toggleLayer('ciiChoropleth');
-    assert.equal(map.map.state.layers.ciiChoropleth, true);
+    map.map.toggleLayer('usNuclearFacilities');
+    assert.equal(map.map.state.layers.usNuclearFacilities, true);
+    assert.deepEqual(map.changes, [['usNuclearFacilities', true, 'user']]);
   });
 
   it('gates programmatic enableLayer with the same policy', () => {
+    const gated = makeMap({}, lockedRadiationPolicy);
+    gated.map.enableLayer('radiationWatch');
+    assert.equal(gated.map.state.layers.radiationWatch, false);
+
     tier.premium = false;
     const free = makeMap();
-    free.map.enableLayer('resilienceScore');
-    assert.equal(free.map.state.layers.resilienceScore, false);
-
-    tier.premium = true;
-    const premium = makeMap();
-    premium.map.enableLayer('resilienceScore');
-    assert.equal(premium.map.state.layers.resilienceScore, true);
+    free.map.enableLayer('radiationWatch');
+    assert.equal(free.map.state.layers.radiationWatch, true);
+    assert.deepEqual(free.changes, [['radiationWatch', true, 'programmatic']]);
   });
 });
 
 describe('SVG map layer picker capability gate', () => {
   it('filters picker candidates through the canonical SVG renderer capability', () => {
-    assert.equal(isLayerExecutable('ciiChoropleth', 'svg'), false);
+    assert.equal(isLayerExecutable('diseaseOutbreaks', 'svg'), false);
 
     const methodStart = mapSrc.indexOf('private createLayerToggles(): HTMLElement {');
     const methodEnd = mapSrc.indexOf('private clearLayerExplanationOutsideClickHandler', methodStart);
@@ -125,7 +134,7 @@ describe('SVG map layer picker capability gate', () => {
 
     assert.match(
       pickerSrc,
-      /\.filter\(\(key\) => !isSunsetLayer\(key\) && isLayerExecutable\(key, 'svg'\)\);[\s\S]*?layers\.forEach/,
+      /\.filter\(\(key\) => isLayerExecutable\(key, 'svg'\)\);[\s\S]*?layers\.forEach/,
       'SVG picker candidates must pass the registry capability gate before buttons are rendered',
     );
   });

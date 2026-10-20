@@ -35,7 +35,6 @@ function inputs(overrides: Partial<ExportGateInputs> = {}): ExportGateInputs {
     authPending: false,
     signedIn: true,
     features: { tier: 1, dataExport: false },
-    billingState: 'free',
     ...overrides,
   };
 }
@@ -165,31 +164,20 @@ describe('resolveAvailableExportFormats — catalog-backed export menu', () => {
   });
 });
 
-describe('resolveExportGate — billing-aware lock reasons (#4771)', () => {
-  it('renewal verification pending → renewal_pending', () => {
+describe('resolveExportGate — lock reasons without billing state (#4771)', () => {
+  // NucMonitor removed pricing and the billing-state input that refined a lock
+  // into payment_on_hold / renewal_pending / renewal_failed / lapsed. A locked
+  // signed-in user now always reads free_tier, and anonymous stays anonymous.
+  it('a locked signed-in user is free_tier', () => {
     assert.deepEqual(
-      resolveExportGate(inputs({ billingState: 'renewal_verification_pending' })),
-      { locked: true, reason: 'renewal_pending' },
+      resolveExportGate(inputs()),
+      { locked: true, reason: 'free_tier' },
     );
   });
 
-  it('renewal verification failed → renewal_failed', () => {
+  it('never overrides the anonymous reason', () => {
     assert.deepEqual(
-      resolveExportGate(inputs({ billingState: 'renewal_verification_failed' })),
-      { locked: true, reason: 'renewal_failed' },
-    );
-  });
-
-  it('provider-confirmed end of coverage → lapsed', () => {
-    assert.deepEqual(
-      resolveExportGate(inputs({ billingState: 'lapsed' })),
-      { locked: true, reason: 'lapsed' },
-    );
-  });
-
-  it('billing state never overrides the anonymous reason', () => {
-    assert.deepEqual(
-      resolveExportGate(inputs({ signedIn: false, billingState: 'on_hold' })),
+      resolveExportGate(inputs({ signedIn: false })),
       { locked: true, reason: 'anonymous' },
     );
   });

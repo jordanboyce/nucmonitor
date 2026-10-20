@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import {
   LAYER_REGISTRY,
+  getAllowedLayerKeys,
   isLayerCommandAllowed,
   isLayerEntitled,
   isLayerExecutable,
@@ -57,11 +58,14 @@ function extractSelectionDispatcher(): new (bindings: any) => {
     `${js}\nreturn SearchSelectionDispatcher;`,
   )(
     { mapLayers: 'mapLayers' },
-    () => new Set(['resilienceScore', 'conflicts']),
+    () => getAllowedLayerKeys('nuclear'),
     isLayerExecutable,
     isLayerEntitled,
     isLayerCommandAllowed,
-    { all: ['conflicts'] },
+    // Mirrors src/config/commands.ts LAYER_PRESETS, empty since the
+    // infrastructure preset was retired (commands.ts pulls i18n's
+    // import.meta.glob, so it cannot be imported under node:test).
+    {},
     {},
     {},
     {},
@@ -102,9 +106,9 @@ function extractLayerExecutableCallback(): (context: { ctx: any }, layerKey: str
     'getAuthState',
     `${js}\nreturn createCallback;`,
   )(
-    'full',
+    'nuclear',
     {},
-    () => new Set(['resilienceScore']),
+    getAllowedLayerKeys,
     isLayerCommandAllowed,
     () => commandTier.premium,
     () => ({}),
@@ -115,22 +119,27 @@ const layerExecutableCallbackFactory = extractLayerExecutableCallback();
 
 function makeCommandHarness({
   premium = false,
-  resilienceScore = false,
-}: { premium?: boolean; resilienceScore?: boolean } = {}) {
+  deckGL = true,
+}: { premium?: boolean; deckGL?: boolean } = {}) {
   const calls = { enabled: [] as string[], setLayers: 0 };
   commandTier.premium = premium;
   const ctx = {
-    mapLayers: { resilienceScore, conflicts: false } as unknown as MapLayers,
+    mapLayers: {
+      usNuclearFacilities: false,
+      radiationWatch: false,
+      diseaseOutbreaks: false,
+      cables: false,
+    } as unknown as MapLayers,
     map: {
       isGlobeMode: () => false,
-      isDeckGLActive: () => true,
+      isDeckGLActive: () => deckGL,
       enableLayer: (key: string) => { calls.enabled.push(key); },
       setLayers: () => { calls.setLayers++; },
     },
   };
   const dispatcher = new SearchSelectionHarness({
     ctx,
-    getVariant: () => 'full',
+    getVariant: () => 'nuclear',
     hasPremiumAccess: () => commandTier.premium,
     openCountryBriefByCode: () => true,
     enablePanel: () => true,
@@ -148,56 +157,68 @@ function makeCommandHarness({
   return { ctx, calls, command };
 }
 
+// NucMonitor registers no premium-locked layer (one partner entitlement covers
+// the dashboard), so the #6045 gate must admit every allowlisted layer for a
+// free user while the renderer and variant gates keep doing their job.
 describe('CMD+K premium layer gate (#6045)', () => {
-  it('free users can clear a stale checked locked layer', () => {
-    assert.equal(isLayerCommandAllowed('resilienceScore', true, 'deck', false), true);
-    const stale = { resilienceScore: true } as unknown as MapLayers;
-    assert.equal(sanitizeLockedLayers(stale, false).resilienceScore, false);
-  });
-
-  it('premium users and enhanced layers retain activation access', () => {
-    assert.equal(isLayerCommandAllowed('resilienceScore', false, 'deck', true), true);
-    // ciiChoropleth is enhanced (free-toggleable) and renders on deck.
-    assert.equal(isLayerCommandAllowed('ciiChoropleth', false, 'deck', false), true);
+  it('free users can toggle every registry layer in both directions', () => {
+    for (const key of Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>) {
+      if (!isLayerExecutable(key, 'deck')) continue;
+      assert.equal(isLayerCommandAllowed(key, false, 'deck', false), true, `${key} on`);
+      assert.equal(isLayerCommandAllowed(key, true, 'deck', false), true, `${key} off`);
+      assert.equal(isLayerEntitled(key, false), true, key);
+    }
+    const stale = { radiationWatch: true } as unknown as MapLayers;
+    assert.equal(sanitizeLockedLayers(stale, false), stale, 'nothing locked, nothing to heal');
   });
 
   it('does not treat an unresolved tier as settled-free', () => {
     assert.equal(shouldSanitizeLockedLayers(false, false, false), false);
-    assert.equal(isLayerCommandAllowed('resilienceScore', false, 'deck', false), false,
-      'activation stays fail-closed while entitlement is unavailable');
+    assert.equal(isLayerCommandAllowed('usNuclearFacilities', false, 'deck', false), true,
+      'an unlocked layer stays available while entitlement is unresolved');
   });
 
   it('still blocks commands that cannot render in the active map context', () => {
-    // resilience renders only on deck; globe is blocked even for premium.
-    assert.equal(isLayerCommandAllowed('resilienceScore', false, 'globe', true), false);
-    // storageFacilities is deck-only; the SVG fallback cannot run it.
-    assert.equal(isLayerCommandAllowed('storageFacilities', false, 'svg', true), false);
-    // ciiChoropleth renders on deck/globe but not the SVG fallback.
-    assert.equal(isLayerCommandAllowed('ciiChoropleth', false, 'svg', false), false);
+    // diseaseOutbreaks is deck-only: the SVG fallback and globe cannot run it.
+    assert.equal(isLayerCommandAllowed('diseaseOutbreaks', false, 'svg', true), false);
+    assert.equal(isLayerCommandAllowed('diseaseOutbreaks', false, 'globe', true), false);
+    // The facility registry has no globe paint path.
+    assert.equal(isLayerCommandAllowed('usNuclearFacilities', false, 'globe', true), false);
   });
 
-  it('wires the production palette filter with stale-off and free-activation gates', () => {
+  it('wires the production palette filter through the variant and renderer gates', () => {
+    let globe = false;
     const ctx = {
-      mapLayers: { resilienceScore: false },
+      mapLayers: { usNuclearFacilities: false, cables: false } as Record<string, boolean>,
       map: {
-        isGlobeMode: () => false,
+        isGlobeMode: () => globe,
         isDeckGLActive: () => true,
       },
     };
     commandTier.premium = false;
-    assert.equal(layerExecutableCallbackFactory.call({ ctx })('resilienceScore'), false);
-    ctx.mapLayers.resilienceScore = true;
-    assert.equal(layerExecutableCallbackFactory.call({ ctx })('resilienceScore'), true);
-    commandTier.premium = true;
-    ctx.mapLayers.resilienceScore = false;
-    assert.equal(layerExecutableCallbackFactory.call({ ctx })('resilienceScore'), true);
+    const callback = layerExecutableCallbackFactory.call({ ctx });
+    assert.equal(callback('usNuclearFacilities'), true);
+    assert.equal(callback('cables'), false, 'retired upstream layers stay out of the nuclear palette');
+    assert.equal(callback('radiationWatch'), false, 'a key missing from mapLayers is not offered');
+    globe = true;
+    assert.equal(callback('usNuclearFacilities'), false, 'no globe paint path');
   });
 
-  it('keeps locked layers out of the production all-layers preset for free users', () => {
-    const free = makeCommandHarness();
-    free.command('layers:all');
-    assert.equal(free.ctx.mapLayers.resilienceScore, false);
-    assert.equal(free.ctx.mapLayers.conflicts, true);
-    assert.equal(free.calls.setLayers, 1);
+  it('keeps non-executable and disallowed layers out of the production all-layers preset', () => {
+    const svg = makeCommandHarness({ deckGL: false });
+    svg.command('layers:all');
+    assert.equal(svg.ctx.mapLayers.usNuclearFacilities, true);
+    assert.equal(svg.ctx.mapLayers.radiationWatch, true);
+    assert.equal(svg.ctx.mapLayers.diseaseOutbreaks, false, 'deck-only layer on the SVG fallback');
+    assert.equal(svg.ctx.mapLayers.cables, false, 'outside the nuclear allowlist');
+    assert.equal(svg.calls.setLayers, 1);
+  });
+
+  it('leaves the active layers alone for the retired infrastructure preset', () => {
+    const harness = makeCommandHarness();
+    harness.ctx.mapLayers.radiationWatch = true;
+    harness.command('layers:infra');
+    assert.equal(harness.ctx.mapLayers.cables, false);
+    assert.equal(harness.ctx.mapLayers.radiationWatch, true);
   });
 });

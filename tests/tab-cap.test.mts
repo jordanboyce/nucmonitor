@@ -34,7 +34,6 @@ function inputs(overrides: Partial<ExportGateInputs> = {}): ExportGateInputs {
     authPending: false,
     signedIn: true,
     features: { tier: 0, dataExport: false, maxDashboards: 3 },
-    billingState: 'free',
     ...overrides,
   };
 }
@@ -166,31 +165,20 @@ describe('resolveTabCap — catalog activation (R10)', () => {
   });
 });
 
-describe('resolveTabCap — billing-aware lock reasons (#4771)', () => {
-  it('renewal verification pending → renewal_pending', () => {
+describe('resolveTabCap — lock reasons without billing state (#4771)', () => {
+  // NucMonitor removed pricing and the billing-state input that refined a lock
+  // into payment_on_hold / renewal_pending / renewal_failed / lapsed. A locked
+  // signed-in user now always reads free_tier, and anonymous stays anonymous.
+  it('a locked signed-in user is free_tier', () => {
     assert.deepEqual(
-      resolveTabCap(inputs({ billingState: 'renewal_verification_pending' }), 3),
-      { allowed: false, cap: 3, reason: 'renewal_pending' },
+      resolveTabCap(inputs(), 3),
+      { allowed: false, cap: 3, reason: 'free_tier' },
     );
   });
 
-  it('renewal verification failed → renewal_failed', () => {
+  it('never overrides the anonymous reason', () => {
     assert.deepEqual(
-      resolveTabCap(inputs({ billingState: 'renewal_verification_failed' }), 3),
-      { allowed: false, cap: 3, reason: 'renewal_failed' },
-    );
-  });
-
-  it('provider-confirmed end of coverage → lapsed', () => {
-    assert.deepEqual(
-      resolveTabCap(inputs({ billingState: 'lapsed' }), 3),
-      { allowed: false, cap: 3, reason: 'lapsed' },
-    );
-  });
-
-  it('billing state never overrides the anonymous reason', () => {
-    assert.deepEqual(
-      resolveTabCap(inputs({ signedIn: false, features: null, billingState: 'on_hold' }), 3),
+      resolveTabCap(inputs({ signedIn: false, features: null }), 3),
       { allowed: false, cap: 3, reason: 'anonymous' },
     );
   });
@@ -267,18 +255,14 @@ describe('tab-cap wiring', () => {
   it('the cap re-evaluates on BOTH auth and entitlement emissions', () => {
     // updatePanelGating is the single gating pass; it is driven by
     // subscribeAuthState AND onEntitlementChange (the auth-only-subscription
-    // bug is documented in this file at the proBlock wiring). Entitlement
-    // emissions now flow through the reload controller so a null auth-handoff
-    // snapshot is not collapsed to a false entitlement transition.
+    // bug is documented in this file at the proBlock wiring). With pricing
+    // removed there is no entitlement reload controller: the static partner
+    // grant re-runs gating directly whenever it is (re)announced.
     assert.match(gatingBody, /this\.updateTabCapLock\(\)/);
     assert.match(panelLayout, /subscribeAuthState\(\(state\) => \{\s*this\.updatePanelGating\(state\);/);
     assert.match(
       panelLayout,
-      /onSnapshot:\s*\(\) => this\.updatePanelGating\(getAuthState\(\)\)/,
-    );
-    assert.match(
-      panelLayout,
-      /onEntitlementChange\(\(state\) => \{[\s\S]*?entitlementReloadController\.handleSnapshot\(/,
+      /onEntitlementChange\(\(\) => \{\s*this\.updatePanelGating\(getAuthState\(\)\);/,
     );
   });
 

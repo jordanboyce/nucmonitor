@@ -81,13 +81,13 @@ describe('overlay reload-contract gate', () => {
     assert.deepEqual(scan.loneCompanions, []);
   });
 
-  it('sees the non-ARIA idioms: a role with no aria-modal, and an id with no class', () => {
-    // KeyboardHelp sets role="dialog" and never aria-modal; AviationCommandBar
-    // has no class at all, only an id. Both are real overlays the selector
-    // matches, and both must be counted rather than assumed.
+  it('sees the non-ARIA idiom: a role with no aria-modal', () => {
+    // The mission popover sets role="dialog" and never aria-modal (the
+    // neighbouring dialog does set it). It is a real overlay the selector
+    // matches, and must be counted rather than assumed. (The id-only idiom left with
+    // AviationCommandBar; its pattern is still exercised by the probe test.)
     const at = (file: string) => scan.sites.filter((s) => s.file === file).map((s) => s.receiver);
-    assert.deepEqual(at('src/components/RouteExplorer/KeyboardHelp.ts'), ['this.element']);
-    assert.deepEqual(at('src/components/AviationCommandBar.ts'), ['this.overlay']);
+    assert.deepEqual(at('src/app/event-handlers.ts'), ['popover', 'dialog']);
   });
 
   it('role plus className on one element is one site', () => {
@@ -238,11 +238,6 @@ describe('overlay reload-contract gate', () => {
     assert.deepEqual(scan.safeDeclarations, [
       'src/app/event-handlers.ts :: dialog',
       'src/app/event-handlers.ts :: popover',
-      'src/components/IntelligenceGapBadge.ts :: overlay',
-      'src/components/MobileWarningModal.ts :: this.element',
-      'src/components/RouteExplorer/KeyboardHelp.ts :: this.element',
-      'src/components/SignalModal.ts :: this.element',
-      'src/components/StoryModal.ts :: modalEl',
       'src/components/market-chart-modal.ts :: modalEl',
     ]);
     assert.deepEqual(safeDeclarationsIn("declareOverlay(el, { reload: 'blocking' })"), []);

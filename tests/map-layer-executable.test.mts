@@ -35,72 +35,66 @@ import {
 
 describe('LAYER_REGISTRY — renderer axis', () => {
   test('layers with only DeckGL render paths are deck-only', () => {
-    // These layers have DeckGL-only render paths. GlobeMap has no branch for
-    // them, and Map.ts SVG fallback has no render code. `renderers: ['deck']`
-    // is the signal that non-DeckGL contexts must not flip them on.
-    assert.deepEqual(LAYER_REGISTRY.storageFacilities.renderers, ['deck']);
-    assert.deepEqual(LAYER_REGISTRY.fuelShortages.renderers, ['deck']);
+    // diseaseOutbreaks has a DeckGL-only render path. GlobeMap has no branch
+    // for it, and Map.ts SVG fallback has no render code. `renderers: ['deck']`
+    // is the signal that non-DeckGL contexts must not flip it on.
     assert.deepEqual(LAYER_REGISTRY.diseaseOutbreaks.renderers, ['deck']);
-    assert.deepEqual(LAYER_REGISTRY.resilienceScore.renderers, ['deck']);
-    assert.deepEqual(LAYER_REGISTRY.canadaRoads.renderers, ['deck']);
-    assert.deepEqual(LAYER_REGISTRY.canadaAlerts.renderers, ['deck']);
-    assert.deepEqual(LAYER_REGISTRY.liveTankers.renderers, ['deck']);
+    const deckOnly = (Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>)
+      .filter((key) => LAYER_REGISTRY[key].renderers.length === 1 && LAYER_REGISTRY[key].renderers[0] === 'deck');
+    assert.deepEqual(deckOnly, ['diseaseOutbreaks']);
   });
 
   test('the deckGLOnly flag is fully removed from the definition shape', () => {
     // The second axis is gone; `renderers` alone gates execution now.
-    assert.equal('deckGLOnly' in LAYER_REGISTRY.storageFacilities, false);
-    assert.equal('deckGLOnly' in LAYER_REGISTRY.pipelines, false);
-    assert.equal('deckGLOnly' in LAYER_REGISTRY.ciiChoropleth, false);
+    for (const def of Object.values(LAYER_REGISTRY)) {
+      assert.equal('deckGLOnly' in def, false, `${def.key} still carries deckGLOnly`);
+    }
   });
 
   test('all-surface layers list every renderer', () => {
     // Layers with a paint path on SVG, DeckGL, and the globe list all three.
-    assert.deepEqual(LAYER_REGISTRY.pipelines.renderers, ['svg', 'deck', 'globe']);
-    assert.deepEqual(LAYER_REGISTRY.conflicts.renderers, ['svg', 'deck', 'globe']);
-    assert.deepEqual(LAYER_REGISTRY.cables.renderers, ['svg', 'deck', 'globe']);
+    assert.deepEqual(LAYER_REGISTRY.radiationWatch.renderers, ['svg', 'deck', 'globe']);
+    assert.deepEqual(LAYER_REGISTRY.natural.renderers, ['svg', 'deck', 'globe']);
+    assert.deepEqual(LAYER_REGISTRY.weather.renderers, ['svg', 'deck', 'globe']);
+    assert.deepEqual(LAYER_REGISTRY.nuclear.renderers, ['svg', 'deck', 'globe']);
     // Flat-surface-only layers (no globe paint path) are svg + deck.
-    assert.deepEqual(LAYER_REGISTRY.sanctions.renderers, ['svg', 'deck']);
+    assert.deepEqual(LAYER_REGISTRY.usNuclearFacilities.renderers, ['svg', 'deck']);
     assert.deepEqual(LAYER_REGISTRY.dayNight.renderers, ['svg', 'deck']);
+  });
+
+  test('every registry entry is keyed by its own key and names at least one renderer', () => {
+    for (const [key, def] of Object.entries(LAYER_REGISTRY)) {
+      assert.equal(def.key, key);
+      assert.ok(def.renderers.length > 0, `${key} has no renderer`);
+    }
   });
 });
 
 describe('isLayerExecutable — renderer gate', () => {
   test('a deck-only layer is executable under kind "deck" but not "svg" or "globe"', () => {
     // The intended ship state: DeckGL desktop can render, nothing else.
-    assert.equal(isLayerExecutable('storageFacilities', 'deck'), true,
+    assert.equal(isLayerExecutable('diseaseOutbreaks', 'deck'), true,
       'DeckGL should execute');
-    assert.equal(isLayerExecutable('storageFacilities', 'svg'), false,
+    assert.equal(isLayerExecutable('diseaseOutbreaks', 'svg'), false,
       'SVG fallback must NOT execute a deck-only layer');
-    assert.equal(isLayerExecutable('storageFacilities', 'globe'), false,
+    assert.equal(isLayerExecutable('diseaseOutbreaks', 'globe'), false,
       'globe mode must NOT execute (no GlobeMap render path)');
   });
 
-  test('ciiChoropleth is executable under "globe" and "deck" but not "svg"', () => {
-    // #6773 / R8 bug-fix pin: both DeckGLMap and GlobeMap paint the CII
-    // choropleth, but the SVG fallback has no CII paint path. This is the
-    // assertion that would have caught the layer being wrongly excluded
-    // from the globe layer picker.
-    assert.equal(isLayerExecutable('ciiChoropleth', 'deck'), true);
-    assert.equal(isLayerExecutable('ciiChoropleth', 'globe'), true);
-    assert.equal(isLayerExecutable('ciiChoropleth', 'svg'), false,
-      'ciiChoropleth has no SVG render path');
-  });
-
   test('a flat-surface layer admits svg + deck but not globe', () => {
-    // `sanctions`/`dayNight` render on the SVG fallback and DeckGL, but
-    // have no globe paint path.
-    assert.equal(isLayerExecutable('sanctions', 'svg'), true);
-    assert.equal(isLayerExecutable('sanctions', 'deck'), true);
-    assert.equal(isLayerExecutable('sanctions', 'globe'), false,
-      'sanctions has no globe renderer');
+    // The US facility registry renders on the SVG fallback and DeckGL, but
+    // has no globe paint path.
+    assert.equal(isLayerExecutable('usNuclearFacilities', 'svg'), true);
+    assert.equal(isLayerExecutable('usNuclearFacilities', 'deck'), true);
+    assert.equal(isLayerExecutable('usNuclearFacilities', 'globe'), false,
+      'usNuclearFacilities has no globe renderer');
   });
 
   test('all-surface layer admits every kind', () => {
-    // `pipelines` has renderers:['svg', 'deck', 'globe'] (default).
-    assert.equal(isLayerExecutable('pipelines', 'svg'), true);
-    assert.equal(isLayerExecutable('pipelines', 'deck'), true);
-    assert.equal(isLayerExecutable('pipelines', 'globe'), true);
+    // `radiationWatch` has renderers:['svg', 'deck', 'globe'] (default).
+    assert.equal(isLayerExecutable('radiationWatch', 'svg'), true);
+    assert.equal(isLayerExecutable('radiationWatch', 'deck'), true);
+    assert.equal(isLayerExecutable('radiationWatch', 'globe'), true);
   });
 
   test('unknown layer key returns false', () => {
@@ -111,24 +105,22 @@ describe('isLayerExecutable — renderer gate', () => {
 });
 
 // #6045 — premium entitlement gate for CMD+K / programmatic layer enable.
-// DeckGLMap disables the checkbox for premium === 'locked' only; enhanced
-// layers stay toggleable with a PRO badge. isLayerEntitled must match that
-// contract so CMD+K cannot enable locked layers for free users (and cannot
-// leave a stuck checked+disabled control).
+// DeckGLMap disables the checkbox for premium === 'locked' only. NucMonitor
+// ships no premium-gated layer (a single partner entitlement covers the
+// whole dashboard), so the gate must admit every registered layer and still
+// reject unknown keys.
 describe('isLayerEntitled — premium locked gate', () => {
-  test('enhanced layers remain entitled without premium', () => {
-    // ciiChoropleth is premium:'enhanced' on desktop — free users can still
-    // toggle it (PRO badge only). Gating it would regress free-tier CII.
-    // On web where premium is undefined the same assertion holds.
-    assert.equal(isLayerEntitled('ciiChoropleth', false), true,
-      'enhanced/free layers stay entitled for free users');
-    assert.equal(isLayerEntitled('ciiChoropleth', true), true);
+  test('no registered layer is premium-gated', () => {
+    for (const def of Object.values(LAYER_REGISTRY)) {
+      assert.equal(def.premium, undefined, `${def.key} unexpectedly carries premium: ${def.premium}`);
+    }
   });
 
   test('non-premium layers are always entitled', () => {
-    assert.equal(LAYER_REGISTRY.conflicts.premium, undefined);
-    assert.equal(isLayerEntitled('conflicts', false), true);
-    assert.equal(isLayerEntitled('pipelines', false), true);
+    for (const key of Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>) {
+      assert.equal(isLayerEntitled(key, false), true, `${key} must be entitled for free users`);
+      assert.equal(isLayerEntitled(key, true), true);
+    }
   });
 
   test('unknown layer key returns false', () => {
@@ -138,30 +130,26 @@ describe('isLayerEntitled — premium locked gate', () => {
 });
 
 describe('sanitizeLockedLayers — free-user stuck-state heal', () => {
-  test('clears locked layers when unentitled, leaves others alone', () => {
+  test('leaves non-locked layers alone and returns the input when nothing changed', () => {
     const input = {
-      resilienceScore: true,
-      ciiChoropleth: true,
-      conflicts: true,
-      pipelines: false,
-    } as unknown as import('../src/types').MapLayers;
+      usNuclearFacilities: true,
+      radiationWatch: true,
+      fires: false,
+    } as unknown as MapLayers;
     const out = sanitizeLockedLayers(input, false);
-    assert.equal(out.resilienceScore, false, 'locked layer forced off');
-    assert.equal(out.ciiChoropleth, true, 'enhanced/free layer preserved');
-    assert.equal(out.conflicts, true);
-    assert.equal(out.pipelines, false);
-    // Input not mutated
-    assert.equal(input.resilienceScore, true);
+    assert.equal(out, input, 'no locked layer means no copy and no write');
+    assert.equal(out.usNuclearFacilities, true);
+    assert.equal(out.radiationWatch, true);
+    assert.equal(out.fires, false);
   });
 
   test('is a no-op when entitled', () => {
     const input = {
-      resilienceScore: true,
-      conflicts: true,
-    } as unknown as import('../src/types').MapLayers;
+      usNuclearFacilities: true,
+      radiationWatch: true,
+    } as unknown as MapLayers;
     const out = sanitizeLockedLayers(input, true);
-    assert.equal(out.resilienceScore, true);
-    assert.equal(out.conflicts, true);
+    assert.equal(out, input);
   });
 });
 
@@ -174,11 +162,11 @@ describe('locked map-layer ownership', () => {
   // layer preference. Value comparison is the only correct check here.
   test('sanitizeLayersForVariant never returns its input, so identity guards are dead', () => {
     const layers = {
-      conflicts: true,
-      resilienceScore: false,
+      usNuclearFacilities: true,
+      radiationWatch: false,
     } as unknown as MapLayers;
 
-    const out = sanitizeLayersForVariant(layers, 'full');
+    const out = sanitizeLayersForVariant(layers, 'nuclear');
 
     assert.notEqual(
       out,
@@ -192,37 +180,42 @@ describe('locked map-layer ownership', () => {
     );
   });
 
+  test('sanitizeLayersForVariant forces layers outside the nuclear allowlist off', () => {
+    const layers = {
+      usNuclearFacilities: true,
+      cables: true,
+      pipelines: true,
+      datacenters: true,
+    } as unknown as MapLayers;
+    const out = sanitizeLayersForVariant(layers, 'nuclear');
+    assert.equal(out.usNuclearFacilities, true);
+    assert.equal(out.cables, false);
+    assert.equal(out.pipelines, false);
+    assert.equal(out.datacenters, false);
+  });
+
   test('compares layer snapshots semantically instead of by object identity', () => {
-    const layers = { conflicts: true, resilienceScore: false } as unknown as MapLayers;
+    const layers = { usNuclearFacilities: true, radiationWatch: false } as unknown as MapLayers;
     assert.equal(mapLayerStatesEqual(layers, { ...layers }), true);
     assert.equal(
-      mapLayerStatesEqual(layers, { ...layers, resilienceScore: true }),
+      mapLayerStatesEqual(layers, { ...layers, radiationWatch: true }),
       false,
     );
   });
 
-  test('records a locked layer forced off for a free user and keeps ownership across reruns', () => {
+  test('records no ownership for non-locked layers and drops stale ownership keys', () => {
     const input = {
-      resilienceScore: true,
-      conflicts: true,
+      usNuclearFacilities: true,
+      radiationWatch: true,
     } as unknown as MapLayers;
 
-    const first = sanitizeLockedLayersWithOwnership(input, new Set());
-    assert.equal(first.layers.resilienceScore, false);
-    assert.equal(first.layers.conflicts, true);
-    assert.deepEqual(first.gateOwned, new Set(['resilienceScore']));
-
-    const second = sanitizeLockedLayersWithOwnership(first.layers, first.gateOwned);
-    assert.equal(second.layers.resilienceScore, false);
-    assert.deepEqual(second.gateOwned, new Set(['resilienceScore']));
+    const first = sanitizeLockedLayersWithOwnership(input, new Set(['resilienceScore', 'removed-layer']));
+    assert.equal(first.layers.usNuclearFacilities, true);
+    assert.equal(first.layers.radiationWatch, true);
+    assert.deepEqual(first.gateOwned, new Set(), 'ownership of retired or non-locked layers is discarded');
   });
 
-  test('keeps the live free gate sanitized when ownership persistence fails', () => {
-    const durableLayers = {
-      resilienceScore: true,
-      conflicts: true,
-    } as unknown as MapLayers;
-    const reconciled = sanitizeLockedLayersWithOwnership(durableLayers, new Set());
+  test('blocks the durable layer write when ownership persistence fails', () => {
     const writes: string[] = [];
 
     const persistence = persistGateOwnershipTransition(
@@ -231,57 +224,35 @@ describe('locked map-layer ownership', () => {
       () => { writes.push('ownership'); return false; },
     );
 
-    assert.equal(reconciled.layers.resilienceScore, false, 'live state remains safely gated');
-    assert.equal(durableLayers.resilienceScore, true, 'durable preference remains retryable');
     assert.deepEqual(writes, ['ownership'], 'destructive durable write is blocked');
     assert.equal(persistence.complete, false);
   });
 
   test('restores only valid locked layers owned by the gate', () => {
+    const input = {
+      usNuclearFacilities: false,
+      radiationWatch: false,
+    } as unknown as MapLayers;
     const restored = restoreGateOwnedLockedLayers(
-      {
-        resilienceScore: false,
-        conflicts: false,
-      } as unknown as MapLayers,
-      new Set(['resilienceScore', 'conflicts', 'removed-layer']),
+      input,
+      new Set(['usNuclearFacilities', 'resilienceScore', 'removed-layer']),
     );
 
-    assert.equal(restored.resilienceScore, true);
-    assert.equal(restored.conflicts, false, 'ordinary user-disabled layers stay disabled');
+    assert.equal(restored, input, 'nothing locked is owned, so nothing is restored');
+    assert.equal(restored.usNuclearFacilities, false, 'ordinary user-disabled layers stay disabled');
     assert.equal('removed-layer' in restored, false, 'unknown historical keys are ignored');
+    assert.equal('resilienceScore' in restored, false, 'retired locked layers are ignored');
   });
-
-  test('does not let stale resilience ownership override an enabled CII choropleth', () => {
-    const restored = restoreGateOwnedLockedLayers(
-      {
-        resilienceScore: false,
-        ciiChoropleth: true,
-      } as unknown as MapLayers,
-      new Set(['resilienceScore']),
-    );
-
-    assert.equal(restored.resilienceScore, false);
-    assert.equal(restored.ciiChoropleth, true);
-  });
-
 });
 
 describe('isLayerToggleAllowed — stale locked-state recovery', () => {
-  test('free users may turn a stale locked layer off but not turn it on', () => {
-    assert.equal(isLayerToggleAllowed('resilienceScore', true, false), true,
-      'stale locked state must remain recoverable');
-    assert.equal(isLayerToggleAllowed('resilienceScore', false, false), false,
-      'free users must not activate a locked layer');
-  });
-
-  test('premium users may toggle locked layers in either direction', () => {
-    assert.equal(isLayerToggleAllowed('resilienceScore', true, true), true);
-    assert.equal(isLayerToggleAllowed('resilienceScore', false, true), true);
-  });
-
-  test('enhanced and free layers remain toggleable for free users', () => {
-    assert.equal(isLayerToggleAllowed('ciiChoropleth', false, false), true);
-    assert.equal(isLayerToggleAllowed('conflicts', false, false), true);
+  test('free and premium users may toggle every registered layer in either direction', () => {
+    for (const key of Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>) {
+      for (const hasPremium of [false, true]) {
+        assert.equal(isLayerToggleAllowed(key, true, hasPremium), true, `${key} off`);
+        assert.equal(isLayerToggleAllowed(key, false, hasPremium), true, `${key} on`);
+      }
+    }
   });
 
   test('unknown layers never pass the toggle gate', () => {
@@ -309,24 +280,18 @@ describe('shouldSanitizeLockedLayers — settled-free policy', () => {
 });
 
 describe('isLayerCommandAllowed — CMD+K toggle policy', () => {
-  test('free users can clear stale locked layers but cannot enable them', () => {
-    assert.equal(isLayerCommandAllowed('resilienceScore', true, 'deck', false), true);
-    assert.equal(isLayerCommandAllowed('resilienceScore', false, 'deck', false), false);
-  });
-
-  test('premium and enhanced/free layers keep their expected toggle paths', () => {
-    assert.equal(isLayerCommandAllowed('resilienceScore', false, 'deck', true), true);
-    // ciiChoropleth is enhanced (free-toggleable) and renders on deck.
-    assert.equal(isLayerCommandAllowed('ciiChoropleth', false, 'deck', false), true);
+  test('free users can toggle unlocked layers on the renderers that paint them', () => {
+    assert.equal(isLayerCommandAllowed('usNuclearFacilities', false, 'deck', false), true);
+    assert.equal(isLayerCommandAllowed('usNuclearFacilities', true, 'svg', false), true);
+    assert.equal(isLayerCommandAllowed('radiationWatch', false, 'globe', false), true);
   });
 
   test('renderer compatibility still blocks commands independently of entitlement', () => {
-    // resilience renders only on deck: globe is blocked even for premium.
-    assert.equal(isLayerCommandAllowed('resilienceScore', false, 'globe', true), false);
-    // storageFacilities is deck-only: the SVG fallback cannot run it.
-    assert.equal(isLayerCommandAllowed('storageFacilities', false, 'svg', true), false);
-    // ciiChoropleth renders on deck/globe but not the SVG fallback.
-    assert.equal(isLayerCommandAllowed('ciiChoropleth', false, 'svg', false), false);
+    // diseaseOutbreaks is deck-only: the SVG fallback and globe cannot run it.
+    assert.equal(isLayerCommandAllowed('diseaseOutbreaks', false, 'svg', true), false);
+    assert.equal(isLayerCommandAllowed('diseaseOutbreaks', false, 'globe', true), false);
+    // The facility registry has no globe paint path.
+    assert.equal(isLayerCommandAllowed('usNuclearFacilities', false, 'globe', true), false);
   });
 });
 
@@ -340,26 +305,18 @@ describe('isLayerExecutable — matrix of layer x kind', () => {
     expect: boolean;
     why: string;
   }> = [
-    // storageFacilities = ['deck'] (deck-only)
-    { key: 'storageFacilities', kind: 'deck',  expect: true,  why: 'deck-only layer on deck' },
-    { key: 'storageFacilities', kind: 'svg',   expect: false, why: 'deck-only layer rejects the SVG fallback' },
-    { key: 'storageFacilities', kind: 'globe', expect: false, why: 'deck-only layer rejects globe' },
-    // resilienceScore = ['deck'] (deck-only, locked)
-    { key: 'resilienceScore',   kind: 'deck',  expect: true,  why: 'resilience on deck' },
-    { key: 'resilienceScore',   kind: 'svg',   expect: false, why: 'resilience rejects SVG fallback' },
-    { key: 'resilienceScore',   kind: 'globe', expect: false, why: 'resilience rejects globe' },
-    // ciiChoropleth = ['deck', 'globe']
-    { key: 'ciiChoropleth',     kind: 'deck',  expect: true,  why: 'CII on deck' },
-    { key: 'ciiChoropleth',     kind: 'globe', expect: true,  why: 'CII on globe (the bug fix)' },
-    { key: 'ciiChoropleth',     kind: 'svg',   expect: false, why: 'CII rejects the SVG fallback' },
-    // sanctions = ['svg', 'deck'] (flat-surface, no globe)
-    { key: 'sanctions',         kind: 'svg',   expect: true,  why: 'flat-surface layer on SVG' },
-    { key: 'sanctions',         kind: 'deck',  expect: true,  why: 'flat-surface layer on deck' },
-    { key: 'sanctions',         kind: 'globe', expect: false, why: 'flat-surface layer rejects globe' },
-    // pipelines = ['svg', 'deck', 'globe'] (all surfaces)
-    { key: 'pipelines',         kind: 'svg',   expect: true,  why: 'all-surface layer on SVG' },
-    { key: 'pipelines',         kind: 'deck',  expect: true,  why: 'all-surface layer on deck' },
-    { key: 'pipelines',         kind: 'globe', expect: true,  why: 'all-surface layer on globe' },
+    // diseaseOutbreaks = ['deck'] (deck-only)
+    { key: 'diseaseOutbreaks',    kind: 'deck',  expect: true,  why: 'deck-only layer on deck' },
+    { key: 'diseaseOutbreaks',    kind: 'svg',   expect: false, why: 'deck-only layer rejects the SVG fallback' },
+    { key: 'diseaseOutbreaks',    kind: 'globe', expect: false, why: 'deck-only layer rejects globe' },
+    // usNuclearFacilities = ['svg', 'deck'] (flat-surface, no globe)
+    { key: 'usNuclearFacilities', kind: 'svg',   expect: true,  why: 'flat-surface layer on SVG' },
+    { key: 'usNuclearFacilities', kind: 'deck',  expect: true,  why: 'flat-surface layer on deck' },
+    { key: 'usNuclearFacilities', kind: 'globe', expect: false, why: 'flat-surface layer rejects globe' },
+    // radiationWatch = ['svg', 'deck', 'globe'] (all surfaces)
+    { key: 'radiationWatch',      kind: 'svg',   expect: true,  why: 'all-surface layer on SVG' },
+    { key: 'radiationWatch',      kind: 'deck',  expect: true,  why: 'all-surface layer on deck' },
+    { key: 'radiationWatch',      kind: 'globe', expect: true,  why: 'all-surface layer on globe' },
   ];
 
   for (const c of cases) {

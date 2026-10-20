@@ -774,6 +774,9 @@ export class EventHandlerManager implements AppModule {
   private renderMissionPresetControl(): void {
     const mount = document.getElementById('missionPresetMount');
     if (!mount) return;
+    // Same rule as setupMissionPresets: a single preset gets no header control,
+    // including the re-renders that follow an apply, reset, or picker close.
+    if (getMissionPresetsForVariant(SITE_VARIANT).length <= 1) return;
 
     const active = loadStoredMissionPreset();
     const label = active?.shortLabel ?? 'Mission';

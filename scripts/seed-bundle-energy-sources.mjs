@@ -10,13 +10,11 @@ await runBundle('energy-sources', [
   { label: 'OWID-Energy-Mix', script: 'seed-owid-energy-mix.mjs', seedMetaKey: 'economic:owid-energy-mix', expectedSourceVersion: OWID_SOURCE_VERSION, intervalMs: 35 * DAY, timeoutMs: 600_000 },
   { label: 'IEA-Oil-Stocks', script: 'seed-iea-oil-stocks.mjs', seedMetaKey: 'energy:iea-oil-stocks', canonicalKey: 'energy:iea-oil-stocks:v1:index', completionMetaKey: 'seed-completion:energy:iea-oil-stocks', intervalMs: 40 * DAY, timeoutMs: 300_000 },
   { label: 'EIA-Petroleum', script: 'seed-eia-petroleum.mjs', seedMetaKey: 'energy:eia-petroleum', canonicalKey: 'energy:eia-petroleum:v1', intervalMs: DAY, timeoutMs: 90_000 },
-  { label: 'IEA-Crisis-Policies', script: 'seed-energy-crisis-policies.mjs', seedMetaKey: 'energy:crisis-policies', canonicalKey: 'energy:crisis-policies:v1', intervalMs: 7 * DAY, timeoutMs: 120_000 },
   // SPR-Policies: static registry (data lives in scripts/data/spr-policies.json), TTL 400d
   // in api/health.js (maxStaleMin: 576000). Weekly cadence is generous — only needs to run
   // once after deploys + restarts to populate energy:spr-policies:v1. No prior Railway
   // service exists for it, so health has been EMPTY (seedAgeMin: null) since the seeder
   // was added.
-  { label: 'SPR-Policies', script: 'seed-spr-policies.mjs', seedMetaKey: 'energy:spr-policies', canonicalKey: 'energy:spr-policies:v1', intervalMs: 7 * DAY, timeoutMs: 60_000 },
   // Pipeline registries (gas + oil) — two separate scripts because runSeed()
   // hard-exits its terminal paths (process.exit in _seed-utils at ~9 sites),
   // so two runSeed() calls in one process would leave the second key
@@ -37,5 +35,4 @@ await runBundle('energy-sources', [
   // PipelineStatusPanel and StorageFacilityMapPanel drawers. Weekly cadence
   // because curated events are mostly historical; classifier extends daily
   // post-launch.
-  { label: 'Energy-Disruptions', script: 'seed-energy-disruptions.mjs', seedMetaKey: 'energy:disruptions', canonicalKey: 'energy:disruptions:v1', intervalMs: 7 * DAY, timeoutMs: 60_000 },
 ]);

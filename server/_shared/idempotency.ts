@@ -51,7 +51,6 @@ export const IDEMPOTENT_REPLAYED_HEADER = 'Idempotent-Replayed';
  * tuple-level contract the import promises.
  */
 export const IDEMPOTENCY_EXEMPT_RPC_PATHS = new Set<string>([
-  '/api/company-monitoring/v1/import-monitored-company-batch',
   // #9093 operator review: the response carries the private message and email
   // of a reader, and the gateway would replay a stored response before the
   // handler checks the review secret. The handler is idempotent on its own (a

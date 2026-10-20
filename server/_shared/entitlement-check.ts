@@ -160,44 +160,17 @@ export interface EntitlementCheckOptions {
  * 403'd real Pro subscribers calling via Clerk session (no tester key).
  */
 const ENDPOINT_ENTITLEMENTS: Record<string, number> = {
-  '/api/forecast/v1/trigger-simulation': 1,
-  '/api/intelligence/v1/classify-event': 1,
   // deduct-situation is a Pro panel (DeductionPanel premium: 'locked') and in
   // PREMIUM_RPC_PATHS, but it is also a direct-LLM quota route. The gateway
   // treats a resolved Clerk session as authenticated for quota routes, which
   // skipped the legacy Pro bearer gate and let any signed-in free account
   // spend LLM budget here. The tier entry makes the Pro check explicit.
-  '/api/intelligence/v1/deduct-situation': 1,
-  '/api/intelligence/v1/get-country-intel-brief': 1,
-  '/api/intelligence/v1/search-intel-history': 1,
-  '/api/intelligence/v1/get-intel-timeline': 1,
-  '/api/intelligence/v1/get-similar-events': 1,
   '/api/market/v1/analyze-stock': 1,
   '/api/market/v1/get-stock-analysis-history': 1,
   '/api/market/v1/get-insider-transactions': 1,
   '/api/market/v1/backtest-stock': 1,
   '/api/market/v1/list-stored-stock-backtests': 1,
   '/api/economic/v1/list-global-tenders': 1,
-  '/api/scenario/v1/run-scenario': 1,
-  '/api/scenario/v1/get-scenario-status': 1,
-  '/api/supply-chain/v1/get-country-chokepoint-index': 1,
-  '/api/supply-chain/v1/get-bypass-options': 1,
-  '/api/supply-chain/v1/get-country-cost-shock': 1,
-  '/api/supply-chain/v1/get-route-explorer-lane': 1,
-  '/api/supply-chain/v1/get-route-impact': 1,
-  '/api/supply-chain/v1/get-country-products': 1,
-  '/api/supply-chain/v1/get-multi-sector-cost-shock': 1,
-  '/api/supply-chain/v1/get-sector-dependency': 1,
-  '/api/trade/v1/list-comtrade-flows': 1,
-  '/api/trade/v1/get-tariff-trends': 1,
-  '/api/trade/v1/get-bilateral-tariff': 1,
-  '/api/trade/v1/get-us-import-duty': 1,
-  '/api/resilience/v1/get-food-stocks': 1,
-  '/api/resilience/v1/get-demographics-capability': 1,
-  '/api/resilience/v1/get-resilience-indicators': 1,
-  '/api/scorecard/v1/get-five-factor-scorecard': 1,
-  '/api/scorecard/v1/list-five-factor-scorecards': 1,
-  '/api/scorecard/v1/get-bloc-scorecard': 1,
   // Physical-vs-paper metals (#6436 series, #6448 index), mineral production
   // concentration (#6439), arms-supplier dependency (#6438) and commodity
   // supply vulnerability (#6449). Each shipped ungated because the issues
@@ -207,11 +180,6 @@ const ENDPOINT_ENTITLEMENTS: Record<string, number> = {
   // derived-analytics product the resilience and scorecard routes sell.
   '/api/market/v1/get-physical-premiums': 1,
   '/api/market/v1/get-physical-divergence-index': 1,
-  '/api/supply-chain/v1/get-mineral-production': 1,
-  '/api/military/v1/get-defense-industrial-base': 1,
-  '/api/supply-chain/v1/get-country-vulnerabilities': 1,
-  '/api/supply-chain/v1/get-chokepoint-dependencies': 1,
-  '/api/supply-chain/v1/list-vulnerability-rankings': 1,
 };
 
 const CONVEX_INTERNAL_ENTITLEMENTS_PATH = '/api/internal-entitlements';

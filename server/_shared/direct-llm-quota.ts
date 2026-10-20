@@ -93,9 +93,6 @@ export function resolveActiveDirectLlmLimit(
 }
 
 export const DIRECT_LLM_GATEWAY_QUOTA_PATHS = new Set<string>([
-  '/api/intelligence/v1/classify-event',
-  '/api/intelligence/v1/deduct-situation',
-  '/api/intelligence/v1/get-country-intel-brief',
   '/api/market/v1/analyze-stock',
   '/api/news/v1/summarize-article',
 ]);

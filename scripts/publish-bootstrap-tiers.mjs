@@ -6,10 +6,6 @@ import {
   BOOTSTRAP_CACHE_KEYS,
   bootstrapTierKeyNames,
 } from '../shared/bootstrap-tier-keys.js';
-import {
-  canadaAlertsCutoverFallbackValue,
-  extraCanadaAlertsCutoverReadKeys,
-} from '../shared/canada-alerts-cutover.js';
 import { buildBootstrapTierEnvelope } from '../shared/bootstrap-tier-envelope.js';
 import { unwrapEnvelope } from './_seed-envelope-source.mjs';
 import { evaluatePublishedBootstrapVolume } from './_bootstrap-payload-budget.mjs';
@@ -45,15 +41,10 @@ function assertTier(tier) {
   }
 }
 
-function canonicalRegistries(env = process.env) {
-  const rawIranEventsEnabled = env.IRAN_EVENTS_ENABLED;
-  if (!/^(?:true|false)$/i.test(rawIranEventsEnabled ?? '')) {
-    throw new Error('Bootstrap publisher requires explicit IRAN_EVENTS_ENABLED=true|false');
-  }
-  const iranEventsEnabled = rawIranEventsEnabled.toLowerCase() === 'true';
+function canonicalRegistries() {
   return Object.fromEntries(TIER_ORDER.map(tier => [
     tier,
-    Object.fromEntries(bootstrapTierKeyNames(tier, { iranEventsEnabled }).map(name => [
+    Object.fromEntries(bootstrapTierKeyNames(tier).map(name => [
       name,
       BOOTSTRAP_CACHE_KEYS[name],
     ])),
@@ -91,11 +82,6 @@ function parseBootstrapPipelineEntry(entry, index) {
  * Assemble the exact public `{ data, missing }` payload for an ordered registry.
  * Infrastructure or command-shape failures reject the whole operation; missing,
  * malformed, negative-sentinel values remain per-key misses.
- *
- * When `canadaAlerts` is in the registry, the #6659 cutover fallback keys are
- * also read so a missing `alerts:canada:v1` still hydrates the field — the same
- * contract `/api/bootstrap` applies on the origin path. KV serving must not
- * bypass that fallback (#7291).
  */
 export async function assembleBootstrapTierPayload(registry, options = {}) {
   const env = options.env ?? process.env;
@@ -104,8 +90,7 @@ export async function assembleBootstrapTierPayload(registry, options = {}) {
   const { url, token } = redisCredentials(env);
   const names = Object.keys(registry);
   const keys = Object.values(registry);
-  const extraKeys = extraCanadaAlertsCutoverReadKeys(keys, BOOTSTRAP_CACHE_KEYS.canadaAlerts);
-  const readKeys = extraKeys.length > 0 ? [...keys, ...extraKeys] : keys;
+  const readKeys = keys;
   const response = await fetchFn(`${url}/pipeline`, {
     method: 'POST',
     headers: {
@@ -134,10 +119,7 @@ export async function assembleBootstrapTierPayload(registry, options = {}) {
   const data = {};
   const missing = [];
   for (let index = 0; index < names.length; index += 1) {
-    let value = keys[index] === BOOTSTRAP_CACHE_KEYS.canadaAlerts
-      && !valuesByKey.has(BOOTSTRAP_CACHE_KEYS.canadaAlerts)
-      ? canadaAlertsCutoverFallbackValue(valuesByKey)
-      : valuesByKey.get(keys[index]);
+    const value = valuesByKey.get(keys[index]);
 
     if (value === undefined) {
       missing.push(names[index]);

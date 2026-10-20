@@ -124,24 +124,15 @@ generate: clean ## Generate code from proto definitions
 	@# examples. Apply byte-/format-preserving injectors before deriving
 	@# examples so examples reflect the final schemas.
 	@node scripts/openapi-inject-security.mjs
-	@node scripts/openapi-inject-company-monitoring-contract.mjs
 	@node scripts/apply-openapi-filter-param-schemas.mjs
 	@node scripts/openapi-inject-jmespath.mjs
 	@node scripts/openapi-inject-required.mjs
 	@node scripts/openapi-inject-examples.mjs
 	@node scripts/openapi-inject-servers.mjs
 	@node scripts/openapi-inject-deprecated.mjs
-	@node scripts/openapi-inject-webhooks.mjs
 	@node scripts/openapi-inject-idempotency.mjs
 	@node scripts/openapi-inject-rate-limit-errors.mjs
 	@node scripts/openapi-inject-billing-verification.mjs
-	@node scripts/openapi-inject-async-jobs.mjs
-	@node scripts/openapi-inject-china-corridors.mjs
-	@node scripts/openapi-inject-china-decision-signals.mjs
-	@# Product-only provider values must be removed after every schema/example
-	@# injector so a later generator step cannot reintroduce them.
-	@node scripts/openapi-restrict-provider-redistribution.mjs
-	@node scripts/generate-scorecard-edge-mirrors.mjs
 	@echo "Code generation complete!"
 
 breaking: ## Check for breaking changes against main

@@ -30,16 +30,12 @@ import {
 import { redisPipeline } from './_upstash-json.js';
 import { unwrapEnvelope } from './_seed-envelope.js';
 import {
+  BOOTSTRAP_CACHE_KEYS,
   PUBLIC_WEATHER_BOOTSTRAP_KEY,
   bootstrapTierKeyNames,
-  resolveBootstrapRegistry,
 } from './_bootstrap-tier-keys.js';
 import { compactNaturalEventsDashboardPayload } from './_natural-events-dashboard.js';
 import { compactWildfireDashboardPayload } from './_wildfire-dashboard.js';
-import {
-  canadaAlertsCutoverFallbackValue,
-  extraCanadaAlertsCutoverReadKeys,
-} from './_canada-alerts-cutover.js';
 import {
   BOOTSTRAP_R2_PROBE_CEILING_MS,
   readBootstrapTierObject,
@@ -48,31 +44,15 @@ import { deliverBootstrapR2Shadow, deriveExecutionRegion } from './_usage-teleme
 
 export const config = { runtime: 'edge' };
 
-// Iran-events domain sunset (war ended 2026-07). Default OFF: don't ship the
-// domain to the client. Set IRAN_EVENTS_ENABLED=true to restore. See api/health.js.
-const IRAN_EVENTS_ENABLED = (process.env.IRAN_EVENTS_ENABLED ?? 'false').toLowerCase() === 'true';
+const SLOW_KEYS = new Set(bootstrapTierKeyNames('slow'));
+const FAST_KEYS = new Set(bootstrapTierKeyNames('fast'));
 
-const { cacheKeys: BOOTSTRAP_CACHE_KEYS } = resolveBootstrapRegistry({
-  iranEventsEnabled: IRAN_EVENTS_ENABLED,
-});
-const SLOW_KEYS = new Set(bootstrapTierKeyNames('slow', { iranEventsEnabled: IRAN_EVENTS_ENABLED }));
-const FAST_KEYS = new Set(bootstrapTierKeyNames('fast', { iranEventsEnabled: IRAN_EVENTS_ENABLED }));
-
-// Temporary #6659 cutover fallback. Keep the new multi-province aggregate
-// authoritative, but let bootstrap clients use the Alberta sibling first and
-// the abandoned legacy key second until alerts:canada:v1 has been published
-// in every environment.
 // R4 (#6654) fields that must never appear in a bootstrap-tier payload.
 // `text` is the X post body: the first-party panel may render it (via
 // /api/x-feed), but alerts, MCP, and embed/OEM partners get derived facts plus
 // a permalink only. `pollState` is seed-internal cursor state.
 // Kept in sync with stripXFeedRestrictedFields in scripts/publish-bootstrap-tiers.mjs.
 export { stripXFeedRestrictedFields } from './_bootstrap-public-payload.js';
-
-function bootstrapRedisReadKeys(keys) {
-  const extra = extraCanadaAlertsCutoverReadKeys(keys, BOOTSTRAP_CACHE_KEYS.canadaAlerts);
-  return extra.length > 0 ? [...keys, ...extra] : keys;
-}
 
 // No public/s-maxage: CF (in front of api.worldmonitor.app) ignores Vary: Origin and would
 // pin ACAO: worldmonitor.app on cached responses, breaking CORS for preview deployments.
@@ -97,66 +77,12 @@ const TIER_CDN_CACHE = {
 // budget guarantees the shield outlives a complete seed cycle.
 // tests/bootstrap-on-demand-cache-budget.test.mts enforces the ceiling.
 const ON_DEMAND_CACHE_PROFILES = {
-  // Correlation cards publish every 5 minutes and have a 30-minute health
-  // budget. The conservative complete CDN window is 11m.
-  correlationCards: {
-    browser: 'max-age=60, stale-while-revalidate=60, stale-if-error=300',
-    cdn: 'public, s-maxage=300, stale-while-revalidate=60, stale-if-error=300',
-  },
-  // Hourly publisher, 90-minute health budget. The conservative full CDN
-  // serving window is 80m, so one failed refresh cannot be hidden past health.
-  forecasts: {
-    browser: 'max-age=300, stale-while-revalidate=300, stale-if-error=1800',
-    cdn: 'public, s-maxage=3600, stale-while-revalidate=300, stale-if-error=900',
-  },
-  // Seeded every 15 minutes. Keep the caller-invariant public URL from
-  // outliving a complete seed interval; per-group stale/unavailable states
-  // remain part of the payload contract.
-  chinaDecisionSignals: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=900',
-    cdn: 'public, s-maxage=900, stale-while-revalidate=120, stale-if-error=900',
-  },
-  // Both published by seed-provincial-511 on one 15min member interval against
-  // a 45min health budget. They only need a profile because #6763 moved them
-  // off the fast tier, where they inherited the fast shield: without this the
-  // move would have traded 508 KB of universal page weight for a 2h stale
-  // window on live road closures.
-  canadaRoads: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=900',
-    cdn: 'public, s-maxage=900, stale-while-revalidate=120, stale-if-error=900',
-  },
-  albertaRoads: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=900',
-    cdn: 'public, s-maxage=900, stale-while-revalidate=120, stale-if-error=900',
-  },
-  manitobaRoads: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=900',
-    cdn: 'public, s-maxage=900, stale-while-revalidate=120, stale-if-error=900',
-  },
-  // seed-bundle-canada member interval 30min, 90min health budget. The default
-  // 2h shield outlived the budget by half an hour (#6667).
-  bcOpen511: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=1800',
-    cdn: 'public, s-maxage=1800, stale-while-revalidate=300, stale-if-error=1800',
-  },
-  // seed-bundle-market-backup member interval 15min, 45min health budget. Same
-  // defect as bcOpen511: the default 2h shield was 2.6x the budget.
-  marketCorrelationSeries: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=900',
-    cdn: 'public, s-maxage=900, stale-while-revalidate=120, stale-if-error=900',
-  },
   // IMD cyclone/port/coastal/marine seeder on a 15min interval against
   // a 45min health budget (#7005). The public on-demand URL would otherwise
   // inherit the 2h slow shield and outlive health's stale declaration.
   imdCycloneMarine: {
     browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=900',
     cdn: 'public, s-maxage=900, stale-while-revalidate=120, stale-if-error=900',
-  },
-  // seed-aviation aggregate, 90min health budget. Default 2h on-demand
-  // shield would outlive the budget after #7046 moved this key off FAST.
-  flightDelays: {
-    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=1800',
-    cdn: 'public, s-maxage=1800, stale-while-revalidate=300, stale-if-error=1800',
   },
   // seed-live-video-resolved publishes every 6h against an 18h health budget
   // (#8545). A 30-minute shield keeps a fresh video id reaching players within
@@ -554,7 +480,7 @@ export default async function handler(req, ctx) {
   let cached;
   try {
     cached = await getCachedJsonBatch(
-      bootstrapRedisReadKeys(keys),
+      keys,
       measureR2Shadow ? tier : null,
     );
   } catch {
@@ -588,10 +514,7 @@ export default async function handler(req, ctx) {
   const data = {};
   const missing = [];
   for (let i = 0; i < names.length; i++) {
-    const raw = keys[i] === BOOTSTRAP_CACHE_KEYS.canadaAlerts
-      && !cached.has(BOOTSTRAP_CACHE_KEYS.canadaAlerts)
-      ? canadaAlertsCutoverFallbackValue(cached)
-      : cached.get(keys[i]);
+    const raw = cached.get(keys[i]);
     const val = raw === undefined ? undefined : validateImfDataset(names[i], raw);
     if (val !== undefined) {
       data[names[i]] = sanitizeBootstrapValue(names[i], val);

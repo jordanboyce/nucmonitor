@@ -1,5 +1,3 @@
-import { BOOTSTRAP_CACHE_KEYS } from '../../shared/bootstrap-tier-keys.js';
-
 // ── Story persistence tracking keys (E3) ─────────────────────────────────────
 // Hash: firstSeen, lastSeen, mentionCount, currentScore,
 //       title, link, severity, lang, description, publishedAt,
@@ -94,8 +92,10 @@ export const CLIMATE_OCEAN_ICE_KEY = 'climate:ocean-ice:v1';
 export const CLIMATE_NEWS_KEY = 'climate:news-intelligence:v1';
 export const HEALTH_AIR_QUALITY_KEY = 'health:air-quality:v1';
 export const CHINA_COVERAGE_HEALTH_KEY = 'health:china-coverage:v1';
-export const CHINA_MACRO_KEY = BOOTSTRAP_CACHE_KEYS.chinaMacro;
-export const CHINA_RELEASE_CALENDAR_KEY = BOOTSTRAP_CACHE_KEYS.chinaReleaseCalendar;
+// No seeder publishes these since the NucMonitor trim; the economic contract
+// still declares GetChinaMacroSnapshot, which answers empty from them.
+export const CHINA_MACRO_KEY = 'economic:china:macro:v2';
+export const CHINA_RELEASE_CALENDAR_KEY = 'economic:china:release-calendar:v1';
 export const CHINA_CORRIDOR_CONTROL_TOWERS_KEY =
   'supply_chain:china-corridor-control-towers:v1';
 export const CHINA_ACTIVITY_NOWCAST_KEY =

@@ -45,8 +45,6 @@ import { MapComponent } from '@/components/Map';
 const LAYER_STEPS = [
   'renderCables',
   'renderPipelines',
-  'renderConflicts',
-  'renderAisDensity',
   'renderClusterLayer',
   'renderOverlays',
 ] as const;
@@ -115,7 +113,7 @@ function createMap(): MapHarness {
     dynamicRenderToken: 0,
     labelVisibilityScheduled: false,
     pendingLabelVisibilityZoom: 1,
-    state: { layers: { cables: true, pipelines: true, conflicts: true, ais: true } },
+    state: { layers: { cables: true, pipelines: true } },
     renderGrid: vi.fn(),
     renderGraticule: vi.fn(),
     renderCountries: vi.fn(),
@@ -247,12 +245,12 @@ describe('SVG map layout batching (#5017)', () => {
 
   it('measures label rects without writing opacity, then writes opacity in mutate', () => {
     const map = createMap();
-    const hotspot = document.createElement('div');
-    hotspot.className = 'hotspot';
+    const marker = document.createElement('div');
+    marker.className = 'earthquake-marker';
     const label = document.createElement('span');
-    label.className = 'hotspot-label';
-    hotspot.append(label);
-    map.overlays.append(hotspot);
+    label.className = 'earthquake-label';
+    marker.append(label);
+    map.overlays.append(marker);
     const readRect = vi.spyOn(label, 'getBoundingClientRect');
 
     map.updateLabelVisibility(1);

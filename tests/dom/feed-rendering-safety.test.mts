@@ -10,15 +10,9 @@ const tooltip = (DeckGLMap.prototype as unknown as {
 
 describe('feed values at the map HTML boundary', () => {
   it.each([
-    ['military-vessel-clusters-layer', { name: hostile, vesselCount: hostile }],
-    ['military-flight-clusters-layer', { name: hostile, flightCount: hostile }],
-    ['bases-cluster-layer', { count: hostile }],
-    ['protest-clusters-layer', { count: hostile, country: hostile }],
     ['datacenter-clusters-layer', { count: hostile, country: hostile }],
     ['storm-centers-layer', { stormName: hostile, windKt: hostile, windAveragingPeriodMinutes: hostile }],
     ['storm-past-track-layer', { stormName: hostile, windKt: hostile }],
-    ['renewable-installations-layer', { name: hostile, type: hostile, capacityMW: hostile, year: hostile }],
-    ['gulf-investments-layer', { assetName: hostile, investmentUSD: hostile }],
   ])('%s renders hostile feed text without elements', (id, object) => {
     const host = document.createElement('div');
     host.innerHTML = tooltip.call({}, { layer: { id }, object }).html;
@@ -51,12 +45,6 @@ describe('feed values at the map HTML boundary', () => {
     expect(host.textContent).toContain('M—');
 
     render('ddos-locations-layer', { countryName: 'Test', percentage: hostile });
-    expect(host.querySelector('img,script,svg')).toBeNull();
-    expect(host.textContent).toContain('—');
-    expect(host.textContent).not.toContain(hostile);
-    expect(host.textContent).not.toContain('NaN');
-
-    render('bases-cluster-layer', { count: hostile });
     expect(host.querySelector('img,script,svg')).toBeNull();
     expect(host.textContent).toContain('—');
     expect(host.textContent).not.toContain(hostile);

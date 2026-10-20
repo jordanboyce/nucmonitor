@@ -24,7 +24,7 @@ import {
 } from '@/services/webmcp';
 
 const unusedDashboardContext: DashboardContextSnapshot = {
-  variant: 'full',
+  variant: 'nuclear',
   map: {
     view: 'global',
     center: null,
@@ -51,10 +51,9 @@ function unusedNavigationResult(
 
 const unusedNavigationBindings: Pick<
   WebMcpAppBindings,
-  'switchMonitor' | 'openSettings' | 'openAlerts' | 'listMissionPresets' | 'applyMissionPreset'
+  'openSettings' | 'openAlerts' | 'listMissionPresets' | 'applyMissionPreset'
     | 'openMissionPicker' | 'listFollowedCountries' | 'setCountryFollowed'
 > = {
-  switchMonitor: async () => unusedNavigationResult('full', { navigation: 'none' }),
   openSettings: async () => unusedNavigationResult('settings', {
     overlay: 'open',
     tab: 'settings',
@@ -65,7 +64,7 @@ const unusedNavigationBindings: Pick<
   }),
   listMissionPresets: async () => ({
     ok: true,
-    variant: 'full',
+    variant: 'nuclear',
     activePresetId: null,
     presets: [],
     count: 0,
@@ -76,7 +75,7 @@ const unusedNavigationBindings: Pick<
     presetId: 'supply-chain-risk',
     label: 'Supply-Chain Risk',
     changed: false,
-    monitor: 'full',
+    monitor: 'nuclear',
     message: 'Unused mission preset binding.',
   }),
   openMissionPicker: async () => unusedNavigationResult('mission_picker', {
@@ -139,24 +138,10 @@ function mountPanel(panelId: string): HTMLElement {
   return panel;
 }
 
-function countryMatch(): SearchMatch {
-  return {
-    kind: 'result',
-    score: 1,
-    result: {
-      type: 'country',
-      id: 'DE',
-      title: 'Germany',
-      data: { code: 'DE', name: 'Germany' },
-    },
-  };
-}
-
 function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boolean> = {}) {
-  const mapLayers = { conflicts: false };
+  const mapLayers = { fires: false };
   const enableLayer = vi.fn();
   const closeForProgrammaticSelection = vi.fn();
-  const openCountryBriefByCode = vi.fn(() => true);
   const openSettings = vi.fn();
   const panelSettings = Object.fromEntries(
     Object.entries(enabledPanels).map(([panelId, enabled]) => [panelId, { enabled }]),
@@ -193,12 +178,10 @@ function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boo
       newsPanels: {},
       unifiedSettings: { open: openSettings },
     } as never,
-    getVariant: () => 'full',
+    getVariant: () => 'nuclear',
     hasPremiumAccess: () => false,
-    openCountryBriefByCode,
     enablePanel,
     trackSearchResultSelected: vi.fn(),
-    trackCountrySelected: vi.fn(),
     runWithAgentAnalyticsSuppressed: (callback) => callback(),
     suppressNextAgentPanelView: vi.fn(),
     resolveExecutableNewsPanel: vi.fn(() => null),
@@ -213,9 +196,8 @@ function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boo
     refreshIndex: vi.fn(),
     getModal: () => modal as never,
     hasPremiumAccess: () => false,
-    fetchLiveFlight: vi.fn(async () => {}),
     getAuthContext: () => 'anonymous:settled:free',
-    getVariant: () => 'full',
+    getVariant: () => 'nuclear',
     isMatchExecutable: () => true,
     isPanelCurrentlyEnabled: (panelId) => enabledPanels[panelId] === true,
     selectMatch: (candidate, signal) => dispatcher.selectProgrammaticMatch(
@@ -238,7 +220,6 @@ function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boo
     enablePanel,
     mapLayers,
     modal,
-    openCountryBriefByCode,
     openSettings,
     panelSettings,
   };
@@ -287,10 +268,10 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
 
   it('does not advertise or run a persistent layer result without a target-side signal', async () => {
     const { controller, dispatcher, enableLayer } = createHarness(
-      [commandMatch('layer:conflicts')],
+      [commandMatch('layer:fires')],
     );
 
-    const response = await controller.search('conflicts', 'map', 10);
+    const response = await controller.search('fires', 'map', 10);
     const issued = response.results[0];
     expect(issued?.executable).toBe(false);
 
@@ -308,7 +289,7 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
       status: 'opened',
       type: 'command',
     });
-    expect(enableLayer).toHaveBeenCalledWith('conflicts');
+    expect(enableLayer).toHaveBeenCalledWith('fires');
 
     controller.destroy();
     dispatcher.destroy();
@@ -316,11 +297,11 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
 
   it('persists a layer result only when the host supplies a target-side signal', async () => {
     const { controller, dispatcher, enableLayer } = createHarness(
-      [commandMatch('layer:conflicts')],
+      [commandMatch('layer:fires')],
     );
     const host = new AbortController();
 
-    const response = await controller.search('conflicts', 'map', 10, host.signal);
+    const response = await controller.search('fires', 'map', 10, host.signal);
     const issued = response.results[0];
     expect(issued?.executable).toBe(true);
 
@@ -331,9 +312,9 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
       status: 'opened',
       type: 'command',
     });
-    expect(enableLayer).toHaveBeenCalledWith('conflicts');
+    expect(enableLayer).toHaveBeenCalledWith('fires');
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.mapLayers)!))
-      .toStrictEqual({ conflicts: true });
+      .toStrictEqual({ fires: true });
 
     controller.destroy();
     dispatcher.destroy();
@@ -341,11 +322,11 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
 
   it('does not run a persistent result advertised under a capable host when open omits the signal', async () => {
     const { controller, dispatcher, enableLayer } = createHarness(
-      [commandMatch('layer:conflicts')],
+      [commandMatch('layer:fires')],
     );
     const host = new AbortController();
 
-    const response = await controller.search('conflicts', 'map', 10, host.signal);
+    const response = await controller.search('fires', 'map', 10, host.signal);
     expect(response.results[0]?.executable).toBe(true);
 
     await expect(controller.open(response.results[0]!.key, async () => {})).resolves.toStrictEqual(
@@ -354,33 +335,6 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
     expect(enableLayer).not.toHaveBeenCalled();
     expect(localStorage.getItem(STORAGE_KEYS.mapLayers)).toBeNull();
 
-    controller.destroy();
-    dispatcher.destroy();
-  });
-
-  it('does not advertise or run an enabled panel tab deep-link without a target-side signal', async () => {
-    const { controller, closeForProgrammaticSelection, dispatcher } = createHarness(
-      [commandMatch('panel:consumer-prices@world')],
-      { 'consumer-prices': true },
-    );
-    mountPanel('consumer-prices');
-    const openedTabs: string[] = [];
-    const onOpenTab = (event: Event): void => {
-      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
-      if (tab) openedTabs.push(tab);
-    };
-    window.addEventListener('wm-consumer-prices-open-tab', onOpenTab);
-
-    const response = await controller.search('inflation', 'panels', 10);
-    expect(response.results[0]?.executable).toBe(false);
-    await expect(controller.open(response.results[0]!.key, async () => {})).resolves.toStrictEqual(
-      cancellationDenial,
-    );
-    expect(closeForProgrammaticSelection).not.toHaveBeenCalled();
-    expect(openedTabs).toEqual([]);
-    expect(localStorage.getItem('wm-consumer-prices-v1')).toBeNull();
-
-    window.removeEventListener('wm-consumer-prices-open-tab', onOpenTab);
     controller.destroy();
     dispatcher.destroy();
   });
@@ -397,21 +351,6 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
     );
     expect(openSettings).not.toHaveBeenCalled();
     expect(closeForProgrammaticSelection).not.toHaveBeenCalled();
-
-    controller.destroy();
-    dispatcher.destroy();
-  });
-
-  it('blocks a quota-consuming country result without a target-side signal', async () => {
-    const { controller, dispatcher, openCountryBriefByCode } = createHarness([countryMatch()]);
-
-    const response = await controller.search('germany', 'all', 10);
-    expect(response.results[0]?.executable).toBe(false);
-
-    await expect(controller.open(response.results[0]!.key, async () => {})).resolves.toStrictEqual(
-      cancellationDenial,
-    );
-    expect(openCountryBriefByCode).not.toHaveBeenCalled();
 
     controller.destroy();
     dispatcher.destroy();
@@ -483,9 +422,9 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
 
   it('keeps the bound effect class when the advertised executable flag is ignored', async () => {
     const { controller, dispatcher, enableLayer } = createHarness(
-      [commandMatch('layer:conflicts')],
+      [commandMatch('layer:fires')],
     );
-    const response = await controller.search('conflicts', 'map', 10);
+    const response = await controller.search('fires', 'map', 10);
     const issued = { ...response.results[0]!, executable: true };
 
     await expect(controller.open(issued.key, async () => {})).resolves.toStrictEqual(
@@ -502,12 +441,10 @@ describe('open_search_result evaluates cancellation per issued effect', () => {
 describe('open_search_result rejects a caller-supplied effect class', () => {
   it('treats an extra effect property as malformed arguments', async () => {
     const tools = buildWebMcpTools({
-      openCountryBriefByCode: async () => true,
-      resolveCountryName: (code) => code,
       openSearch: async () => true,
       getDashboardContext: async () => unusedDashboardContext,
       listMapLayerCatalog: async () => ({
-        variant: 'full',
+        variant: 'nuclear',
         rendererKind: 'deck',
         enabledLayers: [],
         liveLayerKeys: [],

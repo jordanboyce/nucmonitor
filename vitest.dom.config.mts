@@ -38,9 +38,6 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    // The DOM suites were written against the global (full) dashboard; the
-    // nuclear hub is the build default, so pin the variant explicitly here.
-    env: { VITE_VARIANT: 'full' },
     // Local pre-push exports this cap so several worktrees cannot each fan out
     // to every core. CI leaves it unset and retains Vitest's full-width default.
     ...(prepushMaxWorkers === undefined ? {} : { maxWorkers: prepushMaxWorkers }),

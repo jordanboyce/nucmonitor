@@ -86,7 +86,7 @@ const Harness = new Function(
 );
 
 const MAP_STATE = {
-  layers: { ...createBlankMapLayers(), conflicts: true, protests: true, cables: true },
+  layers: { ...createBlankMapLayers(), weather: true, cables: true, pipelines: true },
   zoom: 4.5,
 };
 
@@ -165,10 +165,10 @@ describe('embed dialog tiers', () => {
     makeInstance().openEmbedDialog();
 
     const keyed = snippets()[1];
-    expect(keyed).toContain('data-layers="conflicts,protests,cables"');
+    expect(keyed).toContain('data-layers="weather,cables,pipelines"');
     expect(keyed).toContain('data-center="25.205,55.271"');
     expect(keyed).toContain('data-zoom="4.5"');
-    expect(keyed).toContain('data-variant="full"');
+    expect(keyed).toContain('data-variant="nuclear"');
   });
 
   it('spells out what each tier gives, in the dialog rather than the docs', () => {

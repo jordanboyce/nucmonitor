@@ -20,10 +20,8 @@ import type { EmbedMapFrameResponse } from '../../shared/embed-map-frame';
 const NOW = 1_700_000_000_000;
 
 interface RecordedMap extends EmbedMapSurface {
-  conflicts: unknown[][];
   earthquakes: unknown[][];
   naturalEvents: unknown[][];
-  protests: unknown[][];
   weather: unknown[][];
   ready: Map<string, boolean>;
   loading: string[];
@@ -33,20 +31,15 @@ interface RecordedMap extends EmbedMapSurface {
 
 function recordingMap(): RecordedMap {
   const map: RecordedMap = {
-    conflicts: [],
     earthquakes: [],
     naturalEvents: [],
-    protests: [],
     weather: [],
     ready: new Map(),
     loading: [],
     layers: {} as MapLayers,
     bypassEntitlementSanitization: false,
-    supportsLiveConflictEvents: () => true,
-    setConflictEvents: (events) => { map.conflicts.push(events); },
     setEarthquakes: (events) => { map.earthquakes.push(events); },
     setNaturalEvents: (events) => { map.naturalEvents.push(events); },
-    setProtests: (events) => { map.protests.push(events); },
     setWeatherAlerts: (alerts) => { map.weather.push(alerts); },
     setLayerLoading: (layer, loading) => { map.loading.push(`${String(layer)}:${loading}`); },
     setLayerReady: (layer, ready) => { map.ready.set(String(layer), ready); },
@@ -64,12 +57,11 @@ function frame(overrides: Partial<EmbedMapFrameResponse> = {}): EmbedMapFrameRes
     tier: 'free',
     refreshMs: EMBED_FREE_REFRESH_MS,
     generatedAt: NOW,
-    layers: { conflicts: 'ok', earthquakes: 'ok', weather: 'ok' },
+    layers: { earthquakes: 'ok', weather: 'ok' },
     data: {
-      conflicts: [{ id: 'c1' }],
       earthquakes: [{ id: 'q1' }],
       naturalEvents: [],
-      weatherAlerts: [],
+      weatherAlerts: [weatherAlert()],
     },
     ...overrides,
   };
@@ -79,30 +71,19 @@ function grant(expiresAt: number): EmbedGrant {
   return { token: 'wmg_test', expiresAt };
 }
 
-/**
- * A wire-shaped unrest event. The loader runs the real `toSocialUnrestEvent`
- * adapter on this payload, so a thin `{ id }` stub would throw inside the
- * mapper rather than exercise the loader.
- */
-function protestEvent() {
+/** A wire-shaped NWS alert, as the composed frame carries it. */
+function weatherAlert() {
   return {
-    id: 'p1',
-    title: 'Protest',
-    summary: '',
-    eventType: 'UNREST_EVENT_TYPE_PROTEST',
-    city: '',
-    country: 'FR',
-    region: '',
-    location: { latitude: 48.85, longitude: 2.35 },
-    occurredAt: NOW,
-    severity: 'SEVERITY_LEVEL_LOW',
-    fatalities: 0,
-    sources: [],
-    sourceUrls: [],
-    sourceType: 'UNREST_SOURCE_TYPE_ACLED',
-    tags: [],
-    actors: [],
-    confidence: 'CONFIDENCE_LEVEL_HIGH',
+    id: 'w1',
+    event: 'Flood Warning',
+    severity: 'Severe',
+    headline: 'Flood Warning',
+    description: '',
+    areaDesc: 'Test County',
+    onset: new Date(NOW).toISOString(),
+    expires: new Date(NOW + 3_600_000).toISOString(),
+    coordinates: [[-90, 30], [-89, 30], [-89, 31], [-90, 30]],
+    centroid: [-89.5, 30.5],
   };
 }
 
@@ -128,24 +109,24 @@ describe('embed map frame request', () => {
     // client actually sends is the one that gets a shared entry — the failure
     // mode is silent: a near-miss still renders, just never from cache.
     const { urls, headers } = captureUrl();
-    await fetchEmbedMapFrame(['weather', 'conflicts'], null);
+    await fetchEmbedMapFrame(['weather', 'earthquakes'], null);
 
-    expect(urls[0]).toContain('?layers=conflicts,weather&public=1');
-    expect(classifyPublicEmbedFrameRequest(urls[0] as string)).toEqual(['conflicts', 'weather']);
+    expect(urls[0]).toContain('?layers=earthquakes,weather&public=1');
+    expect(classifyPublicEmbedFrameRequest(urls[0] as string)).toEqual(['earthquakes', 'weather']);
     expect(headers[0]).not.toHaveProperty('X-WorldMonitor-Grant');
   });
 
   it('drops paid layers from the keyless URL instead of fragmenting the key space', async () => {
     const { urls } = captureUrl();
-    await fetchEmbedMapFrame(['conflicts', 'protests', 'cables'], null);
+    await fetchEmbedMapFrame(['weather', 'cables', 'pipelines'], null);
 
-    expect(urls[0]).toContain('?layers=conflicts&public=1');
-    expect(classifyPublicEmbedFrameRequest(urls[0] as string)).toEqual(['conflicts']);
+    expect(urls[0]).toContain('?layers=weather&public=1');
+    expect(classifyPublicEmbedFrameRequest(urls[0] as string)).toEqual(['weather']);
   });
 
   it('sends the grant on a URL that can never be shared-cached', async () => {
     const { urls, headers } = captureUrl();
-    await fetchEmbedMapFrame(['conflicts', 'protests'], { token: 'wmg_x', expiresAt: NOW });
+    await fetchEmbedMapFrame(['weather', 'cables'], { token: 'wmg_x', expiresAt: NOW });
 
     expect(headers[0]).toMatchObject({ 'X-WorldMonitor-Grant': 'wmg_x' });
     expect(urls[0]).not.toContain('public=1');
@@ -178,7 +159,7 @@ describe('embed map frame request', () => {
       headers: { 'Retry-After': '3600' },
     }));
 
-    await expect(fetchEmbedMapFrame(['conflicts'], grant(NOW + 30 * 60_000))).rejects.toMatchObject({
+    await expect(fetchEmbedMapFrame(['weather'], grant(NOW + 30 * 60_000))).rejects.toMatchObject({
       retryAfterMs: 60_000,
     });
   });
@@ -188,7 +169,7 @@ describe('embed data loader', () => {
   it('renders the free tier from one request and marks its layers ready', async () => {
     const map = recordingMap();
     const seen: (EmbedGrant | null)[] = [];
-    const loader = new EmbedDataLoader(map, ['conflicts', 'earthquakes', 'weather'], {
+    const loader = new EmbedDataLoader(map, ['earthquakes', 'weather'], {
       fetchFrame: async (_layers, g) => { seen.push(g); return frame(); },
       now: () => NOW,
     });
@@ -196,8 +177,8 @@ describe('embed data loader', () => {
     await loader.loadOnce();
 
     expect(seen, 'a keyless frame sends no grant').toEqual([null]);
-    expect(map.conflicts).toEqual([[{ id: 'c1' }]]);
-    expect(map.ready.get('conflicts')).toBe(true);
+    expect(map.earthquakes).toEqual([[{ id: 'q1' }]]);
+    expect(map.weather).toHaveLength(1);
     expect(map.ready.get('natural')).toBe(true);
     expect(map.ready.get('weather')).toBe(true);
   });
@@ -206,11 +187,11 @@ describe('embed data loader', () => {
     const map = recordingMap();
     let calls = 0;
     let requested: readonly EmbedLayerId[] = [];
-    const loader = new EmbedDataLoader(map, ['conflicts', 'weather', 'cables'], {
+    const loader = new EmbedDataLoader(map, ['earthquakes', 'weather', 'cables'], {
       fetchFrame: async (layers) => {
         calls += 1;
         requested = layers;
-        return frame({ layers: { conflicts: 'ok', weather: 'ok', cables: 'ok' } });
+        return frame({ layers: { earthquakes: 'ok', weather: 'ok', cables: 'ok' } });
       },
       now: () => NOW,
     });
@@ -218,44 +199,24 @@ describe('embed data loader', () => {
     await loader.loadOnce();
 
     expect(calls).toBe(1);
-    expect([...requested]).toEqual(['conflicts', 'weather', 'cables']);
-  });
-
-  it('withholds conflict events from a renderer that cannot draw them', async () => {
-    // The DeckGL and globe renderers return false here. That rule used to be
-    // enforced at the fetch step — the embed simply never called the ACLED RPC
-    // — and e2e/embed.spec.ts watched the wire for it. The composed endpoint
-    // moved it: one request carries every active layer whatever the renderer
-    // is, so the only place the rule still lives is applyFrame, and the only
-    // place it can be observed is here.
-    const map = recordingMap();
-    map.supportsLiveConflictEvents = () => false;
-    const loader = new EmbedDataLoader(map, ['conflicts', 'earthquakes'], {
-      fetchFrame: async () => frame(),
-      now: () => NOW,
-    });
-
-    await loader.loadOnce();
-
-    expect(map.conflicts, 'a canvas renderer must not receive live conflict events').toHaveLength(0);
-    expect(map.earthquakes, 'every other layer still applies').toEqual([[{ id: 'q1' }]]);
+    expect([...requested]).toEqual(['earthquakes', 'weather', 'cables']);
   });
 
   it('disables a rejected layer and clears its cached live data', async () => {
     const map = recordingMap();
-    map.layers = { conflicts: true, protests: true } as MapLayers;
+    map.layers = { natural: true, weather: true } as MapLayers;
     let request = 0;
-    const loader = new EmbedDataLoader(map, ['conflicts', 'protests'], {
+    const loader = new EmbedDataLoader(map, ['earthquakes', 'weather'], {
       fetchFrame: async () => {
         request += 1;
         return request === 1
           ? frame({
-            layers: { conflicts: 'ok', protests: 'ok' },
-            data: { conflicts: [{ id: 'c1' }], protests: [protestEvent()] },
+            layers: { earthquakes: 'ok', weather: 'ok' },
+            data: { earthquakes: [{ id: 'q1' }], weatherAlerts: [weatherAlert()] },
           })
           : frame({
-            layers: { conflicts: 'ok', protests: 'not-entitled' },
-            data: { conflicts: [{ id: 'c1' }] },
+            layers: { earthquakes: 'ok', weather: 'not-entitled' },
+            data: { earthquakes: [{ id: 'q1' }] },
           });
       },
       now: () => NOW,
@@ -264,12 +225,12 @@ describe('embed data loader', () => {
     await loader.loadOnce();
     await loader.loadOnce();
 
-    expect(map.ready.get('conflicts')).toBe(true);
-    expect(map.ready.get('protests')).toBe(false);
-    expect(map.layers.protests).toBe(false);
+    expect(map.ready.get('natural')).toBe(true);
+    expect(map.ready.get('weather')).toBe(false);
+    expect(map.layers.weather).toBe(false);
     expect(map.bypassEntitlementSanitization).toBe(true);
-    expect(map.protests).toHaveLength(2);
-    expect(map.protests[map.protests.length - 1]).toEqual([]);
+    expect(map.weather).toHaveLength(2);
+    expect(map.weather[map.weather.length - 1]).toEqual([]);
   });
 
   it('keeps a partial layer on the map and drops an unavailable one', async () => {
@@ -291,10 +252,10 @@ describe('embed data loader', () => {
   it('leaves the previous frame up when a poll fails outright', async () => {
     const map = recordingMap();
     let attempt = 0;
-    const loader = new EmbedDataLoader(map, ['conflicts'], {
+    const loader = new EmbedDataLoader(map, ['weather'], {
       fetchFrame: async () => {
         attempt += 1;
-        if (attempt === 1) return frame({ layers: { conflicts: 'ok' } });
+        if (attempt === 1) return frame({ layers: { weather: 'ok' } });
         throw new Error('network down');
       },
       now: () => NOW,
@@ -303,9 +264,9 @@ describe('embed data loader', () => {
     await loader.loadOnce();
     await loader.loadOnce();
 
-    expect(map.conflicts, 'no second render').toHaveLength(1);
-    expect(map.ready.get('conflicts'), 'the layer stays marked ready').toBe(true);
-    expect(map.loading[map.loading.length - 1], 'the loading flag still clears').toBe('conflicts:false');
+    expect(map.weather, 'no second render').toHaveLength(1);
+    expect(map.ready.get('weather'), 'the layer stays marked ready').toBe(true);
+    expect(map.loading[map.loading.length - 1], 'the loading flag still clears').toBe('weather:false');
   });
 
   it('keeps a paid frame and retries a retryable frame failure before the free cadence', async () => {
@@ -313,7 +274,7 @@ describe('embed data loader', () => {
     try {
       const map = recordingMap();
       let attempts = 0;
-      const loader = new EmbedDataLoader(map, ['conflicts'], {
+      const loader = new EmbedDataLoader(map, ['weather'], {
         fetchFrame: async () => {
           attempts += 1;
           if (attempts === 1) return frame({ tier: 'keyed', refreshMs: EMBED_KEYED_REFRESH_MS });
@@ -326,7 +287,7 @@ describe('embed data loader', () => {
       await loader.upgrade(grant(NOW + 30 * 60_000));
       await loader.loadOnce();
       expect(attempts).toBe(2);
-      expect(map.ready.get('conflicts')).toBe(true);
+      expect(map.ready.get('weather')).toBe(true);
 
       await vi.advanceTimersByTimeAsync(9_999);
       expect(attempts).toBe(2);
@@ -341,23 +302,23 @@ describe('embed data loader', () => {
   it('upgrades in place: the grant reaches the next request and unlocks the paid layer', async () => {
     const map = recordingMap();
     const seen: (EmbedGrant | null)[] = [];
-    const loader = new EmbedDataLoader(map, ['conflicts', 'protests'], {
+    const loader = new EmbedDataLoader(map, ['weather', 'cables'], {
       fetchFrame: async (_layers, g) => {
         seen.push(g);
         return g
           ? frame({
             tier: 'keyed',
             refreshMs: EMBED_KEYED_REFRESH_MS,
-            layers: { conflicts: 'ok', protests: 'ok' },
-            data: { conflicts: [], protests: [protestEvent()] },
+            layers: { weather: 'ok', cables: 'ok' },
+            data: { weatherAlerts: [] },
           })
-          : frame({ layers: { conflicts: 'ok', protests: 'not-entitled' }, data: { conflicts: [] } });
+          : frame({ layers: { weather: 'ok', cables: 'not-entitled' }, data: { weatherAlerts: [] } });
       },
       now: () => NOW,
     });
 
     await loader.loadOnce();
-    expect(map.ready.get('protests')).toBe(false);
+    expect(map.ready.get('cables')).toBe(false);
 
     await loader.upgrade(grant(NOW + 30 * 60_000));
     loader.destroy();
@@ -365,18 +326,17 @@ describe('embed data loader', () => {
     expect(seen).toHaveLength(2);
     expect(seen[0]).toBeNull();
     expect(seen[1]?.token).toBe('wmg_test');
-    expect(map.ready.get('protests'), 'the paid layer appears after the upgrade').toBe(true);
-    expect(map.protests[map.protests.length - 1]).toHaveLength(1);
+    expect(map.ready.get('cables'), 'the paid layer appears after the upgrade').toBe(true);
   });
 
   it('takes its cadence from the response rather than a client constant', async () => {
     const map = recordingMap();
     const cadences: number[] = [];
-    const loader = new EmbedDataLoader(map, ['conflicts'], {
+    const loader = new EmbedDataLoader(map, ['weather'], {
       fetchFrame: async (_layers, g) => {
         const next = g
-          ? frame({ tier: 'keyed', refreshMs: EMBED_KEYED_REFRESH_MS, layers: { conflicts: 'ok' } })
-          : frame({ layers: { conflicts: 'ok' } });
+          ? frame({ tier: 'keyed', refreshMs: EMBED_KEYED_REFRESH_MS, layers: { weather: 'ok' } })
+          : frame({ layers: { weather: 'ok' } });
         cadences.push(next.refreshMs);
         return next;
       },
@@ -396,8 +356,8 @@ describe('embed data loader', () => {
     try {
       const map = recordingMap();
       let renewals = 0;
-      const loader = new EmbedDataLoader(map, ['conflicts'], {
-        fetchFrame: async () => frame({ layers: { conflicts: 'ok' } }),
+      const loader = new EmbedDataLoader(map, ['weather'], {
+        fetchFrame: async () => frame({ layers: { weather: 'ok' } }),
         renewGrant: async (): Promise<EmbedGrantResult> => {
           renewals += 1;
           return renewals === 1
@@ -425,8 +385,8 @@ describe('embed data loader', () => {
       const map = recordingMap();
       const seen: (EmbedGrant | null)[] = [];
       let renewals = 0;
-      const loader = new EmbedDataLoader(map, ['conflicts'], {
-        fetchFrame: async (_layers, g) => { seen.push(g); return frame({ layers: { conflicts: 'ok' } }); },
+      const loader = new EmbedDataLoader(map, ['weather'], {
+        fetchFrame: async (_layers, g) => { seen.push(g); return frame({ layers: { weather: 'ok' } }); },
         renewGrant: async (): Promise<EmbedGrantResult> => {
           renewals += 1;
           return { status: 'granted', grant: { token: 'wmg_fresh', expiresAt: NOW + 30 * 60_000 } };
@@ -447,23 +407,23 @@ describe('embed data loader', () => {
       const map = recordingMap();
       let polls = 0;
       let clock = NOW;
-      const loader = new EmbedDataLoader(map, ['conflicts', 'protests'], {
+      const loader = new EmbedDataLoader(map, ['weather', 'cables'], {
         fetchFrame: async () => {
           polls += 1;
           return frame({
             tier: 'keyed',
-            layers: { conflicts: 'ok', protests: 'ok' },
-            data: { conflicts: [], protests: [protestEvent()] },
+            layers: { weather: 'ok', cables: 'ok' },
+            data: { weatherAlerts: [] },
           });
         },
         renewGrant: async (): Promise<EmbedGrantResult> => ({ status: 'unavailable', retryAfterMs: 60_000 }),
         now: () => clock,
       });
 
-      // A paid frame is on screen and rendering all fourteen layers.
+      // A paid frame is on screen and rendering every requested layer.
       await loader.upgrade(grant(NOW + 30 * 60_000));
       loader.destroy();
-      expect(map.ready.get('protests')).toBe(true);
+      expect(map.ready.get('cables')).toBe(true);
       const pollsWhileEntitled = polls;
 
       // The grant lapses and the billing lookup cannot be reached.
@@ -472,7 +432,7 @@ describe('embed data loader', () => {
 
       expect(polls, 'the poll is skipped, not downgraded').toBe(pollsWhileEntitled);
       expect(
-        map.ready.get('protests'),
+        map.ready.get('cables'),
         'the paid layer stays on screen through a transient billing outage',
       ).toBe(true);
     });
@@ -481,8 +441,8 @@ describe('embed data loader', () => {
       const map = recordingMap();
       let clock = NOW;
       let renewals = 0;
-      const loader = new EmbedDataLoader(map, ['conflicts'], {
-        fetchFrame: async () => frame({ layers: { conflicts: 'ok' } }),
+      const loader = new EmbedDataLoader(map, ['weather'], {
+        fetchFrame: async () => frame({ layers: { weather: 'ok' } }),
         renewGrant: async (): Promise<EmbedGrantResult> => {
           renewals += 1;
           return renewals === 1
@@ -505,12 +465,12 @@ describe('embed data loader', () => {
     it('falls back to the free tier when renewal is terminally denied', async () => {
       const map = recordingMap();
       const seen: (EmbedGrant | null)[] = [];
-      const loader = new EmbedDataLoader(map, ['conflicts', 'protests'], {
+      const loader = new EmbedDataLoader(map, ['weather', 'cables'], {
         fetchFrame: async (_layers, g) => {
           seen.push(g);
           return g
-            ? frame({ tier: 'keyed', layers: { conflicts: 'ok', protests: 'ok' }, data: { conflicts: [], protests: [] } })
-            : frame({ layers: { conflicts: 'ok', protests: 'not-entitled' }, data: { conflicts: [] } });
+            ? frame({ tier: 'keyed', layers: { weather: 'ok', cables: 'ok' }, data: { weatherAlerts: [] } })
+            : frame({ layers: { weather: 'ok', cables: 'not-entitled' }, data: { weatherAlerts: [] } });
         },
         renewGrant: async (): Promise<EmbedGrantResult> => ({ status: 'denied' }),
         now: () => NOW,
@@ -522,14 +482,14 @@ describe('embed data loader', () => {
 
       expect(seen[seen.length - 1], 'a lapsed account polls as keyless').toBeNull();
       expect(loader.currentGrant()).toBeNull();
-      expect(map.ready.get('protests')).toBe(false);
+      expect(map.ready.get('cables')).toBe(false);
     });
 
     it('does not re-mint a grant that is still comfortably valid', async () => {
       const map = recordingMap();
       let renewals = 0;
-      const loader = new EmbedDataLoader(map, ['conflicts'], {
-        fetchFrame: async () => frame({ layers: { conflicts: 'ok' } }),
+      const loader = new EmbedDataLoader(map, ['weather'], {
+        fetchFrame: async () => frame({ layers: { weather: 'ok' } }),
         renewGrant: async (): Promise<EmbedGrantResult> => {
           renewals += 1;
           return { status: 'granted', grant: grant(NOW + 30 * 60_000) };

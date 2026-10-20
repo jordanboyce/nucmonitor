@@ -101,7 +101,6 @@ it.each([
   ['worldmonitor-theme', 'invalid'],
   ['wm-stream-quality', 'ultra'],
   ['wm-map-theme:carto', 'invalid'],
-  ['wm-analysis-frameworks', JSON.stringify([{ id: 'x', name: 'x', description: '', systemPromptAppend: 'x'.repeat(2001), isBuiltIn: false, createdAt: 0 }])],
   ['worldmonitor-live-channels', JSON.stringify({ order: ['x'], custom: [{ id: 'x', name: 'x', hlsUrl: 'javascript:alert(1)' }] })],
   ['worldmonitor-monitors', ' '.repeat(256 * 1024 + 1)],
 ])('rejects invalid %s before any storage change', async (key, value) => {

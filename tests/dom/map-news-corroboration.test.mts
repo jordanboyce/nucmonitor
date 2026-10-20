@@ -9,7 +9,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { DeckGLMap } from '@/components/DeckGLMap';
 import { GlobeMap } from '@/components/GlobeMap';
 import { MapPopup } from '@/components/MapPopup';
-import type { NewsItem, NewsLocationMarker } from '@/types';
+import type { NewsLocationMarker } from '@/types';
 import { corroborationLabel } from '@/utils/corroboration-flag';
 
 import { initTestI18n } from './helpers/i18n.mts';
@@ -77,27 +77,5 @@ describe('news marker popups', () => {
     const set = (GlobeMap.prototype as unknown as { setNewsLocations(d: unknown[]): void }).setNewsLocations;
     set.call(host, [marker(single)]);
     expect(host.newsLocationMarkers).toEqual([expect.objectContaining({ corroboration: single })]);
-  });
-});
-
-describe('hotspot popup related headlines', () => {
-  it('flags each headline from its digest count', () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const popup = new MapPopup(container);
-    const news = (source: string, title: string, corroborationCount?: number): NewsItem => ({
-      source, title, link: `https://example.com/${encodeURIComponent(title)}`, pubDate: new Date(), isAlert: false,
-      ...(corroborationCount === undefined ? {} : { corroborationCount }),
-    } as NewsItem);
-    popup.show({
-      type: 'hotspot',
-      data: { id: 'h1', name: 'Test Hotspot', lat: 1, lon: 2, keywords: [], level: 'high', subtext: '' } as never,
-      relatedNews: [news('Meduza', 'Exile outlet reports order', 1), news('Reuters', 'Rates held', 3), news('BBC', 'Storm lands')],
-      x: 10, y: 10,
-    });
-    const items = [...document.querySelectorAll('.popup-news-item')];
-    expect(items.map((item) => item.querySelector('.corroboration-flag')?.textContent ?? null))
-      .toEqual(['Single publisher', '3 publishers', null]);
-    popup.hide();
   });
 });

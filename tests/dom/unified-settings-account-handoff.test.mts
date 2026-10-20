@@ -7,14 +7,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 
 import { initTestI18n } from './helpers/i18n.mts';
 import type { UnifiedSettingsConfig } from '@/components/UnifiedSettings';
-import type { ApiKeyInfo, CreateApiKeyResult } from '@/services/api-keys';
+import type { ApiKeyInfo } from '@/services/api-keys';
 import type { ApiPlanLimitNotice } from '@/services/api-plan-limit-notices';
 import type { AuthSession } from '@/services/auth-state';
 import type {
   EntitlementState,
   EntitlementVerificationStatus,
 } from '@/services/entitlements';
-import type { McpClientInfo, McpQuota } from '@/services/mcp-clients';
 
 let session: AuthSession = signedIn('A');
 const authListeners: Array<(state: AuthSession) => void> = [];
@@ -27,11 +26,6 @@ const apiKeyMocks = vi.hoisted(() => ({
 const noticeMocks = vi.hoisted(() => ({
   acknowledge: vi.fn(),
   list: vi.fn(),
-}));
-const mcpMocks = vi.hoisted(() => ({
-  list: vi.fn(),
-  quota: vi.fn(),
-  revoke: vi.fn(),
 }));
 const entitlementMocks = vi.hoisted(() => ({
   state: null as EntitlementState | null,
@@ -177,17 +171,11 @@ vi.mock('@/services/api-plan-limit-notices', () => ({
   listCurrentPlanLimitNotices: (...args: unknown[]) => noticeMocks.list(...args),
 }));
 
-vi.mock('@/services/mcp-clients', () => ({
-  listMcpClients: (...args: unknown[]) => mcpMocks.list(...args),
-  fetchMcpQuota: (...args: unknown[]) => mcpMocks.quota(...args),
-  revokeMcpClient: (...args: unknown[]) => mcpMocks.revoke(...args),
-}));
-
 const { UnifiedSettings } = await import('@/components/UnifiedSettings');
 
 type SettingsInternals = {
   overlay: HTMLElement;
-  activeTab: 'api-keys' | 'mcp-clients';
+  activeTab: 'api-keys';
   accountDataGeneration: number;
   accountEntitlementRefreshPending: boolean;
   apiKeys: ApiKeyInfo[];
@@ -197,40 +185,15 @@ type SettingsInternals = {
   planLimitNotices: ApiPlanLimitNotice[];
   planLimitNoticesLoading: boolean;
   planLimitNoticesError: string;
-  mcpClients: McpClientInfo[];
-  mcpClientsLoading: boolean;
-  mcpClientsError: string;
-  mcpQuota: McpQuota | null;
   render(loadAccountData?: boolean): void;
   renderApiKeysList(): void;
-  renderMcpClientsList(): void;
-  renderMcpQuotaInPlace(): void;
   showCreatedBanner(key: string): void;
   loadApiKeys(): Promise<void>;
   loadPlanLimitNotices(): Promise<void>;
-  loadMcpClients(): Promise<void>;
-  refreshMcpQuota(): Promise<void>;
   handleCreateApiKey(): Promise<void>;
   handleRevokeApiKey(keyId: string): Promise<void>;
   handleAcknowledgePlanLimitNotice(noticeId: string): Promise<void>;
-  handleRevokeMcpClient(tokenId: string): Promise<void>;
 };
-
-type Deferred<T> = {
-  promise: Promise<T>;
-  resolve(value: T): void;
-  reject(reason: unknown): void;
-};
-
-function deferred<T>(): Deferred<T> {
-  let resolvePromise: (value: T) => void = () => {};
-  let rejectPromise: (reason: unknown) => void = () => {};
-  const promise = new Promise<T>((resolve, reject) => {
-    resolvePromise = resolve;
-    rejectPromise = reject;
-  });
-  return { promise, resolve: resolvePromise, reject: rejectPromise };
-}
 
 function signedIn(id: string): AuthSession {
   return {
@@ -242,11 +205,6 @@ function signedIn(id: string): AuthSession {
     },
     isPending: false,
   };
-}
-
-function emitAccount(id: string): void {
-  session = signedIn(id);
-  for (const listener of [...authListeners]) listener(session);
 }
 
 function entitlement(options: {
@@ -269,23 +227,9 @@ function entitlement(options: {
   };
 }
 
-function emitEntitlement(state: EntitlementState | null): void {
-  entitlementMocks.state = state;
-  for (const listener of [...entitlementMocks.listeners]) listener(state);
-}
-
 function emitEntitlementVerification(status: EntitlementVerificationStatus): void {
   entitlementMocks.verificationStatus = status;
   for (const listener of [...entitlementMocks.verificationListeners]) listener(status);
-}
-
-function apiKey(id = 'key-a'): ApiKeyInfo {
-  return {
-    id,
-    name: 'A private key',
-    keyPrefix: 'wm_A_PREFIX',
-    createdAt: Date.now(),
-  };
 }
 
 function notice(id = 'notice-a'): ApiPlanLimitNotice {
@@ -300,14 +244,6 @@ function notice(id = 'notice-a'): ApiPlanLimitNotice {
     limit: 100,
     usageRatio: 0.9,
     ctaKind: 'none',
-  };
-}
-
-function mcpClient(id = 'client-a', name = 'A private MCP client'): McpClientInfo {
-  return {
-    id,
-    name,
-    createdAt: Date.now(),
   };
 }
 
@@ -355,13 +291,6 @@ beforeEach(() => {
   apiKeyMocks.revoke.mockReset().mockResolvedValue(undefined);
   noticeMocks.acknowledge.mockReset().mockResolvedValue(undefined);
   noticeMocks.list.mockReset().mockResolvedValue([]);
-  mcpMocks.list.mockReset().mockResolvedValue([]);
-  mcpMocks.quota.mockReset().mockResolvedValue({
-    used: 0,
-    limit: 50,
-    resetsAt: new Date(Date.now() + 86_400_000).toISOString(),
-  });
-  mcpMocks.revoke.mockReset().mockResolvedValue(undefined);
 
   settings = new UnifiedSettings(config);
   internal = settings as unknown as SettingsInternals;
@@ -376,39 +305,6 @@ afterEach(() => {
 });
 
 describe('UnifiedSettings real auth-subscription handoff', () => {
-  it('keeps successful zero distinct from unavailable quota and recovers', async () => {
-    settings.open('mcp-clients');
-    await internal.refreshMcpQuota();
-    const quota = () => internal.overlay.querySelector('#usMcpQuota')!;
-    expect(quota().textContent).toContain('0 / 50');
-    expect(quota().textContent).toContain('used today, resets');
-
-    mcpMocks.quota.mockRejectedValue(new Error('fixture quota unavailable'));
-    await internal.refreshMcpQuota();
-    expect(quota().textContent).toContain('Quota unavailable');
-    expect(quota().querySelector('strong')).toBeNull();
-    expect(quota().textContent).not.toContain('used today');
-    expect(quota().textContent).not.toContain('resets');
-    expect(quota().textContent).not.toContain('Loading');
-
-    mcpMocks.quota.mockResolvedValue({
-      used: 0, limit: 50, resetsAt: new Date(Date.now() + 86_400_000).toISOString(),
-    });
-    await internal.refreshMcpQuota();
-    expect(quota().textContent).toContain('0 / 50');
-    expect(quota().textContent).not.toContain('unavailable');
-  });
-
-  it('offers the canonical MCP endpoint when no clients are connected', () => {
-    internal.mcpClients = [];
-    internal.mcpClientsLoading = false;
-    internal.renderMcpClientsList();
-
-    const copy = internal.overlay.querySelector<HTMLButtonElement>('.mcp-clients-copy-url-btn');
-    expect(copy?.dataset.copyValue).toBe('https://worldmonitor.app/mcp');
-    expect(internal.overlay.textContent).not.toContain('api.worldmonitor.app/mcp');
-  });
-
   it('keeps checking past 12 seconds while entitlement verification is still in flight', () => {
     vi.useFakeTimers();
     panelGatingMocks.hasPremiumAccess = false;
@@ -443,121 +339,6 @@ describe('UnifiedSettings real auth-subscription handoff', () => {
     expect(internal.overlay.querySelector('.retry-plan-status-btn')).not.toBeNull();
   });
 
-  it('synchronously purges A plaintext and rendered account lists when auth emits B', () => {
-    internal.apiKeys = [apiKey()];
-    internal.planLimitNotices = [notice()];
-    internal.mcpClients = [mcpClient()];
-    internal.mcpQuota = {
-      used: 41,
-      limit: 50,
-      resetsAt: new Date(Date.now() + 86_400_000).toISOString(),
-    };
-    internal.render(false);
-    internal.showCreatedBanner('wm_A_PLAINTEXT_SECRET');
-    internal.renderApiKeysList();
-    internal.renderMcpClientsList();
-    internal.renderMcpQuotaInPlace();
-
-    expect(internal.overlay.textContent).toContain('wm_A_PLAINTEXT_SECRET');
-    expect(internal.overlay.textContent).toContain('A private key');
-    expect(internal.overlay.textContent).toContain('A private MCP client');
-    expect(internal.overlay.textContent).toContain('A private window');
-    expect(internal.overlay.textContent).toContain('41 / 50');
-
-    emitAccount('B');
-
-    expect(internal.accountDataGeneration).toBe(1);
-    expect(internal.apiKeys).toEqual([]);
-    expect(internal.planLimitNotices).toEqual([]);
-    expect(internal.mcpClients).toEqual([]);
-    expect(internal.mcpQuota).toBeNull();
-    expect(internal.newlyCreatedKey).toBeNull();
-    expect(internal.overlay.textContent).not.toContain('wm_A_PLAINTEXT_SECRET');
-    expect(internal.overlay.textContent).not.toContain('A private key');
-    expect(internal.overlay.textContent).not.toContain('A private MCP client');
-    expect(internal.overlay.textContent).not.toContain('A private window');
-    expect(internal.overlay.textContent).not.toContain('41 / 50');
-  });
-
-  it('drops every deferred A settlement after the real auth subscription selects B', async () => {
-    const listKeys = deferred<ApiKeyInfo[]>();
-    const createKey = deferred<CreateApiKeyResult>();
-    const revokeKey = deferred<void>();
-    const listNotices = deferred<ApiPlanLimitNotice[]>();
-    const acknowledgeNotice = deferred<void>();
-    const listClients = deferred<McpClientInfo[]>();
-    const quota = deferred<McpQuota>();
-    const revokeClient = deferred<void>();
-
-    apiKeyMocks.list.mockReturnValue(listKeys.promise);
-    apiKeyMocks.create.mockReturnValue(createKey.promise);
-    apiKeyMocks.revoke.mockReturnValue(revokeKey.promise);
-    noticeMocks.list.mockReturnValue(listNotices.promise);
-    noticeMocks.acknowledge.mockReturnValue(acknowledgeNotice.promise);
-    mcpMocks.list.mockReturnValue(listClients.promise);
-    mcpMocks.quota.mockReturnValue(quota.promise);
-    mcpMocks.revoke.mockReturnValue(revokeClient.promise);
-    vi.stubGlobal('confirm', vi.fn(() => true));
-
-    internal.apiKeys = [apiKey()];
-    internal.planLimitNotices = [notice()];
-    internal.mcpClients = [mcpClient()];
-    internal.render(false);
-    internal.renderApiKeysList();
-    const input = internal.overlay.querySelector<HTMLInputElement>('.api-keys-name-input');
-    expect(input).not.toBeNull();
-    input!.value = 'A create request';
-
-    const pending = [
-      internal.loadApiKeys(),
-      internal.loadPlanLimitNotices(),
-      internal.loadMcpClients(),
-      internal.refreshMcpQuota(),
-      internal.handleCreateApiKey(),
-      internal.handleRevokeApiKey('key-a'),
-      internal.handleAcknowledgePlanLimitNotice('notice-a'),
-      internal.handleRevokeMcpClient('client-a'),
-    ];
-
-    emitAccount('B');
-
-    listKeys.resolve([apiKey('late-key-a')]);
-    createKey.resolve({
-      id: 'created-a',
-      name: 'A create request',
-      keyPrefix: 'wm_A_CREATED',
-      key: 'wm_A_LATE_PLAINTEXT',
-    });
-    revokeKey.reject(new Error('A key revoke detail'));
-    listNotices.resolve([notice('late-notice-a')]);
-    acknowledgeNotice.reject(new Error('A notice detail'));
-    listClients.resolve([mcpClient('late-client-a')]);
-    quota.resolve({
-      used: 49,
-      limit: 50,
-      resetsAt: new Date(Date.now() + 86_400_000).toISOString(),
-    });
-    revokeClient.reject(new Error('A MCP revoke detail'));
-    await Promise.all(pending);
-
-    expect(internal.apiKeys).toEqual([]);
-    expect(internal.planLimitNotices).toEqual([]);
-    expect(internal.mcpClients).toEqual([]);
-    expect(internal.mcpQuota).toBeNull();
-    expect(internal.newlyCreatedKey).toBeNull();
-    expect(internal.apiKeysError).toBe('');
-    expect(internal.planLimitNoticesError).toBe('');
-    expect(internal.mcpClientsError).toBe('');
-    expect(internal.overlay.textContent).not.toContain('wm_A_LATE_PLAINTEXT');
-    expect(internal.overlay.textContent).not.toContain('late-key-a');
-    expect(internal.overlay.textContent).not.toContain('late-notice-a');
-    expect(internal.overlay.textContent).not.toContain('late-client-a');
-    expect(internal.overlay.textContent).not.toContain('49 / 50');
-    expect(document.querySelector('.toast-notification')).toBeNull();
-    expect(apiKeyMocks.list).toHaveBeenCalledTimes(1);
-    expect(mcpMocks.list).toHaveBeenCalledTimes(1);
-  });
-
   it('preserves notices and renders a current-account authentication error', async () => {
     internal.planLimitNotices = [notice()];
     internal.render(false);
@@ -577,40 +358,4 @@ describe('UnifiedSettings real auth-subscription handoff', () => {
     );
   });
 
-  it('rebuilds MCP capability from B across reset, free, and Pro snapshots', async () => {
-    mcpMocks.list.mockResolvedValue([mcpClient('client-b', 'B private MCP client')]);
-    settings.open('api-keys');
-    expect(internal.overlay.querySelector('[data-tab="mcp-clients"]')).not.toBeNull();
-
-    emitAccount('B');
-    expect(internal.accountEntitlementRefreshPending).toBe(true);
-
-    emitEntitlement(null);
-    expect(internal.accountEntitlementRefreshPending).toBe(true);
-    expect(internal.overlay.querySelector('[data-tab="mcp-clients"]')).toBeNull();
-    expect(mcpMocks.list).not.toHaveBeenCalled();
-
-    emitEntitlement(entitlement({
-      planKey: 'free',
-      apiAccess: false,
-      mcpAccess: false,
-    }));
-    expect(internal.accountEntitlementRefreshPending).toBe(false);
-    expect(internal.overlay.querySelector('[data-tab="mcp-clients"]')).toBeNull();
-    expect(mcpMocks.list).not.toHaveBeenCalled();
-
-    emitEntitlement(entitlement({
-      planKey: 'pro',
-      apiAccess: false,
-      mcpAccess: true,
-    }));
-    const mcpTab = internal.overlay.querySelector<HTMLButtonElement>('[data-tab="mcp-clients"]');
-    expect(mcpTab).not.toBeNull();
-    mcpTab!.click();
-
-    await vi.waitFor(() => {
-      expect(mcpMocks.list).toHaveBeenCalledTimes(1);
-      expect(internal.overlay.textContent).toContain('B private MCP client');
-    });
-  });
 });

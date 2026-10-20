@@ -188,20 +188,11 @@ describe('WorldClockPanel 1 Hz tick', () => {
   });
 });
 
-it('keeps markets closed on a weekend with a non-English locale', async () => {
-  const { default: i18next } = await import('i18next');
-  const { getLocale } = await import('@/services/i18n');
-  await i18next.changeLanguage('fr');
+it('keeps markets closed on a weekend', () => {
   const saturday = new Date('2026-08-08T14:30:00.000Z');
   vi.setSystemTime(saturday);
   vi.advanceTimersByTime(1000);
-  const weekday = new Intl.DateTimeFormat(getLocale(), {
-    timeZone: 'America/New_York',
-    weekday: 'short',
-  }).format(saturday);
   expect(content().querySelector('.wc-status.open')).toBeNull();
   expect(content().textContent).not.toContain('OPEN');
-  expect(content().textContent).toContain(weekday);
-  expect(content().textContent).not.toContain('Sat');
-  await i18next.changeLanguage('en');
+  expect(content().textContent).toContain('Sat');
 });

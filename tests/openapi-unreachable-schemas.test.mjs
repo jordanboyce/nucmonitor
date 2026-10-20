@@ -7,7 +7,6 @@ import {
   unreachableSchemaNames,
 } from '../scripts/openapi-drop-unreachable-schemas.mjs';
 import { dedupeErrorResponses, dedupeSharedParameters } from '../scripts/openapi-dedup-responses.mjs';
-import { dedupeSharedChinaProvenanceSchemas } from '../scripts/openapi-dedup-schemas.mjs';
 
 // The generator emits one component schema per RPC message, but a GET operation
 // spends its request message as `parameters` and never points at the request
@@ -48,7 +47,6 @@ function mentionedSchemaNames(spec) {
 function servedBundle() {
   const spec = loadUnifiedOpenApiSpec();
   dedupeErrorResponses(spec);
-  dedupeSharedChinaProvenanceSchemas(spec);
   dedupeSharedParameters(spec);
   return spec;
 }
@@ -202,8 +200,9 @@ describe('unreachable schema drop (real bundle)', () => {
     // Vacuity guard. A reachability bug that marks everything reachable makes
     // every other assertion here pass while the transform does nothing, and the
     // budget is too tight for that to go unnoticed for long.
-    assert.ok(stats.dropped >= 150, `expected the generated orphans, dropped only ${stats.dropped}`);
-    assert.ok(stats.bytesFreed >= 60_000, `expected a material saving, freed ${stats.bytesFreed} bytes`);
+    // Re-derived for the trimmed 91-operation bundle (~100 orphans today).
+    assert.ok(stats.dropped >= 80, `expected the generated orphans, dropped only ${stats.dropped}`);
+    assert.ok(stats.bytesFreed >= 25_000, `expected a material saving, freed ${stats.bytesFreed} bytes`);
   });
 
   it('drops only request-message-shaped orphans, never a response or operation schema', () => {
@@ -238,7 +237,6 @@ describe('unreachable schema drop (real bundle)', () => {
     const first = loadUnifiedOpenApiSpec();
     dropUnreachableSchemas(first);
     dedupeErrorResponses(first);
-    dedupeSharedChinaProvenanceSchemas(first);
     dedupeSharedParameters(first);
     assert.equal(JSON.stringify(first), JSON.stringify(after));
   });
@@ -269,6 +267,6 @@ describe('unreachable schema drop (real bundle)', () => {
         }
       }
     }
-    assert.ok(checked > 100, `expected the 2xx bodies to reference schemas, saw ${checked}`);
+    assert.ok(checked > 80, `expected the 2xx bodies to reference schemas, saw ${checked}`);
   });
 });

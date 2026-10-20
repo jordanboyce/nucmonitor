@@ -29,10 +29,9 @@
  *   - fleet-wide injected parameters        -> components.parameters $refs
  *     (then one inline typed param restored on ops that would otherwise
  *     have only $refs — JSON-only scanners often skip parameter $refs)
- *   - shared China provenance value schemas -> reused $refs
  *   - byte-identical nested Schema Objects  -> reused local $refs
- *   - repeated response headers, generated int64 warnings, and China
- *     date-precision unions                  -> components $refs
+ *   - repeated response headers and generated int64 warnings
+ *                                            -> components $refs
  *     (described int64 fields keep their own comment and numeric bounds
  *     as OpenAPI 3.1 $ref siblings; the warning lives in the component)
  *     (all in openapi-dedup-schemas.mjs; every dedup transform is resolved
@@ -56,9 +55,7 @@ import {
   ensureInlineTypedInput,
 } from './openapi-dedup-responses.mjs';
 import {
-  dedupeRepeatedChinaDateSchemas,
   dedupeRepeatedInt64Schemas,
-  dedupeSharedChinaProvenanceSchemas,
   dedupeSharedResponseHeaders,
   dedupeSharedSchemaSubtrees,
   dedupeSharedSubtreeComponents,
@@ -313,12 +310,10 @@ export function buildBundle({ spec: provided } = {}) {
   dropUnreferencedSecuritySchemes(spec);
   const stats = dedupeErrorResponses(spec);
   const headerStats = dedupeSharedResponseHeaders(spec);
-  const schemaStats = dedupeSharedChinaProvenanceSchemas(spec);
-  // The named passes run before the generic byte-identical sweep. Reversing them
-  // lets the generic pass absorb the int64/China-date shapes into anonymous
-  // shared refs, and the named transforms then report zero engagement — the
+  // The named pass runs before the generic byte-identical sweep. Reversing them
+  // lets the generic pass absorb the int64 shapes into anonymous shared refs,
+  // and the named transform then reports zero engagement — the
   // silent-disengagement case the contract test watches for.
-  const chinaDateStats = dedupeRepeatedChinaDateSchemas(spec);
   const int64Stats = dedupeRepeatedInt64Schemas(spec);
   const schemaSubtreeStats = dedupeSharedSchemaSubtrees(spec);
   // After the named passes and the inline-target pass: anything still repeated
@@ -351,10 +346,8 @@ export function buildBundle({ spec: provided } = {}) {
     bytes: Buffer.byteLength(json, 'utf8'),
     stats,
     headerStats,
-    schemaStats,
     schemaSubtreeStats,
     sharedSubtreeStats,
-    chinaDateStats,
     int64Stats,
     paramStats,
     inlineTypedStats,
@@ -374,10 +367,8 @@ function main() {
     json,
     bytes,
     stats,
-    schemaStats,
     schemaSubtreeStats,
     sharedSubtreeStats,
-    chinaDateStats,
     int64Stats,
     headerStats,
     paramStats,
@@ -395,10 +386,8 @@ function main() {
       `hoisted ${paramStats.hoisted} fleet-wide parameters into ${paramStats.replacedRefs} $refs; ` +
       `reused ${int64Stats.replacedRefs} generated int64 schemas (+${int64Stats.describedRefs} described int64 fields); ` +
       `restored ${inlineTypedStats.inlined} inline typed parameters for JSON-only scanners; ` +
-      `reused ${schemaStats.replacedRefs}/${schemaStats.compared} shared China provenance schemas; ` +
       `reused ${schemaSubtreeStats.replacedRefs} byte-identical schema subtrees across ${schemaSubtreeStats.groups} groups; ` +
       `hoisted ${sharedSubtreeStats.replacedRefs} deep repeated subtrees into ${sharedSubtreeStats.groups} shared components (${sharedSubtreeStats.bytesFreed} bytes); ` +
-      `reused ${chinaDateStats.replacedRefs} China date-precision schemas; ` +
       `dropped ${unreachableStats.dropped} unreachable schemas worth ${unreachableStats.bytesFreed} bytes)`,
   );
 }

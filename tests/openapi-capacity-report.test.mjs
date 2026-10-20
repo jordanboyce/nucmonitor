@@ -47,8 +47,6 @@ const fakeBundle = (spec, bytes) => ({
   spec,
   bytes,
   stats: { hoisted: 0, replacedRefs: 0 },
-  schemaStats: { compared: 0, replacedRefs: 0 },
-  chinaDateStats: { replacedRefs: 0 },
   int64Stats: { replacedRefs: 0 },
   headerStats: { hoisted: 0, replacedRefs: 0 },
   paramStats: { hoisted: 0, replacedRefs: 0 },
@@ -362,7 +360,7 @@ describe('repeatedStructures — no promising the same bytes twice', () => {
     // Vacuity guard: a walk that silently visits nothing would satisfy every
     // assertion above while reporting an empty reduction plan forever.
     const result = realReport.repeatedStructures;
-    assert.ok(result.groups > 20, `expected repeated structure in a generated spec, got ${result.groups}`);
+    assert.ok(result.groups >= 5, `expected repeated structure in a generated spec, got ${result.groups}`);
     // Successful compaction can reduce this total; require actual savings,
     // not a fixed amount of waste in the served document.
     assert.ok(result.estimatedRecoverableBytes > 0);

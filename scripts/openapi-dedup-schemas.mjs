@@ -1,18 +1,17 @@
 /**
- * Reuse the structurally identical provenance value schemas emitted for the China
- * corridor and decision-signal surfaces in the unified public OpenAPI JSON.
+ * Lossless schema-level dedupe passes for the unified public OpenAPI JSON:
+ * byte-identical Schema Object subtrees, deep repeated subtrees hoisted into
+ * shared components, repeated response headers and the generated int64
+ * precision warning. Each pass is resolved back to the source document in
+ * tests/openapi-json-dedup.test.mjs.
  *
- * Both injectors intentionally call the same provenanceValueSchema() builder.
- * The human-facing per-service artifacts keep their schemas inline, while the
- * unified machine artifact can point the corridor copy at the matching
- * decision-signal schema. The comparison fails closed: any future divergence
- * leaves both schemas inline instead of hiding the mismatch behind a $ref.
+ * The China provenance and China date-precision passes were removed with the
+ * intelligence and supply-chain services: no schema in the bundle carries the
+ * shapes they matched, so they could only ever report zero engagement.
  */
 
 import { eq } from './lib/openapi-codegen.mjs';
 
-const CORRIDOR_SCHEMA_SUFFIX = 'ChinaCorridorProvenance';
-const DECISION_CLAIMS_SCHEMA_SUFFIX = 'ChinaDecisionSignalProvenanceClaims';
 const INT64_SCHEMA = {
   type: 'integer',
   format: 'int64',
@@ -230,9 +229,7 @@ export const SHARED_SUBTREE_COMPONENT_PREFIX = 'WMShared';
  * what the existing ref resolves to (or dangle it), so they are off limits as
  * hoist sites. Descendants of a target stay eligible — replacing one leaves
  * the target resolvable, and full dereference still reproduces the source
- * document (the served artifact already leans on this: corridor value refs
- * point into ChinaDecisionSignalProvenanceClaims, whose inner subtrees the
- * inline pass edits).
+ * document.
  */
 function refPointerPathNodes(spec) {
   const marked = new Set();
@@ -263,8 +260,8 @@ function refPointerPathNodes(spec) {
  * `dedupeSharedSchemaSubtrees` already collapses the groups whose shortest
  * occurrence yields a SHORT $ref: it points the duplicates at one inline copy
  * and adds no component. What survives it are the groups whose every site sits
- * deep in a long-named component — the China provenance precision wrappers, the
- * repeated consumer-price freshness booleans — where the pointer INTO the
+ * deep in a long-named component — generated precision wrappers and repeated
+ * freshness flags — where the pointer INTO the
  * document is longer than the subtree itself, so an inline-target ref would
  * cost more than the repetition it removes. This pass is the escape hatch for
  * exactly those groups: the subtree moves into `components.schemas` under a
@@ -388,55 +385,6 @@ export function dedupeSharedSubtreeComponents(spec) {
   }
 
   stats.bytesFreed = beforeBytes - Buffer.byteLength(JSON.stringify(spec), 'utf8');
-  return stats;
-}
-
-function knownClaim(claim) {
-  const index = claim?.oneOf?.findIndex(
-    (candidate) => candidate?.properties?.status?.const === 'known',
-  );
-  if (index === undefined || index < 0) return null;
-  const value = claim.oneOf[index]?.properties?.value;
-  return value && typeof value === 'object' ? { index, value } : null;
-}
-
-/**
- * Mutates `spec` in place; returns { compared, replacedRefs } stats.
- */
-export function dedupeSharedChinaProvenanceSchemas(spec) {
-  const stats = { compared: 0, replacedRefs: 0 };
-  const schemas = spec?.components?.schemas;
-  if (!schemas || typeof schemas !== 'object') return stats;
-
-  const corridorEntry = Object.entries(schemas).find(([name]) =>
-    name.endsWith(CORRIDOR_SCHEMA_SUFFIX));
-  const decisionEntry = Object.entries(schemas).find(([name]) =>
-    name.endsWith(DECISION_CLAIMS_SCHEMA_SUFFIX));
-  if (!corridorEntry || !decisionEntry) return stats;
-
-  const corridorClaims = corridorEntry[1]?.properties?.claims?.properties;
-  const decisionClaims = decisionEntry[1]?.properties;
-  if (!corridorClaims || !decisionClaims) return stats;
-
-  for (const [dimension, corridorClaim] of Object.entries(corridorClaims)) {
-    const decisionClaim = decisionClaims[dimension];
-    if (!decisionClaim) continue;
-    stats.compared += 1;
-
-    const corridorKnown = knownClaim(corridorClaim);
-    const decisionKnown = knownClaim(decisionClaim);
-    if (!corridorKnown || !decisionKnown) continue;
-    if (!eq(corridorKnown.value, decisionKnown.value)) continue;
-
-    corridorClaim.oneOf[corridorKnown.index].properties.value = {
-      $ref:
-        `#/components/schemas/${pointerSegment(decisionEntry[0])}` +
-        `/properties/${pointerSegment(dimension)}` +
-        `/oneOf/${decisionKnown.index}/properties/value`,
-    };
-    stats.replacedRefs += 1;
-  }
-
   return stats;
 }
 
@@ -585,43 +533,6 @@ export function dedupeRepeatedInt64Schemas(spec) {
   for (const { parent, key, lead, siblings } of describedSites) {
     parent[key] = { $ref, ...siblings, description: lead };
     stats.describedRefs += 1;
-  }
-  return stats;
-}
-
-/** Reuse the exact date-precision union repeated by China decision-signal claims. */
-export function dedupeRepeatedChinaDateSchemas(spec) {
-  const stats = { replacedRefs: 0 };
-  const schemas = spec?.components?.schemas;
-  if (!schemas || typeof schemas !== 'object') return stats;
-  const decisionItem = Object.entries(schemas).find(([name]) => name.endsWith('ChinaDecisionSignalItem'))?.[1];
-  const exemplar = decisionItem?.properties?.effectiveAt?.oneOf?.[0];
-  if (!exemplar || typeof exemplar !== 'object') return stats;
-  const sites = [];
-
-  const visit = (value) => {
-    if (!value || typeof value !== 'object') return;
-    if (Array.isArray(value)) {
-      for (let index = 0; index < value.length; index += 1) {
-        const child = value[index];
-        if (child && typeof child === 'object' && eq(child, exemplar)) sites.push({ parent: value, key: index });
-        else visit(child);
-      }
-      return;
-    }
-    for (const [key, child] of Object.entries(value)) {
-      if (child && typeof child === 'object' && eq(child, exemplar)) sites.push({ parent: value, key });
-      else visit(child);
-    }
-  };
-  for (const schema of Object.values(schemas)) visit(schema);
-  if (sites.length < 2) return stats;
-
-  const name = availableComponentName(schemas, 'WorldMonitorChinaDatePrecision', exemplar);
-  schemas[name] ??= structuredClone(exemplar);
-  for (const { parent, key } of sites) {
-    parent[key] = { $ref: `#/components/schemas/${pointerSegment(name)}` };
-    stats.replacedRefs += 1;
   }
   return stats;
 }

@@ -10,13 +10,17 @@
  */
 export type AccessMode = 'public-demo' | 'partner';
 
+// `import.meta.env` only exists under Vite; node test runners and server
+// imports of this module see undefined and fall back to the default mode.
+const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
+
 export const ACCESS_MODE: AccessMode =
-  String(import.meta.env.VITE_ACCESS_MODE ?? '').trim().toLowerCase() === 'partner' ? 'partner' : 'public-demo';
+  String(env.VITE_ACCESS_MODE ?? '').trim().toLowerCase() === 'partner' ? 'partner' : 'public-demo';
 
 export const IS_PARTNER_MODE = ACCESS_MODE === 'partner';
 
 /** Where to send someone who needs access. Optional; the gate omits the link when unset. */
-export const PARTNER_CONTACT_EMAIL = String(import.meta.env.VITE_PARTNER_CONTACT_EMAIL ?? '').trim();
+export const PARTNER_CONTACT_EMAIL = String(env.VITE_PARTNER_CONTACT_EMAIL ?? '').trim();
 
 /**
  * A bootstrap read URL: the shared anonymous `&public=1` shape in demo mode,

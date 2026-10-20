@@ -341,7 +341,6 @@ const STANDALONE_KEYS = {
   climateZoneNormals:    'climate:zone-normals:v1',
   cableHealth:           'cable-health-v1',
   submarineCables:       'infrastructure:submarine-cables:v1',
-  temporalAnomalies:     'temporal:anomalies:v1',
   // Meta-only probes. The CPI and par-curve documents are sharded, and the
   // canonical curve is large enough to time out a health GET.
   usCpiMonthly:          'seed-meta:economic:us-cpi',
@@ -387,7 +386,6 @@ const STANDALONE_KEYS = {
   pipelinesGas:             'energy:pipelines:gas:v1',
   pipelinesOil:             'energy:pipelines:oil:v1',
   storageFacilities:        'energy:storage-facilities:v1',
-  fuelShortages:            'energy:fuel-shortages:v1',
   goldEtfFlows:             'market:gold-etf-flows:v1',
   goldCbReserves:           'market:gold-cb-reserves:v1',
   climateNewsRelayHeartbeat:     'relay:heartbeat:climate-news',
@@ -538,7 +536,6 @@ const SEED_META = {
   fxYoy:            { key: 'seed-meta:economic:fx-yoy',           maxStaleMin: 1500 }, // daily cron; 25h tolerance + 1h drift
   sharedFxRates:    { key: 'seed-meta:shared:fx-rates',           maxStaleMin: 3600 }, // daily seed; 60h tolerance covers a missed 25h cache refresh
   positiveGeoEvents:{ key: 'seed-meta:positive-events:geo',       maxStaleMin: 60 },
-  temporalAnomalies:{ key: 'seed-meta:temporal:anomalies',          maxStaleMin: 45 }, // rebuild-stamped ONLY (TEMPORAL_ANOMALIES_REBUILD_AFTER_MS=20min in infrastructure/v1/_shared.ts) — only producer-route traffic can rebuild and refresh this request-driven stamp, so a traffic lull can age it past 45min; 45min leaves ~2.25x margin. Data TTL is 60min so health reaches STALE_SEED before EMPTY. Content freshness is a separate clock: the producer stamps newestItemAt/maxContentAgeMin from all five COUNT_SOURCE_KEYS payloads (news, FIRMS, military flights, theater-posture vessels, AIS gaps — TEMPORAL_ANOMALIES_MAX_CONTENT_AGE_MIN); a frozen-but-200 upstream keeps fetchedAt fresh and reads STALE_CONTENT.
   weatherAlerts: {
     key: 'seed-meta:weather:alerts', maxStaleMin: 45,
     sourceFailure: {
@@ -835,7 +832,6 @@ const SEED_META = {
   pipelinesGas:         { key: 'seed-meta:energy:pipelines-gas',        maxStaleMin: 20_160 }, // 14d — weekly cron (7d) × 2 headroom
   pipelinesOil:         { key: 'seed-meta:energy:pipelines-oil',        maxStaleMin: 20_160 }, // 14d — same seed-pipelines.mjs publishes both keys
   storageFacilities:    { key: 'seed-meta:energy:storage-facilities',   maxStaleMin: 20_160 }, // 14d — weekly cron (7d) × 2 headroom
-  fuelShortages:        { key: 'seed-meta:energy:fuel-shortages',       maxStaleMin: 2880 },   // 2d — daily cron × 2 headroom (classifier-driven post-launch)
   climateNewsRelayHeartbeat:     { key: 'relay:heartbeat:climate-news',     maxStaleMin: 60 },  // 30m loop; 60m alarm
   staticRefBundleTick: {
     key: 'bundle:heartbeat:static-ref',
@@ -3544,9 +3540,9 @@ export async function handleHealth(req, ctx, options = {}) {
   // keys (LIST_DATA_KEYS) take LLEN instead; STRLEN would WRONGTYPE on them.
   // Mixed-ownership sweep (#7674): registry data keys, seed-meta, and
   // activation markers are written by the Railway seeder fleet and are read
-  // RAW (the fleet does not know the deployment prefix scheme). The two
-  // route-owned temporal keys are stamped by the prefix-aware
-  // list-temporal-anomalies route, so they must be read from this
+  // RAW (the fleet does not know the deployment prefix scheme). Route-owned
+  // keys (api/_redis-key-ownership.js, e.g. the cable-health snapshot) are
+  // stamped by prefix-aware RPC routes, so they must be read from this
   // deployment's own namespace — otherwise preview health classifies the
   // producer against the production stamp. Each key is finalized here and
   // the pipeline below is sent verbatim.

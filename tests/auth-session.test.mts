@@ -28,7 +28,6 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import { describe, it, before, after } from 'node:test';
 import { generateKeyPair, exportJWK, jwtVerify, SignJWT } from 'jose';
-import { TRUSTED_RETURN_URL_ORIGINS } from '../convex/payments/returnUrlOrigin.ts';
 import { userPrefsOptionsHttpHandler } from '../convex/http.ts';
 
 const EXPECTED_CLOCK_TOLERANCE_SECONDS = 5;
@@ -618,8 +617,8 @@ describe('validateBearerToken (with JWKS)', () => {
 
   // #8178 — Clerk browser session tokens set `azp` to the minting origin.
   // Bind once in validateBearerToken; fail open when the claim is absent.
-  it('accepts a browser token whose azp is a TRUSTED_RETURN_URL_ORIGINS host', async () => {
-    for (const azp of TRUSTED_RETURN_URL_ORIGINS) {
+  it('accepts a browser token whose azp is a production dashboard origin', async () => {
+    for (const azp of ['https://worldmonitor.app', 'https://www.worldmonitor.app', 'https://nuclear.worldmonitor.app']) {
       const token = await signToken({ sub: `user_azp_${new URL(azp).hostname}`, plan: 'pro', azp });
       const result = await validateBearerToken(token);
       assert.equal(result.valid, true, `expected trusted azp accepted: ${azp}`);

@@ -22,8 +22,6 @@ const guardedPaths = [
   '/api/internal-validate-api-key',
   '/api/internal-validate-embed-key',
   '/api/internal-get-key-owner',
-  '/relay/create-checkout',
-  '/relay/customer-portal',
   '/relay/bulk-suppress-emails',
 ];
 

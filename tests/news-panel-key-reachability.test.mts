@@ -61,7 +61,7 @@ const layoutSrc = src('src/app/panel-layout.ts');
 // and removes a way for the replay to diverge from production later.
 // ON_DEMAND_FEEDS is `{}` since the variant collapse, so it declares no preset
 // keys and `declaredPresetConsts` (which requires at least one key) skips it.
-const FEED_PRESETS = ['FULL_FEEDS', 'NUCLEAR_FEEDS'];
+const FEED_PRESETS = ['NUCLEAR_FEEDS'];
 const PANEL_PRESETS = ['FULL_PANELS', 'NUCLEAR_PANELS'];
 
 /**

@@ -38,10 +38,7 @@ const SERVER_FEEDS_PATH = resolve(__dirname, '../server/worldmonitor/news/v1/_fe
 // as deferred follow-ups (todos/257 item 9), not silent drift. Any
 // client key NOT in this allowlist must have a server match.
 const VARIANTS: Array<{ clientConst: string; serverKey: string; knownGapsClientOnly: string[] }> = [
-  { clientConst: 'FULL_FEEDS', serverKey: 'full', knownGapsClientOnly: [] },
-  // NUCLEAR_FEEDS is not asserted yet — server/worldmonitor/news/v1/_feeds.ts
-  // has no `nuclear` bucket map, so the nuclear hub resolves its headlines
-  // client-side. Add it here as soon as the server grows a nuclear block.
+  { clientConst: 'NUCLEAR_FEEDS', serverKey: 'nuclear', knownGapsClientOnly: [] },
 ];
 
 // Strip line + block comments so natural-language words in JSDoc/inline
@@ -219,7 +216,6 @@ describe('news panel ↔ feed coverage (panel-layout createNewsPanel ⇔ feeds.t
   // Every client-side variant feed map plus on-demand categories.
   // CANONICAL_FEEDS is their union (mergeCanonicalFeeds in feeds.ts).
   const ALL_FEED_CONSTS = [
-    'FULL_FEEDS',
     'NUCLEAR_FEEDS',
     'ON_DEMAND_FEEDS',
   ];

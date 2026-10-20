@@ -3,7 +3,7 @@
  *
  * `export-resolver.ts` next door is the pure decision chain, testable under
  * `tsx --test` with no DOM. This module is its reader: it snapshots the live
- * entitlement / billing / secret state and hands the resulting inputs to the
+ * entitlement / secret state and hands the resulting inputs to the
  * resolver, so the resolver never learns where its inputs come from.
  *
  * Split out of `panel-gating.ts` (#5813) once the third `readX`/`evaluateX`
@@ -15,8 +15,6 @@
  */
 
 import type { AuthSession } from '../auth-state';
-import { getSubscription } from '../billing';
-import { deriveBillingUxState } from '../billing-state';
 import { getEntitlementState } from '../entitlements';
 import { PanelGateReason } from '../panel-gating';
 import { getSecretState } from '../runtime-config';
@@ -70,7 +68,6 @@ function readExportGateInputs(authState: AuthSession): ExportGateInputs {
           maxDashboards: entitlement.features.maxDashboards,
         }
       : null,
-    billingState: deriveBillingUxState(getSubscription(), entitlement, Date.now()),
   };
 }
 

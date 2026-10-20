@@ -1,20 +1,12 @@
 /**
- * Frontend entitlement service with reactive ConvexClient subscription.
+ * Client entitlements for NucMonitor's partner access model.
  *
- * Uses the shared ConvexClient singleton from convex-client.ts to avoid
- * duplicate WebSocket connections. Subscribes to real-time entitlement
- * updates via Convex WebSocket. Falls back gracefully when VITE_CONVEX_URL
- * is not configured or ConvexClient is unavailable.
+ * There are no paid plans. Whoever reaches the dashboard has already passed the
+ * deployment's access gate (public demo, or a signed-in allowlisted partner —
+ * see src/services/partner-access.ts), so every feature is unlocked. The state
+ * is a constant "partner" grant rather than a Convex subscription; the module
+ * keeps its former API so feature checks across the app stay single-sourced.
  */
-
-import {
-  getConvexClient,
-  getConvexApi,
-  waitForConvexAuth,
-  waitForConvexAuthForUser,
-} from './convex-client';
-import { getCurrentClerkUser } from './clerk';
-import { hasAccountEmbedAccess } from '../../shared/embed-access';
 
 export interface EntitlementState {
   planKey: string;
@@ -67,11 +59,7 @@ export interface EntitlementState {
 
 /**
  * Account-scoped progress for resolving the current entitlement snapshot.
- *
- * `currentState === null` alone is ambiguous: it can mean that a signed-in
- * account is still moving through the bounded Clerk/Convex auth retries, or
- * that the handoff reached a terminal failure. Keep that distinction explicit
- * so billing UI never converts an in-flight retry into a failure message.
+ * The partner grant is static, so verification is always `ready`.
  */
 export type EntitlementVerificationStatus =
   | 'idle'
@@ -79,240 +67,75 @@ export type EntitlementVerificationStatus =
   | 'ready'
   | 'unavailable';
 
-// Module-level state
-let currentState: EntitlementState | null = null;
-const listeners = new Set<(state: EntitlementState | null) => void>();
-let verificationStatus: EntitlementVerificationStatus = 'idle';
-const verificationListeners = new Set<(status: EntitlementVerificationStatus) => void>();
-let initialized = false;
-let unsubscribeFn: (() => void) | null = null;
+/** The single access level: everything the app offers. */
+export const PARTNER_ENTITLEMENT: EntitlementState = Object.freeze({
+  planKey: 'partner',
+  features: Object.freeze({
+    tier: 3,
+    apiAccess: true,
+    apiRateLimit: 0,
+    maxDashboards: 50,
+    prioritySupport: true,
+    exportFormats: ['csv', 'json', 'pdf'],
+    mcpAccess: false,
+    dataExport: true,
+    embedAccess: true,
+  }),
+  validUntil: Number.MAX_SAFE_INTEGER,
+}) as EntitlementState;
 
-function setEntitlementVerificationStatus(status: EntitlementVerificationStatus): void {
-  if (verificationStatus === status) return;
-  verificationStatus = status;
-  for (const cb of verificationListeners) {
-    try {
-      cb(status);
-    } catch (err) {
-      console.warn('[entitlements] verification listener threw; continuing fan-out:', err);
-    }
-  }
-}
+export function beginEntitlementVerification(): void {}
 
-export function beginEntitlementVerification(): void {
-  setEntitlementVerificationStatus('pending');
-}
+export function markEntitlementVerificationUnavailable(): void {}
 
-export function markEntitlementVerificationUnavailable(): void {
-  if (currentState === null) setEntitlementVerificationStatus('unavailable');
-}
+export function resetEntitlementVerification(): void {}
 
-export function resetEntitlementVerification(): void {
-  setEntitlementVerificationStatus('idle');
-}
-
-/**
- * Fan a new snapshot out to every subscriber, isolating failures.
- *
- * One listener must not block the rest: subscribers are independent UI
- * surfaces, and an unguarded loop silently stops updating every listener
- * registered after the one that threw — a failure with no error path, since
- * the survivors just quietly hold their last verdict. Both emission sites
- * (the Convex watch below and `resetEntitlementState`) route through here so
- * they cannot drift apart on that guarantee.
- */
-function notifyListeners(state: EntitlementState | null): void {
-  for (const cb of listeners) {
-    try {
-      cb(state);
-    } catch (err) {
-      console.warn('[entitlements] listener threw; continuing fan-out:', err);
-    }
-  }
-}
-
-/**
- * Initialize the entitlement subscription for the authenticated user.
- * Idempotent — calling multiple times is a no-op after the first.
- * Failures are logged but never thrown (dashboard must not break).
- */
+/** No-op: the partner grant needs no subscription. Kept for existing callers. */
 export async function initEntitlementSubscription(
   _userId?: string,
-  isCurrent: () => boolean = () => true,
-): Promise<void> {
-  const isExpectedAccount = (): boolean => (
-    isCurrent() && (_userId === undefined || getCurrentClerkUser()?.id === _userId)
-  );
-  if (initialized || !isExpectedAccount()) return;
-  if (currentState === null) beginEntitlementVerification();
+  _isCurrent: () => boolean = () => true,
+): Promise<void> {}
 
-  try {
-    const client = await getConvexClient();
-    if (!client) {
-      console.log('[entitlements] No VITE_CONVEX_URL — skipping Convex subscription');
-      if (isExpectedAccount()) markEntitlementVerificationUnavailable();
-      return;
-    }
+export function destroyEntitlementSubscription(): void {}
 
-    const api = await getConvexApi();
-    if (!api) {
-      console.log('[entitlements] Could not load Convex API — skipping subscription');
-      if (isExpectedAccount()) markEntitlementVerificationUnavailable();
-      return;
-    }
+export function resetEntitlementState(): void {}
 
-    // Wait for Convex to confirm auth before subscribing. Otherwise the first
-    // getEntitlementsForUser snapshot runs unauthenticated and returns
-    // FREE_TIER_DEFAULTS, which can race with the post-payment panel gating
-    // decision (the UI renders as free before the auth-ready pro snapshot
-    // arrives). Unauthenticated visitors time out after 10s and we skip the
-    // subscription entirely — they don't need entitlement updates.
-    const authed = _userId
-      ? await waitForConvexAuthForUser(_userId, 10_000)
-      : await waitForConvexAuth(10_000);
-    if (!authed) {
-      console.log('[entitlements] Convex auth not established — skipping subscription');
-      if (isExpectedAccount()) markEntitlementVerificationUnavailable();
-      return;
-    }
-    if (!isExpectedAccount()) return;
-
-    const watch = client.onUpdate(
-      api.entitlements.getEntitlementsForUser,
-      {},
-      (result: EntitlementState | null) => {
-        if (!isExpectedAccount()) return;
-        currentState = result;
-        setEntitlementVerificationStatus('ready');
-        notifyListeners(result);
-      },
-      (err: Error) => {
-        if (!isExpectedAccount()) return;
-        console.warn('[entitlements] Subscription query error:', err.message);
-        markEntitlementVerificationUnavailable();
-      },
-    );
-
-    unsubscribeFn = watch.unsubscribe;
-    initialized = true;
-  } catch (err) {
-    console.error('[entitlements] Failed to initialize Convex subscription:', err);
-    if (isExpectedAccount()) markEntitlementVerificationUnavailable();
-    // Do not rethrow — entitlement service failure must not break the dashboard
-  }
-}
-
-/**
- * Tears down the entitlement subscription and clears all listeners.
- * Resets initialized flag so a new subscription can be started.
- * Does NOT null currentState — preserves the last known state across
- * destroy/reinit cycles (e.g. WebSocket reconnects) so paying users don't
- * see locked panels during backoff. Call resetEntitlementState() on sign-out.
- */
-export function destroyEntitlementSubscription(): void {
-  if (unsubscribeFn) {
-    unsubscribeFn();
-    unsubscribeFn = null;
-  }
-  // Keep listeners intact — PanelLayout registers them once and expects them
-  // to survive auth transitions. Only the Convex transport is torn down.
-  initialized = false;
-}
-
-/**
- * Explicitly nulls currentState. Call on sign-out to prevent the previous
- * user's entitlements from leaking into a subsequent session.
- * Distinct from destroyEntitlementSubscription() which preserves state for reconnects.
- *
- * Notifies listeners with `null` so UI that subscribed via onEntitlementChange
- * (e.g. Pro banner #5728) re-evaluates immediately. Without this, a sign-out
- * that only cleared state left free-tier surfaces stuck on the previous
- * account's premium snapshot until the next real Convex update.
- */
-export function resetEntitlementState(): void {
-  currentState = null;
-  notifyListeners(null);
-}
-
-/**
- * Register a callback for entitlement changes.
- * If entitlement state is already available, the callback fires immediately.
- * Returns an unsubscribe function.
- */
+/** Replays the constant grant; it never changes, so nothing else is emitted. */
 export function onEntitlementChange(
   cb: (state: EntitlementState | null) => void,
 ): () => void {
-  listeners.add(cb);
-
-  // Late subscribers get the current value immediately
-  if (currentState !== null) {
-    cb(currentState);
-  }
-
-  return () => {
-    listeners.delete(cb);
-  };
+  cb(PARTNER_ENTITLEMENT);
+  return () => {};
 }
 
-/**
- * Register a callback for entitlement-verification progress.
- * The current status is replayed immediately so late UI subscribers cannot
- * recreate a local timeout with a different lifecycle.
- */
 export function onEntitlementVerificationChange(
   cb: (status: EntitlementVerificationStatus) => void,
 ): () => void {
-  verificationListeners.add(cb);
-  cb(verificationStatus);
-  return () => {
-    verificationListeners.delete(cb);
-  };
+  cb('ready');
+  return () => {};
 }
 
 export function getEntitlementVerificationStatus(): EntitlementVerificationStatus {
-  return verificationStatus;
+  return 'ready';
 }
 
-/**
- * Returns the current entitlement state, or null if not yet loaded.
- */
 export function getEntitlementState(): EntitlementState | null {
-  return currentState;
+  return PARTNER_ENTITLEMENT;
 }
 
-/**
- * Check whether a specific feature flag is truthy in the current entitlement state.
- */
 export function hasFeature(flag: keyof EntitlementState['features']): boolean {
-  if (currentState === null) return false;
-  return Boolean(currentState.features[flag]);
+  return Boolean(PARTNER_ENTITLEMENT.features[flag]);
 }
 
-/**
- * Check the account-level embed grant from both verified auth authorities.
- * Clerk's current PRO role must not wait for the Convex snapshot to hydrate.
- */
-export function hasEmbedAccessForAccount(role: 'free' | 'pro' | undefined): boolean {
-  return hasAccountEmbedAccess(role, currentState, Date.now());
+export function hasEmbedAccessForAccount(_role: 'free' | 'pro' | undefined): boolean {
+  return true;
 }
 
-/**
- * Check whether the user's tier meets or exceeds the given minimum.
- */
 export function hasTier(minTier: number): boolean {
-  if (currentState === null) return false;
-  return currentState.features.tier >= minTier;
+  return PARTNER_ENTITLEMENT.features.tier >= minTier;
 }
 
-/**
- * The "is this a paying user" predicate, over an injected snapshot and clock.
- *
- * Split out of `isEntitled()` so tests can evaluate the REAL rule against a
- * snapshot they control — `currentState` is module-private and has no setter,
- * so the alternative is re-implementing these three conditions in a mock,
- * where they silently drift the moment this rule changes (#5632).
- * @internal Only intended to be called by `isEntitled()` and test seams.
- */
+/** @internal Snapshot predicate kept for shared callers and tests. */
 export function isEntitlementActive(
   state: EntitlementState | null,
   now: number,
@@ -320,29 +143,13 @@ export function isEntitlementActive(
   return state !== null && state.planKey !== 'free' && state.validUntil >= now;
 }
 
-/**
- * Simple "is this a paying user" check.
- * Returns true if entitlement data exists, plan is not free, and hasn't expired.
- */
 export function isEntitled(): boolean {
-  return isEntitlementActive(currentState, Date.now());
+  return true;
 }
 
-/**
- * Decides whether to reload the page when an entitlement snapshot arrives.
- *
- * Rules:
- *   - First snapshot ever (last === null): never reload. A legacy-pro user
- *     whose first snapshot is already `true` must not trigger a reload loop
- *     on every page load.
- *   - Free → pro transition (last === false, next === true): reload. This is
- *     the post-payment activation case — panels rendered against free-tier
- *     gating need to re-render to pick up the new entitlement.
- *   - Everything else (free→free, pro→pro, pro→free): no reload.
- */
 export function shouldReloadOnEntitlementChange(
-  last: boolean | null,
-  next: boolean,
+  _last: boolean | null,
+  _next: boolean,
 ): boolean {
-  return last === false && next === true;
+  return false;
 }

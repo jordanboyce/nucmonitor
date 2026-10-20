@@ -268,3 +268,91 @@
 .popup-links { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; }
 .popup-links a { color: var(--nuc-accent); }
 .popup-tag { opacity: 0.75; }
+
+/* ── site risk: toolbar, status, detail drawer (nuclear-site-ui.ts) ───── */
+.nsu-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.nsu-filter {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  color: var(--text-secondary, #bbb);
+  max-width: 160px;
+}
+.nsu-toggle, .nsu-export {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--text-secondary, #bbb);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nsu-toggle.active { background: var(--nuc-accent-dim); border-color: var(--nuc-accent); color: var(--text-primary, #fff); }
+.nsu-export { margin-left: auto; border-color: var(--nuc-accent); color: var(--nuc-accent); }
+.nsu-export:hover { background: var(--nuc-accent-dim); }
+.nsu-count { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.nsu-star {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim, #888);
+  cursor: pointer;
+}
+.nsu-star.active { color: var(--nuc-accent); }
+.nsu-star-cell { width: 18px; padding-right: 0 !important; }
+.nsu-status {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.nsu-status-warning { background: var(--nuc-critical); color: #fff; }
+.nsu-status-watch { background: var(--nuc-high); color: #000; }
+.nsu-status-normal { background: transparent; color: var(--nuc-ok); border: 1px solid var(--nuc-ok); }
+.nfh-row-warning .nfh-facility-name { color: var(--nuc-critical); }
+.nfh-row-watch .nfh-facility-name { color: var(--nuc-high); }
+.nsu-epz-cell { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nsu-quiet { color: var(--text-dim, #888); }
+.nsu-of { font-size: 11px; color: var(--text-dim, #888); font-weight: 400; }
+.nsu-detail { display: flex; flex-direction: column; gap: 6px; }
+.nsu-detail-head { display: flex; align-items: baseline; gap: 8px; font-size: 11px; }
+.nsu-reasons { color: var(--text-secondary, #bbb); }
+.nsu-epz { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-secondary, #bbb); }
+.nsu-zone {
+  display: inline-block;
+  font-size: 9px;
+  padding: 0 4px;
+  margin-right: 4px;
+  border-radius: 3px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
+  color: var(--text-dim, #888);
+}
+.nsu-zone-plume { border-color: var(--nuc-critical); color: var(--nuc-critical); }
+.nsu-zone-ingestion { border-color: #3498db; color: #3498db; }
+.nsu-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.nsu-links a { color: var(--nuc-accent); }
+.nsu-buttons { display: flex; gap: 6px; align-items: center; }

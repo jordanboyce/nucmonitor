@@ -3,9 +3,6 @@ import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { bindActivationKeys } from '@/utils/activation';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 import {
-  getNrcRegion,
-  NRC_REGION_NAMES,
-  nrcDocketUrl,
   summarizeUsNuclearFleet,
   US_NUCLEAR_FACILITIES,
   US_NUCLEAR_REGISTRY_AS_OF,
@@ -14,6 +11,22 @@ import {
   type UsNuclearFacility,
   type UsNuclearFacilityCategory,
 } from '@/config/us-nuclear-facilities';
+import { nuclearSiteRiskStore, type SiteRiskSnapshot } from '@/services/nuclear-site-risk-store';
+import type { SiteRiskSummary } from '@/services/nuclear-site-risk';
+import { NUCLEAR_WATCHLIST_CHANGED_EVENT } from '@/services/nuclear-watchlist';
+import {
+  applyFilterControl,
+  handleSiteAction,
+  matchesSiteFilters,
+  renderFacilityDetail,
+  renderSiteFilterToolbar,
+  renderStatusBadge,
+  renderWatchStar,
+  sortSites,
+  watchlistSnapshot,
+  type FacilityLocateHandler,
+  type SiteFilters,
+} from './nuclear-site-ui';
 
 type CategoryFilter = UsNuclearFacilityCategory | 'all';
 
@@ -60,10 +73,13 @@ function unitsSummary(f: UsNuclearFacility): string {
  * fleet statistics, NRC docket links, and map focus.
  */
 export class NuclearFacilityDirectoryPanel extends Panel {
-  private category: CategoryFilter = 'power-reactor';
   private query = '';
   private expandedId: string | null = null;
-  private onLocationClick?: (lat: number, lon: number) => void;
+  private onLocationClick?: FacilityLocateHandler;
+  private filters: SiteFilters = { category: 'power-reactor', state: '', region: 0, status: 'all', watchlistOnly: false, sort: 'state' };
+  private snapshot: SiteRiskSnapshot = nuclearSiteRiskStore.getSnapshot();
+  private readonly unsubscribe: () => void;
+  private readonly onWatchlistChanged = () => this.render();
 
   constructor() {
     super({
@@ -81,20 +97,24 @@ export class NuclearFacilityDirectoryPanel extends Panel {
       const target = e.target as HTMLElement;
       const chip = target.closest<HTMLElement>('.nfd-cat');
       if (chip?.dataset.category) {
-        this.category = chip.dataset.category as CategoryFilter;
+        this.filters.category = chip.dataset.category as CategoryFilter;
         this.expandedId = null;
         this.render();
         return;
       }
-      const locate = target.closest<HTMLElement>('.nfd-locate');
-      if (locate) {
-        e.stopPropagation();
-        const lat = Number(locate.dataset.lat);
-        const lon = Number(locate.dataset.lon);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) this.onLocationClick?.(lat, lon);
+      if (applyFilterControl(target, this.filters)) {
+        this.render();
         return;
       }
-      if (target.closest('a') || target.closest('input')) return;
+      if (handleSiteAction(target, {
+        getSummary: (id) => this.snapshot.byId.get(id),
+        getExportRows: () => this.visible().map((f) => this.summaryFor(f)),
+        onLocate: (lat, lon, id) => this.onLocationClick?.(lat, lon, id),
+      })) {
+        e.stopPropagation();
+        return;
+      }
+      if (target.closest('a') || target.closest('input') || target.closest('select')) return;
       const row = target.closest<HTMLElement>('.nfd-row');
       if (row?.dataset.facility) {
         this.expandedId = this.expandedId === row.dataset.facility ? null : row.dataset.facility;
@@ -107,19 +127,39 @@ export class NuclearFacilityDirectoryPanel extends Panel {
       this.query = input.value.trim().toLowerCase();
       this.renderList();
     });
+    this.content.addEventListener('change', (e) => {
+      if (applyFilterControl(e.target as HTMLElement, this.filters)) this.render();
+    });
     bindActivationKeys(this.content, '.nfd-row');
+    this.unsubscribe = nuclearSiteRiskStore.subscribe((snapshot) => {
+      this.snapshot = snapshot;
+      this.renderList();
+    });
+    window.addEventListener(NUCLEAR_WATCHLIST_CHANGED_EVENT, this.onWatchlistChanged);
     this.render();
   }
 
-  public setLocationClickHandler(handler: (lat: number, lon: number) => void): void {
+  public setLocationClickHandler(handler: FacilityLocateHandler): void {
     this.onLocationClick = handler;
+  }
+
+  public override destroy(): void {
+    this.unsubscribe();
+    window.removeEventListener(NUCLEAR_WATCHLIST_CHANGED_EVENT, this.onWatchlistChanged);
+    super.destroy();
+  }
+
+  private summaryFor(f: UsNuclearFacility): SiteRiskSummary {
+    // Every registry facility has a summary once the store has computed; the
+    // initial snapshot also covers all facilities with a quiet status.
+    return this.snapshot.byId.get(f.id)!;
   }
 
   /** Expand and reveal a facility (used by map popups and command palette deep links). */
   public focusFacility(id: string): void {
     const f = US_NUCLEAR_FACILITIES.find((x) => x.id === id);
     if (!f) return;
-    this.category = 'all';
+    this.filters = { ...this.filters, category: 'all', state: '', region: 0, status: 'all', watchlistOnly: false };
     this.query = '';
     this.expandedId = id;
     this.render();
@@ -127,9 +167,12 @@ export class NuclearFacilityDirectoryPanel extends Panel {
   }
 
   private visible(): UsNuclearFacility[] {
-    return US_NUCLEAR_FACILITIES
-      .filter((f) => (this.category === 'all' || f.category === this.category) && matchesQuery(f, this.query))
-      .sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name));
+    const watchlist = watchlistSnapshot();
+    const items = US_NUCLEAR_FACILITIES
+      .filter((f) => matchesQuery(f, this.query) && matchesSiteFilters(f, this.snapshot.byId.get(f.id), this.filters, watchlist))
+      .map((f) => ({ facility: f, summary: this.snapshot.byId.get(f.id) }));
+    sortSites(items, this.filters.sort);
+    return items.map((i) => i.facility);
   }
 
   private renderList(): void {
@@ -145,52 +188,31 @@ export class NuclearFacilityDirectoryPanel extends Panel {
   private listHtml(): string {
     const items = this.visible();
     if (items.length === 0) return '<div class="panel-empty">No facilities match.</div>';
+    const watchlist = watchlistSnapshot();
+    const live = this.snapshot.ready;
     const rows = items.map((f) => {
-      const region = getNrcRegion(f.state);
       const expanded = this.expandedId === f.id;
-      const units = f.units ?? [];
+      const summary = this.snapshot.byId.get(f.id);
       const detail = expanded
-        ? `<tr class="nfd-detail"><td colspan="3">
-            ${f.notes ? `<p class="nfd-notes">${escapeHtml(f.notes)}</p>` : ''}
-            <div class="nfd-detail-grid">
-              <div><span class="nfd-detail-label">Operator</span><span>${escapeHtml(f.operator)}</span></div>
-              <div><span class="nfd-detail-label">Regulator</span><span>${escapeHtml(f.regulator)}${region ? ` · NRC ${escapeHtml(NRC_REGION_NAMES[region])}` : ''}</span></div>
-              <div><span class="nfd-detail-label">Status</span><span>${escapeHtml(US_NUCLEAR_STATUS_LABELS[f.status])}</span></div>
-              <div><span class="nfd-detail-label">Location</span><span>${escapeHtml(f.city ? `${f.city}, ${f.state}` : f.state)} · ${f.lat.toFixed(3)}, ${f.lon.toFixed(3)}</span></div>
-              ${f.docket ? `<div><span class="nfd-detail-label">Docket</span><span><a href="${nrcDocketUrl(f.docket)}" target="_blank" rel="noopener">${escapeHtml(f.docket)}</a></span></div>` : ''}
-              ${f.isfsi ? '<div><span class="nfd-detail-label">Spent fuel</span><span>Dry storage (ISFSI) on site</span></div>' : ''}
-            </div>
-            ${units.length ? `<table class="nfd-units"><thead><tr><th>Unit</th><th>Type</th><th>MWe</th><th>Status</th><th>License</th><th>Docket</th></tr></thead><tbody>
-              ${units.map((u) => `<tr>
-                <td>${escapeHtml(u.name)}</td>
-                <td>${escapeHtml(u.type)}</td>
-                <td>${u.netMwe ?? (u.thermalMw !== undefined ? `${u.thermalMw} MWt` : '—')}</td>
-                <td><span class="nfd-unit-status nfd-unit-${u.status}">${escapeHtml(u.status)}${u.shutdownYear ? ` ${u.shutdownYear}` : ''}</span></td>
-                <td>${u.licenseExpires ?? '—'}</td>
-                <td>${u.docket ? `<a href="${nrcDocketUrl(u.docket)}" target="_blank" rel="noopener">${escapeHtml(u.docket)}</a>` : '—'}</td>
-              </tr>`).join('')}
-            </tbody></table>` : ''}
-            <div class="nfd-detail-footer">
-              ${f.url ? `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener">Reference page</a>` : ''}
-              <button type="button" class="nfd-locate" data-lat="${f.lat}" data-lon="${f.lon}">Show on map</button>
-            </div>
-          </td></tr>`
+        ? `<tr class="nfd-detail"><td colspan="5">${renderFacilityDetail(f, summary, watchlist.has(f.id))}</td></tr>`
         : '';
       return `
         <tr class="nfd-row nfd-row-${f.category}${expanded ? ' expanded' : ''}" data-facility="${escapeHtml(f.id)}" tabindex="0" aria-expanded="${expanded}">
+          <td class="nsu-star-cell">${renderWatchStar(f.id, watchlist.has(f.id))}</td>
           <td class="nfd-name"><div class="nfd-name-main">${escapeHtml(f.name)}</div><div class="nfd-name-meta">${escapeHtml(f.city ? `${f.city}, ${f.state}` : f.state)} · ${escapeHtml(f.operator)}</div></td>
           <td class="nfd-cat-cell"><span class="nfd-cat-badge nfd-cat-${f.category}">${escapeHtml(CATEGORY_SHORT[f.category])}</span><span class="nfd-status">${escapeHtml(US_NUCLEAR_STATUS_LABELS[f.status])}</span></td>
           <td class="nfd-units-cell">${escapeHtml(unitsSummary(f))}</td>
+          <td class="nfd-hazard-cell">${live && summary ? renderStatusBadge(summary.status) : '<span class="nsu-quiet">—</span>'}</td>
         </tr>${detail}`;
     }).join('');
-    return `<table class="nfd-table"><thead><tr><th>Facility</th><th>Category</th><th>Units</th></tr></thead><tbody>${rows}</tbody></table>`;
+    return `<table class="nfd-table"><thead><tr><th aria-label="My sites"></th><th>Facility</th><th>Category</th><th>Units</th><th>Hazards</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   private render(): void {
     const fleet = summarizeUsNuclearFleet();
     const chips = CATEGORY_ORDER.map((c) => {
       const count = c === 'all' ? US_NUCLEAR_FACILITIES.length : US_NUCLEAR_FACILITIES.filter((f) => f.category === c).length;
-      return `<button type="button" class="nfd-cat${this.category === c ? ' active' : ''}" data-category="${c}">${escapeHtml(CATEGORY_SHORT[c])} <span class="nfd-cat-count">${count}</span></button>`;
+      return `<button type="button" class="nfd-cat${this.filters.category === c ? ' active' : ''}" data-category="${c}">${escapeHtml(CATEGORY_SHORT[c])} <span class="nfd-cat-count">${count}</span></button>`;
     }).join('');
 
     const html = `
@@ -206,6 +228,7 @@ export class NuclearFacilityDirectoryPanel extends Panel {
         <input type="search" class="nfd-search" placeholder="Search name, state, operator, docket…" value="${escapeHtml(this.query)}" aria-label="Search facilities">
       </div>
       <div class="nfd-cats">${chips}</div>
+      ${renderSiteFilterToolbar(this.filters, { showCategory: false, watchCount: watchlistSnapshot().size })}
       <div class="nfd-list">${this.listHtml()}</div>
       <div class="nfd-footer">Registry reviewed ${escapeHtml(US_NUCLEAR_REGISTRY_AS_OF)} · <a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcOperatingReactors}" target="_blank" rel="noopener">NRC operating reactors</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcFacilityLocator}" target="_blank" rel="noopener">NRC facility locator</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.doeSites}" target="_blank" rel="noopener">DOE sites</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.iaeaPris}" target="_blank" rel="noopener">IAEA PRIS</a></div>
     `;

@@ -1,4 +1,5 @@
 import type { AppContext, AppModule } from '@/app/app-context';
+import { nuclearSiteRiskStore } from '@/services/nuclear-site-risk-store';
 import { enqueuePanelCall, invokePanelMethod } from '@/app/pending-panel-data';
 import { markLcpDebug } from '@/utils/lcp-debug';
 import { runHydrationTier, type HydrationTask } from '@/app/hydration-scheduler';
@@ -1731,7 +1732,7 @@ export class DataLoaderManager implements AppModule {
     if (earthquakeResult.status === 'fulfilled') {
       this.ctx.intelligenceCache.earthquakes = earthquakeResult.value;
       this.ctx.map?.setEarthquakes(earthquakeResult.value);
-      this.callPanel('nuclear-hazards', 'setEarthquakes', earthquakeResult.value);
+      nuclearSiteRiskStore.setEarthquakes(earthquakeResult.value);
       this.ctx.statusPanel?.updateApi('USGS', { status: 'ok' });
       dataFreshness.recordUpdate('usgs', earthquakeResult.value.length);
     } else {
@@ -1743,7 +1744,7 @@ export class DataLoaderManager implements AppModule {
 
     if (eonetResult.status === 'fulfilled') {
       this.ctx.map?.setNaturalEvents(eonetResult.value);
-      this.callPanel('nuclear-hazards', 'setNaturalEvents', eonetResult.value);
+      nuclearSiteRiskStore.setNaturalEvents(eonetResult.value);
       this.ctx.statusPanel?.updateFeed('EONET', {
         status: 'ok',
         itemCount: eonetResult.value.length,
@@ -1775,7 +1776,7 @@ export class DataLoaderManager implements AppModule {
     try {
       const alerts = await fetchWeatherAlerts();
       this.ctx.map?.setWeatherAlerts(alerts);
-      this.callPanel('nuclear-hazards', 'setWeatherAlerts', alerts);
+      nuclearSiteRiskStore.setWeatherAlerts(alerts);
       this.ctx.map?.setLayerReady('weather', alerts.length > 0);
       this.ctx.statusPanel?.updateFeed('Weather', { status: 'ok', itemCount: alerts.length });
       dataFreshness.recordUpdate('weather', alerts.length);
@@ -1793,6 +1794,7 @@ export class DataLoaderManager implements AppModule {
       try {
         const outages = await fetchInternetOutages();
         this.ctx.intelligenceCache.outages = outages;
+        nuclearSiteRiskStore.setOutages(outages);
         dataFreshness.recordUpdate('outages', outages.length);
         if (this.ctx.mapLayers.outages) {
           this.ctx.map?.setOutages(outages);
@@ -1845,6 +1847,7 @@ export class DataLoaderManager implements AppModule {
   async loadOutages(): Promise<void> {
     if (this.ctx.intelligenceCache.outages) {
       const outages = this.ctx.intelligenceCache.outages;
+      nuclearSiteRiskStore.setOutages(outages);
       this.ctx.map?.setOutages(outages);
       this.ctx.map?.setLayerReady('outages', outages.length > 0);
       this.ctx.statusPanel?.updateFeed('NetBlocks', { status: 'ok', itemCount: outages.length });
@@ -1853,6 +1856,7 @@ export class DataLoaderManager implements AppModule {
     try {
       const outages = await fetchInternetOutages();
       this.ctx.intelligenceCache.outages = outages;
+      nuclearSiteRiskStore.setOutages(outages);
       this.ctx.map?.setOutages(outages);
       this.ctx.map?.setLayerReady('outages', outages.length > 0);
       this.ctx.statusPanel?.updateFeed('NetBlocks', { status: 'ok', itemCount: outages.length });
@@ -2027,7 +2031,7 @@ export class DataLoaderManager implements AppModule {
 
         const mapFires = toMapFires(flat);
         this.ctx.map?.setFires(mapFires);
-        this.callPanel('nuclear-hazards', 'setFires', mapFires);
+        nuclearSiteRiskStore.setFires(mapFires);
 
         (this.ctx.panels['satellite-fires'] as SatelliteFiresPanel)?.update(stats, totalCount);
 
@@ -2062,7 +2066,7 @@ export class DataLoaderManager implements AppModule {
       const result = await fetchRadiationWatch();
       const anomalies = result.observations.filter((observation) => observation.severity !== 'normal');
       this.callPanel('radiation-watch', 'setData', result);
-      this.callPanel('nuclear-hazards', 'setRadiation', result.observations);
+      nuclearSiteRiskStore.setRadiation(result.observations);
       this.ctx.intelligenceCache.radiation = result;
       this.ctx.map?.setRadiationObservations(anomalies);
       this.ctx.map?.setLayerReady('radiationWatch', anomalies.length > 0);

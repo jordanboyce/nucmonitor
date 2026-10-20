@@ -22,40 +22,35 @@ function settings(entries: Record<string, boolean>): Record<string, PanelConfig>
 
 describe('getVariantPanelCategories', () => {
   it('drops categories with no enabled panel', () => {
-    const result = getVariantPanelCategories(settings({ cii: false, intel: false }), 'full');
+    const result = getVariantPanelCategories(settings({ 'nuclear-reactor-status': false, 'nuclear-events': false }), 'nuclear');
     assert.equal(result.length, 0);
   });
 
   it('includes a category once any of its panels is enabled', () => {
-    const result = getVariantPanelCategories(settings({ cii: true, intel: false }), 'full');
-    assert.deepEqual(result.map((c) => c.key), ['intelligence']);
-    assert.equal(result[0]!.labelKey, PANEL_CATEGORY_MAP['intelligence']!.labelKey);
-    assert.deepEqual(result[0]!.panelKeys, PANEL_CATEGORY_MAP['intelligence']!.panelKeys);
+    const result = getVariantPanelCategories(settings({ 'nuclear-reactor-status': true, 'nuclear-events': false }), 'nuclear');
+    assert.deepEqual(result.map((c) => c.key), ['nuclearHub']);
+    assert.equal(result[0]!.labelKey, PANEL_CATEGORY_MAP['nuclearHub']!.labelKey);
+    assert.deepEqual(result[0]!.panelKeys, PANEL_CATEGORY_MAP['nuclearHub']!.panelKeys);
   });
 
   it('panels absent from settings never activate a category', () => {
-    // cii enabled=true but the category lookup goes through settings — a
-    // panel key that is missing entirely must not count as enabled.
-    const result = getVariantPanelCategories(settings({ 'not-a-real-panel': true }), 'full');
+    // A panel key that is missing entirely must not count as enabled.
+    const result = getVariantPanelCategories(settings({ 'not-a-real-panel': true }), 'nuclear');
     assert.equal(result.length, 0);
   });
 
-  it('respects variant scoping (nuclearHub is nuclear-only, intelligence is full-only)', () => {
+  it('respects variant scoping (nuclearHub is nuclear-only)', () => {
     const hub = settings({ 'nuclear-reactor-status': true });
     assert.deepEqual(PANEL_CATEGORY_MAP['nuclearHub']!.variants, ['nuclear'], 'fixture assumption');
+    // A persisted or URL-borne upstream variant id must not light up nuclear categories.
     assert.ok(!getVariantPanelCategories(hub, 'full').some((c) => c.key === 'nuclearHub'));
     assert.ok(getVariantPanelCategories(hub, 'nuclear').some((c) => c.key === 'nuclearHub'));
-
-    const intel = settings({ cii: true });
-    assert.deepEqual(PANEL_CATEGORY_MAP['intelligence']!.variants, ['full'], 'fixture assumption');
-    assert.ok(getVariantPanelCategories(intel, 'full').some((c) => c.key === 'intelligence'));
-    assert.ok(!getVariantPanelCategories(intel, 'nuclear').some((c) => c.key === 'intelligence'));
   });
 
-  it('unscoped categories (core) are available to every variant', () => {
+  it('unscoped categories (core) are available to every variant id', () => {
     assert.equal(PANEL_CATEGORY_MAP['core']!.variants, undefined, 'core stays unscoped');
-    const enabled = settings({ 'live-news': true });
-    for (const variant of ['full', 'nuclear']) {
+    const enabled = settings({ 'nuclear-headlines': true });
+    for (const variant of ['nuclear', 'full']) {
       const result = getVariantPanelCategories(enabled, variant);
       assert.ok(
         result.some((c) => c.key === 'core'),
@@ -64,13 +59,10 @@ describe('getVariantPanelCategories', () => {
     }
   });
 
-  // Chip-clutter guardrail: before the variants tags were populated, every
-  // variant surfaced 10-15 categories (incl. two distinct chips both labeled
-  // "Markets") because cross-variant panel keys lit up foreign categories.
-  // The mobile nav and the settings filter both depend on this curation.
+  // Chip-clutter guardrail: the mobile nav and the settings filter both depend
+  // on this curation.
   it('variant defaults yield the curated category set, free of duplicate labels', () => {
     const expected: Record<string, string[]> = {
-      full: ['core', 'intelligence', 'correlation', 'regionalNews', 'marketsFinance', 'topical', 'dataTracking'],
       nuclear: ['core', 'nuclearHub', 'nuclearNews'],
     };
     assert.deepEqual(Object.keys(VARIANT_DEFAULTS).sort(), Object.keys(expected).sort(), 'every variant with defaults is covered');
@@ -91,39 +83,31 @@ describe('getVariantPanelCategories', () => {
         Object.values(PANEL_CATEGORY_MAP).flatMap((def) => def.panelKeys.map((k) => [k, true])),
       ),
     );
-    const keys = getVariantPanelCategories(all, 'full').map((c) => c.key);
+    const keys = getVariantPanelCategories(all, 'nuclear').map((c) => c.key);
     const expected = Object.keys(PANEL_CATEGORY_MAP).filter((k) => keys.includes(k));
     assert.deepEqual(keys, expected);
+    assert.equal(keys.length, Object.keys(PANEL_CATEGORY_MAP).length, 'every category applies to nuclear');
   });
 });
 
 describe('getProPanelKeys (mobile nav PRO chip)', () => {
-  // NOTE: runs on the web surface (no Tauri under tsx) — desktop-only
-  // premium fields (`_desktop && {...}` in panels.ts) are absent here, so
-  // assertions cover the web gating shape.
-  it('includes enabled premium panels, excludes free and disabled ones', () => {
-    const result = getProPanelKeys(settings({
-      'stock-analysis': true,   // premium: 'locked' on all surfaces
-      'chat-analyst': true,     // premium: 'locked' on all surfaces
-      'daily-market-brief': false, // premium but disabled
-      intel: true,              // free panel
-    }), 'full');
-    assert.deepEqual(result.sort(), ['chat-analyst', 'stock-analysis']);
-  });
-
-  it('drops unknown keys (custom widgets / MCP panels)', () => {
-    const result = getProPanelKeys(settings({ 'cw-abc123': true, 'mcp-panel-1': true }), 'full');
-    assert.deepEqual(result, []);
-  });
-
-  it('full-variant defaults surface a non-empty premium suite', () => {
+  // NucMonitor's catalog carries no premium panel (one partner entitlement
+  // covers the dashboard), so the PRO chip must never light up from it.
+  it('surfaces no premium panel from the nuclear catalog, enabled or not', () => {
     const enabledDefaults = settings(
-      Object.fromEntries((VARIANT_DEFAULTS['full'] ?? []).map((k: string) => [k, true])),
+      Object.fromEntries((VARIANT_DEFAULTS['nuclear'] ?? []).map((k: string) => [k, true])),
     );
-    const result = getProPanelKeys(enabledDefaults, 'full');
-    assert.ok(result.includes('stock-analysis'));
-    assert.ok(result.includes('chat-analyst'));
-    assert.ok(result.length >= 5, `expected a meaningful premium suite, got ${result.join(', ')}`);
+    assert.deepEqual(getProPanelKeys(enabledDefaults, 'nuclear'), []);
+  });
+
+  it('drops unknown keys (custom widgets / MCP panels / retired premium panels)', () => {
+    const result = getProPanelKeys(settings({
+      'cw-abc123': true,
+      'mcp-panel-1': true,
+      'stock-analysis': true,
+      'chat-analyst': true,
+    }), 'nuclear');
+    assert.deepEqual(result, []);
   });
 });
 

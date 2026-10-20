@@ -417,13 +417,13 @@ describe('news panel key reachability (#5871)', () => {
     // Spot-check both presets on each side, so a parser that silently stopped
     // seeing NUCLEAR_* (or FULL_*) fails here rather than vacuously passing the
     // reachability assertion with an empty work-list.
-    for (const key of ['politics', 'energy', 'live-news', 'nuclear-regulatory']) {
+    for (const key of ['energy', 'nuclear-headlines', 'nuclear-regulatory']) {
       assert.ok(feedCategories.has(key), `expected '${key}' among feed categories`);
     }
-    for (const key of ['markets', 'heatmap', 'energy', 'live-news', 'climate-news', 'nuclear-reactor-status']) {
+    for (const key of ['commodities', 'energy', 'nuclear-headlines', 'climate-news', 'nuclear-reactor-status']) {
       assert.ok(catalogPanelKeys.has(key), `expected '${key}' in the panel catalog`);
     }
-    for (const key of ['heatmap', 'markets', 'energy', 'live-news', 'nuclear-regulatory']) {
+    for (const key of ['commodities', 'energy', 'nuclear-headlines', 'nuclear-regulatory', 'climate-news']) {
       assert.ok(registrations.some((registration) => registration.key === key), `expected '${key}' among panel registrations`);
     }
   });
@@ -463,20 +463,24 @@ describe('news panel key reachability (#5871)', () => {
     );
   });
 
-  it('creates a direct NewsPanel for every unclaimed full/nuclear feed category in the catalog', () => {
+  it('creates a direct NewsPanel for every unclaimed feed category in the catalog', () => {
     // The live catalog no longer has a data-panel/feed-category collision with a
     // `${key}-news` outlet (those were finance/commodity entries, removed with
-    // the NucMonitor variant collapse), so the replay's observable work is the
-    // direct path: a category with a catalog entry that nothing registered
-    // above the loop must come out under its own key, and a category that a
-    // dedicated createNewsPanel(...) already renders must not be duplicated.
+    // the NucMonitor variant collapse). Every NucMonitor feed category is now
+    // rendered by its own createNewsPanel(...) above the loop, so the pass must
+    // create nothing — and each category must still render somewhere.
     const created = replayNewsPanelPass();
     // Any dedicated registration — above the loop (claimed) or below it
-    // (late-registered, e.g. live-news) — takes the key out of the pass's hands.
+    // (late-registered) — takes the key out of the pass's hands.
     const expectDirect = [...feedCategories]
       .filter(key => catalogPanelKeys.has(key) && !dedicatedPanelKeys.has(key))
       .sort();
-    assert.ok(expectDirect.length > 0, 'vacuity guard: the catalog must leave the pass at least one category to create');
+    for (const key of feedCategories) {
+      assert.ok(
+        created.has(key) || registrations.some(reg => reg.viaCreateNewsPanel && reg.key === key && reg.index < loopIndex),
+        `feed category '${key}' renders nowhere`,
+      );
+    }
     for (const key of expectDirect) {
       assert.equal(created.get(key), key, `expected '${key}' to be created under its own key`);
     }
@@ -506,7 +510,7 @@ describe('news panel key reachability (#5871)', () => {
     // #4382, which is what happened to `live-news`). `LATE_REGISTERED_PANEL_KEYS`
     // is the hand-maintained half; this binds it to the actual source order, so
     // moving a panel below the loop — or dropping a key from the set — fails here.
-    const declaredBlock = layoutSrc.match(/LATE_REGISTERED_PANEL_KEYS\s*=\s*new Set\(\[([^\]]*)\]\)/);
+    const declaredBlock = layoutSrc.match(/LATE_REGISTERED_PANEL_KEYS\s*=\s*new Set(?:<string>)?\(\[([^\]]*)\]\)/);
     assert.ok(declaredBlock, 'LATE_REGISTERED_PANEL_KEYS declaration not found in panel-layout.ts');
     const declared = [...declaredBlock[1]!.matchAll(/'([^']+)'/g)].map(m => m[1]!).sort();
     assert.deepEqual(
@@ -530,14 +534,10 @@ describe('news panel key reachability (#5871)', () => {
       .sort();
     assert.deepEqual(
       collidingWithoutOutlet,
-      [
-        // The dedicated LiveNewsPanel (24/7 video) owns this key on every variant.
-        // CANONICAL_FEEDS['live-news'] exists to seed the nuclear hub's headline
-        // sources (NUCLEAR_FEEDS['live-news']), not to render a panel — deliberate
-        // since #4382. ('supply-chain' left this list with the commodity/energy
-        // feed presets in the NucMonitor variant collapse.)
-        'live-news',
-      ],
+      // Empty: 'live-news' (owned by the retired LiveNewsPanel, #4382) became the
+      // 'nuclear-headlines' feed rendered by its own NewsPanel, and 'supply-chain'
+      // left with the commodity/energy feed presets in the variant collapse.
+      [],
       'a feed category whose key another panel owns renders nowhere — add a `${key}-news` catalog ' +
         'entry, or record it here with the reason it is intentional',
     );

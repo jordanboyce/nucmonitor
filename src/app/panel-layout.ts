@@ -144,18 +144,12 @@ const WEB_CLERK_PRO_ONLY_PANELS = new Set<string>([]);
  * what lets the news/data key collision be derived instead of enumerated (#5871).
  * A registration BELOW it is invisible to both.
  *
- * `live-news` is the only one. CANONICAL_FEEDS['live-news'] exists to seed the
- * energy variant's headline sources, not to render a panel; the key belongs to
- * LiveNewsPanel (24/7 video), registered near the end of createPanels(). Letting
- * the pass claim it registers a generic NewsPanel first, and lazyPanel()'s dedup
- * guard then blocks the real video panel — regression #4382, which shipped
- * "LIVE NEWS / No items in the last 7 days" to the live dashboard. Declaring it
- * claimed remaps it to `live-news-news`, which has no settings entry, so no panel
- * is created on any variant. Guarded by tests/live-news-panel-guard.test.mts, and
- * tests/news-panel-key-reachability.test.mts fails if a SECOND feed-category panel
- * ever moves below the pass without being listed here.
+ * Empty: `live-news` (LiveNewsPanel, regression #4382) was the only member and
+ * left with the 24/7 video panel when the feed key became `nuclear-headlines`,
+ * which registers above the pass. tests/news-panel-key-reachability.test.mts
+ * fails if a feed-category panel ever moves below the pass without being listed.
  */
-const LATE_REGISTERED_PANEL_KEYS = new Set(['live-news']);
+const LATE_REGISTERED_PANEL_KEYS = new Set<string>([]);
 const CW_PRO_GATE_TAB_RECOVERY_KEY = 'worldmonitor-cw-pro-gate-tab-recovery-v1';
 
 // TEMPORARY MIRROR of each panel constructor's footprint (`defaultRowSpan` /

@@ -853,6 +853,11 @@ export class MapContainer {
     return viewportActionToken;
   }
 
+  /** NucMonitor — draw the 10/50-mile EPZ rings for a facility (deck.gl renderer only). */
+  public setSelectedUsNuclearFacility(facilityId: string | null): void {
+    if (this.useDeckGL) this.deckGLMap?.setSelectedUsNuclearFacility(facilityId);
+  }
+
   private applyCenter(lat: number, lon: number, zoom?: number): void {
     if (this.useGlobe) { this.globeMap?.setCenter(lat, lon, zoom); return; }
     if (this.useDeckGL) {

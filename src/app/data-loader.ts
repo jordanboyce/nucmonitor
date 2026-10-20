@@ -1,5 +1,6 @@
 import type { AppContext, AppModule } from '@/app/app-context';
 import { nuclearSiteRiskStore } from '@/services/nuclear-site-risk-store';
+import { getShowcaseScenario } from '@/services/showcase-scenario';
 import { enqueuePanelCall, invokePanelMethod } from '@/app/pending-panel-data';
 import { markLcpDebug } from '@/utils/lcp-debug';
 import { runHydrationTier, type HydrationTask } from '@/app/hydration-scheduler';
@@ -1701,9 +1702,13 @@ export class DataLoaderManager implements AppModule {
   }
 
   async loadNatural(): Promise<void> {
+    // Showcase builds replace the live hazard feeds with the labeled sample
+    // scenario (src/services/showcase-scenario.ts); the loaders below keep
+    // their shape so every panel, map layer and freshness badge lights up.
+    const showcase = getShowcaseScenario();
     const [earthquakeResult, eonetResult] = await Promise.allSettled([
-      fetchEarthquakes(),
-      fetchNaturalEvents(30),
+      showcase ? Promise.resolve(showcase.earthquakes) : fetchEarthquakes(),
+      showcase ? Promise.resolve(showcase.naturalEvents) : fetchNaturalEvents(30),
     ]);
 
     if (earthquakeResult.status === 'fulfilled') {
@@ -1751,7 +1756,7 @@ export class DataLoaderManager implements AppModule {
 
   async loadWeatherAlerts(): Promise<void> {
     try {
-      const alerts = await fetchWeatherAlerts();
+      const alerts = getShowcaseScenario()?.weatherAlerts ?? await fetchWeatherAlerts();
       this.ctx.map?.setWeatherAlerts(alerts);
       nuclearSiteRiskStore.setWeatherAlerts(alerts);
       this.ctx.map?.setLayerReady('weather', alerts.length > 0);
@@ -1769,7 +1774,7 @@ export class DataLoaderManager implements AppModule {
 
     tasks.push((async () => {
       try {
-        const outages = await fetchInternetOutages();
+        const outages = getShowcaseScenario()?.outages ?? await fetchInternetOutages();
         this.ctx.intelligenceCache.outages = outages;
         nuclearSiteRiskStore.setOutages(outages);
         dataFreshness.recordUpdate('outages', outages.length);
@@ -1831,7 +1836,7 @@ export class DataLoaderManager implements AppModule {
       return;
     }
     try {
-      const outages = await fetchInternetOutages();
+      const outages = getShowcaseScenario()?.outages ?? await fetchInternetOutages();
       this.ctx.intelligenceCache.outages = outages;
       nuclearSiteRiskStore.setOutages(outages);
       this.ctx.map?.setOutages(outages);
@@ -1933,7 +1938,10 @@ export class DataLoaderManager implements AppModule {
 
   async loadFirmsData(): Promise<void> {
     try {
-      const fireResult = await fetchAllFires(1);
+      const showcase = getShowcaseScenario();
+      const fireResult = showcase
+        ? { regions: showcase.fireRegions, totalCount: showcase.fires.length }
+        : await fetchAllFires(1);
       if (fireResult.skipped) {
         // en.json carries panels.satelliteFires as a flat title string, so the
         // nested .noData lookup could never resolve — it rendered the raw key.
@@ -1980,7 +1988,7 @@ export class DataLoaderManager implements AppModule {
 
   async loadRadiationWatch(): Promise<void> {
     try {
-      const result = await fetchRadiationWatch();
+      const result = getShowcaseScenario()?.radiation ?? await fetchRadiationWatch();
       const anomalies = result.observations.filter((observation) => observation.severity !== 'normal');
       this.callPanel('radiation-watch', 'setData', result);
       nuclearSiteRiskStore.setRadiation(result.observations);

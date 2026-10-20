@@ -125,6 +125,22 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_kind_value", ["kind", "value"]),
 
+  // Access requests from the public landing page (api/request-access.ts).
+  // One row per email; a repeat submission refreshes the row rather than
+  // adding another. Reviewed with `npx convex run partnerAccess:listAccessRequests`.
+  accessRequests: defineTable({
+    email: v.string(),
+    emailDomain: v.string(),
+    organization: v.string(),
+    role: v.optional(v.string()),
+    message: v.optional(v.string()),
+    source: v.string(),
+    status: v.union(v.literal("new"), v.literal("invited"), v.literal("declined")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    submissions: v.number(),
+  }).index("by_email", ["email"]).index("by_status", ["status"]),
+
   userPreferences: defineTable({
     userId: v.string(),
     variant: v.string(),

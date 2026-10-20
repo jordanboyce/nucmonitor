@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for non-proto /api/ endpoints. All new JSON data APIs MUST use sebuf (proto → buf generate → handler). This manifest is the only escape hatch, and every entry is reviewed by @SebastienMelki (see .github/CODEOWNERS). Categories: external-protocol (MCP / OAuth — shape dictated by external spec), non-json (binary/HTML/image responses), upstream-proxy (raw pass-through of an external feed), ops-admin (health/cron/version — operator plumbing, not a product API), internal-helper (dashboard-internal bundle, not user-facing), deferred (should migrate eventually — must have a removal_issue), migration-pending (actively being migrated in an open PR — removed as its commit lands). See docs/adding-endpoints.mdx.",
+  "$comment": "Single source of truth for non-proto /api/ endpoints. All new JSON data APIs MUST use sebuf (proto \u2192 buf generate \u2192 handler). This manifest is the only escape hatch, and every entry is reviewed by @SebastienMelki (see .github/CODEOWNERS). Categories: external-protocol (MCP / OAuth \u2014 shape dictated by external spec), non-json (binary/HTML/image responses), upstream-proxy (raw pass-through of an external feed), ops-admin (health/cron/version \u2014 operator plumbing, not a product API), internal-helper (dashboard-internal bundle, not user-facing), deferred (should migrate eventually \u2014 must have a removal_issue), migration-pending (actively being migrated in an open PR \u2014 removed as its commit lands). See docs/adding-endpoints.mdx.",
   "schema_version": 1,
   "exceptions": [
     {
@@ -13,6 +13,13 @@
       "path": "api/nrc-event-reports.ts",
       "category": "upstream-proxy",
       "reason": "Fetches the trailing window of NRC daily Event Notification Report HTML pages (event-status/event/YYYY/YYYYMMDDen.html), parses them with the shared label-based parser in shared/nrc-event-reports.ts, merges updates and retractions across days, and returns compact JSON. nrc.gov publishes no API and no CORS headers; the upstream is fixed and the shape follows the NRC page, not a product contract.",
+      "owner": "@jordanboyce",
+      "removal_issue": null
+    },
+    {
+      "path": "api/request-access.ts",
+      "category": "internal-helper",
+      "reason": "Form intake for the public landing page (public/landing.html): validates a request-access form, applies a per-IP budget and stores it through the Convex partnerAccess:requestAccess mutation. Not a product data API; the only consumer is the landing page.",
       "owner": "@jordanboyce",
       "removal_issue": null
     },
@@ -33,28 +40,28 @@
     {
       "path": "api/discord/oauth/callback.ts",
       "category": "external-protocol",
-      "reason": "Discord OAuth redirect target — response is an HTML popup-closer page, query-param shape fixed by Discord.",
+      "reason": "Discord OAuth redirect target \u2014 response is an HTML popup-closer page, query-param shape fixed by Discord.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
     {
       "path": "api/discord/oauth/start.ts",
       "category": "external-protocol",
-      "reason": "Discord OAuth initiator — issues 302 to Discord's authorize URL. Not a JSON API.",
+      "reason": "Discord OAuth initiator \u2014 issues 302 to Discord's authorize URL. Not a JSON API.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
     {
       "path": "api/slack/oauth/callback.ts",
       "category": "external-protocol",
-      "reason": "Slack OAuth redirect target — HTML response with postMessage + window.close, query-param shape fixed by Slack.",
+      "reason": "Slack OAuth redirect target \u2014 HTML response with postMessage + window.close, query-param shape fixed by Slack.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
     {
       "path": "api/slack/oauth/start.ts",
       "category": "external-protocol",
-      "reason": "Slack OAuth initiator — 302 to Slack's authorize URL. Not a JSON API.",
+      "reason": "Slack OAuth initiator \u2014 302 to Slack's authorize URL. Not a JSON API.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
@@ -68,7 +75,7 @@
     {
       "path": "api/youtube/embed.js",
       "category": "non-json",
-      "reason": "Rendered HTML YouTube iframe embed page for dashboard/widget playback — response is text/html, not JSON.",
+      "reason": "Rendered HTML YouTube iframe embed page for dashboard/widget playback \u2014 response is text/html, not JSON.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
@@ -201,35 +208,35 @@
     {
       "path": "api/symbol-search.ts",
       "category": "internal-helper",
-      "reason": "Stock-symbol typeahead used only by the watchlist editor — thin wrapper over Finnhub's /api/v1/search. Light filter (equity-type instruments) + field rename (symbol/description/displaySymbol -> symbol/name/display); shape tracks Finnhub, not a versioned product contract. Same constraint as api/reverse-geocode.js (UI-only helper wrapping an upstream provider). Could fold into MarketService as a SearchSymbol RPC — flagged for reviewer; kept as a helper so the watchlist-editor PR stays self-contained rather than coupling it to a proto regen.",
+      "reason": "Stock-symbol typeahead used only by the watchlist editor \u2014 thin wrapper over Finnhub's /api/v1/search. Light filter (equity-type instruments) + field rename (symbol/description/displaySymbol -> symbol/name/display); shape tracks Finnhub, not a versioned product contract. Same constraint as api/reverse-geocode.js (UI-only helper wrapping an upstream provider). Could fold into MarketService as a SearchSymbol RPC \u2014 flagged for reviewer; kept as a helper so the watchlist-editor PR stays self-contained rather than coupling it to a proto regen.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
     {
       "path": "api/me/entitlement.ts",
       "category": "internal-helper",
-      "reason": "Thin wrapper over the canonical server/_shared/premium-check.ts isCallerPremium helper — returns { isPro: boolean } for the /pro marketing bundle so it can swap upgrade CTAs for a dashboard link when the visitor is already a paying Pro user. Not a product data API: the authoritative gates live in panel-gating.ts (frontend), isCallerPremium (per-handler), and gateway.ts PREMIUM_RPC_PATHS (Bearer gate). This endpoint exists purely to let the separate pro-test bundle (no Convex client, no gateway client) ask the same question without reimplementing the two-signal check. Shape is unversioned by design — flip a boolean and ship.",
+      "reason": "Thin wrapper over the canonical server/_shared/premium-check.ts isCallerPremium helper \u2014 returns { isPro: boolean } for the /pro marketing bundle so it can swap upgrade CTAs for a dashboard link when the visitor is already a paying Pro user. Not a product data API: the authoritative gates live in panel-gating.ts (frontend), isCallerPremium (per-handler), and gateway.ts PREMIUM_RPC_PATHS (Bearer gate). This endpoint exists purely to let the separate pro-test bundle (no Convex client, no gateway client) ask the same question without reimplementing the two-signal check. Shape is unversioned by design \u2014 flip a boolean and ship.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
     {
       "path": "api/embed/entitlement.ts",
       "category": "internal-helper",
-      "reason": "Auth bootstrap for the partner /embed iframe (#6599). Returns whether an embedding account's API key (X-WorldMonitor-Key) may render an allowlisted panel. Not a product data API: panel payloads stay on existing sebuf RPCs. Cookie and viewer session tokens are stripped/rejected so entitlement is keyed to the partner account, not the page visitor. Shape is unversioned by design — allowed boolean plus panel id.",
+      "reason": "Auth bootstrap for the partner /embed iframe (#6599). Returns whether an embedding account's API key (X-WorldMonitor-Key) may render an allowlisted panel. Not a product data API: panel payloads stay on existing sebuf RPCs. Cookie and viewer session tokens are stripped/rejected so entitlement is keyed to the partner account, not the page visitor. Shape is unversioned by design \u2014 allowed boolean plus panel id.",
       "owner": "@koala73",
       "removal_issue": null
     },
     {
       "path": "api/embed/map-frame.ts",
       "category": "internal-helper",
-      "reason": "The single composed read the partner /embed map frame polls, replacing four separate anonymous RPC calls. Not a product data API: it accepts one parameter (`layers`) and returns the verbatim payloads of handlers already published as sebuf RPCs — no bbox, page size, or time window, because every knob is a knob a stolen embed credential could turn. Deliberately NOT a sebuf RPC of its own: the free and keyed tiers need different Cache-Control on one path, and CACHE_TIER_BY_PATH in the domain gateway is per-path, so routing it there would let a keyless response be cached and served to a keyed caller. Shareability is decided from the URL alone, before any credential is read (a CDN hit answers before the origin sees a header — #5386): only the exact raw query `layers=<canonical free subset>&public=1` is shared-cacheable, bounding the CDN key space to the free tier's seven non-empty subsets. Every other shape, credentialed or not, is served `private, no-store`, so a near-miss degrades to correct-but-uncached rather than to a shared entry that could answer the wrong caller. Builder and validator are one module (shared/embed-map-frame.ts) so an emitted URL and a cacheable URL cannot drift.",
+      "reason": "The single composed read the partner /embed map frame polls, replacing four separate anonymous RPC calls. Not a product data API: it accepts one parameter (`layers`) and returns the verbatim payloads of handlers already published as sebuf RPCs \u2014 no bbox, page size, or time window, because every knob is a knob a stolen embed credential could turn. Deliberately NOT a sebuf RPC of its own: the free and keyed tiers need different Cache-Control on one path, and CACHE_TIER_BY_PATH in the domain gateway is per-path, so routing it there would let a keyless response be cached and served to a keyed caller. Shareability is decided from the URL alone, before any credential is read (a CDN hit answers before the origin sees a header \u2014 #5386): only the exact raw query `layers=<canonical free subset>&public=1` is shared-cacheable, bounding the CDN key space to the free tier's seven non-empty subsets. Every other shape, credentialed or not, is served `private, no-store`, so a near-miss degrades to correct-but-uncached rather than to a shared entry that could answer the wrong caller. Builder and validator are one module (shared/embed-map-frame.ts) so an emitted URL and a cacheable URL cannot drift.",
       "owner": "@koala73",
       "removal_issue": null
     },
     {
       "path": "api/embed/session.ts",
       "category": "internal-helper",
-      "reason": "Credential exchange for the partner /embed iframe: trades the account's wme_ embed key for a short-lived, panel-scoped wmg_ grant that the frame then polls with. Not a product data API — it returns only a bearer token and its expiry. Deliberately NOT a sebuf RPC: a domain gateway route accepts only wms_ sessions, wm_ keys, or PUBLIC_NO_AUTH_RPC_PATHS membership, and teaching the shared auth cascade a third credential family would widen the very blast radius this exchange exists to narrow. Response is private, no-store because the body IS a credential.",
+      "reason": "Credential exchange for the partner /embed iframe: trades the account's wme_ embed key for a short-lived, panel-scoped wmg_ grant that the frame then polls with. Not a product data API \u2014 it returns only a bearer token and its expiry. Deliberately NOT a sebuf RPC: a domain gateway route accepts only wms_ sessions, wm_ keys, or PUBLIC_NO_AUTH_RPC_PATHS membership, and teaching the shared auth cascade a third credential family would widen the very blast radius this exchange exists to narrow. Response is private, no-store because the body IS a credential.",
       "owner": "@koala73",
       "removal_issue": null
     },

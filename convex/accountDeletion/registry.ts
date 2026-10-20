@@ -243,6 +243,11 @@ export const ACCOUNT_DELETION_REGISTRY: readonly RegistryEntry[] = [
     action: "retain",
     notes: "Operator-managed partner access allowlist (email or domain); an operator revokes it, account deletion does not",
   },
+  {
+    target: "accessRequests",
+    action: "retain",
+    notes: "Landing-page access requests are keyed by email, not by account, and predate any account; an operator reviews and clears them (partnerAccess:setAccessRequestStatus)",
+  },
   { target: "productPlans", action: "skip", notes: "Global product catalog" },
   { target: "counters", action: "skip", notes: "Global counters" },
   { target: "businessSeatLocks", action: "skip", notes: "Global OCC locks" },

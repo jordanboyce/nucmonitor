@@ -6,7 +6,7 @@
  * changes the list is internal: operators run it with `npx convex run`.
  */
 import { ConvexError, v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { getFeaturesForPlan } from "./lib/entitlements";
 
@@ -127,5 +127,94 @@ export const grantApiAccess = internalMutation({
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("entitlements", row);
     return { userId: args.userId, validUntil: row.validUntil };
+  },
+});
+
+// ── Access requests (landing page) ────────────────────────────────────────
+
+const MAX_FIELD = { email: 254, organization: 120, role: 80, message: 1000 } as const;
+
+function clean(value: string | undefined, max: number): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+/**
+ * Record a request for partner access from the public landing page. Called
+ * by the edge function `api/request-access.ts` after its own validation and
+ * rate limit; the mutation re-validates so a direct call cannot store junk.
+ */
+export const requestAccess = mutation({
+  args: {
+    email: v.string(),
+    organization: v.string(),
+    role: v.optional(v.string()),
+    message: v.optional(v.string()),
+    source: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const email = normalizeEmail(clean(args.email, MAX_FIELD.email));
+    const organization = clean(args.organization, MAX_FIELD.organization);
+    if (!organization) throw new ConvexError("ORGANIZATION_REQUIRED");
+    const role = clean(args.role, MAX_FIELD.role) || undefined;
+    const message = clean(args.message, MAX_FIELD.message) || undefined;
+    const source = clean(args.source, 40) || "landing";
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("accessRequests")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        organization,
+        ...(role ? { role } : {}),
+        ...(message ? { message } : {}),
+        updatedAt: now,
+        submissions: existing.submissions + 1,
+      });
+      return { created: false, email };
+    }
+    await ctx.db.insert("accessRequests", {
+      email,
+      emailDomain: email.slice(email.lastIndexOf("@") + 1),
+      organization,
+      ...(role ? { role } : {}),
+      ...(message ? { message } : {}),
+      source,
+      status: "new",
+      createdAt: now,
+      updatedAt: now,
+      submissions: 1,
+    });
+    return { created: true, email };
+  },
+});
+
+/** `npx convex run partnerAccess:listAccessRequests` (newest first). */
+export const listAccessRequests = internalQuery({
+  args: { status: v.optional(v.union(v.literal("new"), v.literal("invited"), v.literal("declined"))) },
+  handler: async (ctx, args) => {
+    const rows = args.status
+      ? await ctx.db.query("accessRequests").withIndex("by_status", (q) => q.eq("status", args.status!)).collect()
+      : await ctx.db.query("accessRequests").collect();
+    return rows
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(({ email, emailDomain, organization, role, message, source, status, createdAt, updatedAt, submissions }) => ({
+        email, emailDomain, organization, role, message, source, status, createdAt, updatedAt, submissions,
+      }));
+  },
+});
+
+/** `npx convex run partnerAccess:setAccessRequestStatus '{"email":"ops@utility.com","status":"invited"}'` */
+export const setAccessRequestStatus = internalMutation({
+  args: { email: v.string(), status: v.union(v.literal("new"), v.literal("invited"), v.literal("declined")) },
+  handler: async (ctx, args) => {
+    const email = normalizeEmail(args.email);
+    const existing = await ctx.db
+      .query("accessRequests")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (!existing) return { updated: false, email };
+    await ctx.db.patch(existing._id, { status: args.status, updatedAt: Date.now() });
+    return { updated: true, email };
   },
 });

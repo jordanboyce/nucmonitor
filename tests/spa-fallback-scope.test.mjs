@@ -44,9 +44,15 @@ describe('SPA fallback scope (#6575)', () => {
   it('serves the dashboard document only from the enumerated client History routes', () => {
     assert.deepEqual(
       dashboardRewrites().map((r) => r.source).sort(),
-      ['/', '/dashboard', '/stocks', '/stocks/:symbol'],
-      'inventory: the apex root, /dashboard itself and the client History routes',
+      ['/dashboard', '/stocks', '/stocks/:symbol'],
+      'inventory: /dashboard itself and the client History routes',
     );
+  });
+
+  it('serves the landing page, not the dashboard, from the apex root', () => {
+    const root = vercel.rewrites.find((r) => r.source === '/');
+    assert.equal(root?.destination, '/landing.html');
+    assert.equal(dashboardShadow('/'), undefined);
   });
 
   it('unknown paths match no rewrite and fall through to a filesystem 404', () => {

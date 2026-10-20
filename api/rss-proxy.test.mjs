@@ -621,7 +621,7 @@ test('rejects a disallowed Origin before auth, method, or fetch', async () => {
   assert.equal(res.status, 403);
   assert.equal((await res.json()).error, 'Origin not allowed');
   // Never echo the attacker origin back.
-  assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'https://worldmonitor.app');
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'https://api.worldmonitor.app' /* ACAO for a refused Origin falls back to the request's own origin */);
   assert.deepEqual(calls, []);
 });
 

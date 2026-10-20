@@ -167,8 +167,11 @@ describe('premium gateway API key enforcement', () => {
     }));
     assert.equal(resilienceRankingWithKey.status, 200);
 
-    // Unknown origin — blocked (403 from isDisallowedOrigin before key check)
-    const unknownNoKey = await handler(new Request('https://external.example.com/api/market/v1/analyze-stock?symbol=AAPL', {
+    // Unknown origin — blocked (403 from isDisallowedOrigin before key check).
+    // The request reaches OUR host with a foreign Origin, which is the shape a
+    // cross-site browser call has; a request served from the Origin's own
+    // host is same-origin and admitted (server/cors.ts).
+    const unknownNoKey = await handler(new Request('https://worldmonitor.app/api/market/v1/analyze-stock?symbol=AAPL', {
       headers: { Origin: 'https://external.example.com' },
     }));
     assert.equal(unknownNoKey.status, 403);

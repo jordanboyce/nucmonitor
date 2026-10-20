@@ -16,7 +16,8 @@ export const VARIANT_META: { nuclear: VariantMeta; [k: string]: VariantMeta } = 
     title: 'NucMonitor - US Nuclear Facility Hub & All-Hazards Dashboard',
     description: 'Real-time hub for every US nuclear facility: NRC reactor power status, all-hazards watch, radiation monitoring, facility directory, and NRC, DOE, and industry news.',
     keywords: 'nuclear facilities, US nuclear plants, NRC reactor status, power reactor status report, nuclear power plant map, NRC event reports, DOE sites, NNSA, spent fuel storage, ISFSI, decommissioning, SMR, advanced reactors, uranium enrichment, fuel cycle, research reactors, RadNet, radiation monitoring, nuclear safety, nuclear hazards, earthquakes near nuclear plants, hurricanes nuclear plants, wildfire nuclear facility, nuclear news',
-    url: 'https://nuclear.worldmonitor.app/dashboard',
+    // Root-relative: the canonical and og:url tags resolve against whichever host serves the build.
+    url: '/dashboard',
     siteName: 'NucMonitor',
     shortName: 'NucMonitor',
     subject: 'US Nuclear Facilities, Reactor Status, and All-Hazards Situational Awareness',

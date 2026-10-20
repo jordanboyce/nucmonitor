@@ -183,16 +183,10 @@
       }
     </style>
 
-    <!-- Preconnect: critical first-paint origins.
-         api.worldmonitor.app: credentialed CORS (runtime.ts defaults
-         credentials: 'include') — must use `use-credentials` so the
-         pre-opened socket lands in the same connection pool as the
-         credentialed fetches. Sentry and Clerk are deferred by their
-         runtime loaders, so they intentionally do not get head preconnects. -->
-    <link rel="preconnect" href="https://api.worldmonitor.app" crossorigin="use-credentials">
-
-    <!-- Preconnect: map tiles + assets -->
-    <link rel="preconnect" href="https://maps.worldmonitor.app" crossorigin>
+    <!-- The API is same-origin on this deployment and the basemap host is
+         configured at build time (VITE_PMTILES_URL), so there are no
+         cross-origin preconnect hints. Sentry and Clerk are deferred by
+         their runtime loaders. -->
 
     <!-- Variant/locale fonts are narrowed and loaded after the dashboard paints. -->
   </head>

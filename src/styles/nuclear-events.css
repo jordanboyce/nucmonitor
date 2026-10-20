@@ -43,6 +43,7 @@
   background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
 }
 .ner-flag-new { background: var(--nuc-accent); color: #111; }
+.ner-flag-sample { background: var(--warning, #d9a441); color: #111; }
 .ner-flag-retracted { background: var(--nuc-watch); color: #fff; }
 .ner-flag-updated { background: rgba(52, 152, 219, 0.35); }
 .ner-flag-scram { background: rgba(231, 76, 60, 0.3); }

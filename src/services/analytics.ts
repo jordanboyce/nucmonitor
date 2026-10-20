@@ -55,9 +55,19 @@ export type {
   CheckoutSurface,
 } from '../../shared/checkout-attribution';
 
-const UMAMI_SCRIPT_SRC = 'https://abacus.worldmonitor.app/script.js';
-const UMAMI_COLLECTOR_ENDPOINT = new URL('/api/send', UMAMI_SCRIPT_SRC).href;
-const UMAMI_WEBSITE_ID = 'e8800335-c853-46a8-8497-c993ed2f58bc';
+// Umami is opt-in: a deployment sets VITE_UMAMI_SCRIPT_URL (the tracker
+// script on its own Umami host) and VITE_UMAMI_WEBSITE_ID. Without both, no
+// analytics script is ever loaded and track() calls are dropped on the floor.
+// Node test runners have no import.meta.env; they configure the tracker
+// through process.env instead (scripts/run-data-tests.mjs).
+const ANALYTICS_ENV: Partial<ImportMetaEnv> = import.meta.env
+  ?? ((typeof process !== 'undefined' ? process.env : {}) as Partial<ImportMetaEnv>);
+const UMAMI_SCRIPT_SRC = String(ANALYTICS_ENV.VITE_UMAMI_SCRIPT_URL ?? '').trim();
+const UMAMI_COLLECTOR_ENDPOINT = (() => {
+  try { return UMAMI_SCRIPT_SRC ? new URL('/api/send', UMAMI_SCRIPT_SRC).href : ''; } catch { return ''; }
+})();
+const UMAMI_WEBSITE_ID = String(ANALYTICS_ENV.VITE_UMAMI_WEBSITE_ID ?? '').trim();
+export const ANALYTICS_CONFIGURED = Boolean(UMAMI_SCRIPT_SRC && UMAMI_WEBSITE_ID);
 // data-domains is temporarily reduced to the worldmonitor.app and nuclear hosts
 // while upstream Umami issue #4183 (https://github.com/umami-software/umami/issues/4183)
 // is open — v3.1.0 has a race in prisma.sessionData.updateMany() that returns HTTP 500
@@ -76,7 +86,9 @@ const UMAMI_WEBSITE_ID = 'e8800335-c853-46a8-8497-c993ed2f58bc';
 // tracker self-disabled there. Upstream #4183 still drops 4-8% of /api/send
 // on affected hosts — accepted noise; durable checkout markers already
 // tolerate collector failures. tech/commodity stay out until #4183 ships.
-const UMAMI_DOMAINS = 'worldmonitor.app,www.worldmonitor.app,nuclear.worldmonitor.app';
+// Optional exact-hostname list the tracker self-limits to (VITE_UMAMI_DOMAINS,
+// comma-separated). Empty means the tracker runs on whatever host serves it.
+const UMAMI_DOMAINS = String(ANALYTICS_ENV.VITE_UMAMI_DOMAINS ?? '').trim();
 const UMAMI_QUEUE_LIMIT = 50;
 const UMAMI_BEFORE_SEND_HOOK = '__wmUmamiBeforeSend';
 
@@ -595,7 +607,7 @@ function loadUmamiScript(): void {
   script.async = true;
   script.src = UMAMI_SCRIPT_SRC;
   script.dataset.websiteId = UMAMI_WEBSITE_ID;
-  script.dataset.domains = UMAMI_DOMAINS;
+  if (UMAMI_DOMAINS) script.dataset.domains = UMAMI_DOMAINS;
   // Deferred consumers keep invite, checkout, referral, and Clerk params in
   // the live URL until they read them; Umami payloads must not copy those.
   // Redact per payload rather than data-exclude-search, which would also
@@ -643,6 +655,7 @@ export function trackContentHandoff(): void {
 }
 
 export function initAnalytics(): void {
+  if (!ANALYTICS_CONFIGURED) return;
   if (umamiLoadScheduled || typeof window === 'undefined' || typeof document === 'undefined') return;
   umamiLoadScheduled = true;
   scheduleAfterFirstPaint(loadUmamiScript, 3000);

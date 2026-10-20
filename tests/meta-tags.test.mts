@@ -103,7 +103,9 @@ describe('story meta tags', () => {
   });
 
   it('keeps initial dashboard identity for both country aliases and chokepoint state', () => {
-    const canonical = VARIANT_META[SITE_VARIANT].url;
+    // VARIANT_META.url is root-relative; the module resolves it against the
+    // serving origin, which under node defaults to http://localhost.
+    const canonical = new URL(VARIANT_META[SITE_VARIANT].url, 'http://localhost').href;
     for (const query of ['c=IR', 'country=IR&expanded=1', 'chokepoint=suez']) {
       const link = fakeDocument.querySelector('link[rel="canonical"]') ?? fakeDocument.createElement('link');
       link.setAttribute('rel', 'canonical');

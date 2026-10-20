@@ -181,6 +181,7 @@ export class NuclearReactorStatusPanel extends Panel {
       ${units.length ? `<table class="nrs-table"><thead><tr><th>Unit</th><th>Power</th><th>Δ</th><th>NRC note</th></tr></thead><tbody>${rows}</tbody></table>` : empty}
       <div class="nrs-footer">
         Report date ${escapeHtml(summary.reportDate)} · Source: <a href="${NRC_REACTOR_STATUS_PAGE}" target="_blank" rel="noopener">NRC Power Reactor Status Reports</a>
+        ${this.data.sample === 'overrides' ? ' · Rows marked SAMPLE are simulated for demonstration' : this.data.sample === 'fallback' ? ' · SAMPLE DATA: the live NRC file could not be loaded; every row is simulated' : ''}
         ${this.data.unmatchedUnits.length ? ` · ${this.data.unmatchedUnits.length} unit label${this.data.unmatchedUnits.length === 1 ? '' : 's'} not matched to the registry` : ''}
       </div>
     `;

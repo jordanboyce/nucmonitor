@@ -73,9 +73,12 @@ const THIRD_PARTY_FETCH_HOST_ALLOWLIST = new Set([
 
 function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
   const sentryDsn = import.meta.env.VITE_SENTRY_DSN?.trim();
-  const environment = (location.hostname === 'worldmonitor.app' || location.hostname.endsWith('.worldmonitor.app')) ? 'production'
-    : location.hostname.includes('vercel.app') ? 'preview'
-    : 'development';
+  // Previews are *.vercel.app; anything else that is not loopback is the
+  // deployment itself. The DSN decides whether events go anywhere at all.
+  const environment = location.hostname.includes('vercel.app') ? 'preview'
+    : (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '[::1]') ? 'development'
+    : 'production';
+  const ownOrigin = new RegExp(`^${location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[:/?#]|$)`);
   return {
     dsn: sentryDsn || undefined,
     ...getSentryBuildMetadata(__APP_VERSION__, __BUILD_HASH__, environment),
@@ -84,7 +87,7 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
     // desktop build must stay out of Sentry whether or not the bridge global has
     // attached, and the flag-forced desktop build has none in a browser (#5912).
     enabled: Boolean(sentryDsn) && !location.hostname.startsWith('localhost') && !isDesktopRuntime(),
-    allowUrls: SENTRY_ALLOW_URLS,
+    allowUrls: [...SENTRY_ALLOW_URLS, ownOrigin],
     maxValueLength: 2048,
     ...sentryPrivacyOptions,
     tracesSampleRate: 0.1,

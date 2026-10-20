@@ -21,6 +21,10 @@ interface ImportMetaEnv {
   readonly VITE_ACCESS_MODE?: string;
   /** Optional address the partner gate offers for access requests. */
   readonly VITE_PARTNER_CONTACT_EMAIL?: string;
+  /** Build with a labeled sample hazard scenario instead of live feeds (src/config/showcase.ts). */
+  readonly VITE_SHOWCASE_SCENARIO?: string;
+  /** Absolute https origin of the web deployment for links that must be absolute (src/config/web-origin.ts). */
+  readonly VITE_WEB_APP_ORIGIN?: string;
 }
 
 interface ImportMeta {

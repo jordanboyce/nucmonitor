@@ -90,6 +90,14 @@ export async function main(args) {
     return 0;
   }
   console.log(`Data tests: ${selected.length}/${files.length} files, shard ${index}/${total}, concurrency ${values.concurrency}`);
+  // The analytics suites exercise the Umami tracker end to end; the tracker is
+  // opt-in in the app (src/services/analytics.ts), so give the suites a host.
+  // Set on process.env so the test workers inherit it on every Node version.
+  process.env.VITE_UMAMI_SCRIPT_URL ??= 'https://abacus.worldmonitor.app/script.js';
+  process.env.VITE_UMAMI_WEBSITE_ID ??= 'e8800335-c853-46a8-8497-c993ed2f58bc';
+  // Same for the optional country-boundary overrides, which the geometry
+  // suites mock at the upstream CDN URL.
+  process.env.VITE_COUNTRY_OVERRIDES_URL ??= 'https://maps.worldmonitor.app/country-boundary-overrides.geojson';
   const env = { ...process.env };
   // This is a new test run, even when a contract test invokes the CLI.
   delete env.NODE_TEST_CONTEXT;

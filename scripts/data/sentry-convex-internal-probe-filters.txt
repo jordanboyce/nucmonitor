@@ -161,8 +161,10 @@
 *Could not find public function for 'notificationChannels:stagePairingToken'*
 *Could not find public function for 'partnerAccess:grantApiAccess'*
 *Could not find public function for 'partnerAccess:invite'*
+*Could not find public function for 'partnerAccess:listAccessRequests'*
 *Could not find public function for 'partnerAccess:listInvites'*
 *Could not find public function for 'partnerAccess:revoke'*
+*Could not find public function for 'partnerAccess:setAccessRequestStatus'*
 *Could not find public function for 'payments/businessSeats:sendBusinessInviteEmail'*
 *Could not find public function for 'payments/businessSeats:sendTeamAccessEndedEmail'*
 *Could not find public function for 'payments/cacheActions:deleteEntitlementCache'*

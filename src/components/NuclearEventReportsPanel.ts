@@ -241,6 +241,7 @@ export class NuclearEventReportsPanel extends Panel {
         e.units.length ? `Unit${e.units.length > 1 ? 's' : ''} ${e.units.join(', ')}` : '',
       ].filter(Boolean).map((p) => escapeHtml(p!)).join(' · ');
       const flags = [
+        e.sample ? '<span class="ner-flag ner-flag-sample" title="Simulated for demonstration; this event did not occur">Sample</span>' : '',
         isNew ? '<span class="ner-flag ner-flag-new">New</span>' : '',
         e.retracted ? '<span class="ner-flag ner-flag-retracted">Retracted</span>' : '',
         !e.retracted && e.updated ? '<span class="ner-flag ner-flag-updated">Updated</span>' : '',
@@ -291,6 +292,7 @@ export class NuclearEventReportsPanel extends Panel {
       <div class="nrs-footer">
         Source: <a href="${NRC_EVENT_REPORTS_INDEX}" target="_blank" rel="noopener">NRC Event Notification Reports</a>
         · ${daysCovered} daily report${daysCovered === 1 ? '' : 's'}${daysMissing ? `, ${daysMissing} day${daysMissing === 1 ? '' : 's'} without a report` : ''}${daysFailed ? `, ${daysFailed} failed to load` : ''}
+        ${this.data.sampleCount ? ` · ${this.data.sampleCount} simulated sample event${this.data.sampleCount === 1 ? '' : 's'} shown for demonstration` : ''}
         · Informational only; confirm against the NRC record.
       </div>
     `;

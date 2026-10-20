@@ -1,4 +1,5 @@
 import { getNuclearWatchlist, toggleNuclearWatchlist } from '@/services/nuclear-watchlist';
+import { getShowcaseScenario } from '@/services/showcase-scenario';
 import { createCircuitBreaker } from '@/utils/circuit-breaker';
 import { toApiUrl } from '@/services/runtime';
 import { safeStorageGet, safeStorageSet } from '@/utils/safe-storage';
@@ -16,6 +17,8 @@ export { NRC_EVENT_REPORTS_INDEX };
 export interface NrcEventWithFacility extends NrcEventReport {
   /** Registry facility the event's facility name resolved to, when matched. */
   facilityMatch?: UsNuclearFacility;
+  /** True for showcase-scenario events, which are simulated and labeled as such. */
+  sample?: boolean;
 }
 
 export interface NrcEventReportsResult {
@@ -24,6 +27,8 @@ export interface NrcEventReportsResult {
   daysCovered: number;
   daysMissing: number;
   daysFailed: number;
+  /** Number of simulated showcase events included at the top of `events`. */
+  sampleCount: number;
 }
 
 interface Payload {
@@ -107,8 +112,46 @@ export function enrichNrcEvents(events: NrcEventReport[]): NrcEventWithFacility[
     .sort(compareNrcEvents);
 }
 
+/** Showcase builds put the labeled sample events ahead of whatever the NRC published. */
+function withShowcaseEvents(live: NrcEventReportsResult | null): NrcEventReportsResult | null {
+  const showcase = getShowcaseScenario();
+  if (!showcase) return live;
+  const samples = enrichNrcEvents(showcase.nrcEvents).map((e) => ({ ...e, sample: true as const }));
+  const liveEvents = (live?.events ?? []).filter((e) => !e.sample);
+  return {
+    fetchedAt: live?.fetchedAt ?? showcase.now,
+    events: [...samples, ...liveEvents],
+    daysCovered: live?.daysCovered ?? 0,
+    daysMissing: live?.daysMissing ?? 0,
+    daysFailed: live?.daysFailed ?? 0,
+    sampleCount: samples.length,
+  };
+}
+
 export async function fetchNrcEventReports(days = 14): Promise<NrcEventReportsResult | null> {
-  const payload = await breaker.execute(async () => {
+  let payload: Payload;
+  try {
+    payload = await fetchPayload(days);
+  } catch (error) {
+    // A showcase build still shows its sample events when nrc.gov is unreachable.
+    if (getShowcaseScenario()) return withShowcaseEvents(latestResult);
+    throw error;
+  }
+
+  if (!payload.days.length) return withShowcaseEvents(latestResult);
+  latestResult = {
+    fetchedAt: payload.fetchedAt ? new Date(payload.fetchedAt) : new Date(),
+    events: enrichNrcEvents(payload.events),
+    daysCovered: payload.days.filter((d) => d.status === 'ok').length,
+    daysMissing: payload.days.filter((d) => d.status === 'missing').length,
+    daysFailed: payload.days.filter((d) => d.status === 'error').length,
+    sampleCount: 0,
+  };
+  return withShowcaseEvents(latestResult);
+}
+
+function fetchPayload(days: number): Promise<Payload> {
+  return breaker.execute(async () => {
     const resp = await fetch(toApiUrl(`/api/nrc-event-reports?days=${encodeURIComponent(String(days))}`), {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
@@ -119,16 +162,6 @@ export async function fetchNrcEventReports(days = 14): Promise<NrcEventReportsRe
     }
     return body;
   }, { fetchedAt: '', days: [], events: [] }, { shouldCache: (p) => p.days.length > 0 });
-
-  if (!payload.days.length) return latestResult;
-  latestResult = {
-    fetchedAt: payload.fetchedAt ? new Date(payload.fetchedAt) : new Date(),
-    events: enrichNrcEvents(payload.events),
-    daysCovered: payload.days.filter((d) => d.status === 'ok').length,
-    daysMissing: payload.days.filter((d) => d.status === 'missing').length,
-    daysFailed: payload.days.filter((d) => d.status === 'error').length,
-  };
-  return latestResult;
 }
 
 export function getNrcEventReportsBreakerStatus(): string {
@@ -143,8 +176,9 @@ export function getLastSeenEventNumber(): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function markEventsSeen(events: NrcEventReport[]): void {
-  const max = events.reduce((m, e) => Math.max(m, Number(e.eventNumber) || 0), 0);
+export function markEventsSeen(events: NrcEventWithFacility[]): void {
+  // Sample events carry placeholder numbers and must not move the marker.
+  const max = events.reduce((m, e) => (e.sample ? m : Math.max(m, Number(e.eventNumber) || 0)), 0);
   if (max > getLastSeenEventNumber()) safeStorageSet(LAST_SEEN_KEY, String(max));
 }
 

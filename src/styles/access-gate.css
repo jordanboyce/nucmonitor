@@ -102,3 +102,12 @@
   line-height: 1;
   cursor: pointer;
 }
+
+.access-demo-banner-sample {
+  border-bottom-color: var(--warning, #d9a441);
+  color: var(--text, #e6edf3);
+}
+
+.access-demo-banner-sample strong {
+  color: var(--warning, #d9a441);
+}

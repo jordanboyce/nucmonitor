@@ -370,7 +370,7 @@ export class RuntimeConfigPanel extends Panel {
 
     if (this.mode === 'alert') {
       this.content.querySelector<HTMLButtonElement>('[data-early-access]')?.addEventListener('click', () => {
-        const url = 'https://www.worldmonitor.app/pro';
+        const url = 'https://github.com/jordanboyce/nucmonitor#readme';
         void openExternalUrl(url);
       });
       return;

@@ -1,11 +1,37 @@
 // App-serving hosts only; sibling vendor hosts do not inherit browser trust.
 // Keep aligned with the CORS parity tests.
+//
+// NucMonitor deployments name their own hosts with APP_ORIGINS, a comma-
+// separated list of https origins ("https://nucmonitor.example,
+// https://nucmonitor-demo.vercel.app"). A request whose Origin is the host the
+// request itself arrived on (same-origin POSTs carry Origin too) is always
+// first-party, so a fresh deployment works before APP_ORIGINS is set.
 const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|nuclear)\.)?worldmonitor\.app$/;
 const MAX_ORIGIN_BYTES = 300;
 const ORIGIN_ENCODER = new TextEncoder();
 
+/** Origins configured for this deployment (docs/deploy-demo.md). */
+export function configuredAppOrigins(env = process.env) {
+  return String(env.APP_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter((o) => /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(o));
+}
+
 export function isHostedAppOrigin(origin) {
-  return typeof origin === 'string' && APP_ORIGIN_PATTERN.test(origin);
+  return typeof origin === 'string' && (APP_ORIGIN_PATTERN.test(origin) || configuredAppOrigins().includes(origin));
+}
+
+/** The origin the request was served from, as the browser would compute it. */
+function requestOrigin(req) {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost.split(',')[0].trim()}`;
+  try { return new URL(req.url).origin; } catch { return ''; }
+}
+
+function isSameOrigin(req, origin) {
+  return Boolean(origin) && origin === requestOrigin(req);
 }
 
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -136,17 +162,24 @@ function isWorldMonitorGoogleTranslateOrigin(origin) {
   }
 }
 
-function isAllowedOrigin(origin) {
+function isAllowedOrigin(origin, req = null) {
   if (!origin || origin.length > MAX_ORIGIN_BYTES
     || ORIGIN_ENCODER.encode(origin).byteLength > MAX_ORIGIN_BYTES) return false;
+  if (req && isSameOrigin(req, origin)) return true;
   if (isWorldMonitorGoogleTranslateOrigin(origin)) return true;
   const candidate = originForAllowlistMatch(origin);
+  if (configuredAppOrigins().includes(candidate)) return true;
   return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(candidate));
+}
+
+/** ACAO for a refused or absent Origin: this deployment's own origin. */
+function fallbackAllowOrigin(req) {
+  return configuredAppOrigins()[0] || requestOrigin(req) || 'https://worldmonitor.app';
 }
 
 export function getCorsHeaders(req, methods = 'GET, OPTIONS') {
   const origin = req.headers.get('origin') || '';
-  const allowOrigin = isAllowedOrigin(origin) ? origin : 'https://worldmonitor.app';
+  const allowOrigin = isAllowedOrigin(origin, req) ? origin : fallbackAllowOrigin(req);
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Credentials': 'true',
@@ -175,7 +208,7 @@ export function getCorsHeaders(req, methods = 'GET, OPTIONS') {
 export function getOriginDeniedCorsHeaders(req, methods = 'GET, OPTIONS') {
   const origin = req.headers.get('origin') || '';
   return {
-    'Access-Control-Allow-Origin': origin || 'https://worldmonitor.app',
+    'Access-Control-Allow-Origin': origin || fallbackAllowOrigin(req),
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': methods,
     'Access-Control-Allow-Headers': ALLOWED_HEADERS,
@@ -206,5 +239,5 @@ export function getPublicCorsHeaders(methods = 'GET, OPTIONS') {
 export function isDisallowedOrigin(req) {
   const origin = req.headers.get('origin');
   if (!origin) return false;
-  return !isAllowedOrigin(origin);
+  return !isAllowedOrigin(origin, req);
 }

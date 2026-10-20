@@ -271,7 +271,7 @@ function initOverviewListeners(area: HTMLElement): void {
   });
 
   area.querySelector('[data-wm-open-pro]')?.addEventListener('click', () => {
-    const url = 'https://worldmonitor.app/pro';
+    const url = 'https://github.com/jordanboyce/nucmonitor#readme';
     void openExternalUrl(url);
   });
 

@@ -884,7 +884,7 @@
         "dividerOr": "OR",
         "register": {
           "title": "Need an API key?",
-          "description": "See worldmonitor.app/docs/api-keys for step-by-step help. Manual API keys require an API Starter or API Business plan.",
+          "description": "Partner API keys are issued per organisation; see docs/partner-access.md in the repository.",
           "submitBtn": "View API plans"
         }
       },

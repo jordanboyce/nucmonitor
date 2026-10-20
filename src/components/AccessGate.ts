@@ -10,6 +10,7 @@
  */
 import '@/styles/access-gate.css';
 import { PARTNER_CONTACT_EMAIL } from '@/config/access-mode';
+import { SHOWCASE_SCENARIO_ENABLED, SHOWCASE_SCENARIO_TITLE } from '@/config/showcase';
 import { toApiUrl } from '@/services/runtime';
 import { h, replaceChildren } from '@/utils/dom-utils';
 
@@ -121,10 +122,16 @@ export async function runPartnerGate(host: HTMLElement): Promise<void> {
 
 /** Demo deployments: a slim, dismissible-per-visit banner over the dashboard. */
 export function showDemoBanner(): void {
-  const banner = h('div', { className: 'access-demo-banner', role: 'note' },
-    h('strong', {}, 'Demo'),
-    ' — public data only. Partner deployments add sign-in, alerts and API access.',
-  );
+  const banner = SHOWCASE_SCENARIO_ENABLED
+    ? h('div', { className: 'access-demo-banner access-demo-banner-sample', role: 'note' },
+      h('strong', {}, 'Sample scenario'),
+      ` — hazard feeds show a simulation timed to today (${SHOWCASE_SCENARIO_TITLE}). `
+        + 'NRC panels are live where reachable; rows marked SAMPLE did not occur.',
+    )
+    : h('div', { className: 'access-demo-banner', role: 'note' },
+      h('strong', {}, 'Demo'),
+      ' — public data only. Partner deployments add sign-in, alerts and API access.',
+    );
   const close = h('button', { type: 'button', className: 'access-demo-banner-close', 'aria-label': 'Dismiss demo notice' }, '×');
   close.addEventListener('click', () => banner.remove());
   banner.appendChild(close);

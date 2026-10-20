@@ -35,6 +35,16 @@ Partners can keep a **"my sites" watchlist**, export the facility table with cur
 
 See [docs/nuclear-hub.mdx](docs/nuclear-hub.mdx) for how the feeds are parsed and how hazard status is computed.
 
+## Demo, deployment and pitch material
+
+- [docs/showcase-mode.md](docs/showcase-mode.md): the labeled sample scenario that makes every panel light up for a demo (`VITE_SHOWCASE_SCENARIO=1`).
+- [docs/deploy-demo.md](docs/deploy-demo.md): putting the public demo on Vercel, the environment variables, and what to verify first.
+- [docs/demo-script.md](docs/demo-script.md): a five-minute walkthrough for funders and pilot partners.
+- [docs/pitch/one-pager.md](docs/pitch/one-pager.md) and [docs/pitch/deck.md](docs/pitch/deck.md): draft material with the team and the ask left to fill in.
+- [docs/partner-access.md](docs/partner-access.md): the invited-partner mode.
+
+The root URL serves a landing page (`public/landing.html`) with a request-access form; the dashboard lives at `/dashboard`.
+
 ## Quick start
 
 Requires Node.js 24 (see `.nvmrc`).

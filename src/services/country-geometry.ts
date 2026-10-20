@@ -20,8 +20,14 @@ const COUNTRY_GEOJSON_URL = '/data/countries.geojson';
 const COUNTRY_GEOJSON_TIMEOUT_MS = 15_000;
 
 /** Optional higher-resolution boundary overrides sourced from Natural Earth (served from R2 CDN). */
-const COUNTRY_OVERRIDES_URL = (typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_COUNTRY_OVERRIDES_URL : undefined)
-  ?? 'https://maps.worldmonitor.app/country-boundary-overrides.geojson';
+// Opt-in: only fetched when a deployment hosts the overrides file itself
+// (VITE_COUNTRY_OVERRIDES_URL). Node test runners configure it through
+// process.env (scripts/run-data-tests.mjs).
+const COUNTRY_OVERRIDES_URL = String(
+  (typeof import.meta.env !== 'undefined' && import.meta.env
+    ? import.meta.env.VITE_COUNTRY_OVERRIDES_URL
+    : (typeof process !== 'undefined' ? process.env.VITE_COUNTRY_OVERRIDES_URL : undefined)) ?? '',
+).trim();
 const COUNTRY_OVERRIDE_TIMEOUT_MS = 3_000;
 
 /**
@@ -310,7 +316,7 @@ async function ensureLoaded(): Promise<void> {
       markLcpDebug('wm:data:country-geometry-fetch-ready', { features: data.features.length });
 
       // Apply optional higher-resolution boundary overrides (sourced from Natural Earth)
-      try {
+      if (COUNTRY_OVERRIDES_URL) try {
         const overrideResp = await fetch(COUNTRY_OVERRIDES_URL, {
           signal: makeTimeout(COUNTRY_OVERRIDE_TIMEOUT_MS),
         });

@@ -11,6 +11,34 @@ const APP_ORIGIN_PATTERN = /^https:\/\/(?:(?:www|app|api|nuclear)\.)?worldmonito
 const MAX_ORIGIN_BYTES = 300;
 const ORIGIN_ENCODER = new TextEncoder();
 
+/**
+ * NucMonitor deployments name their own hosts with APP_ORIGINS, a comma-
+ * separated list of https origins. A request whose Origin equals the host it
+ * arrived on is always first-party (same-origin POSTs carry Origin too), so a
+ * fresh deployment works before APP_ORIGINS is set. Mirrors api/_cors.js.
+ */
+export function configuredAppOrigins(env: Record<string, string | undefined> = process.env): string[] {
+  return String(env.APP_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter((o) => /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(o));
+}
+
+function requestOrigin(req: Request): string {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+  if (forwardedHost) return `${forwardedProto}://${(forwardedHost.split(',')[0] ?? '').trim()}`;
+  try { return new URL(req.url).origin; } catch { return ''; }
+}
+
+function isSameOrigin(req: Request, origin: string): boolean {
+  return Boolean(origin) && origin === requestOrigin(req);
+}
+
+function fallbackAllowOrigin(req: Request): string {
+  return configuredAppOrigins()[0] || requestOrigin(req) || 'https://worldmonitor.app';
+}
+
 const PRODUCTION_PATTERNS: RegExp[] = [
   APP_ORIGIN_PATTERN,
   // Vercel preview deployments under the "eliewm" team scope, e.g.
@@ -136,17 +164,19 @@ function isWorldMonitorGoogleTranslateOrigin(origin: string): boolean {
   }
 }
 
-export function isAllowedOrigin(origin: string): boolean {
+export function isAllowedOrigin(origin: string, req: Request | null = null): boolean {
   if (!origin || origin.length > MAX_ORIGIN_BYTES
     || ORIGIN_ENCODER.encode(origin).byteLength > MAX_ORIGIN_BYTES) return false;
+  if (req && isSameOrigin(req, origin)) return true;
   if (isWorldMonitorGoogleTranslateOrigin(origin)) return true;
   const candidate = originForAllowlistMatch(origin);
+  if (configuredAppOrigins().includes(candidate)) return true;
   return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(candidate));
 }
 
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
-  const allowOrigin = isAllowedOrigin(origin) ? origin : 'https://worldmonitor.app';
+  const allowOrigin = isAllowedOrigin(origin, req) ? origin : fallbackAllowOrigin(req);
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Credentials': 'true',
@@ -166,7 +196,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
 export function getOriginDeniedCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
   return {
-    'Access-Control-Allow-Origin': origin || 'https://worldmonitor.app',
+    'Access-Control-Allow-Origin': origin || fallbackAllowOrigin(req),
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': ALLOWED_HEADERS,
@@ -179,5 +209,5 @@ export function getOriginDeniedCorsHeaders(req: Request): Record<string, string>
 export function isDisallowedOrigin(req: Request): boolean {
   const origin = req.headers.get('origin');
   if (!origin) return false;
-  return !isAllowedOrigin(origin);
+  return !isAllowedOrigin(origin, req);
 }

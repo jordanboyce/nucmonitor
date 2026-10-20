@@ -134,3 +134,42 @@ test('CORS allow headers include MCP transport headers', () => {
     assert.match(exposed, /\bX-Military-Bbox\b/);
   }
 });
+
+test('admits the origin a request was served from, so a fresh NucMonitor host works before APP_ORIGINS is set', () => {
+  const sameOrigin = new Request('https://nucmonitor-demo.vercel.app/api/wm-session', {
+    headers: { origin: 'https://nucmonitor-demo.vercel.app' },
+  });
+  assert.equal(isDisallowedOrigin(sameOrigin), false);
+  assert.equal(getCorsHeaders(sameOrigin)['Access-Control-Allow-Origin'], 'https://nucmonitor-demo.vercel.app');
+
+  // Behind a proxy the public host arrives in x-forwarded-host.
+  const forwarded = new Request('https://internal.invalid/api/wm-session', {
+    headers: { origin: 'https://nucmonitor.example', 'x-forwarded-host': 'nucmonitor.example', 'x-forwarded-proto': 'https' },
+  });
+  assert.equal(isDisallowedOrigin(forwarded), false);
+
+  // A foreign origin is still refused even when the request host is ours.
+  const foreign = new Request('https://nucmonitor-demo.vercel.app/api/wm-session', {
+    headers: { origin: 'https://evil.example.com' },
+  });
+  assert.equal(isDisallowedOrigin(foreign), true);
+});
+
+test('APP_ORIGINS names additional first-party hosts', async () => {
+  const { configuredAppOrigins } = await import('./_cors.js');
+  assert.deepEqual(
+    configuredAppOrigins({ APP_ORIGINS: ' https://nucmonitor.example/, https://partners.nucmonitor.example ,http://insecure.example, not-a-url ' }),
+    ['https://nucmonitor.example', 'https://partners.nucmonitor.example'],
+  );
+  const previous = process.env.APP_ORIGINS;
+  process.env.APP_ORIGINS = 'https://partners.nucmonitor.example';
+  try {
+    const req = new Request('https://nucmonitor.example/api/test', { headers: { origin: 'https://partners.nucmonitor.example' } });
+    assert.equal(isDisallowedOrigin(req), false);
+    assert.equal(getCorsHeaders(req)['Access-Control-Allow-Origin'], 'https://partners.nucmonitor.example');
+    const refused = new Request('https://nucmonitor.example/api/test', { headers: { origin: 'https://evil.example.com' } });
+    assert.equal(getCorsHeaders(refused)['Access-Control-Allow-Origin'], 'https://partners.nucmonitor.example');
+  } finally {
+    if (previous === undefined) delete process.env.APP_ORIGINS; else process.env.APP_ORIGINS = previous;
+  }
+});

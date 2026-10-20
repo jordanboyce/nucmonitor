@@ -45,7 +45,7 @@
  * `scripts/openapi-capacity-report.mjs` measures what is left and ranks what to
  * collapse next; docs/perf/openapi-bundle-capacity-2026-08-13.md is the plan.
  */
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse as parseYaml } from 'yaml';
@@ -361,7 +361,10 @@ export function buildBundle({ spec: provided } = {}) {
 
 function main() {
   const yaml = readFileSync(yamlPath);
-  const llms = withOpenApiByteSize(readFileSync(llmsPath, 'utf8'), yaml.byteLength);
+  // public/llms.txt is the agent-discovery index of the upstream project;
+  // NucMonitor does not ship one, so the byte annotation is refreshed only
+  // when the file exists.
+  const llms = existsSync(llmsPath) ? withOpenApiByteSize(readFileSync(llmsPath, 'utf8'), yaml.byteLength) : null;
   const {
     spec,
     json,
@@ -376,7 +379,7 @@ function main() {
     unreachableStats,
   } = buildBundle({ spec: parseYaml(yaml.toString('utf8')) });
   writeFileSync(jsonPath, json);
-  writeFileSync(llmsPath, llms);
+  if (llms !== null) writeFileSync(llmsPath, llms);
 
   const pathCount = spec.paths ? Object.keys(spec.paths).length : 0;
   console.log(

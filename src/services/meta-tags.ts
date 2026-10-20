@@ -12,8 +12,10 @@ interface StoryMeta {
 }
 
 const variantMeta = VARIANT_META[SITE_VARIANT] ?? VARIANT_META.nuclear;
-const CANONICAL_URL = variantMeta.url;
-const PUBLIC_ORIGIN = new URL(variantMeta.url).origin;
+// variantMeta.url is root-relative (src/config/variant-meta.ts); resolve it
+// against the serving origin so the same build works on any host.
+const PUBLIC_ORIGIN = new URL(variantMeta.url, globalThis.location?.origin || 'http://localhost').origin;
+const CANONICAL_URL = new URL(variantMeta.url, PUBLIC_ORIGIN).href;
 const API_ORIGIN = getCanonicalApiOrigin();
 const DEFAULT_IMAGE = `${PUBLIC_ORIGIN}/favico/${SITE_VARIANT}/og-image.png`;
 

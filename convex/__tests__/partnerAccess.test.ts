@@ -62,4 +62,30 @@ describe("partnerAccess", () => {
     expect(rows[0]?.features.apiAccess).toBe(true);
     expect(rows[0]!.validUntil).toBeGreaterThan(Date.now() + 29 * 86_400_000);
   });
+
+  test("access requests are recorded once per email and refreshed on repeat", async () => {
+    const t = convexTest(schema, modules);
+    const first = await t.mutation(api.partnerAccess.requestAccess, {
+      email: " Ops@Utility.com ", organization: "Utility Co", role: "Emergency preparedness", message: "Pilot for three plants",
+    });
+    expect(first).toEqual({ created: true, email: "ops@utility.com" });
+    const again = await t.mutation(api.partnerAccess.requestAccess, {
+      email: "ops@utility.com", organization: "Utility Co (updated)", message: "x".repeat(2000),
+    });
+    expect(again.created).toBe(false);
+    const rows = await t.query(internal.partnerAccess.listAccessRequests, {});
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ email: "ops@utility.com", emailDomain: "utility.com", organization: "Utility Co (updated)", role: "Emergency preparedness", status: "new", submissions: 2, source: "landing" });
+    expect(rows[0]!.message).toHaveLength(1000);
+
+    await t.mutation(internal.partnerAccess.setAccessRequestStatus, { email: "OPS@utility.com", status: "invited" });
+    expect(await t.query(internal.partnerAccess.listAccessRequests, { status: "new" })).toHaveLength(0);
+    expect(await t.query(internal.partnerAccess.listAccessRequests, { status: "invited" })).toHaveLength(1);
+  });
+
+  test("access requests refuse a bad email or a missing organisation", async () => {
+    const t = convexTest(schema, modules);
+    await expect(t.mutation(api.partnerAccess.requestAccess, { email: "not-an-email", organization: "X" })).rejects.toThrow();
+    await expect(t.mutation(api.partnerAccess.requestAccess, { email: "a@b.co", organization: "   " })).rejects.toThrow();
+  });
 });

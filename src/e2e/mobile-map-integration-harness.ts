@@ -1,6 +1,7 @@
 import '../styles/main.css';
 import { MapComponent } from '../components/Map';
 import { initI18n } from '../services/i18n';
+import type { MapLayers } from '../types';
 
 type MobileMapIntegrationHarness = {
   ready: boolean;
@@ -24,8 +25,8 @@ type MobileMapIntegrationHarness = {
   clearOverlayFeeds: () => void;
   getActiveFlashCount: () => number;
   getFlashNodeCount: () => number;
-  getKeptHotspotCoords: () => Array<{ lat: number; lon: number }>;
-  getSeededHotspotCoords: () => Array<{ lat: number; lon: number }>;
+  getKeptMarkerCoords: () => Array<{ lat: number; lon: number }>;
+  getSeededMarkerCoords: () => Array<{ lat: number; lon: number }>;
   getOverlayBudgetState: () => {
     rendered: number;
     renders: number;
@@ -121,63 +122,22 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   return originalFetch(input, init);
 }) as typeof fetch;
 
-const layers = {
-  gpsJamming: false,
-  satellites: false,
-
-  conflicts: false,
-  bases: false,
+const layers: MapLayers = {
   cables: false,
   pipelines: false,
-  hotspots: true,
-  ais: false,
   nuclear: false,
   irradiators: false,
-  sanctions: false,
+  radiationWatch: false,
   weather: false,
-  canadaRoads: false,
-  canadaAlerts: false,
-  economic: false,
-  waterways: false,
   outages: false,
-  cyberThreats: false,
   datacenters: false,
-  protests: false,
-  flights: false,
-  military: false,
   natural: false,
-  spaceports: false,
-  minerals: false,
   fires: false,
-  ucdpEvents: false,
-  displacement: false,
   climate: false,
-  startupHubs: false,
-  cloudRegions: false,
-  accelerators: false,
-  techHQs: false,
-  techEvents: false,
-  stockExchanges: false,
-  financialCenters: false,
-  centralBanks: false,
-  commodityHubs: false,
-  gulfInvestments: false,
-  positiveEvents: false,
-  kindness: false,
-  happiness: false,
-  speciesRecovery: false,
-  renewableInstallations: false,
-  tradeRoutes: false,
-  iranAttacks: false,
-
-  ciiChoropleth: false,
-  resilienceScore: false,
   dayNight: false,
-  miningSites: false,
-  processingPlants: false,
-  commodityPorts: false,
   webcams: false,
   diseaseOutbreaks: false,
+  usNuclearFacilities: false,
 };
 
 await initI18n();
@@ -203,30 +163,19 @@ const map = new MapComponent(app, {
 
 let ready = false;
 let fallbackInjected = false;
-const ensureHotspotsRendered = (): void => {
-  if (document.querySelector('.hotspot')) {
+const ensureBaseRendered = (): void => {
+  const mapInternals = map as unknown as {
+    worldData: unknown;
+    countryFeatures: unknown;
+    baseRendered: boolean;
+  };
+  if (mapInternals.baseRendered && document.querySelector('.map-wrapper')) {
     ready = true;
     return;
   }
 
   // Fallback for deterministic tests if the async world fetch is delayed.
   if (!fallbackInjected) {
-    const mapInternals = map as unknown as {
-      worldData: unknown;
-      countryFeatures: unknown;
-      baseRendered: boolean;
-      hotspots: Array<{
-        id: string;
-        name: string;
-        lat: number;
-        lon: number;
-        keywords: string[];
-        level: 'low' | 'elevated' | 'high';
-        description: string;
-        status: string;
-      }>;
-      state: { layers: { hotspots: boolean } };
-    };
     mapInternals.worldData = MINIMAL_WORLD_TOPOLOGY;
     mapInternals.countryFeatures = [
       {
@@ -238,27 +187,14 @@ const ensureHotspotsRendered = (): void => {
         },
       },
     ];
-    mapInternals.hotspots = [
-      {
-        id: 'e2e-map-hotspot',
-        name: 'E2E Map Hotspot',
-        lat: 20,
-        lon: 10,
-        keywords: ['e2e', 'integration'],
-        level: 'high',
-        description: 'Integration harness hotspot',
-        status: 'monitoring',
-      },
-    ];
-    mapInternals.state.layers.hotspots = true;
     mapInternals.baseRendered = false;
     map.render();
     fallbackInjected = true;
   }
 
-  requestAnimationFrame(ensureHotspotsRendered);
+  requestAnimationFrame(ensureBaseRendered);
 };
-ensureHotspotsRendered();
+ensureBaseRendered();
 
 window.__mobileMapIntegrationHarness = {
   get ready() {
@@ -313,22 +249,16 @@ window.__mobileMapIntegrationHarness = {
   // #7112: create one over-budget, proximity-ranked feed so pan/zoom can prove
   // that the selected marker set follows the transformed viewport centre.
   seedOverlayViewportStress: (count: number) => {
-    const hotspots = Array.from({ length: count }, (_, index) => ({
-      id: `viewport-hotspot-${index}`,
-      name: `Viewport Hotspot ${index}`,
-      lat: ((index * 7) % 170) - 85,
-      lon: ((index * 13) % 358) - 179,
-      keywords: ['viewport'],
-      level: 'low' as const,
-      description: 'Viewport budget stress marker',
-      status: 'monitoring',
+    const quakes = Array.from({ length: count }, (_, index) => ({
+      id: `viewport-quake-${index}`,
+      magnitude: 4,
+      place: `Viewport Quake ${index}`,
+      occurredAt: 0,
+      location: { latitude: ((index * 7) % 170) - 85, longitude: ((index * 13) % 358) - 179 },
     }));
-    const mapInternals = map as unknown as {
-      hotspots: typeof hotspots;
-      state: { layers: Record<string, boolean> };
-    };
-    mapInternals.hotspots = hotspots;
-    mapInternals.state.layers.hotspots = true;
+    const mapInternals = map as unknown as { state: { layers: Record<string, boolean> } };
+    mapInternals.state.layers.natural = true;
+    map.setEarthquakes(quakes as never);
     map.render();
   },
   setOverlayViewport: (lat: number, lon: number) => map.setCenter(lat, lon),
@@ -369,11 +299,6 @@ window.__mobileMapIntegrationHarness = {
       .map((element) => `${element.style.left},${element.style.top}`)
       .sort()
       .join('|'),
-  // #7112: the budget's proximity ranking is a claim about WHICH markers survive,
-  // not merely that the set changes on pan/zoom — a centre computed from the
-  // wrong inverse transform also changes the set. These expose the geography of
-  // the surviving hotspots so a test can assert the kept set actually clusters
-  // on the requested view centre.
   // #7112: WeatherAlert.centroid is optional and the render loop skips an alert
   // without one, so an alert that can never be drawn must not be budgeted or
   // counted in the shown/total badge.
@@ -426,11 +351,7 @@ window.__mobileMapIntegrationHarness = {
   // #7112: drop the seeded feeds so nothing is over budget any more — proves the
   // disclosure is removed when the cut clears, not stranded over a complete map.
   clearOverlayFeeds: () => {
-    const internals = map as unknown as {
-      hotspots: unknown[];
-      state: { layers: Record<string, boolean> };
-    };
-    internals.hotspots = [];
+    const internals = map as unknown as { state: { layers: Record<string, boolean> } };
     map.setEarthquakes([] as never);
     map.setWeatherAlerts([] as never);
     internals.state.layers.natural = false;
@@ -439,18 +360,27 @@ window.__mobileMapIntegrationHarness = {
   getActiveFlashCount: () => map.getActiveFlashCount(),
   getFlashNodeCount: () =>
     document.getElementById('mapOverlays')?.querySelectorAll('.map-flash').length ?? -1,
-  getKeptHotspotCoords: () => {
+  // #7112: the budget's proximity ranking is a claim about WHICH markers survive,
+  // not merely that the set changes on pan/zoom — a centre computed from the
+  // wrong inverse transform also changes the set. These expose the geography of
+  // the surviving earthquake markers so a test can assert the kept set actually
+  // clusters on the requested view centre.
+  getKeptMarkerCoords: () => {
     const internals = map as unknown as {
-      hotspots: Array<{ lat: number; lon: number }>;
+      earthquakes: Array<{ location?: { latitude: number; longitude: number } }>;
       overlayMarkerCut: Set<unknown>;
     };
-    return internals.hotspots
-      .filter((spot) => !internals.overlayMarkerCut.has(spot))
-      .map((spot) => ({ lat: spot.lat, lon: spot.lon }));
+    return internals.earthquakes
+      .filter((quake) => quake.location && !internals.overlayMarkerCut.has(quake))
+      .map((quake) => ({ lat: quake.location!.latitude, lon: quake.location!.longitude }));
   },
-  getSeededHotspotCoords: () => {
-    const internals = map as unknown as { hotspots: Array<{ lat: number; lon: number }> };
-    return internals.hotspots.map((spot) => ({ lat: spot.lat, lon: spot.lon }));
+  getSeededMarkerCoords: () => {
+    const internals = map as unknown as {
+      earthquakes: Array<{ location?: { latitude: number; longitude: number } }>;
+    };
+    return internals.earthquakes
+      .filter((quake) => quake.location)
+      .map((quake) => ({ lat: quake.location!.latitude, lon: quake.location!.longitude }));
   },
   getOverlayBudgetState: () => map.getOverlayMarkerBudgetState(),
   getPopupRect: () => {

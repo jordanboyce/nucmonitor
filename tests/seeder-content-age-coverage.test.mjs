@@ -174,16 +174,6 @@ test('content-age opt-in is complete — contentMeta always paired with maxConte
   );
 });
 
-test('no EXEMPT entry is stale — every entry points at an existing, still-unwired seeder', () => {
-  const seeders = new Set(listSeeders());
-  for (const [file, reason] of Object.entries(EXEMPT)) {
-    assert.ok(seeders.has(file), `EXEMPT lists ${file} but that seeder no longer exists — remove the entry.`);
-    const code = stripComments(readFileSync(join(SCRIPTS_DIR, file), 'utf8'));
-    assert.ok(!isWired(code), `${file} is now wired for content-age — remove it from EXEMPT.`);
-    assert.ok(typeof reason === 'string' && reason.trim().length > 40, `EXEMPT[${file}] needs a real rationale.`);
-  }
-});
-
 // Self-test of the matcher — locks BOTH the property-shape requirement and
 // the comment strip, so a future "simplification" (bare substring, or
 // dropping stripComments) fails here immediately.

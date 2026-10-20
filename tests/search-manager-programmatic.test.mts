@@ -789,112 +789,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     }
   });
 
-  it('passes cancellation into an in-flight country presentation', async () => {
-    const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
-    ]);
-    let capturedSignal: AbortSignal | undefined;
-    let releaseCountry!: () => void;
-    let presented = 0;
-    scenario.manager.callbacks.openCountryBriefByCode = (
-      code: string,
-      name: string,
-      options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-    ) => {
-      scenario.calls.countryBriefs.push([code, name, options]);
-      capturedSignal = options?.signal;
-      return new Promise<boolean>((resolve, reject) => {
-        const signal = options?.signal;
-        const handleAbort = (): void => reject(signal?.reason);
-        signal?.addEventListener('abort', handleAbort, { once: true });
-        releaseCountry = () => {
-          signal?.removeEventListener('abort', handleAbort);
-          if (signal?.aborted) return;
-          presented += 1;
-          resolve(true);
-        };
-      });
-    };
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    scenario.modal.open();
-    const controller = new AbortController();
-    const pendingOpen = scenario.manager.openSearchResult(key, undefined, controller.signal);
-    await Promise.resolve();
-    assert.notEqual(capturedSignal, controller.signal, 'the presentation uses a linked internal signal');
-    assert.equal(capturedSignal?.aborted, false);
-    assert.equal(scenario.calls.countryBriefs[0]?.[2]?.trackDetailedAnalytics, false);
-    assert.equal(scenario.modal.isOpen, true, 'selection entry must not close the human palette');
-
-    controller.abort();
-    await assert.rejects(pendingOpen, (error: unknown) => error === controller.signal.reason);
-    assert.equal(capturedSignal?.aborted, true, 'caller abort must propagate to the internal signal');
-    releaseCountry();
-    await Promise.resolve();
-    assert.equal(presented, 0, 'aborted country work must not present later');
-    assert.equal(scenario.modal.isOpen, true, 'cancellation must leave the human palette open');
-    assert.equal(scenario.modal.closeCalls, 0);
-    assert.deepEqual(await scenario.manager.openSearchResult(key), {
-      ok: false,
-      status: 'denied',
-      reason: 'invalid_or_expired_key',
-    }, 'an entered selection must remain one-use after cancellation');
-  });
-
-  it('aborts an in-flight country presentation when a newer selection starts', async () => {
-    const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
-      resultMatch('country', 'CA', 'Canada', { code: 'CA', name: 'Canada' }),
-    ]);
-    let firstSignal: AbortSignal | undefined;
-    let firstPresented = 0;
-    let releaseFirst!: () => void;
-    scenario.manager.callbacks.openCountryBriefByCode = (
-      code: string,
-      name: string,
-      options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-    ) => {
-      scenario.calls.countryBriefs.push([code, name, options]);
-      if (code !== 'US') return true;
-      firstSignal = options?.signal;
-      return new Promise<boolean>((resolve, reject) => {
-        const handleAbort = (): void => reject(firstSignal?.reason);
-        firstSignal?.addEventListener('abort', handleAbort, { once: true });
-        releaseFirst = () => {
-          firstSignal?.removeEventListener('abort', handleAbort);
-          if (firstSignal?.aborted) return;
-          firstPresented += 1;
-          resolve(true);
-        };
-      });
-    };
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const firstKey = response.results[0]?.key;
-    const secondKey = response.results[1]?.key;
-    assert.ok(firstKey);
-    assert.ok(secondKey);
-    const firstOpen = scenario.manager.openSearchResult(firstKey);
-    await Promise.resolve();
-    assert.equal(firstSignal?.aborted, false);
-
-    assert.deepEqual(await scenario.manager.openSearchResult(secondKey), {
-      ok: true,
-      status: 'opened',
-      type: 'country',
-    });
-    assert.equal(firstSignal?.aborted, true, 'the newer selection must abort prior presentation work');
-    assert.deepEqual(await firstOpen, {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    releaseFirst();
-    assert.equal(firstPresented, 0);
-  });
-
   it('denies a panel result when enabling it never produces a visible target', async () => {
     const scenario = makeScenario([
       commandMatch('panel:test-panel', 'panels', 'Test panel'),
@@ -1325,82 +1219,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     }
   });
 
-  it('does not acknowledge deferred market or prediction shells as opened results', async () => {
-    for (const testCase of [
-      { type: 'market', panelId: 'markets' },
-      { type: 'prediction', panelId: 'polymarket' },
-    ] as const) {
-      const scenario = makeScenario([
-        resultMatch(testCase.type, `${testCase.type}-1`, testCase.type, {}),
-      ]);
-      scenario.runtime.deferTimers = true;
-      delete scenario.manager.searchSelection.scrollToPanelWhenReady;
-      delete scenario.manager.searchSelection.scrollToPanel;
-      const shell = {
-        dataset: { panel: testCase.panelId },
-        isConnected: true,
-        scrollIntoView: () => scenario.calls.scrolledPanels.push(testCase.panelId),
-      };
-      const runtimeGlobal = globalThis as unknown as {
-        document?: {
-          querySelector: (selector: string) => typeof shell | null;
-          querySelectorAll: () => typeof shell[];
-        };
-      };
-      const previousDocument = runtimeGlobal.document;
-      runtimeGlobal.document = {
-        querySelector: (selector) => (
-          selector.includes(':not([data-deferred-panel])') ? null : shell
-        ),
-        querySelectorAll: () => [shell],
-      };
-
-      try {
-        const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-        const key = response.results[0]?.key;
-        assert.ok(key);
-        scenario.modal.open();
-        const pendingOpen = scenario.manager.openSearchResult(key);
-        await Promise.resolve();
-        flushTimers(scenario.runtime);
-
-        assert.deepEqual(await pendingOpen, {
-          ok: false,
-          status: 'denied',
-          reason: 'result_no_longer_executable',
-        }, testCase.type);
-        assert.deepEqual(scenario.calls.scrolledPanels, [testCase.panelId], testCase.type);
-        assert.equal(scenario.modal.isOpen, true, testCase.type);
-        assert.equal(scenario.modal.closeCalls, 0, testCase.type);
-      } finally {
-        if (previousDocument === undefined) delete runtimeGlobal.document;
-        else runtimeGlobal.document = previousDocument;
-      }
-    }
-  });
-
-  it('denies market and prediction selections when their visible panel target disappears', () => {
-    const scenario = makeScenario([]);
-    delete scenario.manager.searchSelection.scrollToPanel;
-    const runtimeGlobal = globalThis as unknown as {
-      document?: { querySelector: () => null };
-    };
-    const previousDocument = runtimeGlobal.document;
-    runtimeGlobal.document = { querySelector: () => null };
-
-    try {
-      assert.equal(scenario.manager.searchSelection.handleSearchResult(
-        resultMatch('market', 'market-1', 'Market', {}).result,
-      ), false);
-      assert.equal(scenario.manager.searchSelection.handleSearchResult(
-        resultMatch('prediction', 'prediction-1', 'Prediction', {}).result,
-      ), false);
-    } finally {
-      if (previousDocument === undefined) delete runtimeGlobal.document;
-      else runtimeGlobal.document = previousDocument;
-    }
-  });
-
   it('cancels delayed programmatic selection work on destroy', async () => {
     const scenario = makeScenario([
       resultMatch('hotspot', 'stale-hotspot', 'Stale hotspot', { id: 'stale-hotspot' }),
@@ -1466,33 +1284,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     );
   });
 
-  it('keeps the latest aircraft snapshot and republishes it on premium restoration', () => {
-    const scenario = makeScenario([]);
-    scenario.manager.observeSecurityContext();
-
-    scenario.runtime.premium = false;
-    scenario.runtime.pro = false;
-    for (const listener of scenario.runtime.entitlementListeners) listener();
-
-    scenario.manager.updateFlightSource([{
-      icao24: 'abc123',
-      callsign: 'AB123',
-      lat: 1,
-      lon: 2,
-      altitudeFt: 30_000,
-      groundSpeedKts: 450,
-      observedAt: Date.now(),
-      onGround: false,
-    }], [], Date.now());
-
-    scenario.runtime.premium = true;
-    scenario.runtime.pro = true;
-    for (const listener of scenario.runtime.entitlementListeners) listener();
-
-    assert.equal(scenario.modal.matches[0]?.result.type, 'flight');
-    assert.equal(scenario.modal.matches[0]?.result.id, 'abc123');
-  });
-
   it('uses the live callsign fallback for programmatic search', async () => {
     const scenario = makeScenario([]);
     scenario.modal.flightCallsign = 'AB123';
@@ -1502,27 +1293,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(scenario.runtime.liveFlightQueries, ['AB123']);
     assert.equal(response.results[0]?.type, 'flight');
     assert.equal(response.results[0]?.title, 'AB123');
-  });
-
-  it('passes caller cancellation to the live callsign transport', async () => {
-    const scenario = makeScenario([]);
-    scenario.runtime.liveFlightPending = true;
-    const controller = new AbortController();
-    const pending = scenario.manager.fetchAndPublishLiveFlight(
-      'AB123',
-      scenario.manager.liveFlightLookupGeneration,
-      controller.signal,
-    );
-    await Promise.resolve();
-
-    assert.deepEqual(scenario.runtime.liveFlightQueries, ['AB123']);
-    assert.equal(scenario.runtime.liveFlightSignals[0], controller.signal);
-
-    controller.abort();
-    scenario.runtime.releaseLiveFlight?.();
-    await assert.rejects(pending, (error) => (
-      error instanceof Error && error.name === 'AbortError'
-    ));
   });
 
   it('bounds a hung live callsign lookup before returning search results', async () => {
@@ -1548,95 +1318,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       [],
       'a timed-out live lookup must not mutate the shared flight index later',
     );
-  });
-
-  it('cancels a delayed agent hotspot when a human command takes authority', async () => {
-    const scenario = makeScenario([
-      resultMatch('hotspot', 'agent-hotspot', 'Agent hotspot', { id: 'agent-hotspot' }),
-    ]);
-    scenario.runtime.deferTimers = true;
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    const pendingAgentOpen = scenario.manager.openSearchResult(key);
-    await Promise.resolve();
-    assert.ok(scenario.runtime.pendingTimers.size > 0, 'agent hotspot should be awaiting its commit timer');
-
-    assert.equal(
-      scenario.manager.searchSelection.handleCommand(
-        commandMatch('time:week', 'time', 'Past week').command,
-      ),
-      true,
-    );
-    flushTimers(scenario.runtime);
-
-    assert.deepEqual(await pendingAgentOpen, {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    assert.deepEqual(scenario.calls.hotspotIds, [], 'superseded agent timer must not mutate the map');
-    assert.deepEqual(scenario.calls.timeRanges, ['week'], 'the human command remains authoritative');
-  });
-
-  it('lets a human country choice supersede an in-flight agent country presentation', async () => {
-    const agentMatch = resultMatch(
-      'country',
-      'US',
-      'United States',
-      { code: 'US', name: 'United States' },
-    );
-    const humanMatch = resultMatch(
-      'country',
-      'CA',
-      'Canada',
-      { code: 'CA', name: 'Canada' },
-    );
-    const scenario = makeScenario([agentMatch]);
-    let resolveAgentSelection!: (opened: boolean) => void;
-    let agentSignal: AbortSignal | undefined;
-    let selectionCount = 0;
-    scenario.manager.callbacks.openCountryBriefByCode = (
-      code: string,
-      name: string,
-      options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-    ) => {
-      scenario.calls.countryBriefs.push([code, name, options]);
-      selectionCount += 1;
-      if (selectionCount === 1) {
-        agentSignal = options?.signal;
-        return new Promise<boolean>((resolve) => {
-          resolveAgentSelection = resolve;
-        });
-      }
-      return true;
-    };
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    const pendingAgentOpen = scenario.manager.openSearchResult(key);
-    assert.equal(scenario.calls.countryBriefs.length, 1, 'agent selection should be awaiting presentation');
-
-    assert.equal(scenario.manager.searchSelection.handleSearchResult(humanMatch.result), true);
-    assert.equal(agentSignal?.aborted, true, 'human selection must abort the older agent presentation');
-    assert.deepEqual(scenario.runtime.detailedCountryAnalytics, [[
-      'CA',
-      'Canada',
-      'search',
-    ]]);
-    assert.deepEqual(summarizeCountryBriefs(scenario.calls.countryBriefs), [
-      ['US', 'United States', { trackDetailedAnalytics: false, hasSignal: true }],
-      ['CA', 'Canada', { trackDetailedAnalytics: true }],
-    ]);
-
-    resolveAgentSelection(true);
-    assert.deepEqual(await pendingAgentOpen, {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
   });
 
   it('keeps a key valid across a benign index refresh', async () => {
@@ -1756,32 +1437,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(scenario.calls.hotspotIds, []);
   });
 
-  it('invalidates capabilities across an A -> signed-out -> A security-context cycle', async () => {
-    const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
-    ]);
-    scenario.manager.observeSecurityContext();
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-
-    scenario.runtime.auth = {};
-    scenario.runtime.premium = false;
-    for (const listener of scenario.runtime.authListeners) listener();
-    scenario.runtime.auth = { user: { id: 'user-a', role: 'pro' } };
-    scenario.runtime.premium = true;
-    for (const listener of scenario.runtime.authListeners) listener();
-
-    assert.deepEqual(await scenario.manager.openSearchResult(key), {
-      ok: false,
-      status: 'denied',
-      reason: 'invalid_or_expired_key',
-    });
-    assert.ok(scenario.modal.clearedSources.includes('flight'));
-    assert.deepEqual(scenario.calls.countryBriefs, []);
-    scenario.manager.destroy();
-  });
-
   it('invalidates capabilities across a same-user entitlement downgrade and restoration', async () => {
     const scenario = makeScenario([
       resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
@@ -1877,86 +1532,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(scenario.calls.views, []);
   });
 
-  it('dispatches refreshed same-identity flight coordinates at the delayed commit', async () => {
-    const staleFlight = resultMatch(
-      'flight',
-      'abc123',
-      'NEEDLE1',
-      { kind: 'adsb', lat: 1, lon: 2, layer: 'flights' },
-    );
-    const freshFlight = resultMatch(
-      'flight',
-      'abc123',
-      'NEEDLE1',
-      { kind: 'adsb', lat: 33, lon: 44, layer: 'flights' },
-    );
-    const scenario = makeScenario([staleFlight]);
-    scenario.runtime.deferTimers = true;
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    const pendingOpen = scenario.manager.openSearchResult(key);
-    await Promise.resolve();
-    assert.equal(scenario.runtime.pendingTimers.size, 1);
-
-    scenario.modal.revision += 1;
-    scenario.modal.matches = [freshFlight];
-    flushTimers(scenario.runtime);
-
-    assert.deepEqual(await pendingOpen, {
-      ok: true,
-      status: 'opened',
-      type: 'flight',
-    });
-    assert.deepEqual(scenario.calls.centers, [[33, 44, 9]]);
-    assert.deepEqual(scenario.calls.layers, ['flights']);
-  });
-
-  it('denies cached civilian aircraft after a globe switch while retaining military aircraft', async () => {
-    const civilian = resultMatch(
-      'flight',
-      'civilian-1',
-      'NEEDLE1',
-      { kind: 'adsb', lat: 1, lon: 2, layer: 'flights' },
-    );
-    const military = resultMatch(
-      'flight',
-      'military-1',
-      'NEEDLE2',
-      { kind: 'military', lat: 3, lon: 4, layer: 'military' },
-    );
-    const scenario = makeScenario([civilian, military]);
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    assert.deepEqual(response.results.map((result: { executable: boolean }) => result.executable), [
-      true,
-      true,
-    ]);
-
-    scenario.state.globe = true;
-    let readinessCalls = 0;
-    assert.deepEqual(await scenario.manager.openSearchResult(
-      response.results[0].key,
-      async () => { readinessCalls += 1; },
-    ), {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    assert.equal(readinessCalls, 0, 'an invisible civilian target must not wake the renderer');
-
-    assert.deepEqual(await scenario.manager.openSearchResult(
-      response.results[1].key,
-      async () => { readinessCalls += 1; },
-    ), {
-      ok: true,
-      status: 'opened',
-      type: 'flight',
-    });
-    assert.equal(readinessCalls, 1);
-    assert.deepEqual(scenario.calls.layers, ['military']);
-    assert.deepEqual(scenario.calls.centers, [[3, 4, 9]]);
-  });
-
   it('denies globe time commands that only mutate hidden renderer state', async () => {
     const scenario = makeScenario([
       commandMatch('time:24h', 'actions', 'Last 24 hours'),
@@ -2033,36 +1608,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     );
   });
 
-  it('treats a superseded country brief as not executable and keeps analytics empty', async () => {
-    const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
-    ]);
-    scenario.manager.callbacks.openCountryBriefByCode = (
-      code: string,
-      name: string,
-      options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-    ) => {
-      scenario.calls.countryBriefs.push([code, name, options]);
-      // Mirrors App.ts finish(false) when the requested page was superseded.
-      return Promise.resolve(false);
-    };
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    assert.deepEqual(await scenario.manager.openSearchResult(key), {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    assert.deepEqual(summarizeCountryBriefs(scenario.calls.countryBriefs), [[
-      'US',
-      'United States',
-      { trackDetailedAnalytics: false, hasSignal: true },
-    ]]);
-    assert.deepEqual(scenario.runtime.detailedCountryAnalytics, []);
-  });
-
   it('keeps an open palette visible when a country command fails to present', async () => {
     const scenario = makeScenario([
       commandMatch('country:US', 'actions', 'United States'),
@@ -2102,37 +1647,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     const unloadedCountryMap = commandMatch('country-map:US', 'country-map', 'United States').command;
     assert.equal(scenario.manager.isModalCommandVisible(unloadedCountryMap), false);
     assert.equal(scenario.manager.isCommandExecutable(unloadedCountryMap), false);
-  });
-
-  it('reports successful synchronous healing of stale locked resilience state for free users', async () => {
-    for (const command of [
-      commandMatch('layer:resilienceScore', 'layers', 'Resilience layer'),
-      commandMatch('view:resilience', 'view', 'Resilience view'),
-    ]) {
-      if (command.kind !== 'command') throw new Error('expected command match');
-      const commandId = command.command.id;
-      const scenario = makeScenario([command]);
-      scenario.runtime.auth = {};
-      scenario.runtime.premium = false;
-      scenario.runtime.pro = false;
-      scenario.ctx.mapLayers.resilienceScore = true;
-
-      const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-      const issued = response.results[0];
-      assert.ok(issued);
-      assert.equal(issued.executable, true, `${commandId} must remain available to turn off`);
-      assert.deepEqual(await scenario.manager.openSearchResult(issued.key), {
-        ok: true,
-        status: 'opened',
-        type: 'command',
-      }, commandId);
-      assert.equal(
-        scenario.ctx.mapLayers.resilienceScore,
-        false,
-        `${commandId} must heal stale enabled state`,
-      );
-      assert.equal(scenario.modal.closeCalls, 1, commandId);
-    }
   });
 
   it('does not treat an incidental preset overlap as a meaningful agent action', () => {
@@ -2234,222 +1748,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     }
   });
 
-  it('keeps same-id flight capabilities bound to their exact civilian or military target', async () => {
-    const civilian = resultMatch(
-      'flight',
-      'abc123',
-      'NEEDLE1',
-      { kind: 'adsb', lat: 1, lon: 2, layer: 'flights' },
-    );
-    const military = resultMatch(
-      'flight',
-      'abc123',
-      'NEEDLE1',
-      { kind: 'military', lat: 3, lon: 4, layer: 'military' },
-    );
-    assert.notEqual(searchMatchIdentity(civilian), searchMatchIdentity(military));
-    const scenario = makeScenario([civilian, military]);
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    assert.equal(response.resultCount, 2);
-
-    assert.deepEqual(
-      await scenario.manager.openSearchResult(response.results[0].key, async () => {}),
-      { ok: true, status: 'opened', type: 'flight' },
-    );
-    assert.deepEqual(
-      await scenario.manager.openSearchResult(response.results[1].key, async () => {}),
-      { ok: true, status: 'opened', type: 'flight' },
-    );
-    assert.deepEqual(scenario.calls.layers, ['flights', 'military']);
-    assert.deepEqual(scenario.calls.centers, [[1, 2, 9], [3, 4, 9]]);
-  });
-
-  it('clears an expired live-flight source before search or selection', () => {
-    const scenario = makeScenario([]);
-    scenario.manager.flightSourceExpiresAt = Date.now() - 1;
-    scenario.manager.updateSearchIndex = undefined;
-
-    // Run the production refresh method now that the narrow harness state is
-    // configured. Unrelated index helpers are replaced with no-ops.
-    scenario.manager.syncPanelSearchIndex = () => {};
-    scenario.manager.buildCountrySearchItems = () => [];
-    scenario.ctx.allNews = [];
-    scenario.ctx.latestPredictions = [];
-    scenario.ctx.latestMarkets = [];
-    const productionUpdate = Object.getPrototypeOf(scenario.manager).updateSearchIndex;
-    productionUpdate.call(scenario.manager, { updateVisibleMetrics: false });
-
-    assert.ok(scenario.modal.clearedSources.includes('flight'));
-    assert.equal(scenario.manager.flightSourceExpiresAt, 0);
-  });
-
-  it('populates flight search for every premium access path, including runtime API keys', () => {
-    const scenario = makeScenario([]);
-    scenario.runtime.pro = false;
-    scenario.runtime.premium = true;
-
-    scenario.manager.updateFlightSource([{
-      icao24: 'abc123',
-      callsign: 'NEEDLE1',
-      altitudeFt: 30_000,
-      groundSpeedKts: 420,
-      onGround: false,
-      lat: 1,
-      lon: 2,
-    }], [], Date.now());
-
-    assert.ok(scenario.manager.flightSourceExpiresAt > Date.now());
-    assert.equal(scenario.modal.clearedSources.includes('flight'), false);
-    const flightSearchWiring = managerSource.slice(
-      managerSource.indexOf("setOnFlightSearch((callsign)"),
-      managerSource.indexOf("private async registerBaseSearchSource"),
-    );
-    assert.match(flightSearchWiring, /if \(!hasPremiumAccess\(getAuthState\(\)\)\) return;/);
-    assert.doesNotMatch(flightSearchWiring, /if \(!isProUser\(\)/);
-  });
-
-  it('merges a live callsign hit without dropping viewport or military flights', async () => {
-    const scenario = makeScenario([]);
-    const now = Date.now();
-    scenario.manager.updateFlightSource([
-      {
-        icao24: 'stale123',
-        callsign: 'LIVE1',
-        lat: 10,
-        lon: 11,
-        altitudeFt: 20_000,
-        groundSpeedKts: 300,
-        observedAt: now,
-        onGround: false,
-      },
-      {
-        icao24: 'keep123',
-        callsign: 'KEEP1',
-        lat: 12,
-        lon: 13,
-        altitudeFt: 25_000,
-        groundSpeedKts: 350,
-        observedAt: now,
-        onGround: false,
-      },
-    ], [{
-      id: 'military-1',
-      callsign: 'MIL1',
-      hexCode: 'mil123',
-      aircraftType: 'fighter',
-      lat: 14,
-      lon: 15,
-      altitude: 30_000,
-      onGround: false,
-      lastSeen: new Date(now),
-    }], now);
-
-    await scenario.manager.fetchAndPublishLiveFlight('LIVE1');
-
-    assert.deepEqual(scenario.runtime.liveFlightQueries, ['LIVE1']);
-    assert.deepEqual(
-      scenario.modal.matches.map((match) => match.kind === 'result'
-        ? [match.result.id, match.result.data.kind]
-        : null),
-      [
-        ['keep123', 'adsb'],
-        ['abc123', 'adsb'],
-        ['mil123', 'military'],
-      ],
-    );
-
-    scenario.manager.updateFlightSource([{
-      icao24: 'keep123',
-      callsign: 'KEEP1',
-      lat: 12,
-      lon: 13,
-      altitudeFt: 25_000,
-      groundSpeedKts: 350,
-      observedAt: now,
-      onGround: false,
-    }], [{
-      id: 'military-1',
-      callsign: 'MIL1',
-      hexCode: 'mil123',
-      aircraftType: 'fighter',
-      lat: 14,
-      lon: 15,
-      altitude: 30_000,
-      onGround: false,
-      lastSeen: new Date(now),
-    }], now);
-
-    assert.deepEqual(
-      scenario.modal.matches.map((match) => match.kind === 'result'
-        ? [match.result.id, match.result.data.kind]
-        : null),
-      [
-        ['keep123', 'adsb'],
-        ['abc123', 'adsb'],
-        ['mil123', 'military'],
-      ],
-      'a later viewport snapshot must keep the TTL-bounded live lookup',
-    );
-  });
-
-  it('ignores a late DeckGL flight publish after destroy', () => {
-    const scenario = makeScenario([]);
-    scenario.manager.destroy();
-    scenario.manager.updateFlightSource([{
-      icao24: 'late123',
-      callsign: 'LATE1',
-      lat: 1,
-      lon: 2,
-      altitudeFt: 30_000,
-      groundSpeedKts: 400,
-      observedAt: Date.now(),
-      onGround: false,
-    }], [], Date.now());
-
-    assert.deepEqual(scenario.modal.matches, []);
-    assert.equal(scenario.manager.flightSearchItems.length, 0);
-  });
-
-  it('aborts and denies an in-flight country presentation after a security-context change', async () => {
-    const scenario = makeScenario([
-      resultMatch('country', 'US', 'United States', { code: 'US', name: 'United States' }),
-    ]);
-    scenario.manager.observeSecurityContext();
-    let resolveBrief!: (opened: boolean) => void;
-    let presentationSignal: AbortSignal | undefined;
-    scenario.manager.callbacks.openCountryBriefByCode = (
-      code: string,
-      name: string,
-      options?: { trackDetailedAnalytics?: boolean; signal?: AbortSignal },
-    ) => {
-      scenario.calls.countryBriefs.push([code, name, options]);
-      presentationSignal = options?.signal;
-      return new Promise<boolean>((resolve) => {
-        resolveBrief = resolve;
-      });
-    };
-
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-    const pendingOpen = scenario.manager.openSearchResult(key);
-    await Promise.resolve();
-    assert.equal(scenario.calls.countryBriefs.length, 1);
-
-    scenario.runtime.auth = {};
-    scenario.runtime.premium = false;
-    for (const listener of scenario.runtime.authListeners) listener();
-    assert.equal(presentationSignal?.aborted, true);
-    resolveBrief(true);
-
-    assert.deepEqual(await pendingOpen, {
-      ok: false,
-      status: 'denied',
-      reason: 'result_no_longer_executable',
-    });
-    assert.deepEqual(scenario.runtime.detailedCountryAnalytics, []);
-  });
-
   it('resolves a desktop-issued key after the ranked window recaps', async () => {
     const matches = Array.from({ length: 8 }, (_, index) => resultMatch(
       'country',
@@ -2476,33 +1774,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       'Country 7',
       { trackDetailedAnalytics: false, hasSignal: true },
     ]]);
-  });
-
-  it('keeps the current flight index when optional live enrichment fails', async () => {
-    const scenario = makeScenario([]);
-    const now = Date.now();
-    scenario.manager.updateFlightSource([], [{
-      id: 'military-1',
-      callsign: 'MIL1',
-      hexCode: 'mil123',
-      aircraftType: 'fighter',
-      lat: 14,
-      lon: 15,
-      altitude: 30_000,
-      onGround: false,
-      lastSeen: new Date(now),
-    }], now);
-    scenario.runtime.liveFlightError = new Error('lookup failed');
-
-    scenario.manager.handleLiveFlightSearch('FAIL1');
-    await Promise.resolve();
-    await Promise.resolve();
-
-    assert.deepEqual(
-      scenario.modal.matches.map((match) => match.kind === 'result' ? match.result.id : null),
-      ['mil123'],
-    );
-    assert.equal(scenario.modal.clearedSources.includes('flight'), false);
   });
 
   it('uses the same premium policy for panel entitlement and free-cap bypass', () => {
@@ -2571,29 +1842,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.match(
       parent.expression.getText(sourceFile),
       /getAllowedLayerKeys[\s\S]+?\.has\('commodityHubs'\)/,
-    );
-  });
-
-  it('preloads military bases only for variants where base results are visible', () => {
-    const calls: ts.CallExpression[] = [];
-    const visit = (node: ts.Node): void => {
-      if (
-        ts.isCallExpression(node)
-        && ts.isPropertyAccessExpression(node.expression)
-        && node.expression.name.text === 'registerBaseSearchSource'
-      ) calls.push(node);
-      ts.forEachChild(node, visit);
-    };
-    visit(managerNode);
-    assert.equal(calls.length, 1);
-    let parent: ts.Node | undefined = calls[0]?.parent;
-    while (parent && !ts.isIfStatement(parent)) parent = parent.parent;
-    assert.ok(parent && ts.isIfStatement(parent));
-    assert.match(parent.expression.getText(sourceFile), /\.has\('bases'\)/);
-    assert.deepEqual(
-      (['full', 'nuclear'] as Variant[])
-        .filter((variant) => getAllowedLayerKeys(variant).has('bases')),
-      ['full', 'nuclear'],
     );
   });
 

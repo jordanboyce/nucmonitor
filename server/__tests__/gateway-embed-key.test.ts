@@ -147,18 +147,8 @@ afterEach(() => {
 });
 
 describe("wme_ embed keys at the gateway", () => {
-  test("the accepted path set is exactly what the paid panels declare", () => {
-    expect([...EMBED_KEY_RPC_PATHS].sort()).toEqual([FEAR_GREED_PATH, CHOKEPOINT_PATH].sort());
-  });
-
-  test("serves the two paid panels' own RPCs", async () => {
-    const gateway = makeGateway();
-    for (const path of [CHOKEPOINT_PATH, FEAR_GREED_PATH]) {
-      routeHandler.mockClear();
-      const res = await gateway(req(path), ctx);
-      expect(res.status).toBe(200);
-      expect(routeHandler).toHaveBeenCalledTimes(1);
-    }
+  test("the accepted path set is exactly what the paid panels declare: none, with the map-only embed", () => {
+    expect([...EMBED_KEY_RPC_PATHS]).toEqual([]);
   });
 
   test("401s the same key on a route no embed panel declares", async () => {
@@ -169,23 +159,6 @@ describe("wme_ embed keys at the gateway", () => {
     expect(res.status).toBe(401);
     expect(routeHandler).not.toHaveBeenCalled();
     expect(validateEmbedKey).not.toHaveBeenCalled();
-  });
-
-  test("never routes a wme_ key through the wm_ user-key validator", async () => {
-    await makeGateway()(req(CHOKEPOINT_PATH), ctx);
-
-    expect(validateEmbedKey).toHaveBeenCalledTimes(1);
-    expect(validateUserApiKey).not.toHaveBeenCalled();
-  });
-
-  test("keeps the key out of the per-account REST meter", async () => {
-    // isUserApiKey stays false, so the #3199 burst/daily meter that governs a
-    // wm_ key's paid allowance never runs for an embed.
-    const res = await makeGateway()(req(CHOKEPOINT_PATH), ctx);
-
-    expect(res.status).toBe(200);
-    expect(checkBurst).not.toHaveBeenCalled();
-    expect(reserveDailyMeter).not.toHaveBeenCalled();
   });
 
   test("401s an unknown embed key", async () => {
@@ -216,51 +189,6 @@ describe("wme_ embed keys at the gateway", () => {
 
     expect(res.status).toBe(401);
     expect(routeHandler).not.toHaveBeenCalled();
-  });
-
-  test("bounds rotating unknown embed keys before Convex validation", async () => {
-    validateEmbedKey.mockResolvedValue(null);
-    checkFailClosedScopedIpRateLimit.mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 }),
-    );
-
-    const res = await makeGateway()(req(CHOKEPOINT_PATH), ctx);
-
-    expect(res.status).toBe(429);
-    expect(validateEmbedKey).not.toHaveBeenCalled();
-    expect(checkFailClosedScopedIpRateLimit).toHaveBeenCalledWith(
-      expect.anything(),
-      "embed-key:pre-auth-validation",
-      600,
-      "60 s",
-      expect.anything(),
-    );
-  });
-
-  test("503s retryably when embed-key validation is unavailable", async () => {
-    // A Convex outage must not read as "your key is invalid": the frame backs
-    // off on 503 and keeps its last render, but treats 401 as terminal.
-    const { EmbedKeyUnavailableError } = await import("../_shared/embed-key");
-    validateEmbedKey.mockRejectedValue(new EmbedKeyUnavailableError("convex down"));
-
-    const res = await makeGateway()(req(CHOKEPOINT_PATH), ctx);
-
-    expect(res.status).toBe(503);
-    expect(res.headers.get("X-Validation-Mode")).toBe("degraded");
-    expect(res.headers.get("Retry-After")).toBe("5");
-  });
-
-  test("hands validateEmbedKey the raw header, so its shape gate still decides", async () => {
-    // The `wme_` + 40-hex gate lives in validateEmbedKey and is pinned by
-    // embed-key-validation.test.ts. The gateway must forward the header
-    // verbatim — a trim or a lowercase here would widen that gate from a file
-    // that never mentions it.
-    validateEmbedKey.mockResolvedValue(null);
-
-    const res = await makeGateway()(req(CHOKEPOINT_PATH, "wme_short"), ctx);
-
-    expect(validateEmbedKey).toHaveBeenCalledWith("wme_short");
-    expect(res.status).toBe(401);
   });
 
   test("an upper-cased key never reaches the lookup at all", async () => {

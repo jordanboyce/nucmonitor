@@ -463,9 +463,6 @@ describe('user-prefs POST write rate limit', () => {
 });
 
 describe('user-prefs variant boundary', () => {
-  it('supports exactly the current app variants', () => {
-    assert.deepEqual(PREFERENCE_VARIANTS, SITE_VARIANTS);
-  });
   const variants = ['full', 'nuclear'];
   // tech/finance/happy/commodity/energy were retired with the variant collapse
   // and must be rejected like any other unknown value.

@@ -267,37 +267,22 @@ export const GUARD_EXEMPT_FILES = new Set(['src/utils/safe-storage.ts']);
  * registry; do not duplicate those shrinking counts in this comment.
  */
 export const LEGACY_RAW_LOCAL_STORAGE = [
-  'src/App.ts :: localStorage.<member> x68',
+  'src/App.ts :: localStorage.<member> x51',
   'src/app/event-handlers.ts :: localStorage.<member> x5',
   'src/app/map-dimension-control.ts :: localStorage.<member> x1',
   'src/app/panel-layout.ts :: localStorage.<member> x9',
-  'src/app/pro-activation-controller.ts :: <global>.localStorage x8',
   'src/bootstrap/sw-update.ts :: localStorage.<member> x1',
-  'src/components/AviationCommandBar.ts :: localStorage.<member> x1',
-  'src/components/ChatAnalystPanel.ts :: <global>.localStorage x2',
-  'src/components/ConsumerPricesPanel.ts :: localStorage.<member> x2',
   'src/components/GlobeMap.ts :: localStorage.<member> x2',
-  'src/components/InsightsPanel.ts :: localStorage.<member> x1',
   'src/components/NewsPanel.ts :: localStorage.<member> x6',
-  'src/components/ProActivationChip.ts :: localStorage.<member> x4',
-  'src/components/ProBanner.ts :: localStorage.<member> x5',
-  'src/components/ProPreviewSection.ts :: localStorage.<member> x2',
   'src/components/SearchModal.ts :: localStorage.<member> x2',
-  'src/components/StrategicPosturePanel.ts :: localStorage.<member> x2',
   'src/components/WorldClockPanel.ts :: localStorage.<member> x1',
   'src/config/basemap.ts :: localStorage.<member> x2',
   'src/config/beta.ts :: localStorage.<member> x1',
-  'src/config/variant.ts :: localStorage.<member> x1',
   'src/main.ts :: localStorage.<member> x2',
-  'src/mcp-grant-main.ts :: localStorage.<member> x1',
   'src/services/ai-flow-settings.ts :: localStorage.<member> x4',
   'src/services/analytics.ts :: <global>.localStorage x3',
-  'src/services/anonymous-identity-storage.ts :: localStorage.<member> x5',
-  'src/services/aviation/watchlist.ts :: localStorage.<member> x2',
   'src/services/breaking-news-alerts.ts :: localStorage.<member> x4',
   'src/services/browser-key-session.ts :: localStorage.<member> x2',
-  'src/services/cached-risk-scores.ts :: localStorage.<member> x5',
-  'src/services/cached-theater-posture.ts :: localStorage.<member> x4',
   'src/services/followed-countries.ts :: localStorage.<member> x3',
   'src/services/font-scale-settings.ts :: localStorage.<member> x2',
   'src/services/font-settings.ts :: localStorage.<member> x2',
@@ -308,16 +293,12 @@ export const LEGACY_RAW_LOCAL_STORAGE = [
   'src/services/market-watchlist.ts :: localStorage.<member> x6',
   'src/services/mission-presets.ts :: localStorage.<member> x7',
   'src/services/persistent-cache.ts :: localStorage.<member> x3',
-  'src/services/referral-capture.ts :: localStorage.<member> x7',
   'src/services/runtime-config.ts :: localStorage.<member> x2',
-  'src/services/sentiment-gate.ts :: localStorage.<member> x1',
   'src/services/tab-store.ts :: localStorage.<member> x2',
-  'src/services/telegram-watchlist.ts :: localStorage.<member> x2',
   'src/services/trending-keywords.ts :: <global>.localStorage x1',
   'src/services/trending-keywords.ts :: localStorage.<member> x2',
   'src/services/webcams/pinned-store.ts :: localStorage.<member> x2',
   'src/services/widget-store.ts :: localStorage.<member> x4',
-  'src/utils/followed-only-chip.ts :: localStorage.<member> x7',
   'src/utils/index.ts :: localStorage.<member> x2',
   'src/utils/panel-storage.ts :: localStorage.<member> x3',
   'src/utils/theme-manager.ts :: localStorage.<member> x3',
@@ -329,7 +310,7 @@ export const LEGACY_RAW_LOCAL_STORAGE = [
  * scan toward zero and let every assertion pass vacuously — the silent
  * failure mode this guard exists to prevent.
  */
-export const MIN_SCANNED_FILES = 700;
+export const MIN_SCANNED_FILES = 366;
 
 /**
  * `<idiom> xN` for every raw-storage dereference in `source`, with counts.

@@ -238,15 +238,17 @@ export const ACCOUNT_DELETION_REGISTRY: readonly RegistryEntry[] = [
     action: "retain",
     notes: "Aggregate failure counters; carries no per-user field",
   },
+  {
+    target: "partnerInvites",
+    action: "retain",
+    notes: "Operator-managed partner access allowlist (email or domain); an operator revokes it, account deletion does not",
+  },
   { target: "productPlans", action: "skip", notes: "Global product catalog" },
   { target: "counters", action: "skip", notes: "Global counters" },
   { target: "businessSeatLocks", action: "skip", notes: "Global OCC locks" },
   { target: "broadcastRampConfig", action: "skip", notes: "Global broadcast ramp settings" },
   { target: "broadcastEvents", action: "skip", notes: "Broadcast send log; not the account record" },
   { target: "waveRuns", action: "skip", notes: "Broadcast wave runs; not the account record" },
-  { target: "intelHistory", action: "skip", notes: "Global intel corpus, not user-scoped" },
-  { target: "intelHistoryRetractions", action: "skip", notes: "Global intel corpus" },
-  { target: "intelHistoryAppendLocks", action: "skip", notes: "Global OCC locks" },
   // Company Monitoring children follow their account row, which is `delegate`
   // above. markOwnerDeleted / advanceAccountPurge owns their lifecycle; this
   // PR only refactored the entry point into applyOwnerDeletedFence and did not

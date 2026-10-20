@@ -144,10 +144,7 @@ describe('physical premium data loading', () => {
       showPhysicalDivergenceUnavailable: vi.fn(),
     };
     const ctx = { panels: { commodities: panel } } as unknown as AppContext;
-    const loader = new DataLoaderManager(ctx, {
-      renderCriticalBanner: () => undefined,
-      refreshOpenCountryBrief: () => undefined,
-    });
+    const loader = new DataLoaderManager(ctx);
 
     const load = loader.loadPhysicalPremiumComparison();
     await vi.waitFor(() => expect(marketMocks.fetchPhysicalPremiums).toHaveBeenCalledOnce());
@@ -182,10 +179,7 @@ describe('physical premium data loading', () => {
       showPhysicalDivergenceUnavailable: vi.fn(),
     };
     const ctx = { panels: { commodities: panel } } as unknown as AppContext;
-    const loader = new DataLoaderManager(ctx, {
-      renderCriticalBanner: () => undefined,
-      refreshOpenCountryBrief: () => undefined,
-    });
+    const loader = new DataLoaderManager(ctx);
 
     const olderLoad = loader.loadPhysicalPremiumComparison();
     await vi.waitFor(() => expect(marketMocks.fetchPhysicalPremiums).toHaveBeenCalledTimes(1));
@@ -215,10 +209,7 @@ describe('physical premium data loading', () => {
       showPhysicalDivergenceUnavailable: vi.fn(),
     };
     const ctx = { panels: { commodities: panel } } as unknown as AppContext;
-    const loader = new DataLoaderManager(ctx, {
-      renderCriticalBanner: () => undefined,
-      refreshOpenCountryBrief: () => undefined,
-    });
+    const loader = new DataLoaderManager(ctx);
 
     await loader.loadPhysicalPremiumComparison();
 
@@ -241,10 +232,7 @@ describe('physical premium data loading', () => {
       clearPhysicalPremiums: vi.fn(),
     };
     const ctx = { panels: { commodities: panel } } as unknown as AppContext;
-    const loader = new DataLoaderManager(ctx, {
-      renderCriticalBanner: () => undefined,
-      refreshOpenCountryBrief: () => undefined,
-    });
+    const loader = new DataLoaderManager(ctx);
 
     const inFlight = loader.loadPhysicalPremiumComparison();
     await vi.waitFor(() => expect(marketMocks.fetchPhysicalPremiums).toHaveBeenCalledTimes(1));

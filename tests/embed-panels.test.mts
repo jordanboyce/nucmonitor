@@ -15,17 +15,13 @@ import {
 } from '../shared/embed-panels';
 
 describe('embed panel allowlist', () => {
-  it('starts with the live map plus two existing dashboard panels', () => {
-    assert.deepEqual([...EMBED_PANEL_IDS], ['map', 'chokepoint-strip', 'fear-greed']);
+  it('offers exactly the live map', () => {
+    assert.deepEqual([...EMBED_PANEL_IDS], ['map']);
     assert.equal(DEFAULT_EMBED_PANEL_ID, 'map');
   });
 
-  it('gives the map a free tier and keeps the other two paid-only', () => {
+  it('gives the map a free tier', () => {
     assert.equal(getEmbedPanelAccess('map').kind, 'tiered');
-    assert.equal(getEmbedPanelAccess('chokepoint-strip').kind, 'paid-only');
-    assert.equal(getEmbedPanelAccess('fear-greed').kind, 'paid-only');
-    assert.equal(getEmbedPanelFreeTier('chokepoint-strip'), null);
-    assert.equal(getEmbedPanelFreeTier('fear-greed'), null);
   });
 
   it('derives the gateway embed-key surface from the paid panels themselves', () => {
@@ -33,10 +29,7 @@ describe('embed panel allowlist', () => {
     // Deriving it from the registry means the surface cannot grow without a
     // panel owning the path; asserting the exact set means it cannot grow
     // silently either.
-    assert.deepEqual([...EMBED_KEY_RPC_PATHS].sort(), [
-      '/api/market/v1/get-fear-greed-index',
-      '/api/supply-chain/v1/get-chokepoint-status',
-    ]);
+    assert.deepEqual([...EMBED_KEY_RPC_PATHS].sort(), []);
 
     // A tiered panel declares none: it polls the composed /api/embed/map-frame,
     // which authenticates a wmg_ grant rather than a key.
@@ -50,10 +43,10 @@ describe('embed panel allowlist', () => {
     }
   });
 
-  it("publishes the map's free tier as three layers refreshed hourly", () => {
+  it("publishes the map's free tier as two layers refreshed hourly", () => {
     const free = getEmbedPanelFreeTier('map');
     assert.ok(free, 'map must expose a free tier');
-    assert.deepEqual([...free.layers], ['conflicts', 'earthquakes', 'weather']);
+    assert.deepEqual([...free.layers], ['earthquakes', 'weather']);
     assert.equal(free.refreshMs, EMBED_FREE_REFRESH_MS);
     assert.equal(EMBED_FREE_REFRESH_MS, 60 * 60 * 1000);
     assert.equal(EMBED_KEYED_REFRESH_MS, 10 * 60 * 1000);
@@ -69,11 +62,10 @@ describe('embed panel allowlist', () => {
     }
   });
 
-  it('allowlists exactly the fourteen embeddable layers', () => {
-    assert.equal(EMBED_LAYER_IDS.length, 14);
-    assert.equal(new Set(EMBED_LAYER_IDS).size, 14);
-    assert.equal(isEmbedLayerId('conflicts'), true);
-    assert.equal(isEmbedLayerId('gulfInvestments'), true);
+  it('allowlists exactly the four embeddable layers', () => {
+    assert.deepEqual([...EMBED_LAYER_IDS], ['earthquakes', 'weather', 'cables', 'pipelines']);
+    assert.equal(isEmbedLayerId('cables'), true);
+    assert.equal(isEmbedLayerId('conflicts'), false);
     assert.equal(isEmbedLayerId('nuclear'), false);
     assert.equal(isEmbedLayerId('__proto__'), false);
   });
@@ -82,8 +74,8 @@ describe('embed panel allowlist', () => {
     assert.equal(parseEmbedPanelId(null), 'map');
     assert.equal(parseEmbedPanelId(''), 'map');
     assert.equal(parseEmbedPanelId('live-map'), 'map');
-    assert.equal(parseEmbedPanelId('Chokepoints'), 'chokepoint-strip');
-    assert.equal(parseEmbedPanelId('fear_greed'), 'fear-greed');
+    assert.equal(parseEmbedPanelId('Chokepoints'), null);
+    assert.equal(parseEmbedPanelId('fear_greed'), null);
     assert.equal(parseEmbedPanelId('x-feed'), null);
     assert.equal(parseEmbedPanelId('intel'), null);
   });

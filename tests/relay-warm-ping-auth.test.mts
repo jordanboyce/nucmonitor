@@ -1,7 +1,7 @@
 // Relay warm-ping internal-auth — behavioral + wiring regression tests.
 //
 // The Railway relay warm-pings cacheable, non-premium RPC endpoints
-// (service-statuses, get-risk-scores, get-chokepoint-status, get-cable-health)
+// (service-statuses, temporal anomalies, get-cable-health, feed digest)
 // to keep their compute caches hot. These require a session token or API key in
 // normal traffic, and the #3541 hardening removed Origin-trust — so relay
 // warm-pings 401 without a real credential. The relay now authenticates as a
@@ -19,8 +19,8 @@ import { readFile } from 'node:fs/promises';
 import { isRelayWarmPingRequest, RELAY_WARM_PING_PATHS } from '../server/gateway.ts';
 
 const SECRET = 'test-relay-warm-ping-secret-xxxxxxxxxxxxxxxxxxxx';
-const WARM_PATH = '/api/supply-chain/v1/get-chokepoint-status';
-const NON_WARM_PATH = '/api/intelligence/v1/get-country-risk';
+const WARM_PATH = '/api/infrastructure/v1/get-cable-health';
+const NON_WARM_PATH = '/api/market/v1/list-market-quotes';
 
 function req(pathname: string, key?: string): Request {
   const headers: Record<string, string> = {};
@@ -43,9 +43,7 @@ describe('relay warm-ping internal auth', () => {
         '/api/infrastructure/v1/get-cable-health',
         '/api/infrastructure/v1/list-service-statuses',
         '/api/infrastructure/v1/list-temporal-anomalies',
-        '/api/intelligence/v1/get-risk-scores',
         '/api/news/v1/list-feed-digest',
-        '/api/supply-chain/v1/get-chokepoint-status',
       ],
     );
   });

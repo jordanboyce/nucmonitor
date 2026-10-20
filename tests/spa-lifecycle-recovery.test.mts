@@ -119,64 +119,6 @@ function hasReturnGuard(method: ts.MethodDeclaration, guardedCall: string): bool
 }
 
 describe('SPA lifecycle recovery contracts', () => {
-  it('cold soft-fail loaders show an error only when no retained panel data exists', () => {
-    const file = sourceFile('src/app/data-loader.ts');
-    const helper = findMethod(file, 'DataLoaderManager', 'showColdLoadError');
-
-    assert.ok(
-      hasReturnGuard(helper, 'panelHasRetainedData'),
-      'showColdLoadError must retain warm panel data instead of replacing it with an error state',
-    );
-
-    const showErrorCalls = propertyCalls(helper, 'callPanel');
-    assert.ok(
-      showErrorCalls.some(call =>
-        call.arguments[0]?.getText(file) === 'key' &&
-        ts.isStringLiteralLike(call.arguments[1]!) &&
-        call.arguments[1].text === 'showError'),
-      'showColdLoadError must route cold failures through Panel.showError',
-    );
-
-    const coldFailPanels = new Set(
-      propertyCalls(file, 'showColdLoadError')
-        .map(firstStringArg)
-        .filter((value): value is string => value !== null),
-    );
-    const requiredColdFailPanels = ['climate', 'displacement', 'giving', 'ucdp-events'];
-    const missing = requiredColdFailPanels.filter(panel => !coldFailPanels.has(panel));
-    assert.deepEqual(
-      missing,
-      [],
-      'all validated cold soft-fail loaders must call showColdLoadError',
-    );
-
-    const directShowErrorPanels = new Set(
-      propertyCalls(file, 'callPanel')
-        .filter(call =>
-          ts.isStringLiteralLike(call.arguments[0]!) &&
-          ts.isStringLiteralLike(call.arguments[1]!) &&
-          call.arguments[1].text === 'showError')
-        .map(call => (call.arguments[0] as ts.StringLiteralLike).text),
-    );
-    assert.deepEqual(
-      requiredColdFailPanels.filter(panel => directShowErrorPanels.has(panel)),
-      [],
-      'validated cold-failure panels must route every showError path through showColdLoadError',
-    );
-  });
-
-  it('cold-failure panels expose loaded-data state to preserve warm retained views', () => {
-    for (const [rel, className] of [
-      ['src/components/GivingPanel.ts', 'GivingPanel'],
-      ['src/components/UcdpEventsPanel.ts', 'UcdpEventsPanel'],
-      ['src/components/DisplacementPanel.ts', 'DisplacementPanel'],
-      ['src/components/ClimateAnomalyPanel.ts', 'ClimateAnomalyPanel'],
-    ] as const) {
-      const file = sourceFile(rel);
-      assert.ok(findMethod(file, className, 'hasData'), `${className} must expose hasData()`);
-    }
-  });
-
   it('PanelLayoutManager.destroy destroys every registered panel once and clears the registry', () => {
     const file = sourceFile('src/app/panel-layout.ts');
     const destroy = findMethod(file, 'PanelLayoutManager', 'destroy');
@@ -197,30 +139,6 @@ describe('SPA lifecycle recovery contracts', () => {
       body,
       /this\.ctx\.panels\[['"]airline-intel['"]\]\?\.destroy\(/,
       'destroy() must not special-case only airline-intel from the registered panel catalog',
-    );
-  });
-
-  it('RegionalIntelligenceBoard reloads on entitlement unlock and unsubscribes on destroy', () => {
-    const file = sourceFile('src/components/RegionalIntelligenceBoard.ts');
-    const src = file.getFullText();
-    const ctor = findConstructor(file, 'RegionalIntelligenceBoard');
-    const destroy = findMethod(file, 'RegionalIntelligenceBoard', 'destroy');
-    const handler = findMethod(file, 'RegionalIntelligenceBoard', 'handlePremiumAccessChange');
-
-    assert.match(src, /import \{ onEntitlementChange \} from '@\/services\/entitlements';/);
-    assert.ok(
-      identifierCalls(ctor, 'onEntitlementChange').length >= 1,
-      'constructor must subscribe to entitlement changes, not only auth state',
-    );
-    assert.match(destroy.getText(file), /this\.entitlementUnsubscribe\?\.\(\)/);
-    assert.ok(
-      propertyCalls(handler, 'loadCurrent').length >= 1,
-      'false-to-true premium transition must reload the current regional snapshot',
-    );
-    assert.match(
-      handler.getText(file),
-      /this\.latestSequence\s*\+=\s*1[\s\S]*this\.renderEmpty\(\)/,
-      'true-to-false premium transition must invalidate in-flight loads before blanking the panel',
     );
   });
 

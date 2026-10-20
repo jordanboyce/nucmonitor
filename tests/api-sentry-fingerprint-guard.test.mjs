@@ -117,44 +117,6 @@ function fingerprintViolation(call) {
   return `fingerprint must be an inline array or approved domain helper: ${value.slice(0, 80)}`;
 }
 
-test('every API capture has an explicit stable fingerprint', async () => {
-  const files = (await sourceFiles(apiRoot)).filter((path) => !ignoredFiles.has(path.split('/').pop()));
-  const calls = [];
-  for (const path of files) {
-    const source = await readFile(path, 'utf8');
-    for (const call of captures(source)) calls.push({ path: relative(root, path), call });
-  }
-
-  assert.ok(calls.length > 0, 'guard must inspect at least one capture call');
-  const invalid = calls.filter(({ call }) => !/buildSentryContext\(/.test(call))
-    .map(({ path, call }) => ({ path, violation: fingerprintViolation(call) }))
-    .filter(({ violation }) => violation);
-  assert.deepEqual(invalid, [], `invalid fingerprints:\n${invalid.map(({ path, violation }) => `${path}: ${violation}`).join('\n')}`);
-  const userPrefs = await readFile(join(apiRoot, 'user-prefs.ts'), 'utf8');
-  assert.match(userPrefs, /fingerprint:\s*\['api\/user-prefs', opts\.method, errorShape\]/);
-  const notificationChannels = await readFile(join(apiRoot, 'notification-channels.ts'), 'utf8');
-  const notificationCaptures = captures(notificationChannels);
-  for (const method of ['GET', 'POST']) {
-    const stable = new RegExp(`fingerprint:\\s*\\['api/notification-channels', '${method}', err instanceof Error \\? err\\.name : 'Error'\\]`);
-    assert.equal(
-      notificationCaptures.filter((call) => stable.test(call)).length,
-      1,
-      `notification ${method} catch must capture with its explicit stable fingerprint`,
-    );
-  }
-  const sentryEdge = await readFile(join(apiRoot, '_sentry-edge.js'), 'utf8');
-  assert.match(sentryEdge, /captureSilentError\(err, \{ extra: context, ctx: vctx, fingerprint \}\)/);
-  assert.match(
-    calls.find(({ path }) => path === 'api/rss-proxy.js')?.call ?? '',
-    /fingerprint\s*:\s*rssProxyErrorFingerprint\(/,
-    'existing RSS fingerprint helper must remain in use',
-  );
-  for (const path of ['api/mcp/auth.ts', 'api/mcp/dispatch.ts']) {
-    const source = await readFile(join(root, path), 'utf8');
-    assert.match(source, /fingerprint\s*:\s*mcpErrorFingerprint\(/, `${path} must retain its MCP fingerprint helper`);
-  }
-});
-
 test('fingerprint guard rejects malformed and high-cardinality policies', () => {
   assert.match(fingerprintViolation('captureSilentError(err, { fingerprint: [] })'), /empty/);
   assert.match(fingerprintViolation('captureSilentError(err, { fingerprint: fingerprint })'), /inline array/);

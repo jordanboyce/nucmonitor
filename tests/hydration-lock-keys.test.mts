@@ -15,23 +15,6 @@ const dataLoader = readFileSync(resolve(REPO_ROOT, 'src/app/data-loader.ts'), 'u
 const app = readFileSync(resolve(REPO_ROOT, 'src/App.ts'), 'utf8');
 
 describe('hydration lock keys (#6770)', () => {
-  it('never wraps loadDailyMarketBrief in a same-key runGuarded (self-defeating no-op)', () => {
-    // loadDailyMarketBrief self-guards on inFlight.has('dailyMarketBrief'), so a
-    // runGuarded('dailyMarketBrief', () => loadDailyMarketBrief()) wrapper would
-    // always return immediately — the brief would only ever run via the direct
-    // post-hydration call.
-    assert.doesNotMatch(
-      dataLoader,
-      /runGuarded\(\s*'dailyMarketBrief'/,
-      'daily market brief must not be wrapped in a same-key runGuarded',
-    );
-    assert.match(
-      dataLoader,
-      /this\.loadDailyMarketBrief\(\)/,
-      'the brief must still be loaded directly (post-hydration pass)',
-    );
-  });
-
   it('one-flights firms/radiation hydration with their map-layer toggles', () => {
     // loadDataForLayer locks by the MapLayers key ('fires' / 'radiationWatch');
     // the hydration loaders have no internal guard, so they must lock the SAME
@@ -59,21 +42,4 @@ describe('hydration lock keys (#6770)', () => {
     );
   });
 
-  it('locks the stock refreshes under the same inFlight key the loader uses', () => {
-    // loadStockAnalysis / loadStockBacktest have no internal guard, so a boot
-    // hydration and a refresh tick must share an inFlight key or they double-
-    // fetch during the overlap window. The panel/viewport key stays kebab.
-    assert.match(dataLoader, /runGuarded\(\s*'stockAnalysis'/, 'hydration locks stockAnalysis');
-    assert.match(dataLoader, /runGuarded\(\s*'stockBacktest'/, 'hydration locks stockBacktest');
-    assert.match(
-      app,
-      /'stockAnalysis',\s*\n\s*\(\) => this\.dataLoader\.loadStockAnalysis\(\)/,
-      'refresh for loadStockAnalysis must lock the same camelCase key the loader uses',
-    );
-    assert.match(
-      app,
-      /'stockBacktest',\s*\n\s*\(\) => this\.dataLoader\.loadStockBacktest\(\)/,
-      'refresh for loadStockBacktest must lock the same camelCase key the loader uses',
-    );
-  });
 });

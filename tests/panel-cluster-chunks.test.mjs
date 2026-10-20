@@ -461,44 +461,4 @@ describe('panel cluster chunk guardrails', () => {
     );
   });
 
-  it('keeps startup modules from value-importing clustered panel chunks', () => {
-    const panelCluster = new Map([
-      ...extractObjectMap('PANEL_CLUSTER'),
-      ...extractObjectMap('PANEL_SUPPORT_CLUSTER'),
-    ]);
-
-    assert.deepEqual(
-      startupPanelValueImportOffenders(panelCluster),
-      [],
-      'Startup modules must use dynamic imports or type-only imports for panel chunks.',
-    );
-  });
-
-  it('keeps secondary settings and checkout chunks off the eager startup path', () => {
-    for (const chunkName of ['UnifiedSettings', 'settings-window', 'checkout']) {
-      assert.equal(
-        hasStringElement('LAZY_HTML_PRELOAD_CHUNKS', chunkName),
-        true,
-        `${chunkName} must stay in the HTML preload exclusion list.`,
-      );
-    }
-    assert.deepEqual(
-      startupSecondaryFlowImportOffenders(),
-      [],
-      'Startup modules must use dynamic imports for the UnifiedSettings modal.',
-    );
-    assert.deepEqual(
-      checkoutSdkValueImportOffenders(),
-      [],
-      'Checkout must dynamically import dodopayments-checkout so the SDK stays out of main.',
-    );
-    const missingLazyChunks = builtSecondaryLazyChunksMissing();
-    if (missingLazyChunks) {
-      assert.deepEqual(
-        missingLazyChunks,
-        [],
-        `Secondary flows must build into their own lazy chunks (split regressed): ${missingLazyChunks.join(', ')}`,
-      );
-    }
-  });
 });

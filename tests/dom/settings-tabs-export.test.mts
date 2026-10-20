@@ -5,7 +5,7 @@ import type { PanelTab, TabsState } from '@/services/tab-store';
 import { exportSettings, importSettings } from '@/utils/settings-persistence';
 import { initTestI18n } from './helpers/i18n.mts';
 
-const tabsKey = 'worldmonitor-tabs-v1:full';
+const tabsKey = 'worldmonitor-tabs-v1:nuclear';
 const tab = (id: string, name: string): PanelTab => ({
   id, name, panelSettings: { news: { name: 'News', enabled: true, priority: 1 } }, panelOrder: ['news'], bottomSet: [],
 });
@@ -105,10 +105,10 @@ describe('live dashboard tab backups', () => {
   });
 
   it('continues capturing live tabs after importing a different variant', async () => {
-    await importSettings(file({ 'worldmonitor-tabs-v1:nuclear': JSON.stringify(restored) }));
+    await importSettings(file({ 'worldmonitor-tabs-v1:full': JSON.stringify(restored) }));
     const data = await backup();
     expect((JSON.parse(data[tabsKey]!) as TabsState).tabs[0]!.panelSettings.news!.enabled).toBe(false);
-    expect(JSON.parse(data['worldmonitor-tabs-v1:nuclear']!)).toEqual(restored);
+    expect(JSON.parse(data['worldmonitor-tabs-v1:full']!)).toEqual(restored);
   });
 
   it('keeps the live hook when a layout import fails', async () => {

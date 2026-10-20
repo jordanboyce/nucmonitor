@@ -2,9 +2,8 @@
  * Persistence proof for the WebMCP `set_map_mode` cancellation gate (#7321).
  *
  * The policy classifies `set_map_mode` as cancellation-required because it
- * writes STORAGE_KEYS.mapMode, and a globe switch can also persist a
- * resilienceScore compatibility change. WebMCP unit tests stub the final
- * action, so they never reach those writes.
+ * writes STORAGE_KEYS.mapMode. WebMCP unit tests stub the final action, so
+ * they never reach that write.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,16 +16,13 @@ import type { MapLayers } from '@/types';
 function makeCtx(options: {
   globe?: boolean;
   deck?: boolean;
-  resilienceScore?: boolean;
 } = {}): AppContext & { setLayersCalls: MapLayers[] } {
   let globeMode = options.globe === true;
   let deckActive = options.deck === true;
   const setLayersCalls: MapLayers[] = [];
   return {
     setLayersCalls,
-    mapLayers: {
-      resilienceScore: options.resilienceScore === true,
-    } as unknown as MapLayers,
+    mapLayers: {} as MapLayers,
     map: {
       isGlobeMode: () => globeMode,
       isDeckGLActive: () => deckActive,
@@ -78,28 +74,12 @@ describe('set_map_mode persists map mode', () => {
     expect(localStorage.getItem(STORAGE_KEYS.mapMode)).toBeNull();
   });
 
-  it('persists a resilienceScore compatibility write when leaving DeckGL', async () => {
-    const ctx = makeCtx({ deck: true, resilienceScore: true });
-    const result = await applyVisibleMapDimension(ctx, '3d');
-
-    expect(ctx.mapLayers.resilienceScore).toBe(false);
-    expect(result.adjustedLayers).toEqual([{
-      layer: 'resilienceScore',
-      from: true,
-      to: false,
-      reason: 'layer_not_executable',
-    }]);
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.mapLayers)!))
-      .toStrictEqual({ resilienceScore: false });
-    expect(ctx.setLayersCalls).toStrictEqual([{ resilienceScore: false }]);
-  });
-
   it('persists the fallen-back 2d mode after globe startup fails', async () => {
     let globeMode = false;
     let deckActive = true;
     let failGlobe!: () => void;
     const ctx = {
-      mapLayers: { resilienceScore: false },
+      mapLayers: {},
       map: {
         isGlobeMode: () => globeMode,
         isDeckGLActive: () => deckActive,

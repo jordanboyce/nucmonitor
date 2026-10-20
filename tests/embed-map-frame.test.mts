@@ -29,10 +29,8 @@ const NOW = 1_700_000_000_000;
 
 function sources(overrides: Partial<EmbedMapFrameSources> = {}): EmbedMapFrameSources {
   return {
-    listConflicts: async () => [{ id: 'c1' }],
     listEarthquakes: async () => [{ id: 'q1' }],
     listNaturalEvents: async () => [{ id: 'n1' }],
-    listProtests: async () => [{ id: 'p1' }],
     listWeatherAlerts: async () => [{ id: 'w1' }],
     ...overrides,
   };
@@ -58,30 +56,30 @@ describe('embed map frame', () => {
   describe('requested layers', () => {
     it('accepts the allowlist and drops everything else', () => {
       assert.deepEqual(
-        parseRequestedLayers('conflicts,weather,cables'),
-        ['conflicts', 'weather', 'cables'],
+        parseRequestedLayers('weather,cables,pipelines'),
+        ['weather', 'cables', 'pipelines'],
       );
-      assert.deepEqual(parseRequestedLayers('conflicts,nuclear,military,ais'), ['conflicts']);
+      assert.deepEqual(parseRequestedLayers('weather,nuclear,military,conflicts'), ['weather']);
       assert.deepEqual(parseRequestedLayers('__proto__,constructor'), []);
     });
 
     it('normalises duplicates and whitespace so the cache key does not fragment', () => {
       assert.deepEqual(
-        parseRequestedLayers(' conflicts , conflicts,  weather '),
-        ['conflicts', 'weather'],
+        parseRequestedLayers(' cables , cables,  weather '),
+        ['cables', 'weather'],
       );
     });
 
-    it('falls back to the free trio when the parameter is absent or blank', () => {
-      assert.deepEqual(parseRequestedLayers(null), ['conflicts', 'earthquakes', 'weather']);
-      assert.deepEqual(parseRequestedLayers(''), ['conflicts', 'earthquakes', 'weather']);
-      assert.deepEqual(parseRequestedLayers('   '), ['conflicts', 'earthquakes', 'weather']);
+    it('falls back to the free pair when the parameter is absent or blank', () => {
+      assert.deepEqual(parseRequestedLayers(null), ['earthquakes', 'weather']);
+      assert.deepEqual(parseRequestedLayers(''), ['earthquakes', 'weather']);
+      assert.deepEqual(parseRequestedLayers('   '), ['earthquakes', 'weather']);
     });
   });
 
   describe('tiers', () => {
-    it('entitles three layers free and all fourteen keyed', () => {
-      assert.deepEqual([...entitledLayersForTier('free')], ['conflicts', 'earthquakes', 'weather']);
+    it('entitles the two live layers free and every layer keyed', () => {
+      assert.deepEqual([...entitledLayersForTier('free')], ['earthquakes', 'weather']);
       assert.deepEqual([...entitledLayersForTier('keyed')], [...EMBED_LAYER_IDS]);
     });
 
@@ -90,9 +88,9 @@ describe('embed map frame', () => {
       assert.equal(refreshMsForTier('keyed'), EMBED_KEYED_REFRESH_MS);
     });
 
-    it('serves the three free layers to a keyless caller', async () => {
+    it('serves the free layers to a keyless caller', async () => {
       const frame = await composeEmbedMapFrame(
-        ['conflicts', 'earthquakes', 'weather'],
+        ['earthquakes', 'weather'],
         'free',
         sources(),
         NOW,
@@ -100,36 +98,28 @@ describe('embed map frame', () => {
       assert.equal(frame.tier, 'free');
       assert.equal(frame.refreshMs, EMBED_FREE_REFRESH_MS);
       assert.equal(frame.generatedAt, NOW);
-      assert.deepEqual(frame.layers, { conflicts: 'ok', earthquakes: 'ok', weather: 'ok' });
-      assert.deepEqual(frame.data.conflicts, [{ id: 'c1' }]);
+      assert.deepEqual(frame.layers, { earthquakes: 'ok', weather: 'ok' });
       assert.deepEqual(frame.data.earthquakes, [{ id: 'q1' }]);
       assert.deepEqual(frame.data.naturalEvents, [{ id: 'n1' }]);
       assert.deepEqual(frame.data.weatherAlerts, [{ id: 'w1' }]);
-      assert.equal(frame.data.protests, undefined);
     });
 
     it('marks a paid layer not-entitled for a keyless caller and withholds its data', async () => {
       const frame = await composeEmbedMapFrame(
-        ['conflicts', 'protests', 'cables'],
+        ['weather', 'pipelines', 'cables'],
         'free',
         sources(),
         NOW,
       );
-      assert.equal(frame.layers.conflicts, 'ok');
-      assert.equal(frame.layers.protests, 'not-entitled');
+      assert.equal(frame.layers.weather, 'ok');
+      assert.equal(frame.layers.pipelines, 'not-entitled');
       assert.equal(frame.layers.cables, 'not-entitled');
-      assert.equal(frame.data.protests, undefined);
     });
 
     it('does not spend an upstream read on an unentitled layer', async () => {
       const { calls, sources: counting } = countingSources();
-      await composeEmbedMapFrame(['conflicts', 'protests'], 'free', counting, NOW);
-      assert.deepEqual(calls, ['listConflicts']);
-      assert.equal(
-        calls.includes('listProtests'),
-        false,
-        'the free tier must not fund a paid layer’s upstream',
-      );
+      await composeEmbedMapFrame(['weather', 'cables'], 'free', counting, NOW);
+      assert.deepEqual(calls, ['listWeatherAlerts']);
     });
 
     it('serves every requested layer to a keyed caller', async () => {
@@ -139,7 +129,7 @@ describe('embed map frame', () => {
       for (const id of EMBED_LAYER_IDS) {
         assert.equal(frame.layers[id], 'ok', `${id} should be served to a keyed caller`);
       }
-      assert.deepEqual(frame.data.protests, [{ id: 'p1' }]);
+      assert.deepEqual(frame.data.weatherAlerts, [{ id: 'w1' }]);
     });
 
     it('answers static layers without an upstream read', async () => {
@@ -156,15 +146,14 @@ describe('embed map frame', () => {
   describe('partial upstream failure', () => {
     it('ships one failed layer as state rather than failing the frame', async () => {
       const frame = await composeEmbedMapFrame(
-        ['conflicts', 'earthquakes', 'weather'],
+        ['earthquakes', 'weather'],
         'free',
         sources({ listWeatherAlerts: async () => { throw new Error('redis down'); } }),
         NOW,
       );
-      assert.equal(frame.layers.conflicts, 'ok');
       assert.equal(frame.layers.earthquakes, 'ok');
       assert.equal(frame.layers.weather, 'unavailable');
-      assert.deepEqual(frame.data.conflicts, [{ id: 'c1' }]);
+      assert.deepEqual(frame.data.earthquakes, [{ id: 'q1' }]);
       assert.equal(frame.data.weatherAlerts, undefined);
     });
 
@@ -197,10 +186,9 @@ describe('embed map frame', () => {
     it('still returns a well-formed frame when every upstream fails', async () => {
       const boom = async () => { throw new Error('everything is down'); };
       const frame = await composeEmbedMapFrame(
-        ['conflicts', 'earthquakes', 'weather'],
+        ['earthquakes', 'weather'],
         'free',
         sources({
-          listConflicts: boom,
           listEarthquakes: boom,
           listNaturalEvents: boom,
           listWeatherAlerts: boom,
@@ -210,7 +198,6 @@ describe('embed map frame', () => {
       assert.equal(frame.tier, 'free');
       assert.equal(frame.refreshMs, EMBED_FREE_REFRESH_MS);
       assert.deepEqual(frame.layers, {
-        conflicts: 'unavailable',
         earthquakes: 'unavailable',
         weather: 'unavailable',
       });
@@ -223,53 +210,53 @@ describe('embed map frame', () => {
 
     it('accepts the canonical free shape and returns its layers', () => {
       assert.deepEqual(
-        classifyPublicEmbedFrameRequest(url('?layers=conflicts,earthquakes,weather&public=1')),
-        ['conflicts', 'earthquakes', 'weather'],
+        classifyPublicEmbedFrameRequest(url('?layers=earthquakes,weather&public=1')),
+        ['earthquakes', 'weather'],
       );
       assert.deepEqual(
-        classifyPublicEmbedFrameRequest(url('?layers=conflicts&public=1')),
-        ['conflicts'],
+        classifyPublicEmbedFrameRequest(url('?layers=weather&public=1')),
+        ['weather'],
       );
     });
 
-    it('bounds the shared key space to the free tier’s seven non-empty subsets', () => {
-      const free = ['conflicts', 'earthquakes', 'weather'] as const;
+    it('bounds the shared key space to the free tier’s three non-empty subsets', () => {
+      const free = ['earthquakes', 'weather'] as const;
       const accepted = new Set<string>();
-      for (let mask = 1; mask < 8; mask++) {
+      for (let mask = 1; mask < 4; mask++) {
         const subset = free.filter((_, i) => (mask >> i) & 1);
         const search = buildPublicEmbedFrameSearch(subset);
         assert.ok(classifyPublicEmbedFrameRequest(url(`?${search}`)), `${search} must be cacheable`);
         accepted.add(search);
       }
-      assert.equal(accepted.size, 7);
+      assert.equal(accepted.size, 3);
     });
 
     it('rejects every near-miss rather than widening the key space', () => {
       const rejected = [
         // Reordered — a second spelling of the same set would double the entries.
-        '?layers=weather,conflicts&public=1',
+        '?layers=weather,earthquakes&public=1',
         // Parameter order swapped.
-        '?public=1&layers=conflicts',
+        '?public=1&layers=weather',
         // Percent-encoded separator: a re-serialised URLSearchParams compare
         // would normalise this into the accepted form.
-        '?layers=conflicts%2Cweather&public=1',
+        '?layers=earthquakes%2Cweather&public=1',
         // Duplicated ids and duplicated params.
-        '?layers=conflicts,conflicts&public=1',
-        '?layers=conflicts&layers=weather&public=1',
-        '?layers=conflicts&public=1&public=1',
+        '?layers=weather,weather&public=1',
+        '?layers=earthquakes&layers=weather&public=1',
+        '?layers=weather&public=1&public=1',
         // A paid layer must never reach a shared entry.
-        '?layers=conflicts,protests&public=1',
+        '?layers=weather,pipelines&public=1',
         '?layers=cables&public=1',
         // Extra, empty, and wrong-valued parameters.
-        '?layers=conflicts&public=1&bbox=1,2,3,4',
+        '?layers=weather&public=1&bbox=1,2,3,4',
         '?layers=&public=1',
-        '?layers=conflicts&public=true',
+        '?layers=weather&public=true',
         '?public=1',
-        '?layers=conflicts',
+        '?layers=weather',
         '',
         // The Vercel filesystem router's `?rpc=` echo does not reach this
         // static route, and if it ever did it must fail toward no-store.
-        '?layers=conflicts&public=1&rpc=map-frame',
+        '?layers=weather&public=1&rpc=map-frame',
       ];
       for (const search of rejected) {
         assert.equal(
@@ -281,7 +268,7 @@ describe('embed map frame', () => {
     });
 
     it('refuses a non-GET method and a foreign path', () => {
-      const good = '?layers=conflicts&public=1';
+      const good = '?layers=weather&public=1';
       assert.ok(classifyPublicEmbedFrameRequest(url(good), 'HEAD'));
       assert.equal(classifyPublicEmbedFrameRequest(url(good), 'POST'), null);
       assert.equal(
@@ -293,17 +280,17 @@ describe('embed map frame', () => {
     it('builds only URLs it will itself accept', () => {
       // Builder and validator are the pairing that keeps an emitted URL and a
       // cacheable URL from drifting apart.
-      const search = buildPublicEmbedFrameSearch(['weather', 'conflicts']);
-      assert.equal(search, 'layers=conflicts,weather&public=1');
-      assert.deepEqual(classifyPublicEmbedFrameRequest(url(`?${search}`)), ['conflicts', 'weather']);
+      const search = buildPublicEmbedFrameSearch(['weather', 'earthquakes']);
+      assert.equal(search, 'layers=earthquakes,weather&public=1');
+      assert.deepEqual(classifyPublicEmbedFrameRequest(url(`?${search}`)), ['earthquakes', 'weather']);
       assert.throws(() => buildPublicEmbedFrameSearch([]));
-      assert.throws(() => buildPublicEmbedFrameSearch(['protests']));
+      assert.throws(() => buildPublicEmbedFrameSearch(['cables']));
     });
 
     it('canonicalises to registry order and drops duplicates', () => {
       assert.deepEqual(
-        canonicalizeEmbedLayers(['weather', 'conflicts', 'weather', 'earthquakes']),
-        ['conflicts', 'earthquakes', 'weather'],
+        canonicalizeEmbedLayers(['pipelines', 'weather', 'cables', 'weather', 'earthquakes']),
+        ['earthquakes', 'weather', 'cables', 'pipelines'],
       );
     });
 
@@ -345,13 +332,13 @@ describe('embed map frame', () => {
     it('derives Cache-Control from the shared classification, never from the tier', () => {
       // Tier and shareability are different questions: a keyless caller on a
       // near-miss URL is still `free`, and must still be uncacheable.
-      assert.match(source, /cacheControlForEmbedFrame\(sharedLayers !== null\)/);
+      assert.match(source, /cacheControlForEmbedFrame\(sharedLayers !== null && !partnerMode\)/);
       assert.equal(source.includes("tier === 'keyed' ?"), false);
       assert.equal(source.includes('s-maxage'), false, 'the literal belongs in the shared helper');
     });
 
     it('varies on the grant only where the body actually depends on it', () => {
-      assert.match(source, /if \(sharedLayers === null\) headers\.Vary = 'X-WorldMonitor-Grant'/);
+      assert.match(source, /if \(sharedLayers === null \|\| partnerMode\) headers\.Vary = 'X-WorldMonitor-Grant'/);
     });
 
     it('accepts no knob other than layers', () => {
@@ -390,12 +377,12 @@ describe('embed map frame', () => {
         },
         composeFrame: async () => {
           calls.push('compose');
-          return composeEmbedMapFrame(['conflicts'], 'keyed', sources(), NOW);
+          return composeEmbedMapFrame(['weather'], 'keyed', sources(), NOW);
         },
       };
 
       const response = await handleEmbedMapFrame(
-        new Request('https://www.worldmonitor.app/api/embed/map-frame?layers=conflicts', {
+        new Request('https://www.worldmonitor.app/api/embed/map-frame?layers=weather', {
           headers: { 'X-WorldMonitor-Grant': 'wmg_test' },
         }),
         deps,
@@ -419,11 +406,11 @@ describe('embed map frame', () => {
           options = opts;
           return new Response('', { status: 429 });
         },
-        composeFrame: async () => composeEmbedMapFrame(['conflicts'], 'free', sources(), NOW),
+        composeFrame: async () => composeEmbedMapFrame(['weather'], 'free', sources(), NOW),
       };
 
       const response = await handleEmbedMapFrame(
-        new Request('https://www.worldmonitor.app/api/embed/map-frame?layers=conflicts&public=1', {
+        new Request('https://www.worldmonitor.app/api/embed/map-frame?layers=weather&public=1', {
           headers: { 'X-WorldMonitor-Grant': 'wmg_attached' },
         }),
         deps,

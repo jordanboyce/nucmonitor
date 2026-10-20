@@ -94,16 +94,3 @@ describe('assertDelegatingAdapters — affirmative premium delegation', () => {
 });
 
 
-
-it('country source accepts only its private browser and fixed host factories', () => {
-  const source = readFileSync(new URL('../src/services/country-brief-source.ts', import.meta.url), 'utf8');
-  const accepted = text => hasScopedCountrySource(ts.createSourceFile('country-source.ts', text, ts.ScriptTarget.Latest, true));
-  assert.equal(accepted(source), true);
-  for (const broken of [
-    source.replace("createCountryBriefSource(premiumFetch, 'website')", "createCountryBriefSource(fetch, 'website')"),
-    source.replace('createHostCountryFetch(call)', 'fetch'),
-    source.replace('{ fetch: fetcher }', '{ fetch: globalThis.fetch }'),
-    source.replace('function createCountryBriefSource(', 'export function createCountryBriefSource('),
-    source + '\nconst leaked = createCountryBriefSource;',
-  ]) assert.equal(accepted(broken), false);
-});

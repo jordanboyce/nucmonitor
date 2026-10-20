@@ -622,7 +622,7 @@ describe("account deletion — external side effects", () => {
     const t = await makeT();
     await seedUser(t, USER_A);
     const now = Date.now();
-    const tokenId = await t.run(async (ctx) => {
+    await t.run(async (ctx) => {
       await ctx.db.insert("userApiKeys", {
         userId: USER_A.subject,
         name: "erase-key",
@@ -648,10 +648,6 @@ describe("account deletion — external side effects", () => {
         rawPayload: {},
         updatedAt: now,
       });
-      return ctx.db.insert("mcpProTokens", {
-        userId: USER_A.subject,
-        createdAt: now,
-      });
     });
 
     await t.action(internal.accountDeletion.erase.eraseConfirmedUser, {
@@ -664,15 +660,12 @@ describe("account deletion — external side effects", () => {
     expect(row?.status).toBe("complete");
     expect(row?.keyHashes).toContain("b".repeat(64));
     expect(row?.embedKeyHashes).toContain("c".repeat(64));
-    expect(row?.mcpTokenIds).toContain(String(tokenId));
     expect(row?.cancelledDodoSubscriptionIds).toContain("sub_erase_dodo");
     expect(dodoUpdateMock).toHaveBeenCalledWith("sub_erase_dodo", { status: "cancelled" });
     expect(fetchCalls.some((call) => call.includes("api.clerk.com/v1/users/user_deletion_a"))).toBe(true);
     expect(fetchCalls.some((call) => call.includes("entitlements:test:user_deletion_a"))).toBe(true);
-    expect(fetchCalls.some((call) => call.includes(`pro-mcp-token-neg:${String(tokenId)}`))).toBe(true);
     expect(fetchCalls.some((call) => call.includes("brief:latest:user_deletion_a"))).toBe(true);
     expect(fetchCalls.some((call) => call.includes("brief:user_deletion_a:2026-09-21-1200"))).toBe(true);
-    expect(await t.query(internal.mcpProTokens.validateProMcpToken, { tokenId })).toBeNull();
   });
 
   test("Dodo timeout records last error and retries without double-cancel", async () => {

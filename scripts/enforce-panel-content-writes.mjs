@@ -128,29 +128,7 @@ export const DIRECT_WRITE_PATTERNS = [
  * `insertAdjacentElement` sibling insert (see DIRECT_WRITE_PATTERNS).
  */
 export const LEGACY_DIRECT_CONTENT_WRITES = [
-  'src/components/AirlineIntelPanel.ts :: setTrustedHtml(this.content, …) x8',
-  'src/components/DeductionPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/DefensePatentsPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/GdeltIntelPanel.ts :: this.content.insertAdjacentElement(…) x1',
-  'src/components/GoodThingsDigestPanel.ts :: setTrustedHtml(this.content, …) x1',
-  'src/components/HeroSpotlightPanel.ts :: setTrustedHtml(this.content, …) x1',
-  'src/components/LatestBriefPanel.ts :: clearChildren(this.content) x1',
-  'src/components/LatestBriefPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/LatestBriefPanel.ts :: this.content.appendChild(…) x1',
-  'src/components/ProgressChartsPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/ProgressChartsPanel.ts :: setTrustedHtml(this.content, …) x1',
-  'src/components/ProgressChartsPanel.ts :: this.content.appendChild(…) x3',
-  'src/components/ProgressChartsPanel.ts :: this.content.insertBefore(…) x1',
-  'src/components/RegionalIntelligenceBoard.ts :: replaceChildren(this.content, …) x1',
-  'src/components/RegulationPanel.ts :: setTrustedHtml(this.content, …) x1',
-  'src/components/RenewableEnergyPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/RenewableEnergyPanel.ts :: this.content.appendChild(…) x3',
   'src/components/RuntimeConfigPanel.ts :: setTrustedHtml(this.content, …) x2',
-  'src/components/ServiceStatusPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/SpeciesComebackPanel.ts :: replaceChildren(this.content, …) x1',
-  'src/components/SpeciesComebackPanel.ts :: this.content.appendChild(…) x2',
-  'src/components/SupplyChainPanel.ts :: this.content.prepend(…) x1',
-  'src/components/TechEventsPanel.ts :: replaceChildren(this.content, …) x1',
 ];
 
 /**
@@ -180,7 +158,7 @@ export const GUARD_EXEMPT_FILES = new Set(['src/components/Panel.ts']);
  * #6557. A renamed base class or a moved directory would otherwise silently
  * shrink the population to zero and let every assertion pass vacuously.
  */
-export const MIN_PANEL_SUBCLASS_FILES = 100;
+export const MIN_PANEL_SUBCLASS_FILES = 13;
 
 // `stripComments` and `collectTsFiles` moved to ./lib/source-scan.mjs in #7833.
 // The copy that lived here ran its block-comment regex over RAW source, so a

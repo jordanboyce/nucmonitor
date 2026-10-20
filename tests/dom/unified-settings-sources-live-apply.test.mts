@@ -139,12 +139,6 @@ vi.mock('@/services/billing', () => ({
 
 // Partial so the real status-tone helpers stay available: a full stub goes
 // stale the moment billing-state gains an export the panel renders (#7315).
-vi.mock('@/services/billing-state', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/billing-state')>()),
-  deriveBillingUxState: () => 'active',
-  getReactivationHref: () => '/pro#pricing',
-}));
-
 vi.mock('@/services/api-keys', () => ({
   createApiKey: vi.fn(),
   listApiKeys: vi.fn(),

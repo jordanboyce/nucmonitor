@@ -41,9 +41,6 @@ interface DigestLoaderInternals {
   persistDigest(key: string, data: ListFeedDigestResponse): void;
   tryFetchDigest(): Promise<SelectedNewsDigest | null>;
   beginNewsLoad(): number;
-  commitNewsFreshness(generation: number, servedStale: boolean): boolean;
-  canNotifyForCommittedNews(generation: number, servedStale: boolean): boolean;
-  runCorrelationAnalysis(): Promise<void>;
   resolveEnabledNewsCategories(): Array<{ key: string; feeds: Array<{ name: string; url: string }>; isCustom: boolean }>;
   loadIntelNews(): Promise<unknown[]>;
   clusterNewsForGeneration(): Promise<{ clusters: ClusteredEvent[] }>;
@@ -109,15 +106,11 @@ async function makeLoader() {
     initialLoadComplete: false,
     allNews: [],
     latestClusters: [],
-    latestPredictions: [],
     latestMarkets: [],
     clustersSettled: false,
   } as unknown as AppContext;
   const { DataLoaderManager } = await import('@/app/data-loader');
-  const loader = new DataLoaderManager(ctx, {
-    renderCriticalBanner: () => undefined,
-    refreshOpenCountryBrief: () => undefined,
-  });
+  const loader = new DataLoaderManager(ctx);
   const internal = loader as unknown as DigestLoaderInternals;
   internal.persistDigest = vi.fn();
   internal.loadPersistedDigest = vi.fn().mockResolvedValue(null);
@@ -283,116 +276,6 @@ describe('digest coverage follows the selected browser response', () => {
       state: 'complete',
       itemsServed: 4,
     }));
-  });
-
-  it('a late stale load cannot replace or alert over a newer fresh commit (#7084)', async () => {
-    const { internal } = await makeLoader();
-    const staleGeneration = internal.beginNewsLoad();
-    const staleCompletion = Promise.resolve().then(() => (
-      internal.commitNewsFreshness(staleGeneration, true)
-    ));
-    const freshGeneration = internal.beginNewsLoad();
-
-    expect(internal.commitNewsFreshness(freshGeneration, false)).toBe(true);
-    expect(await staleCompletion).toBe(false);
-    expect(internal.canNotifyForCommittedNews(freshGeneration, false)).toBe(true);
-    expect(internal.canNotifyForCommittedNews(staleGeneration, true)).toBe(false);
-  });
-
-  it('a late obsolete-language response cannot re-mute newer fresh news (#7084)', async () => {
-    const { internal } = await makeLoader();
-    let currentKey = 'digest:requested';
-    internal.digestCacheKey = (language?: string) => language ? 'digest:requested' : currentKey;
-    internal.lastGoodDigest = { key: 'digest:current', data: digest('partial', 1) };
-
-    let resolveFetch!: (response: Response) => void;
-    vi.mocked(globalThis.fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => {
-      resolveFetch = resolve;
-    }));
-    const obsoleteGeneration = internal.beginNewsLoad();
-    const obsoleteSelection = internal.tryFetchDigest();
-
-    currentKey = 'digest:current';
-    const freshGeneration = internal.beginNewsLoad();
-    expect(internal.commitNewsFreshness(freshGeneration, false)).toBe(true);
-
-    resolveFetch(new Response(JSON.stringify(digest('complete', 4)), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }));
-    const selected = await obsoleteSelection;
-    expect(selected?.servedStale).toBe(true);
-    expect(internal.commitNewsFreshness(obsoleteGeneration, selected?.servedStale ?? false)).toBe(false);
-    expect(internal.canNotifyForCommittedNews(freshGeneration, false)).toBe(true);
-  });
-
-  it('a superseded correlation clustering pass cannot replace current clusters (#7782)', async () => {
-    const { loader, internal } = await makeLoader();
-    const ctx = (loader as unknown as { ctx: AppContext }).ctx;
-    ctx.allNews = [{
-      source: 'Reuters',
-      title: 'Fixture event',
-      link: 'https://fixture.test/event',
-      pubDate: new Date('2026-09-06T12:00:00.000Z'),
-      isAlert: false,
-    }];
-
-    const committedGeneration = internal.beginNewsLoad();
-    expect(internal.commitNewsFreshness(committedGeneration, false)).toBe(true);
-    const staleCluster: ClusteredEvent = {
-      id: 'stale-cluster',
-      primaryTitle: 'Fixture event',
-      primarySource: 'Reuters',
-      primaryLink: 'https://fixture.test/event',
-      sourceCount: 1,
-      uniquePublisherCount: 1,
-      topSources: [{ name: 'Reuters', tier: 1, url: 'https://fixture.test/event' }],
-      allItems: ctx.allNews,
-      firstSeen: ctx.allNews[0]!.pubDate,
-      lastUpdated: ctx.allNews[0]!.pubDate,
-      isAlert: false,
-    };
-    let resolveClusters!: (clusters: ClusteredEvent[]) => void;
-    mocks.clusterNews.mockImplementationOnce(() => new Promise<ClusteredEvent[]>((resolve) => {
-      resolveClusters = resolve;
-    }));
-
-    const pending = internal.runCorrelationAnalysis();
-    internal.beginNewsLoad();
-    resolveClusters([staleCluster]);
-    await pending;
-
-    expect(ctx.latestClusters).toEqual([]);
-    expect(ctx.clustersSettled).toBe(false);
-    expect(mocks.analyzeCorrelations).not.toHaveBeenCalled();
-  });
-
-  it('keeps local clusters when the ML-off analysis worker is unavailable (#7782)', async () => {
-    const { loader, internal } = await makeLoader();
-    const ctx = (loader as unknown as { ctx: AppContext }).ctx;
-    ctx.allNews = [{
-      source: 'Reuters',
-      title: 'Fixture event',
-      link: 'https://fixture.test/event',
-      pubDate: new Date('2026-09-06T12:00:00.000Z'),
-      isAlert: false,
-    }];
-
-    const generation = internal.beginNewsLoad();
-    expect(internal.commitNewsFreshness(generation, false)).toBe(true);
-    mocks.clusterNews.mockResolvedValueOnce([]);
-    mocks.analyzeCorrelations.mockResolvedValueOnce([]);
-
-    await internal.runCorrelationAnalysis();
-
-    expect(ctx.latestClusters).toHaveLength(1);
-    expect(ctx.latestClusters[0]?.primaryTitle).toBe('Fixture event');
-    expect(ctx.clustersSettled).toBe(true);
-    expect(mocks.analyzeCorrelations).toHaveBeenCalledWith(
-      ctx.latestClusters,
-      ctx.latestPredictions,
-      ctx.latestMarkets,
-    );
   });
 
   it.each(['retained', 'persisted'] as const)(

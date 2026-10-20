@@ -48,17 +48,17 @@ describe('applyMapLayerChange persists map layers', () => {
   });
 
   it('writes the updated layer set to STORAGE_KEYS.mapLayers', () => {
-    const mapLayers = { conflicts: false };
+    const mapLayers = { fires: false };
     const manager = createManager(mapLayers);
 
     expect(localStorage.getItem(STORAGE_KEYS.mapLayers)).toBeNull();
 
-    manager.applyMapLayerChange('conflicts' as never, true, 'programmatic');
+    manager.applyMapLayerChange('fires' as never, true, 'programmatic');
 
     // The stored value — not merely "storage was touched". A write of the
     // pre-change object, or of the wrong key, fails here.
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.mapLayers)!))
-      .toStrictEqual({ conflicts: true });
+      .toStrictEqual({ fires: true });
 
     manager.destroy();
   });
@@ -67,15 +67,15 @@ describe('applyMapLayerChange persists map layers', () => {
     // This is the property the gate exists for: the tool has no undo. Toggling
     // off writes again rather than restoring the pre-invocation storage state,
     // so an uncancellable invocation is not recoverable by putting the map back.
-    const manager = createManager({ conflicts: true, protests: false });
+    const manager = createManager({ fires: true, outages: false });
 
-    manager.applyMapLayerChange('protests' as never, true, 'programmatic');
+    manager.applyMapLayerChange('outages' as never, true, 'programmatic');
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.mapLayers)!))
-      .toStrictEqual({ conflicts: true, protests: true });
+      .toStrictEqual({ fires: true, outages: true });
 
-    manager.applyMapLayerChange('protests' as never, false, 'programmatic');
+    manager.applyMapLayerChange('outages' as never, false, 'programmatic');
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.mapLayers)!))
-      .toStrictEqual({ conflicts: true, protests: false });
+      .toStrictEqual({ fires: true, outages: false });
 
     manager.destroy();
   });
@@ -88,8 +88,8 @@ describe('open_search_result persists an executable layer result', () => {
   });
 
   it('opens an issued layer command through the production dispatcher', async () => {
-    const command = COMMANDS.find(({ id }) => id === 'layer:conflicts');
-    if (!command) throw new Error('Expected the conflicts layer command');
+    const command = COMMANDS.find(({ id }) => id === 'layer:fires');
+    if (!command) throw new Error('Expected the fires layer command');
     const match: SearchMatch = {
       kind: 'command',
       command,
@@ -103,7 +103,7 @@ describe('open_search_result persists an executable layer result', () => {
       resolveMatchByIdentity: vi.fn(() => match),
       closeForProgrammaticSelection,
     };
-    const mapLayers = { conflicts: false };
+    const mapLayers = { fires: false };
     const enableLayer = vi.fn();
     const dispatcher = new SearchSelectionDispatcher({
       ctx: {
@@ -116,12 +116,10 @@ describe('open_search_result persists an executable layer result', () => {
         panelSettings: {},
         newsPanels: {},
       } as never,
-      getVariant: () => 'full',
+      getVariant: () => 'nuclear',
       hasPremiumAccess: () => false,
-      openCountryBriefByCode: vi.fn(() => true),
       enablePanel: vi.fn(() => true),
       trackSearchResultSelected: vi.fn(),
-      trackCountrySelected: vi.fn(),
       runWithAgentAnalyticsSuppressed: (callback) => callback(),
       suppressNextAgentPanelView: vi.fn(),
       resolveExecutableNewsPanel: vi.fn(() => null),
@@ -136,9 +134,8 @@ describe('open_search_result persists an executable layer result', () => {
       refreshIndex: vi.fn(),
       getModal: () => modal as never,
       hasPremiumAccess: () => false,
-      fetchLiveFlight: vi.fn(async () => {}),
       getAuthContext: () => 'anonymous:settled:free',
-      getVariant: () => 'full',
+      getVariant: () => 'nuclear',
       isMatchExecutable: () => true,
       isPanelCurrentlyEnabled: () => false,
       selectMatch: (candidate, signal) => dispatcher.selectProgrammaticMatch(
@@ -155,9 +152,9 @@ describe('open_search_result persists an executable layer result', () => {
     });
 
     const host = new AbortController();
-    const response = await controller.search('conflicts', 'all', 10, host.signal);
+    const response = await controller.search('fires', 'all', 10, host.signal);
     const issued = response.results[0];
-    if (!issued) throw new Error('Expected an issued conflicts search result');
+    if (!issued) throw new Error('Expected an issued fires search result');
     expect(issued.executable).toBe(true);
     expect(localStorage.getItem(STORAGE_KEYS.mapLayers)).toBeNull();
 
@@ -166,9 +163,9 @@ describe('open_search_result persists an executable layer result', () => {
       status: 'opened',
       type: 'command',
     });
-    expect(enableLayer).toHaveBeenCalledWith('conflicts');
+    expect(enableLayer).toHaveBeenCalledWith('fires');
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.mapLayers)!))
-      .toStrictEqual({ conflicts: true });
+      .toStrictEqual({ fires: true });
     expect(closeForProgrammaticSelection).toHaveBeenCalledOnce();
 
     controller.destroy();

@@ -82,15 +82,6 @@ describe('intelligence command deck pure helpers', () => {
     );
   });
 
-  it('treats flight entities as out of panels/actions channels', () => {
-    // Flight-prefix special case in SearchModal must consult this predicate.
-    assert.equal(resultMatchesSearchScope('all', 'flight'), true);
-    assert.equal(resultMatchesSearchScope('signals', 'flight'), true);
-    assert.equal(resultMatchesSearchScope('map', 'flight'), true);
-    assert.equal(resultMatchesSearchScope('panels', 'flight'), false);
-    assert.equal(resultMatchesSearchScope('actions', 'flight'), false);
-  });
-
   it('keeps the pre-deck All-channel empty tip inventory', () => {
     assert.deepEqual([...ALL_CHANNEL_TIP_KEYS], [
       'commands.tips.map',

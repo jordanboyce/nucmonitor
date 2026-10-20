@@ -68,7 +68,7 @@ describe('Auto theme preference', () => {
 describe('Desktop window theme', () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
-  it.each(['live-channels.html', 'settings.html'])('%s pre-paints the system theme for Auto and first visits, and keeps explicit choices', (page) => {
+  it.each(['settings.html'])('%s pre-paints the system theme for Auto and first visits, and keeps explicit choices', (page) => {
     const prepaint = readFileSync(resolve(root, page), 'utf8').match(/<script>([\s\S]*?)<\/script>/i)![1]!;
     const runPrepaint = (): string | undefined => {
       delete document.documentElement.dataset.theme;
@@ -90,7 +90,7 @@ describe('Desktop window theme', () => {
   });
 
   it('applies the stored preference, and its system listener, at window start', () => {
-    const entry = readFileSync(resolve(root, 'src/live-channels-main.ts'), 'utf8');
+    const entry = readFileSync(resolve(root, 'src/settings-main.ts'), 'utf8');
     expect(entry).toMatch(/import \{ applyStoredTheme \} from '@\/utils\/theme-manager';/);
     expect(entry).toMatch(/\n\s*applyStoredTheme\(\);/);
   });

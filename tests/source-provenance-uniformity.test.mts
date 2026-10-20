@@ -193,10 +193,6 @@ describe('state affiliation survives a note (#6419)', () => {
 });
 
 describe('MCP news app renders the shared summary (#6419)', () => {
-  it('news-intelligence-app no longer derives provenance labels', () => {
-    const source = readFileSync(join(repoRoot, 'api/mcp/ui/news-intelligence-app.ts'), 'utf8');
-    assert.doesNotMatch(source, /riskReviewed/);
-  });
 });
 
 process.on('exit', () => {

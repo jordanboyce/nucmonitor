@@ -333,21 +333,6 @@ describe('agent bus applier', () => {
     assert.equal(mapCalls.setLayersCalls.length, 0);
   });
 
-  it('rejects resilienceScore outside DeckGL even for premium users', () => {
-    const ctx = makeCtx();
-    const result = applyAgentBusAction(ctx, {
-      type: 'set_layers',
-      layers: { resilienceScore: true },
-    }, { ...entitled, hasPremiumAccess: () => true });
-    const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
-
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, 'no_allowed_layers');
-    assert.equal(result.targets[0]?.reason, 'layer_not_executable');
-    assert.equal(ctx.mapLayers.resilienceScore, false);
-    assert.equal(mapCalls.setLayersCalls.length, 0);
-  });
-
   it('normalizes mutually exclusive choropleth layers before applying', () => {
     const layerChanges: Array<[keyof MapLayers, boolean, 'programmatic']> = [];
     const ctx = makeCtx({
@@ -379,82 +364,6 @@ describe('agent bus applier', () => {
     ]);
   });
 
-  it('reports a normalized-off requested choropleth as an exclusive conflict', () => {
-    const layerChanges: Array<[keyof MapLayers, boolean, 'programmatic']> = [];
-    const ctx = makeCtx({
-      map: {
-        setCenter: () => {},
-        setView: () => {},
-        setLayers: () => {},
-        isDeckGLActive: () => true,
-        isGlobeMode: () => false,
-      } as never,
-    });
-
-    const result = applyAgentBusAction(ctx, {
-      type: 'set_layers',
-      layers: { ciiChoropleth: true, resilienceScore: true },
-    }, {
-      ...entitled,
-      hasPremiumAccess: () => true,
-      applyLayerChange: (layer, enabled, source) => { layerChanges.push([layer, enabled, source]); },
-    });
-
-    assert.equal(result.ok, true);
-    assert.equal(ctx.mapLayers.ciiChoropleth, true);
-    assert.equal(ctx.mapLayers.resilienceScore, false);
-    assert.deepEqual(result.targets, [
-      { target: 'ciiChoropleth', status: 'applied' },
-      {
-        target: 'resilienceScore',
-        status: 'denied',
-        reason: 'exclusive_layer_conflict',
-      },
-    ]);
-    assert.deepEqual(layerChanges, [
-      ['ciiChoropleth', true, 'programmatic'],
-    ]);
-  });
-
-  it('denies feature-disabled cyber and unconfigured AIS/outages even when keys exist', () => {
-    const ctx = makeCtx();
-    ctx.mapLayers.cyberThreats = false;
-    ctx.mapLayers.ais = false;
-    ctx.mapLayers.outages = false;
-    const result = applyAgentBusAction(ctx, {
-      type: 'set_layers',
-      layers: {
-        conflicts: true,
-        cyberThreats: true,
-        ais: true,
-        outages: true,
-      },
-    }, {
-      ...entitled,
-      getMapLayerRuntimeAvailability: () => ({
-        cyberLayerEnabled: false,
-        aisConfigured: false,
-        outagesAvailable: false,
-      }),
-    });
-    const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
-
-    assert.equal(result.ok, true);
-    assert.equal(ctx.mapLayers.conflicts, true);
-    assert.equal(ctx.mapLayers.cyberThreats, false);
-    assert.equal(ctx.mapLayers.ais, false);
-    assert.equal(ctx.mapLayers.outages, false);
-    assert.equal(mapCalls.setLayersCalls.length, 1);
-    assert.deepEqual(
-      result.targets.map((target) => [target.target, target.status, target.reason ?? '']),
-      [
-        ['conflicts', 'applied', ''],
-        ['cyberThreats', 'denied', 'layer_feature_disabled'],
-        ['ais', 'denied', 'layer_not_configured'],
-        ['outages', 'denied', 'layer_not_configured'],
-      ],
-    );
-  });
   it('applies every dashboard time-range enum through the map control', () => {
     const ctx = makeCtx();
     const ranges = DASHBOARD_TIME_RANGES;
@@ -568,27 +477,6 @@ describe('agent bus applier', () => {
     assert.equal(to2d.ok, true);
     assert.deepEqual(to2d.effective, { mode: '2d', renderer: 'deck' });
     assert.equal((ctx.map as { _calls: { switchToFlatCalls: number[] } })._calls.switchToFlatCalls.length, 1);
-  });
-
-  it('disables resilienceScore when switching away from DeckGL, matching the UI', async () => {
-    const ctx = makeCtx();
-    ctx.map.switchToFlat();
-    ctx.mapLayers = { ...ctx.mapLayers, resilienceScore: true };
-
-    const result = await applyAgentBusAction(ctx, { type: 'set_map_mode', mode: '3d' });
-    assert.equal(result.ok, true);
-    assert.equal(ctx.mapLayers.resilienceScore, false);
-    assert.equal(result.compatibility?.adjusted, true);
-    assert.deepEqual(result.compatibility?.layers, [{
-      layer: 'resilienceScore',
-      from: true,
-      to: false,
-      reason: 'layer_not_executable',
-    }]);
-    assert.deepEqual(
-      (ctx.map as { _calls: { setLayersCalls: MapLayers[] } })._calls.setLayersCalls,
-      [ctx.mapLayers],
-    );
   });
 
   it('denies 3d and reports the 2d renderer when globe startup falls back', async () => {

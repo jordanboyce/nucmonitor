@@ -145,22 +145,3 @@ test('no on-demand key is cached at the edge past its freshness budget', () => {
   assert.ok(checked >= 4, `expected several probed on-demand keys, checked ${checked}`);
   assert.deepEqual(violations, []);
 });
-
-test('FAST-demoted key cache windows stay within their individual freshness budgets', () => {
-  for (const key of ['forecasts', 'correlationCards']) {
-    assert.equal(bootstrapTierKeyNames('fast').includes(key), false, `${key} must not ride FAST`);
-    assert.equal(bootstrapTierKeyNames('slow').includes(key), false, `${key} must not ride SLOW`);
-    assert.equal(bootstrapTierKeyNames('on-demand').includes(key), true, `${key} must be on-demand`);
-    assert.notEqual(healthMaxStaleMin(key), null, `${key} must have a health freshness budget`);
-    const headers = __testing__.successCacheHeaders(null, 'public-on-demand', {}, key);
-    const budgetSec = healthMaxStaleMin(key)! * 60;
-    assert.ok(
-      completeCacheServingWindowSeconds(headers['Cache-Control'], false) <= budgetSec,
-      `${key} browser cache exceeds its health budget`,
-    );
-    assert.ok(
-      completeCacheServingWindowSeconds(headers['CDN-Cache-Control'], true) <= budgetSec,
-      `${key} CDN cache exceeds its health budget`,
-    );
-  }
-});

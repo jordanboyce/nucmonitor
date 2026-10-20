@@ -478,56 +478,6 @@ describe('WebMCP registry behavioral contract', () => {
     }
   });
 
-  it('registers synchronously, exposes sorted serialized schemas, and executes registered tools', async () => {
-    const provider = new FakeWebMcpModelContext({ supportsTargetExecutionSignal: true });
-    const harness = trackedRuntime(provider);
-    const opened = [];
-    const controller = registerWebMcpTools(createBindings({
-      openCountryBriefByCode: async (code, country) => {
-        opened.push({ code, country });
-        return true;
-      },
-    }), harness.runtime);
-
-    assert.deepEqual(
-      provider.registrationCalls.map(({ tool }) => tool.name),
-      WEBMCP_SPA_TOOL_NAMES,
-      'registration calls must start before registerWebMcpTools returns',
-    );
-    assert.ok(provider.registrationCalls.every(({ signal }) => signal === controller.signal));
-    await settlePromises();
-
-    const registered = await provider.getTools();
-    assert.deepEqual(
-      registered.map(({ name }) => name),
-      [...WEBMCP_SPA_TOOL_NAMES].sort((left, right) => left.localeCompare(right)),
-    );
-    for (const registeredTool of registered) {
-      const original = provider.registrationCalls
-        .find(({ tool }) => tool.name === registeredTool.name).tool;
-      assert.deepEqual(JSON.parse(registeredTool.inputSchema), original.inputSchema);
-      assert.equal('execute' in registeredTool, false);
-    }
-
-    const result = await executeRegistered(
-      provider,
-      'openCountryBrief',
-      JSON.stringify({ iso2: 'de' }),
-    );
-    assert.equal(result, 'Opened intelligence brief for Country DE (DE).');
-    assert.deepEqual(opened, [{ code: 'DE', country: 'Country DE' }]);
-    assert.deepEqual(harness.events, [
-      {
-        event: 'webmcp-registered',
-        data: { toolCount: WEBMCP_SPA_TOOL_NAMES.length, pageSurface: 'dashboard', api: 'document-current' },
-      },
-      {
-        event: 'webmcp-tool-invoked',
-        data: { tool: 'openCountryBrief', outcome: 'success', reason: 'completed' },
-      },
-    ]);
-  });
-
   it('marks registration settlement so a probe can read the inventory in one call', async () => {
     // On Chrome's WebMCP origin-trial build, ANY access to
     // document.modelContext before the page finishes registering wedges the

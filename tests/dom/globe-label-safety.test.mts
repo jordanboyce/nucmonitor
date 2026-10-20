@@ -14,7 +14,7 @@ vi.mock('globe.gl', () => ({ default: vi.fn(function () {
 }) }));
 import { GlobeMap } from '@/components/GlobeMap';
 afterEach(() => { vi.useRealTimers(); document.body.replaceChildren(); });
-it('escapes labels registered with globe.gl for routes, paths, and polygons', async () => {
+it('escapes labels registered with globe.gl for paths and polygons', async () => {
   vi.useFakeTimers();
   const host = Object.create(GlobeMap.prototype);
   host.container = document.createElement('div');
@@ -22,9 +22,8 @@ it('escapes labels registered with globe.gl for routes, paths, and polygons', as
   await expect(host.initGlobe()).rejects.toBe(capture.done);
   const hostile = '<img src=x onerror="alert(1)">';
   for (const [label, data] of [
-    ['arcLabel', { routeName: hostile, volumeDesc: hostile }],
     ['pathLabel', { name: hostile }],
-    ['polygonLabel', { _kind: 'cii', name: hostile, score: hostile }],
+    ['polygonLabel', { name: hostile }],
   ] as const) {
     const element = document.createElement('div');
     element.innerHTML = capture.labels.get(label)!(data);

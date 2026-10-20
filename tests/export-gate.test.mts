@@ -166,12 +166,6 @@ describe('resolveAvailableExportFormats — catalog-backed export menu', () => {
 });
 
 describe('resolveExportGate — billing-aware lock reasons (#4771)', () => {
-  it('AE5: a covering subscription on payment hold gets the payment reason, never an upsell', () => {
-    const verdict = resolveExportGate(inputs({ billingState: 'on_hold' }));
-    assert.deepEqual(verdict, { locked: true, reason: 'payment_on_hold' });
-    assert.notEqual(verdict.locked && verdict.reason, 'free_tier');
-  });
-
   it('renewal verification pending → renewal_pending', () => {
     assert.deepEqual(
       resolveExportGate(inputs({ billingState: 'renewal_verification_pending' })),

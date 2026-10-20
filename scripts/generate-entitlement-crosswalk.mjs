@@ -67,7 +67,7 @@ for (const m of R('src/shared/pro-fresh-rpc.ts').matchAll(/^\s*'(\/api\/[^']+)',
 for (const m of R('src/config/map-layer-definitions.ts').matchAll(/^\s*([a-zA-Z0-9_]+):\s*def\('([^']+)'[^\n]*?,\s*(?:_desktop \? )?'(locked|enhanced)'/gm))
   add('layer', m[2], m[3]);
 // 7. FREE_* caps
-for (const f of ['src/config/panels.ts','convex/constants.ts','src/services/gates/export-resolver.ts','src/services/followed-countries.ts','api/mcp/upgrade-constants.ts'])
+for (const f of ['src/config/panels.ts','convex/constants.ts','src/services/gates/export-resolver.ts','src/services/followed-countries.ts'])
   for (const m of R(f).matchAll(/^export const (FREE_[A-Z_]+)\s*=\s*([^;]+);/gm)) add('cap', m[1], `${m[2].trim()} (${f})`);
 
 
@@ -308,30 +308,15 @@ export function diffSiteCounts(actual, baseline = SITE_BASELINE) {
 // watching the sweep stay green. Pinning the expected count closes it: any
 // added or removed gate changes a count and must be re-baselined deliberately.
 const SITE_BASELINE = {
-  "api/chat-analyst.ts::resolvePremiumCallerIdentity": 1,
-  "api/mcp-proxy.ts::resolvePremiumCallerIdentity": 1,
-  "api/mcp/skill-extension/generated.ts::tier": 1,
-  "api/mcp/ui/news-intelligence-app.ts::tier": 1,
   "api/me/entitlement.ts::isCallerPremium": 1,
   "api/notification-channels.ts::tier": 1,
-  "api/v2/shipping/webhooks/[subscriberId].ts::resolvePremiumCallerIdentity": 1,
-  "api/v2/shipping/webhooks/[subscriberId]/[action].ts::resolvePremiumCallerIdentity": 1,
-  "api/widget-agent.ts::tier": 2,
   "convex/alertRules.ts::tier": 1,
   "convex/apiKeys.ts::apiAccess": 1,
-  "convex/apiPlanLimitUsage.ts::apiAccess": 1,
-  "convex/apiPlanLimitUsage.ts::mcpAccess": 1,
-  "convex/apiPlanLimitUsage.ts::tier": 2,
   "convex/companyMonitoring/_shared.ts::tier": 1,
   "convex/companyMonitoring/accounts.ts::tier": 1,
   "convex/embedKeys.ts::embedAccess": 1,
   "convex/followedCountries.ts::tier": 2,
-  "convex/http.ts::apiAccess": 1,
-  "convex/http.ts::mcpAccess": 1,
-  "convex/http.ts::tier": 3,
-  "convex/mcpProTokens.ts::tier": 1,
   "convex/notificationChannels.ts::tier": 1,
-  "convex/payments/billing.ts::tier": 1,
   "server/_shared/direct-llm-quota.ts::tier": 1,
   "server/_shared/embed-entitlement.ts::embedAccess": 2,
   "server/_shared/embed-session.ts::embedAccess": 2,
@@ -347,38 +332,15 @@ const SITE_BASELINE = {
   "server/gateway.ts::apiAccess": 3,
   "server/gateway.ts::embedAccess": 1,
   "server/gateway.ts::tier": 5,
-  "server/worldmonitor/intelligence/v1/deduct-situation.ts::isCallerPremium": 1,
-  "server/worldmonitor/intelligence/v1/get-country-intel-brief.ts::isCallerPremium": 1,
-  "server/worldmonitor/military/v1/list-military-bases.ts::tier": 1,
   "server/worldmonitor/news/v1/summarize-article.ts::requiresPremium": 2,
   "server/worldmonitor/news/v1/summarize-article.ts::resolvePremiumCallerIdentity": 1,
-  "server/worldmonitor/supply-chain/v1/get-bypass-options.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-country-chokepoint-index.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-country-cost-shock.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-country-products.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-multi-sector-cost-shock.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-route-explorer-lane.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-route-impact.ts::isCallerPremium": 1,
-  "server/worldmonitor/supply-chain/v1/get-sector-dependency.ts::isCallerPremium": 1,
-  "server/worldmonitor/trade/v1/get-bilateral-tariff.ts::isCallerPremium": 1,
-  "server/worldmonitor/trade/v1/get-tariff-trends.ts::isCallerPremium": 1,
-  "server/worldmonitor/trade/v1/get-us-import-duty.ts::isCallerPremium": 1,
-  "server/worldmonitor/trade/v1/list-comtrade-flows.ts::isCallerPremium": 1,
-  "src/app/data-loader.ts::hasPremiumAccess": 13,
+  "src/app/data-loader.ts::hasPremiumAccess": 1,
   "src/app/event-handlers.ts::isProUser": 2,
-  "src/app/panel-layout.ts::hasPremiumAccess": 1,
-  "src/components/RegionalIntelligenceBoard.ts::hasPremiumAccess": 1,
-  "src/components/TelegramIntelPanel.ts::hasPremiumAccess": 1,
   "src/components/UnifiedSettings.ts::isProUser": 1,
-  "src/services/analysis-framework-store.ts::hasPremiumAccess": 1,
-  "src/services/correlation-engine/engine.ts::hasPremiumAccess": 1,
   "src/services/economic/index.ts::hasPremiumAccess": 1,
-  "src/services/entitlements.ts::embedAccess": 1,
   "src/services/entitlements.ts::tier": 1,
   "src/services/gates/export-resolver.ts::dataExport": 4,
   "src/services/gates/export.ts::dataExport": 1,
-  "src/services/sanctions-pressure.ts::hasPremiumAccess": 1,
-  "src/services/supply-chain/index.ts::hasPremiumAccess": 8,
   "src/settings-window.ts::isProUser": 1
 };
 

@@ -29,10 +29,10 @@ vi.mock('../_shared/rate-limit', async (importActual) => {
 import { createDomainGateway } from '../gateway';
 
 const ctx = { waitUntil: () => {} };
-const STATIC_PATH = '/api/intelligence/v1/get-china-decision-signals';
+const STATIC_PATH = '/api/news/v1/list-label-changes';
 const DYNAMIC_PATH_PATTERN = '/api/foo/v1/items/{id}';
 const DYNAMIC_PATH = '/api/foo/v1/items/abc';
-const POST_ONLY_PATH = '/api/leads/v1/submit-contact';
+const POST_ONLY_PATH = '/api/news/v1/submit-error-report';
 const BODY = JSON.stringify({ events: [{ id: 1 }] });
 const KEY = 'test-head-key';
 

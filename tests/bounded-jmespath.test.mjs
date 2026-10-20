@@ -125,7 +125,10 @@ describe('searchBoundedJmespath', () => {
 
   it('returns HTTP 400 on the public gateway path and still serves a normal projection', async () => {
     const { createDomainGateway } = await import('../server/gateway.ts');
-    const path = '/api/resilience/v1/get-runtime-manifest';
+    const { installRedis } = await import('./helpers/fake-upstash-redis.mts');
+    // A public no-auth route; its per-IP endpoint limit needs a Redis to read.
+    installRedis({});
+    const path = '/api/news/v1/list-label-changes';
     const handler = createDomainGateway([{
       method: 'GET', path, handler: async () => Response.json({ version: 1 }),
     }]);

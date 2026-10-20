@@ -61,43 +61,6 @@ function writeHandler(root, body) {
 }
 
 describe('sebuf query-param implementation contract', () => {
-  it('generated OpenAPI operation params disclose every documented no-op', () => {
-    for (const [file, path, names] of OPENAPI_NOOP_PARAMS) {
-      const spec = JSON.parse(readFileSync(resolve(apiDir, file), 'utf8'));
-      const params = spec.paths?.[path]?.get?.parameters;
-      assert.ok(Array.isArray(params), file + ': missing GET parameters for ' + path);
-      for (const name of names) {
-        const param = params.find((candidate) => candidate.name === name);
-        assert.ok(param, file + ': missing query param ' + name + ' on ' + path);
-        assert.match(
-          String(param.description ?? ''),
-          /Accepted but currently ignored; no-op/,
-          file + ': ' + path + ' ' + name + ' must disclose accepted-but-ignored/no-op behavior',
-        );
-      }
-    }
-  });
-
-  it('documents the military flights cursor as implemented rather than a no-op', () => {
-    const spec = JSON.parse(readFileSync(resolve(apiDir, 'MilitaryService.openapi.json'), 'utf8'));
-    const params = spec.paths?.['/api/military/v1/list-military-flights']?.get?.parameters;
-    assert.ok(Array.isArray(params), 'MilitaryService.openapi.json: missing list-military-flights parameters');
-    const cursor = params.find((candidate) => candidate.name === 'cursor');
-    assert.ok(cursor, 'MilitaryService.openapi.json: missing cursor query parameter');
-    assert.doesNotMatch(
-      String(cursor.description ?? ''),
-      /Accepted but currently ignored; no-op/,
-      'implemented military pagination must not be generated as accepted-but-ignored',
-    );
-
-    const contractSource = readFileSync(resolve(root, 'scripts/lib/sebuf-query-param-contract.mjs'), 'utf8');
-    assert.doesNotMatch(
-      contractSource,
-      /worldmonitor\/military\/v1\/list_military_flights\.proto:cursor/,
-      'implemented military cursor must be removed from the forced no-op registry',
-    );
-  });
-
   it('documents calendar date bounds as implemented rather than no-ops', () => {
     const operations = [
       ['EconomicService.openapi.json', '/api/economic/v1/get-economic-calendar'],

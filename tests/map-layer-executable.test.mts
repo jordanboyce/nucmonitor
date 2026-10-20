@@ -47,25 +47,11 @@ describe('LAYER_REGISTRY — renderer axis', () => {
     assert.deepEqual(LAYER_REGISTRY.liveTankers.renderers, ['deck']);
   });
 
-  test('the CII choropleth renders on deck + globe, not svg', () => {
-    // #6773 / R8 bug fix: GlobeMap AND DeckGLMap both build CII polygons, but
-    // the SVG/mobile fallback has no CII paint path. The old `['flat']` value
-    // wrongly excluded it from the globe picker.
-    assert.deepEqual(LAYER_REGISTRY.ciiChoropleth.renderers, ['deck', 'globe']);
-  });
-
   test('the deckGLOnly flag is fully removed from the definition shape', () => {
     // The second axis is gone; `renderers` alone gates execution now.
     assert.equal('deckGLOnly' in LAYER_REGISTRY.storageFacilities, false);
     assert.equal('deckGLOnly' in LAYER_REGISTRY.pipelines, false);
     assert.equal('deckGLOnly' in LAYER_REGISTRY.ciiChoropleth, false);
-  });
-
-  test('Toronto restrictions reuse canadaRoads and do not add a second layer id', () => {
-    assert.equal('torontoRoads' in LAYER_REGISTRY, false);
-    assert.ok(LAYER_REGISTRY.canadaRoads);
-    assert.equal(LAYER_REGISTRY.canadaRoads.key, 'canadaRoads');
-    assert.match(LAYER_REGISTRY.canadaRoads.fallbackLabel, /Toronto/i);
   });
 
   test('all-surface layers list every renderer', () => {
@@ -88,15 +74,6 @@ describe('isLayerExecutable — renderer gate', () => {
       'SVG fallback must NOT execute a deck-only layer');
     assert.equal(isLayerExecutable('storageFacilities', 'globe'), false,
       'globe mode must NOT execute (no GlobeMap render path)');
-  });
-
-  test('resilienceScore is executable only under kind "deck"', () => {
-    assert.equal(isLayerExecutable('resilienceScore', 'deck'), true,
-      'DeckGL should execute resilienceScore');
-    assert.equal(isLayerExecutable('resilienceScore', 'svg'), false,
-      'SVG fallback must NOT execute resilienceScore');
-    assert.equal(isLayerExecutable('resilienceScore', 'globe'), false,
-      'globe mode must NOT execute resilienceScore');
   });
 
   test('ciiChoropleth is executable under "globe" and "deck" but not "svg"', () => {
@@ -139,14 +116,6 @@ describe('isLayerExecutable — renderer gate', () => {
 // contract so CMD+K cannot enable locked layers for free users (and cannot
 // leave a stuck checked+disabled control).
 describe('isLayerEntitled — premium locked gate', () => {
-  test('resilienceScore requires premium (locked)', () => {
-    assert.equal(LAYER_REGISTRY.resilienceScore.premium, 'locked');
-    assert.equal(isLayerEntitled('resilienceScore', false), false,
-      'free users must not be entitled to resilienceScore');
-    assert.equal(isLayerEntitled('resilienceScore', true), true,
-      'premium users must be entitled to resilienceScore');
-  });
-
   test('enhanced layers remain entitled without premium', () => {
     // ciiChoropleth is premium:'enhanced' on desktop — free users can still
     // toggle it (PRO badge only). Gating it would regress free-tier CII.
@@ -295,40 +264,6 @@ describe('locked map-layer ownership', () => {
     assert.equal(restored.ciiChoropleth, true);
   });
 
-  test('consumes stale resilience ownership after a free-to-Pro CII sequence', () => {
-    const free = sanitizeLockedLayersWithOwnership(
-      {
-        resilienceScore: true,
-        ciiChoropleth: false,
-      } as unknown as MapLayers,
-      new Set(),
-    );
-    const ciiSelectedWhileFree = {
-      ...free.layers,
-      ciiChoropleth: true,
-    };
-    const restored = restoreGateOwnedLockedLayers(
-      ciiSelectedWhileFree,
-      free.gateOwned,
-    );
-    let durableOwnership = new Set(free.gateOwned);
-
-    const persistence = persistGateOwnershipTransition(
-      'pro',
-      () => true,
-      () => { durableOwnership = new Set(); },
-    );
-
-    assert.equal(restored.resilienceScore, false);
-    assert.equal(restored.ciiChoropleth, true);
-    assert.equal(persistence.complete, true);
-    assert.deepEqual(durableOwnership, new Set());
-    assert.equal(
-      restoreGateOwnedLockedLayers(restored, durableOwnership),
-      restored,
-      'later reconciliations have no stale resilience ownership to replay',
-    );
-  });
 });
 
 describe('isLayerToggleAllowed — stale locked-state recovery', () => {

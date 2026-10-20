@@ -64,9 +64,9 @@ describe('embed grant', () => {
   });
 
   it('carries the panel so a grant cannot be replayed onto another panel', async () => {
-    const { token } = await mintEmbedGrant({ panel: 'fear-greed', accountId: 'user_abc' });
+    const { token } = await mintEmbedGrant({ panel: 'map', accountId: 'user_abc' });
     const claims = await verifyEmbedGrant(token);
-    assert.equal(claims?.panel, 'fear-greed');
+    assert.equal(claims?.panel, 'map');
   });
 
   it('rejects a tampered payload, a tampered signature, and a truncated token', async () => {

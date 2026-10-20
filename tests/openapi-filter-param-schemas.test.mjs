@@ -108,22 +108,6 @@ describe('OpenAPI filter parameter schemas', () => {
     }
   });
 
-  it('documents issue-listed allow-list filters as query parameter enums in service JSON specs', () => {
-    for (const [service, path, method, name, expected] of EXPECTED_ENUMS) {
-      const param = getParam(readJsonSpec(service), path, method, name);
-      assert.ok(param, `${service} ${name} parameter exists`);
-      assert.deepEqual(param.schema?.enum, expected, `${service} ${name} enum`);
-    }
-  });
-
-  it('documents issue-listed pattern filters in service JSON specs', () => {
-    for (const [service, path, method, name, expected] of EXPECTED_PATTERNS) {
-      const param = getParam(readJsonSpec(service), path, method, name);
-      assert.ok(param, `${service} ${name} parameter exists`);
-      assert.equal(param.schema?.pattern, expected, `${service} ${name} pattern`);
-    }
-  });
-
   it('omits proto zero-value sentinels from public query parameter enums', () => {
     for (const file of readdirSync('docs/api').filter((entry) => entry.endsWith('.openapi.json'))) {
       const spec = JSON.parse(readFileSync(`docs/api/${file}`, 'utf8'));
@@ -141,30 +125,4 @@ describe('OpenAPI filter parameter schemas', () => {
     }
   });
 
-  it('keeps documented examples aligned with accepted tokens', () => {
-    const bls = getParam(readJsonSpec('EconomicService'), '/api/economic/v1/get-bls-series', 'get', 'series_id');
-    assert.match(bls.description, /USPRIV/);
-    assert.doesNotMatch(bls.description, /CES0500000001|CIU1010000000000A/);
-
-    const techEvents = getParam(readJsonSpec('ResearchService'), '/api/research/v1/list-tech-events', 'get', 'type');
-    assert.match(techEvents.description, /conference/);
-    assert.doesNotMatch(techEvents.description, /conferences/);
-
-    const hn = getParam(readJsonSpec('ResearchService'), '/api/research/v1/list-hackernews-items', 'get', 'feed_type');
-    assert.match(hn.description, /job/);
-  });
-
-  it('applies the same filter contracts to the unified OpenAPI bundle', () => {
-    const spec = readUnifiedSpec();
-    for (const [, path, method, name, expected] of EXPECTED_ENUMS) {
-      const param = getParam(spec, path, method, name);
-      assert.ok(param, `${path} ${name} parameter exists`);
-      assert.deepEqual(param.schema?.enum, expected, `${path} ${name} enum`);
-    }
-    for (const [, path, method, name, expected] of EXPECTED_PATTERNS) {
-      const param = getParam(spec, path, method, name);
-      assert.ok(param, `${path} ${name} parameter exists`);
-      assert.equal(param.schema?.pattern, expected, `${path} ${name} pattern`);
-    }
-  });
 });

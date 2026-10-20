@@ -506,15 +506,6 @@ describe('proto source/category fields (P1)', () => {
     assert.equal(sourceName, 'Earthquakes Canada');
   });
 
-  it('resticks MCP-Apps / stats so the natural-disasters shell is not USGS-only', () => {
-    const registry = readFileSync(resolve(here, '../api/mcp/ui/registry.ts'), 'utf8');
-    assert.match(registry, /Earthquakes Canada \/ NRCan/);
-    assert.doesNotMatch(registry, /groups recent earthquakes \(USGS magnitude, place, time\)/);
-
-    const stats = readFileSync(resolve(here, '../docs/generated/stats.json'), 'utf8');
-    assert.match(stats, /Earthquakes Canada \/ NRCan/);
-    assert.doesNotMatch(stats, /groups recent earthquakes \(USGS magnitude, place, time\)/);
-  });
 });
 
 describe('module import contract', () => {

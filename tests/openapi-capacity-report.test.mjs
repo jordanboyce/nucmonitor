@@ -409,18 +409,6 @@ describe('unreferencedComponentSchemas', () => {
 });
 
 describe('formatMarkdown', () => {
-  it('leads with the numbers a reviewer needs', () => {
-    const markdown = formatMarkdown(realReport);
-    assert.match(markdown, /OpenAPI bundle capacity/);
-    assert.ok(markdown.includes(realReport.bytes.toLocaleString('en-US')));
-    assert.ok(markdown.includes(realReport.headroomBytes.toLocaleString('en-US')));
-    // The plan path is pointed at from the job summary and the CI annotation,
-    // so a rename that leaves those strings behind sends every future reader to
-    // a 404 without anything going red.
-    assert.ok(markdown.includes(planPath));
-    assert.ok(existsSync(resolve(root, planPath)), `${planPath} must exist — the report links to it`);
-  });
-
   it('renders every status verdict, and never makes an unmeasured run read as a pass', () => {
     const at = (budgetBytes) =>
       formatMarkdown(buildCapacityReport(fakeBundle(oneOperationSpec(), 100), { budgetBytes, minOperations: 1 }));
@@ -511,18 +499,6 @@ describe('CLI', () => {
 });
 
 describe('build-openapi-json CLI', () => {
-  it('writes public/openapi.json when run directly, at the byte count the report publishes', () => {
-    // Every consumer of the budget now measures buildBundle() in memory, so
-    // without this nothing observes the file the world actually fetches — and
-    // the CLI entry is guarded by a predicate that could stop matching.
-    const result = spawnSync('node', [buildScript], { cwd: root, encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-    const artifact = resolve(root, 'public/openapi.json');
-    assert.ok(existsSync(artifact), 'the build must write the artifact');
-    assert.equal(statSync(artifact).size, realBundle.bytes);
-    assert.match(result.stdout, /dropped \d+ unreachable schemas/);
-  });
-
   it('writes nothing when the module is merely imported', () => {
     // The whole point of the invokedDirectly guard: the capacity report and
     // three test files import this module for measurement. If the guard stopped

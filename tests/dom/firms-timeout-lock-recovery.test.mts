@@ -56,10 +56,7 @@ describe('FIRMS timeout lock recovery (#6770)', () => {
       panels: {},
       intelligenceCache: {},
     } as unknown as AppContext;
-    const loader = new DataLoaderManager(ctx, {
-      renderCriticalBanner: () => {},
-      refreshOpenCountryBrief: () => {},
-    });
+    const loader = new DataLoaderManager(ctx);
 
     await loader.loadDataForLayer('fires');
     expect(ctx.inFlight.has('fires')).toBe(false);

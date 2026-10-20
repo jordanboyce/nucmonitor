@@ -48,21 +48,6 @@ describe('published bootstrap volume evaluation', () => {
     assert.equal(result.alerts[2].key, 'mysteryKey');
   });
 
-  it('does not alert on feature-gated keys omitted from the Iran-disabled capture', () => {
-    const iranBytes = 12_345;
-    const result = evaluatePublishedBootstrapVolume('fast', {
-      totalBytes: iranBytes,
-      keys: [
-        { key: 'iranEvents', valueBytes: iranBytes },
-        { key: 'mysteryKey', valueBytes: 12 },
-      ],
-    });
-    assert.equal(FEATURE_GATED_UNCAPTURED_KEYS.iranEvents.tier, 'fast');
-    assert.deepEqual(result.alerts, [
-      { kind: 'unmeasured-key', tier: 'fast', key: 'mysteryKey', bytes: 12 },
-    ]);
-  });
-
   it('still treats a gated key on the wrong tier as unmeasured', () => {
     const result = evaluatePublishedBootstrapVolume('slow', {
       totalBytes: 99,

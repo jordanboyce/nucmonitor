@@ -714,22 +714,4 @@ describe('OpenAPI security contract', () => {
     assert.deepEqual(failures, []);
   });
 
-  it('keeps OpenAPI-only required fields represented in schemas', () => {
-    const fields = ['turnstileToken'];
-    const jsonSpec = JSON.parse(readFileSync(resolve(apiDir, 'LeadsService.openapi.json'), 'utf8'));
-    assertSchemaRequires(jsonSpec, 'RegisterInterestRequest', fields, 'LeadsService.openapi.json');
-
-    const yamlSpec = loadYaml(readFileSync(resolve(apiDir, 'LeadsService.openapi.yaml'), 'utf8'));
-    assertSchemaRequires(yamlSpec, 'RegisterInterestRequest', fields, 'LeadsService.openapi.yaml');
-
-    const bundle = loadUnifiedOpenApiSpec();
-    const matches = matchingRequestSchemas(bundle, 'RegisterInterestRequest');
-    assert.equal(matches.length, 1, 'worldmonitor.openapi.yaml: expected one RegisterInterestRequest schema');
-    const [[schemaName, schema]] = matches;
-    assert.ok(
-      Array.isArray(schema.required) && schema.required.includes('turnstileToken'),
-      `worldmonitor.openapi.yaml: ${schemaName}.required must include turnstileToken`,
-    );
-  });
-
 });

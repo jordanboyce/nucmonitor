@@ -1,9 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18next from 'i18next';
 
-import ar from '@/locales/ar.json';
 import en from '@/locales/en.json';
-import fr from '@/locales/fr.json';
 
 vi.mock('@/config/commands', () => ({ getAllCommands: () => [] }));
 vi.mock('@/services/analytics', () => ({ trackSearchUsed: vi.fn() }));
@@ -22,16 +20,14 @@ let modal: SearchModal | null = null;
 
 beforeAll(async () => {
   const resources = {
-    ar: { translation: ar as Record<string, unknown> },
     en: { translation: en as Record<string, unknown> },
-    fr: { translation: fr as Record<string, unknown> },
   };
 
   if (!i18next.isInitialized) {
     await i18next.init({
       lng: 'en',
       fallbackLng: 'en',
-      supportedLngs: ['ar', 'en', 'fr'],
+      supportedLngs: ['en'],
       resources,
       interpolation: { escapeValue: false },
     });
@@ -65,7 +61,6 @@ function openModal(viewport: 'desktop' | 'mobile', titles: string[]): void {
   });
 
   modal = new SearchModal(document.body, { placeholder: 'Search' });
-  modal.setOnFlightSearch(vi.fn());
   modal.registerSource('country', titles.map((title, index) => ({
     id: `result-${index}`,
     title,
@@ -109,37 +104,14 @@ describe('SearchModal result-status announcements', () => {
       .toBe('1 result for suez canal');
   });
 
-  it.each(['desktop', 'mobile'] as const)(
-    'replaces a stale ordinary count with the %s live-flight action after debounce',
-    async (viewport) => {
-      openModal(viewport, ['Alpha target']);
-
-      expect(await search('alpha')).toBe('1 result for alpha');
-      expect(await search('flight AB123')).toBe('1 result for flight ab123');
-      expect(document.querySelector('[data-flight-trigger="AB123"]')).not.toBeNull();
-    },
-  );
-
-  it('uses French singular and plural result sentences in the live region', async () => {
-    await i18next.changeLanguage('fr');
+  it('uses singular and plural result sentences in the live region', async () => {
     openModal('desktop', [
       'Unique beacon',
       'Locale beacon north',
       'Locale beacon south',
     ]);
 
-    expect(await search('unique beacon')).toBe('1 résultat pour unique beacon');
-    expect(await search('locale beacon')).toBe('2 résultats pour locale beacon');
-  });
-
-  it('uses the Arabic few form for a non-one result count', async () => {
-    await i18next.changeLanguage('ar');
-    openModal('desktop', [
-      'Arabic beacon north',
-      'Arabic beacon south',
-      'Arabic beacon east',
-    ]);
-
-    expect(await search('arabic beacon')).toBe('3 نتائج لـ arabic beacon');
+    expect(await search('unique beacon')).toBe('1 result for unique beacon');
+    expect(await search('locale beacon')).toBe('2 results for locale beacon');
   });
 });

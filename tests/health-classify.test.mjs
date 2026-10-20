@@ -18,7 +18,6 @@ import { readFileSync } from 'node:fs';
 import { __testing__ } from '../api/health.js';
 import { BUNDLE_HEARTBEAT_TTL_SECONDS, bundleHeartbeatKey } from '../scripts/_bundle-runner.mjs';
 import { isOnDemandProblem, findOperationalProblems } from '../scripts/check-seed-freshness.mjs';
-import { BOOTSTRAP_KEY as AVIATION_BOOTSTRAP_KEY, BOOTSTRAP_META_KEY as AVIATION_BOOTSTRAP_META_KEY } from '../scripts/seed-aviation.mjs';
 
 const {
   classifyKey,
@@ -38,99 +37,6 @@ const {
 
 const NOW = 1_700_000_000_000;
 const ONE_MIN_MS = 60_000;
-
-test('daily CII history monitors its string index and requires a build within 30 minutes', () => {
-  const key = STANDALONE_KEYS.riskScoresHistory;
-  assert.equal(key, 'risk:scores:history:index');
-  assert.equal(SEED_META.riskScoresHistory.key, 'seed-meta:intelligence:risk-scores-history');
-  assert.equal(SEED_META.riskScoresHistory.maxStaleMin, 30);
-  assert.equal(SEED_META.riskScoresHistory.minRecordCount, 31);
-  for (const [age, count, status] of [[0, 31, 'OK'], [31, 31, 'STALE_SEED'], [0, 30, 'COVERAGE_PARTIAL']]) {
-    const result = classifyKey('riskScoresHistory', key, { allowOnDemand: false }, makeCtx({
-      strens: { [key]: 256 },
-      metaValues: { [SEED_META.riskScoresHistory.key]: seedMeta({ fetchedAt: NOW - age * ONE_MIN_MS, recordCount: count }) },
-    }));
-    assert.equal(result.status, status);
-  }
-});
-
-test('daily CII health is pending only before its first confirmed publication', () => {
-  const name = 'riskScoresHistory';
-  const key = STANDALONE_KEYS[name];
-  assert.equal(__testing__.ACTIVATION_MARKERS[name], SEED_META[name].activationKey);
-  assert.equal(SEED_META[name].cutover.issue, 9354);
-  assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({ activationStates: { [name]: false } })).status, 'EMPTY_ON_DEMAND');
-  assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({ activationStates: { [name]: true } })).status, 'EMPTY');
-  assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({
-    activationStates: { [name]: true }, strens: { [key]: 256 },
-    metaValues: { [SEED_META[name].key]: seedMeta({ fetchedAt: NOW - 31 * ONE_MIN_MS, recordCount: 31 }) },
-  })).status, 'STALE_SEED');
-});
-
-test('transit coverage alerts below five measured canonical waterways despite a fresh payload', () => {
-  const key = STANDALONE_KEYS.chokepointTransits;
-  for (const [recordCount, status] of [[0, 'EMPTY_DATA'], [3, 'COVERAGE_PARTIAL'], [4, 'COVERAGE_PARTIAL'], [5, 'OK'], [13, 'OK']]) {
-    const result = classifyKey('chokepointTransits', key, { allowOnDemand: false }, makeCtx({
-      strens: { [key]: 2000 },
-      metaValues: { [SEED_META.chokepointTransits.key]: { fetchedAt: NOW, recordCount } },
-    }));
-    assert.equal(result.status, status, `${recordCount}/13 measured waterways`);
-    const problems = findOperationalProblems({
-      status: status === 'OK' ? 'HEALTHY' : 'UNHEALTHY',
-      problems: status === 'OK' ? {} : { chokepointTransits: result },
-    });
-    assert.equal(problems.length, recordCount < 5 ? 1 : 0, 'the scheduled monitor must report the coverage fault');
-  }
-});
-
-test('MND first-failure pending requires fresh last-good and expires without another poll', () => {
-  const name = 'crossStraitActivityTaiwanMnd';
-  const key = STANDALONE_KEYS[name];
-  const meta = {
-    fetchedAt: NOW - ONE_MIN_MS,
-    recordCount: 133,
-    sourceState: 'degraded',
-    errorCode: 'MND_PUBLICATION_METADATA_MISSING',
-    consecutiveSourceFailures: 1,
-    lastSourceFailureCode: 'MND_PUBLICATION_METADATA_MISSING',
-    firstSourceFailureAt: NOW,
-    lastSourceAttemptAt: NOW,
-  };
-  const classify = (over = {}, now = NOW, bytes = 1024) => classifyKey(name, key, { allowOnDemand: false }, {
-    ...makeCtx({ strens: { [key]: bytes }, metaValues: { [SEED_META[name].key]: { ...meta, ...over } } }),
-    now,
-  });
-  const entry = classify();
-  assert.equal(entry.status, 'SEED_ERROR', 'retain the source diagnosis');
-  assert.equal(entry.sourceFailurePendingUntil, new Date(NOW + 210 * ONE_MIN_MS).toISOString());
-  assert.equal(__testing__.healthStatusBucket(entry, NOW), 'ok');
-  assert.deepEqual(classify(), entry, 'another health poll is not another failed source attempt');
-  const compact = healthResponseBody({ status: 'HEALTHY', summary: { pending: 1 }, checkedAt: new Date(NOW).toISOString(), checks: { [name]: entry } }, true);
-  assert.deepEqual(compact.pending, { [name]: entry });
-  assert.equal(compact.problems, undefined);
-  const deadline = NOW + 210 * ONE_MIN_MS;
-  assert.equal(__testing__.healthStatusBucket(entry, deadline), 'warn');
-  assert.equal(classify({}, deadline).sourceFailurePendingUntil, undefined);
-  assert.equal(__testing__.hasExpiredActivationGrace(compact, deadline), true);
-  assert.equal(__testing__.snapshotTtlSeconds(compact, deadline - 20_000), 20);
-  for (const over of [
-    { consecutiveSourceFailures: 2 }, { consecutiveSourceFailures: null },
-    { firstSourceFailureAt: null }, { firstSourceFailureAt: NOW + 1 },
-    { lastSourceAttemptAt: NOW + 1 }, { lastSourceAttemptAt: null },
-    { lastSourceFailureCode: 'MND_SOURCE_ERROR' },
-    { fetchedAt: NOW - 721 * ONE_MIN_MS }, { fetchedAt: NOW + 1 }, { fetchedAt: 0 },
-    { recordCount: 0 }, { recordCount: null }, { sourceState: 'error' },
-    { maxContentAgeMin: 60, newestItemAt: NOW - 120 * ONE_MIN_MS },
-  ]) {
-    const failed = classify(over);
-    assert.equal(failed.sourceFailurePendingUntil, undefined, JSON.stringify(over));
-    assert.notEqual(__testing__.healthStatusBucket(failed, NOW), 'ok', JSON.stringify(over));
-  }
-  assert.equal(classify({}, NOW, 0).status, 'EMPTY');
-  assert.equal(classify({}, NOW, 0).sourceFailurePendingUntil, undefined);
-  const nearStale = classify({ fetchedAt: NOW - 719 * ONE_MIN_MS });
-  assert.equal(nearStale.sourceFailurePendingUntil, new Date(NOW + ONE_MIN_MS).toISOString());
-});
 
 test('NHC first-failure pending is bounded by its original complete snapshot', () => {
   const name = 'naturalEvents';
@@ -2466,14 +2372,6 @@ test('#6987 — flightDelays counts its own data key, not a contributing source'
     SEED_META.flightDelays.key,
     `seed-meta:${BOOTSTRAP_KEYS.flightDelays.replace(/:v\d+$/, '')}`,
   );
-});
-
-test('#6987 — health and seed-aviation agree on the aggregate meta key', () => {
-  // Cross-file, against the seeder's REAL exported constants rather than a
-  // regex over its source: if the producer renames the key it writes, or health
-  // repoints, this fails instead of both sides drifting quietly.
-  assert.equal(BOOTSTRAP_KEYS.flightDelays, AVIATION_BOOTSTRAP_KEY);
-  assert.equal(SEED_META.flightDelays.key, AVIATION_BOOTSTRAP_META_KEY);
 });
 
 // The other half of #6987. faaDelays had no SEED_META entry at all, on the

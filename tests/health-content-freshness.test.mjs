@@ -444,32 +444,6 @@ describe('portwatchPortActivity classification', () => {
     assert.equal(entry.records, 174);
   });
 
-  it('#6060: a complete 174/174 run with stale China content is not healthy', () => {
-    const entry = classifyPortwatch(completeRun(contentFreshnessOf({
-      freshCount: 173,
-      staleCount: 1,
-      staleCountries: ['CN'],
-      criticalFreshCount: 1,
-      criticalStaleCountries: ['CN'],
-      criticalOldestObservedAt: Date.parse('2026-07-26T12:02:43.475Z'),
-      criticalOldestObservedCountry: 'CN',
-      criticalOldestAgeMinutes: 10_240,
-    })));
-
-    assert.equal(entry.status, 'STALE_CONTENT');
-    assert.equal(entry.records, 174, 'cardinality stays truthful — this is not a coverage gap');
-    assert.deepEqual(entry.contentFreshness.criticalStaleCountries, ['CN']);
-    assert.equal(
-      entry.contentFreshness.criticalOldestObservedCountry,
-      'CN',
-      'operators get the stale source family, not a generic warning',
-    );
-    assert.equal(
-      entry.contentFreshness.criticalOldestAgeMinutes,
-      Math.round((NOW - Date.parse('2026-07-26T12:02:43.475Z')) / MINUTE_MS),
-    );
-  });
-
   it('alarms when a decision-critical country drops out of the run entirely', () => {
     const entry = classifyPortwatch(completeRun(contentFreshnessOf({
       criticalFreshCount: 1,

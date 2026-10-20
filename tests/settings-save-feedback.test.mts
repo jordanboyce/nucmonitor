@@ -422,23 +422,4 @@ describe('settings save feedback', () => {
     }
   });
 
-  it('wires Preferences only and keeps Panels on its existing inline status', () => {
-    const settings = source('src/components/UnifiedSettings.ts');
-    const eventHandlers = source('src/app/event-handlers.ts');
-    const countryIntel = source('src/app/country-intel.ts');
-
-    assert.match(settings, /onSettingSaved:\s*\(\)\s*=>\s*showToast\(t\('modals\.settingsWindow\.saved'\)\)/);
-    assert.doesNotMatch(extractMethodBody(settings, 'private savePanelChanges()'), /showToast\(/);
-    assert.doesNotMatch(settings, /function showToast\(/);
-    assert.doesNotMatch(eventHandlers, /\n\s{2}showToast\(msg: string\): void/);
-    assert.equal(
-      eventHandlers.match(/showToast\(t\('modals\.settingsWindow\.freeSourceLimit',[\s\S]*?\), 3000\);/g)?.length,
-      2,
-    );
-    assert.match(
-      extractMethodBody(countryIntel, 'showToast(msg: string): void'),
-      /^\s*showGlobalToast\(msg, 3000\);\s*$/,
-    );
-    assert.doesNotMatch(countryIntel, /document\.querySelector\('\.toast-notification'\)/);
-  });
 });

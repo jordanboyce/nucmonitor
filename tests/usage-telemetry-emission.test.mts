@@ -459,7 +459,7 @@ describe('gateway telemetry payload — bearer identity propagation', () => {
     const handler = createDomainGateway([
       {
         method: 'GET',
-        path: '/api/resilience/v1/get-resilience-score',
+        path: '/api/market/v1/get-stock-analysis-history',
         handler: async () => new Response('{"ok":true}', { status: 200 }),
       },
     ]);
@@ -467,7 +467,7 @@ describe('gateway telemetry payload — bearer identity propagation', () => {
     const token = await signToken({ sub: 'user_pro', plan: 'pro' });
     const recorder = makeRecordingCtx();
     const res = await handler(
-      new Request('https://worldmonitor.app/api/resilience/v1/get-resilience-score?countryCode=US', {
+      new Request('https://worldmonitor.app/api/market/v1/get-stock-analysis-history?symbol=AAPL', {
         headers: {
           Origin: 'https://worldmonitor.app',
           Authorization: `Bearer ${token}`,
@@ -485,7 +485,7 @@ describe('gateway telemetry payload — bearer identity propagation', () => {
     // The whole point of fix #2: pre-fix this would have been null/anon.
     assert.equal(ev.customer_id, 'user_pro', 'customer_id should be the bearer subject');
     assert.equal(ev.auth_kind, 'clerk_jwt');
-    assert.equal(ev.domain, 'resilience');
+    assert.equal(ev.domain, 'market');
     assert.equal(ev.status, 200);
   });
 

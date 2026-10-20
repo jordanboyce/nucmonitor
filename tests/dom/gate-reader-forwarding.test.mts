@@ -33,12 +33,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthSession } from '@/services/auth-state';
-import type { SubscriptionInfo } from '@/services/billing';
 import type { EntitlementState } from '@/services/entitlements';
 
 /** Mutable stand-ins for the reactive sources the reader snapshots. */
 let entitlement: EntitlementState | null = null;
-let subscription: SubscriptionInfo | null = null;
 let desktopKeyPresent = false;
 let gateActive = true;
 
@@ -49,11 +47,6 @@ vi.mock('@/services/entitlements', async (importOriginal) => ({
 
 // Mutable so the suite can prove the reader forwards billing evidence rather
 // than only exercising the generic free-tier path.
-vi.mock('@/services/billing', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/billing')>()),
-  getSubscription: () => subscription,
-}));
-
 vi.mock('@/services/runtime-config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/runtime-config')>()),
   getSecretState: () => ({
@@ -102,7 +95,6 @@ function snapshot(features: Partial<EntitlementState['features']> = {}): Entitle
 
 beforeEach(() => {
   entitlement = null;
-  subscription = null;
   desktopKeyPresent = false;
   gateActive = true;
 });
@@ -216,22 +208,6 @@ describe('evaluateExportGate — the reader forwards the entitlement + activatio
     expect(evaluateExportGate(SIGNED_IN)).toEqual({
       locked: true,
       reason: 'free_tier',
-    });
-  });
-
-  it('forwards billing evidence into the denial reason', () => {
-    entitlement = snapshot({ tier: 0, dataExport: false });
-    subscription = {
-      planKey: 'pro',
-      displayName: 'Pro',
-      status: 'on_hold',
-      currentPeriodEnd: Date.now() + 86_400_000,
-      renewalVerificationState: null,
-    };
-
-    expect(evaluateExportGate(SIGNED_IN)).toEqual({
-      locked: true,
-      reason: 'payment_on_hold',
     });
   });
 

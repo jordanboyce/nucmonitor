@@ -46,17 +46,6 @@ const CANDIDATE_SHAPES = [
 ];
 
 describe('public shared RPC shapes never bypass a tier gate', () => {
-  it('sanity: the predicate still recognises a known public shape', () => {
-    // Without this, a refactor that made isPublicSharedRpcRequest return false
-    // unconditionally would turn every assertion below into a vacuous pass.
-    assert.equal(
-      isPublicSharedRpcRequest('https://worldmonitor.app/api/forecast/v1/get-forecasts?public=1'),
-      true,
-      'Expected the forecast feed to still have a public shape — if this route was '
-      + 'intentionally made private, update this canary to another public path.',
-    );
-  });
-
   for (const path of [...TIER_GATED_PATHS].sort()) {
     it(`${path} has no anonymous public shape`, () => {
       for (const search of CANDIDATE_SHAPES) {

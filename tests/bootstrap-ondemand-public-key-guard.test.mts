@@ -92,19 +92,6 @@ describe('ensureHydrated public on-demand key guard (WORLDMONITOR-XP)', () => {
     assert.match(requested[0] ?? '', /\/api\/bootstrap\?keys=chinaDecisionSignals&public=1$/);
   });
 
-  it('fetches every FAST-demoted shared payload through one public key URL', async () => {
-    const moved = ['forecasts', 'correlationCards'];
-    for (const key of moved) {
-      assert.equal(ON_DEMAND.has(key), true, `${key} must be on-demand`);
-      assert.deepEqual(await ensureHydrated(key), { ok: true }, `${key} must hydrate`);
-    }
-    assert.deepEqual(
-      requested.map((url) => new URL(url, 'https://api.worldmonitor.app').searchParams.get('keys')),
-      moved,
-      'each demanded dataset gets one independently cacheable request',
-    );
-  });
-
   it('serves the live video resolved map through its public key URL (#8545)', async () => {
     assert.equal(ON_DEMAND.has('liveVideoResolved'), true, 'liveVideoResolved must be on-demand, never tier freight');
     assert.deepEqual(await ensureHydrated('liveVideoResolved'), { ok: true });
@@ -112,10 +99,4 @@ describe('ensureHydrated public on-demand key guard (WORLDMONITOR-XP)', () => {
     assert.match(requested[0] ?? '', /\/api\/bootstrap\?keys=liveVideoResolved&public=1$/);
   });
 
-  it('serves UNHCR cross-border movements through its public key URL (#9023)', async () => {
-    assert.equal(ON_DEMAND.has('crossBorderArrivals'), true, 'crossBorderArrivals must be on-demand, never tier freight');
-    assert.deepEqual(await ensureHydrated('crossBorderArrivals'), { ok: true });
-    assert.equal(requested.length, 1);
-    assert.match(requested[0] ?? '', /\/api\/bootstrap\?keys=crossBorderArrivals&public=1$/);
-  });
 });

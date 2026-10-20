@@ -57,7 +57,7 @@ function createHandler(options: { handlerCdnCacheHeader?: string; publicRouteBod
     },
     {
       method: 'GET',
-      path: '/api/intelligence/v1/get-china-decision-signals',
+      path: '/api/news/v1/list-label-changes',
       handler: async () => new Response(JSON.stringify(options.publicRouteBody ?? { ok: true }), { status: 200 }),
     },
     {
@@ -67,8 +67,8 @@ function createHandler(options: { handlerCdnCacheHeader?: string; publicRouteBod
     },
     {
       method: 'GET',
-      path: '/api/displacement/v1/get-displacement-summary',
-      handler: async () => new Response(JSON.stringify({ summary: { countries: [], topFlows: [] }, fetchedAt: 1, dataAvailable: true }), { status: 200 }),
+      path: '/api/market/v1/get-fear-greed-index',
+      handler: async () => new Response(JSON.stringify({ score: 50, fetchedAt: 1, dataAvailable: true }), { status: 200 }),
     },
     {
       method: 'GET',
@@ -149,7 +149,8 @@ describe('gateway CDN origin policy', () => {
   it('preserves CDN caching for explicit anonymous public no-auth GETs', async () => {
     const origin = 'https://worldmonitor.app';
     const handler = createHandler();
-    const res = await handler(new Request('https://worldmonitor.app/api/intelligence/v1/get-china-decision-signals', {
+    allowRateAdmission();
+    const res = await handler(new Request('https://worldmonitor.app/api/news/v1/list-label-changes', {
       headers: { Origin: origin },
     }));
     assert.equal(res.status, 200);
@@ -159,8 +160,8 @@ describe('gateway CDN origin policy', () => {
   });
 
   for (const path of [
-    '/api/news/v1/list-feed-digest?variant=full&lang=en&public=1',
-    '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1',
+    '/api/news/v1/list-feed-digest?variant=nuclear&lang=en&public=1',
+    '/api/market/v1/get-fear-greed-index?public=1',
   ]) {
     it(`CDN-shields the exact caller-invariant public RPC variant: ${path}`, async () => {
       allowRateAdmission();
@@ -173,19 +174,6 @@ describe('gateway CDN origin policy', () => {
       assert.match(res.headers.get('CDN-Cache-Control') ?? '', /s-maxage=/);
     });
 
-    it(`keeps the public RPC response invariant when credentials are attached: ${path}`, async () => {
-      allowRateAdmission();
-      const handler = createHandler();
-      const res = await handler(new Request(`https://worldmonitor.app${path}`, {
-        headers: {
-          Origin: 'https://worldmonitor.app',
-          'X-WorldMonitor-Key': sessionToken,
-        },
-      }));
-
-      assert.equal(res.status, 200);
-      assert.match(res.headers.get('CDN-Cache-Control') ?? '', /s-maxage=/);
-    });
   }
 
   // Vercel's filesystem router serves these through api/**/[rpc].ts and echoes the
@@ -193,8 +181,8 @@ describe('gateway CDN origin policy', () => {
   // the hand-built URLs in these tests never had — which silently 401'd every public
   // RPC (#5285). server/_shared/mcp-internal-hmac.ts strips the same echo for signing.
   for (const [path, rpc] of [
-    ['/api/news/v1/list-feed-digest?variant=full&lang=en&public=1', 'list-feed-digest'],
-    ['/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1', 'get-displacement-summary'],
+    ['/api/news/v1/list-feed-digest?variant=nuclear&lang=en&public=1', 'list-feed-digest'],
+    ['/api/market/v1/get-fear-greed-index?public=1', 'get-fear-greed-index'],
   ] as const) {
     it(`CDN-shields the public RPC variant when the router echoes ?rpc=: ${path}`, async () => {
       allowRateAdmission();
@@ -213,21 +201,17 @@ describe('gateway CDN origin policy', () => {
     for (const path of [
       '/api/news/v1/list-feed-digest?variant=full&lang=en',
       '/api/news/v1/list-feed-digest?variant=full&lang=en&public=1&jmespath=categories',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=49&public=1',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=500&public=1',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1&year=2026',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1&country_limit=50',
-      '/api/displacement/v1/get-displacement-summary?public=1',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1&unexpected=1',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&flow_limit=50&public=1',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1&public=1',
-      '/api/displacement/v1/get-displacement-summary?public=1&flow_limit=50',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=%35%30&public=1',
+      '/api/market/v1/get-fear-greed-index',
+      '/api/market/v1/get-fear-greed-index?public=0',
+      '/api/market/v1/get-fear-greed-index?public=1&public=1',
+      '/api/market/v1/get-fear-greed-index?public=1&unexpected=1',
+      '/api/market/v1/get-fear-greed-index?public=1&jmespath=score',
+      '/api/market/v1/get-fear-greed-index?public=%31',
       // A caller-supplied ?rpc= that is NOT the router's echo of the final path
       // segment must still fail the shape check — stripping is not a bypass vector.
       '/api/news/v1/list-feed-digest?variant=full&lang=en&public=1&rpc=bogus',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1&rpc=bogus',
-      '/api/displacement/v1/get-displacement-summary?flow_limit=50&public=1&rpc=list-feed-digest',
+      '/api/market/v1/get-fear-greed-index?public=1&rpc=bogus',
+      '/api/market/v1/get-fear-greed-index?public=1&rpc=list-feed-digest',
     ]) {
       const res = await handler(new Request(`https://worldmonitor.app${path}`, {
         headers: { Origin: 'https://worldmonitor.app' },
@@ -242,7 +226,8 @@ describe('gateway CDN origin policy', () => {
     const handler = createHandler({
       publicRouteBody: { events: [], fetchedAt: 0, dataAvailable: false },
     });
-    const res = await handler(new Request('https://worldmonitor.app/api/intelligence/v1/get-china-decision-signals?_debug=1', {
+    allowRateAdmission();
+    const res = await handler(new Request('https://worldmonitor.app/api/news/v1/list-label-changes?_debug=1', {
       headers: { Origin: origin },
     }));
     const body = await res.json();

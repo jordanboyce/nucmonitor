@@ -17,12 +17,6 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 
 import { initTestI18n } from './helpers/i18n.mts';
 
-const { listMilitaryBases } = vi.hoisted(() => ({ listMilitaryBases: vi.fn() }));
-vi.mock('@/services/generated-rpc-clients', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/services/generated-rpc-clients')>(),
-  MilitaryServiceClient: class { listMilitaryBases = listMilitaryBases; },
-}));
-
 type Handler = (event?: unknown) => void;
 type FlyToCall = { options: { center?: [number, number]; zoom?: number }; eventData?: Record<string, unknown> };
 
@@ -232,7 +226,7 @@ function initialState(overrides: Partial<DeckMapState> = {}): DeckMapState {
     zoom: 1.5,
     pan: { x: 10, y: 20 },
     view: 'global',
-    layers: { ...allLayersOff(), hotspots: true, conflicts: true },
+    layers: { ...allLayersOff(), fires: true, outages: true },
     timeRange: '24h',
     ...overrides,
   };
@@ -278,8 +272,8 @@ async function mapWith(state?: DeckMapState): Promise<{ map: DeckGLMap; fake: In
 }
 
 describe('DeckGLMap Taiwan country clicks', () => {
-  it.each(['cii-choropleth-layer', 'resilience-choropleth-layer', 'happiness-choropleth-layer', null])(
-    'emits TW from legacy CN-TW in %s', async (layerId) => {
+  it.each([null])(
+    'emits TW from legacy CN-TW on a base-map click (layer %s)', async (layerId: string | null) => {
       const { map } = await mapWith();
       const openBrief = vi.fn();
       map.setOnCountryClick(openBrief);
@@ -396,9 +390,9 @@ describe('DeckGLMap state isolation', () => {
   it('the constructor copies pan and layers so caller mutations do not reach internal state', async () => {
     const state = initialState();
     const { map } = await mapWith(state);
-    state.layers.hotspots = false;
+    state.layers.fires = false;
     state.pan.x = 999;
-    expect(map.getState().layers.hotspots).toBe(true);
+    expect(map.getState().layers.fires).toBe(true);
     expect(map.getState().pan.x).toBe(10);
   });
 
@@ -408,22 +402,22 @@ describe('DeckGLMap state isolation', () => {
     const second = map.getState();
     expect(first.layers).not.toBe(second.layers);
     expect(first.pan).not.toBe(second.pan);
-    first.layers.hotspots = false;
+    first.layers.fires = false;
     first.pan.x = 999;
-    expect(map.getState().layers.hotspots).toBe(true);
+    expect(map.getState().layers.fires).toBe(true);
     expect(map.getState().pan.x).toBe(10);
   });
 
   it('setLayers copies its input, so later mutations of the caller object are not observed', async () => {
     const { map } = await mapWith();
-    const input = { ...allLayersOff(), hotspots: true, conflicts: false };
+    const input = { ...allLayersOff(), fires: true, outages: false };
     map.setLayers(input);
-    expect(map.getState().layers.hotspots).toBe(true);
-    expect(map.getState().layers.conflicts).toBe(false);
-    input.hotspots = false;
-    expect(map.getState().layers.hotspots).toBe(true);
-    map.getState().layers.conflicts = true;
-    expect(map.getState().layers.conflicts).toBe(false);
+    expect(map.getState().layers.fires).toBe(true);
+    expect(map.getState().layers.outages).toBe(false);
+    input.fires = false;
+    expect(map.getState().layers.fires).toBe(true);
+    map.getState().layers.outages = true;
+    expect(map.getState().layers.outages).toBe(false);
   });
 
   it('onStateChange receives a copy, and mutating it does not reach internal state', async () => {
@@ -434,80 +428,9 @@ describe('DeckGLMap state isolation', () => {
     expect(received).not.toBeNull();
     const snapshot = received as unknown as DeckMapState;
     expect(snapshot.view).toBe('eu');
-    snapshot.layers.hotspots = false;
+    snapshot.layers.fires = false;
     snapshot.pan.x = 999;
-    expect(map.getState().layers.hotspots).toBe(true);
+    expect(map.getState().layers.fires).toBe(true);
     expect(map.getState().pan.x).toBe(10);
   });
-});
-
-
-describe('DeckGLMap military base viewport commits', () => {
-  it('keeps the current viewport when older requests resolve last, and clears old coverage on failure', async () => {
-    const replies: ((value: unknown) => void)[] = [];
-    listMilitaryBases.mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
-    const { map, fake } = await mapWith(initialState({ zoom: 5, layers: { ...allLayersOff(), bases: true } }));
-    fake.setZoom(5); fake.emit('moveend', {}); await vi.advanceTimersByTimeAsync(300);
-    const state = map as unknown as { serverBases: { id: string }[]; serverBaseClusters: unknown[]; serverBasesLoaded: boolean };
-    const result = (id: string) => ({ bases: [{ id, name: id, latitude: 20, longitude: 0 }], clusters: [], totalInView: 1, truncated: false });
-    expect(replies).toHaveLength(1);
-    fake.setCenter([40, 30]); fake.emit('moveend', {});
-    await vi.advanceTimersByTimeAsync(300);
-    expect(replies).toHaveLength(2);
-    replies[1]!(result('current'));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(state.serverBases[0]?.id).toBe('current');
-    replies[0]!(result('old'));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(state.serverBases[0]?.id).toBe('current');
-    listMilitaryBases.mockRejectedValueOnce(new Error('offline'));
-    fake.setCenter([80, 30]); fake.emit('moveend', {});
-    await vi.advanceTimersByTimeAsync(300);
-    expect(state.serverBases).toEqual([]);
-    expect(state.serverBaseClusters).toEqual([]);
-    expect(state.serverBasesLoaded).toBe(false);
-  });
-
-  it('does not commit a handler empty-200 as loaded coverage', async () => {
-    listMilitaryBases.mockResolvedValue({ bases: [], clusters: [], totalInView: 0, truncated: false });
-    const { map, fake } = await mapWith(initialState({ zoom: 4, layers: { ...allLayersOff(), bases: true } }));
-    fake.setCenter([12, -8]);
-    fake.setZoom(4);
-    fake.emit('moveend', {});
-    await vi.advanceTimersByTimeAsync(300);
-    const state = map as unknown as { serverBases: unknown[]; serverBaseClusters: unknown[]; serverBasesLoaded: boolean };
-    expect(state.serverBases).toEqual([]);
-    expect(state.serverBaseClusters).toEqual([]);
-    expect(state.serverBasesLoaded).toBe(false);
-  });
-
-  it('rejects a response during the debounce window and after layer disable', async () => {
-    let reply!: (value: unknown) => void;
-    listMilitaryBases.mockImplementation(() => new Promise((resolve) => { reply = resolve; }));
-    const { map, fake } = await mapWith(initialState({ zoom: 6, layers: { ...allLayersOff(), bases: true } }));
-    fake.setZoom(6); fake.emit('moveend', {}); await vi.advanceTimersByTimeAsync(300);
-    const state = map as unknown as { serverBases: unknown[] };
-    fake.setCenter([90, 40]);
-    reply({ bases: [{ id: 'stale' }], clusters: [], totalInView: 1 });
-    await vi.advanceTimersByTimeAsync(0);
-    expect(state.serverBases).toEqual([]);
-    fake.emit('moveend', {}); await vi.advanceTimersByTimeAsync(300);
-    map.setLayers(allLayersOff());
-    reply({ bases: [{ id: 'disabled' }], clusters: [], totalInView: 1 });
-    await vi.advanceTimersByTimeAsync(0);
-    expect(state.serverBases).toEqual([]);
-  });
-});
-
-it('fetches the current viewport when bases are enabled without another map movement', async () => {
-  listMilitaryBases.mockReset();
-  listMilitaryBases.mockResolvedValue({ bases: [{ id: 'enabled', name: 'enabled', latitude: 60, longitude: 110 }], clusters: [], totalInView: 1, truncated: false });
-  const { map, fake } = await mapWith(initialState({ layers: allLayersOff() }));
-  fake.setCenter([110, 60]); fake.setZoom(8); fake.emit('moveend', {});
-  await vi.advanceTimersByTimeAsync(300);
-  expect(listMilitaryBases).not.toHaveBeenCalled();
-  map.setLayers({ ...allLayersOff(), bases: true });
-  await vi.advanceTimersByTimeAsync(300);
-  expect(listMilitaryBases).toHaveBeenCalledTimes(1);
-  expect((map as unknown as { serverBases: { id: string }[] }).serverBases[0]?.id).toBe('enabled');
 });

@@ -115,12 +115,6 @@ vi.mock('@/services/billing', () => ({
   removeBusinessSeat: async () => ({ status: 'removed' as const }),
 }));
 
-vi.mock('@/services/billing-state', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/billing-state')>()),
-  deriveBillingUxState: () => 'active',
-  getReactivationHref: () => '/pro#pricing',
-}));
-
 vi.mock('@/services/api-keys', () => ({
   createApiKey: vi.fn(),
   listApiKeys: vi.fn(),
@@ -230,13 +224,12 @@ afterEach(() => {
 describe('Settings -> Embeds tab gating', () => {
   it('shows the tab for a plan with embedAccess but no apiAccess', () => {
     // The load-bearing case: Pro sells embedding without REST access, and the
-    // API Keys tab renders an upgrade CTA for exactly this account.
+    // Embeds tab must not hinge on REST access.
     internal.render(false);
 
     expect(tabButton('embeds')).not.toBeNull();
     expect(panel('embeds')).not.toBeNull();
     expect(panel('embeds')?.textContent).toContain('Create Embed Key');
-    expect(panel('api-keys')?.textContent).toContain('Upgrade to API Starter');
   });
 
   it('shows the tab for a verified Clerk PRO role before Convex entitlement hydration', () => {

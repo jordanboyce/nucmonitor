@@ -53,8 +53,6 @@
     "bundle:check:pro": "node scripts/bundle-budgets.mjs --check --surface pro",
     "bundle:budgets:embed": "node scripts/bundle-budgets.mjs --surface embed",
     "bundle:check:embed": "node scripts/bundle-budgets.mjs --check --surface embed",
-    "sandbox:fixtures": "node scripts/generate-sandbox-fixtures.mjs",
-    "sandbox:fixtures:check": "node scripts/generate-sandbox-fixtures.mjs --check",
     "product:facts": "node --import tsx scripts/generate-product-config.mjs",
     "entitlement:crosswalk": "node scripts/generate-entitlement-crosswalk.mjs",
     "entitlement:crosswalk:check": "node scripts/generate-entitlement-crosswalk.mjs --check",

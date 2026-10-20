@@ -93,10 +93,10 @@ describe('embed grant exchange', () => {
   });
 
   it('scopes the grant to the requested panel', async () => {
-    const result = await evaluateEmbedSession('fear_greed', EMBED_KEY, deps());
+    const result = await evaluateEmbedSession('live-map', EMBED_KEY, deps());
     assert.equal(result.status, 200);
-    assert.equal(result.body.panel, 'fear-greed');
-    assert.equal(result.body.grant, 'wmg_test.fear-greed.user_partner');
+    assert.equal(result.body.panel, 'map');
+    assert.equal(result.body.grant, 'wmg_test.map.user_partner');
   });
 
   it('rejects unknown panels before touching the credential', async () => {

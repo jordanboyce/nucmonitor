@@ -19,11 +19,9 @@ describe('embed entry boundary', () => {
 
   it('reaches the network only through the single composed map-frame endpoint', () => {
     const loaderSource = readFileSync(resolve(root, 'src/embed/embed-data-loader.ts'), 'utf-8');
-    const mapSource = readFileSync(resolve(root, 'src/components/Map.ts'), 'utf-8');
     assert.ok(loaderSource.includes('fetchEmbedMapFrame'), 'embed loader should read the composed map frame');
-    assert.ok(loaderSource.includes('this.map.setConflictEvents'), 'conflicts layer should push events into the flat map');
-    assert.ok(mapSource.includes('setConflictEvents'), 'flat map should expose a conflict event setter for the embed');
-    assert.ok(mapSource.includes('conflict-event-marker'), 'flat map should render fetched conflict event markers');
+    assert.ok(loaderSource.includes('this.map.setEarthquakes'), 'the earthquakes layer should push events into the map');
+    assert.ok(loaderSource.includes('this.map.setWeatherAlerts'), 'the weather layer should push alerts into the map');
 
     // The point of the composed endpoint is that a credential published in
     // partner HTML reaches ONE path. A per-layer fetch reintroduced here would

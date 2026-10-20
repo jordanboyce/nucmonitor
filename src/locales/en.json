@@ -571,7 +571,8 @@
     "nuclearHeadlines": "Nuclear Headlines",
     "nuclearRegulatory": "NRC, DOE & IAEA Official",
     "nuclearIndustry": "Nuclear Industry News",
-    "nuclearPolicy": "Nuclear Policy & Security"
+    "nuclearPolicy": "Nuclear Policy & Security",
+    "gridAlerts": "Power Grid Alerts"
   },
   "commands": {
     "prefixes": {
@@ -1453,7 +1454,8 @@
         "renewableInstallations": "Clean Energy",
         "canadaRoads": "Canada Roads",
         "canadaAlerts": "Canada Alerts (AB + BC + SK)",
-        "usNuclearFacilities": "US Nuclear Facilities"
+        "usNuclearFacilities": "US Nuclear Facilities",
+        "gridAlerts": "Power Grid Alerts"
       },
       "tooltip": {
         "earthquake": "Earthquake",
@@ -3036,6 +3038,79 @@
       "captured": "Captured. Review observation dates and constraints before downloading.",
       "failed": "Could not capture the scenarios. Check your access and retry. No result is available to export.",
       "locked": "Decision brief is available on Pro."
+    },
+    "gridAlerts": {
+      "loading": "Loading grid alerts…",
+      "unavailable": "Grid alert sources are unavailable right now.",
+      "notPublished": "The grid alerts snapshot has not been published yet. The seed-grid-alerts worker writes it every 10 minutes.",
+      "noAlerts": "No active grid alerts for this filter.",
+      "allRegions": "All regions",
+      "truncated": "Showing the {{shown}} highest-weight hazard alerts of {{total}} active.",
+      "views": {
+        "alerts": "Alerts",
+        "regions": "Regions",
+        "hazards": "Hazard impact",
+        "space": "Space weather"
+      },
+      "overall": {
+        "normal": "Normal",
+        "watch": "Watch",
+        "elevated": "Elevated",
+        "critical": "Critical"
+      },
+      "summary": {
+        "regionsStressed": "regions stressed",
+        "emergencies": "emergencies",
+        "worst": "Worst"
+      },
+      "filters": {
+        "all": "All"
+      },
+      "kinds": {
+        "operator": "Operator",
+        "weather": "Weather",
+        "space": "Space weather"
+      },
+      "levels": {
+        "emergency": "Emergency",
+        "warning": "Warning",
+        "advisory": "Advisory",
+        "info": "Info"
+      },
+      "regions": {
+        "region": "Region",
+        "status": "Status",
+        "demand": "Demand",
+        "impact": "Impact",
+        "ofForecast": "of forecast",
+        "noDrivers": "No stress drivers detected.",
+        "footprint": "Footprint"
+      },
+      "metrics": {
+        "forecastPeak": "Forecast peak",
+        "capacity": "Committed capacity",
+        "netGeneration": "Net generation",
+        "interchange": "Interchange",
+        "reserve": "Reserve",
+        "gic": "GIC exposure"
+      },
+      "exposure": {
+        "high": "High",
+        "moderate": "Moderate",
+        "low": "Low",
+        "unknown": "Unknown"
+      },
+      "hazards": {
+        "none": "No grid-relevant weather hazards are active in any assessed footprint.",
+        "weight": "Hazard weight",
+        "legend": "Cells show the strongest active NWS alert weight per hazard family (0–40, scaled by severity). Rows combine with operator state, demand pressure and geomagnetic exposure into the impact score."
+      },
+      "space": {
+        "now": "Geomagnetic storm now",
+        "unavailable": "NOAA SWPC scales are unavailable.",
+        "noProducts": "No geomagnetic watches or warnings in the last 72 hours.",
+        "mechanism": "Geomagnetically induced currents saturate transformers and trip protection on long east-west lines. Exposure grows toward the auroral oval, so northern balancing authorities carry the most risk at a given G level."
+      }
     }
   },
   "popups": {

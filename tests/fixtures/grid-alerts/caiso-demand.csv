@@ -1,0 +1,5 @@
+Time,Day ahead forecast,Hour ahead forecast,Current demand,Net demand
+00:00,24100,24050,23980,19800
+13:30,34100,34300,34210,27000
+13:45,34400,34500,34390,27100
+14:00,34900,,,

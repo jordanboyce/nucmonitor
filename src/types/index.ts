@@ -700,6 +700,8 @@ export interface MapLayers {
   diseaseOutbreaks: boolean;
   /** NucMonitor registry of US nuclear facilities (src/config/us-nuclear-facilities.ts). */
   usNuclearFacilities?: boolean;
+  /** Power grid alerts: ISO/BA region markers colored by hazard-impact band (deck only). */
+  gridAlerts?: boolean;
 }
 
 export interface AIDataCenter {

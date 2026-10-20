@@ -71,6 +71,9 @@ export const LAYER_REGISTRY: Record<keyof MapLayers, LayerDefinition> = {
   webcams:                  def('webcams',                  '&#128247;', 'webcams',                  'Live Webcams'),
   // weatherRadar removed — radar tiles now auto-start when Weather Alerts layer is toggled on
   diseaseOutbreaks:         def('diseaseOutbreaks',         '&#129440;', 'diseaseOutbreaks',         'Disease Outbreaks', ['deck']),
+  // DeckGL-only layer: `renderers: ['deck']` hides it from the globe picker
+  // and from the SVG/mobile fallback's CMD+K dispatch (no SVG render path).
+  gridAlerts:               def('gridAlerts',               '&#9889;',   'gridAlerts',               'Power Grid Alerts', ['deck']),
 };
 
 export const V1_LAYER_EXPLANATION_KEYS = [
@@ -132,7 +135,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
   nuclear: [
     // NucMonitor — facilities first, then every hazard layer that can touch a site
     'usNuclearFacilities', 'radiationWatch', 'natural', 'weather', 'fires', 'outages',
-    'nuclear', 'irradiators', 'climate', 'dayNight',
+    'gridAlerts', 'nuclear', 'irradiators', 'climate', 'dayNight',
   ],
 };
 
@@ -337,6 +340,10 @@ export const LAYER_SYNONYMS: Record<string, Array<keyof MapLayers>> = {
   nrc: ['usNuclearFacilities'],
   radiation: ['radiationWatch', 'nuclear', 'irradiators', 'usNuclearFacilities'],
   radnet: ['radiationWatch'],
+  grid: ['gridAlerts', 'pipelines'],
+  blackout: ['gridAlerts', 'outages'],
+  ercot: ['gridAlerts'],
+  geomagnetic: ['gridAlerts'],
   safecast: ['radiationWatch'],
   anomaly: ['radiationWatch', 'climate'],
   internet: ['outages', 'cables'],

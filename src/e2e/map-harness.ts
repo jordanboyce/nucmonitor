@@ -118,6 +118,7 @@ const allLayersEnabled: MapLayers = {
   dayNight: true,
   webcams: false,
   diseaseOutbreaks: true,
+  gridAlerts: false,
 };
 
 const allLayersDisabled: MapLayers = {
@@ -134,6 +135,7 @@ const allLayersDisabled: MapLayers = {
   dayNight: false,
   webcams: false,
   diseaseOutbreaks: false,
+  gridAlerts: false,
 };
 
 const SEEDED_NEWS_LOCATIONS: Array<{

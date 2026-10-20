@@ -205,7 +205,8 @@
     "nuclearReactorStatus": "NRC Reactor Power Status",
     "nuclearHazards": "Facility All-Hazards Watch",
     "nuclearFacilities": "US Nuclear Facility Directory",
-    "nuclearHeadlines": "Nuclear Headlines"
+    "nuclearHeadlines": "Nuclear Headlines",
+    "gridAlerts": "Power Grid Alerts"
   },
   "common": {
     "dismiss": "Dismiss",

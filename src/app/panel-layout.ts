@@ -2025,6 +2025,9 @@ export class PanelLayoutManager implements AppModule {
         return p;
       }),
     );
+    this.lazyPanel('grid-alerts', () =>
+      this.importPanel('grid-alerts', () => import('@/components/GridAlertsPanel'), 'GridAlertsPanel', (GridAlertsPanel) => new GridAlertsPanel()),
+    );
 
     this.createNewsPanel('nuclear-headlines', 'panels.nuclearHeadlines');
     this.createNewsPanel('energy', 'panels.energy');

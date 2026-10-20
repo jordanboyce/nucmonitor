@@ -22,6 +22,7 @@ const NUCLEAR_PANELS: Record<string, PanelConfig> = {
   'nuclear-industry': { name: 'Nuclear Industry News', enabled: true, priority: 1 },
   'nuclear-policy': { name: 'Nuclear Policy & Security', enabled: true, priority: 2 },
   'radiation-watch': { name: 'Radiation Watch', enabled: true, priority: 1 },
+  'grid-alerts': { name: 'Power Grid Alerts', enabled: true, priority: 2 },
   'satellite-fires': { name: 'Satellite Fire Detections', enabled: true, priority: 2 },
   climate: { name: 'Climate & Weather Impact', enabled: true, priority: 2 },
   'climate-news': { name: 'Climate & Hazards News', enabled: true, priority: 2 },
@@ -42,6 +43,7 @@ const NUCLEAR_MAP_LAYERS: MapLayers = {
   datacenters: false,
   natural: true,          // USGS earthquakes + EONET / NHC storms
   fires: true,            // NASA FIRMS detections near sites
+  gridAlerts: false,      // ISO/BA grid stress markers; opt-in via the layer toggle
   climate: false,
   dayNight: false,
   webcams: false,
@@ -361,7 +363,7 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
 
   nuclearHub: {
     labelKey: 'header.panelCatNuclearHub',
-    panelKeys: ['nuclear-reactor-status', 'nuclear-events', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
+    panelKeys: ['nuclear-reactor-status', 'nuclear-events', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'grid-alerts', 'satellite-fires', 'climate'],
     variants: ['nuclear'],
   },
   nuclearNews: {

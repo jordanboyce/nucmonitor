@@ -73,6 +73,7 @@ export function createBlankMapLayers(): MapLayers {
     dayNight: false,
     webcams: false,
     diseaseOutbreaks: false,
+    gridAlerts: false,
   };
 }
 

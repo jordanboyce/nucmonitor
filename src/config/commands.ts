@@ -39,6 +39,7 @@ export const COMMANDS: Command[] = [
   { id: 'layers:none', keywords: ['hide all', 'clear layers', 'no layers', 'disable all'], label: 'Hide all layers', icon: '\u{1F6AB}', category: 'layers' },
 
   // Individual layer toggles
+  { id: 'layer:gridAlerts', keywords: ['grid alerts', 'power grid', 'blackout risk', 'grid stress', 'balancing authority'], label: 'Toggle power grid alert markers', icon: '\u26A1', category: 'layers' },
   { id: 'layer:nuclear', keywords: ['nuclear', 'reactors'], label: 'Toggle nuclear facilities', icon: '\u2622\uFE0F', category: 'layers' },
   { id: 'layer:fires', keywords: ['fires', 'wildfires'], label: 'Toggle satellite fires', icon: '\u{1F525}', category: 'layers' },
   { id: 'layer:weather', keywords: ['weather'], label: 'Toggle weather overlay', icon: '\u{1F324}\uFE0F', category: 'layers' },
@@ -53,6 +54,7 @@ export const COMMANDS: Command[] = [
   // Panel navigation (matching actual DEFAULT_PANELS keys)
   { id: 'panel:nuclear-headlines', keywords: ['news', 'headlines', 'nuclear news', 'nuclear headlines'], label: 'Panel: Nuclear Headlines', icon: '\u{1F4F0}', category: 'panels' },
   { id: 'panel:energy', keywords: ['energy', 'resources', 'oil news'], label: 'Panel: Energy & Resources', icon: '\u26A1', category: 'panels' },
+  { id: 'panel:grid-alerts', keywords: ['grid alerts', 'power grid', 'blackout', 'ercot', 'eea', 'load shed', 'geomagnetic', 'storm grid impact'], label: 'Panel: Power Grid Alerts', icon: '\u26A1', category: 'panels' },
   { id: 'panel:commodities', keywords: ['commodities', 'gold', 'silver'], label: 'Panel: Commodities', icon: '\u{1F4E6}', category: 'panels' },
   { id: 'panel:monitors', keywords: ['monitors', 'my monitors', 'watchlist'], label: 'Panel: My Monitors', icon: '\u{1F4CB}', category: 'panels' },
   { id: 'panel:map', keywords: ['map', 'globe', 'global map'], label: 'Panel: Global Map', icon: '\u{1F5FA}\uFE0F', category: 'panels' },

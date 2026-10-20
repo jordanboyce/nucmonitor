@@ -1364,7 +1364,7 @@ entries.
 | seed-consumer-prices-publish | `4492a338-cb37-40da-9e98-95a8d67e49c9` | Redis publisher |
 | seed-consumer-aggregate | `4fdd1078-7884-48f8-92fc-06b390d0fdc4` | Index calculator |
 
-### Standalone seed crons (43, not bundled)
+### Standalone seed crons (44, not bundled)
 
 | # | Service | ID | Why not bundled |
 |---|---|---|---|
@@ -1411,8 +1411,9 @@ entries.
 | 41 | seed-trade-flows | `dd3097f7-df65-4b0e-89ca-86a5fac7d558` | UN Comtrade, 6 reporters |
 | 42 | seed-unrest-events | `33c8c2a1-ad66-45ec-ac7e-609d69a59455` | ACLED + materialized GDELT bulk events |
 | 43 | seed-webcams | `2bf93afa-1922-4f9c-936d-f5054051b8a5` | Paginated across 8 regions |
+| 44 | seed-grid-alerts | _not yet provisioned_ | 10-minute multi-source envelope (ISO conditions, EIA-930, NWS, SWPC); first deploy pending |
 
-**Inventory check:** 4 infra + 4 long-running + 3 consumer + 46 delete + 43 standalone = **100**
+**Inventory check:** 4 infra + 4 long-running + 3 consumer + 46 delete + 44 standalone = **101**
 
 ---
 

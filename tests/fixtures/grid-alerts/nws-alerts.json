@@ -1,0 +1,10 @@
+{"type":"FeatureCollection","features":[
+ {"id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.1","type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-97.0,32.0],[-96.0,32.0],[-96.0,33.0],[-97.0,33.0],[-97.0,32.0]]]},
+  "properties":{"@id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.1","id":"urn:oid:2.49.0.1.840.0.1","event":"Ice Storm Warning","severity":"Severe","certainty":"Likely","urgency":"Expected","headline":"Ice Storm Warning issued October 20 at 3:00PM CDT until October 21 at 6:00PM CDT by NWS Fort Worth TX","areaDesc":"Dallas; Tarrant; Collin","geocode":{"UGC":["TXZ103","TXZ104"],"SAME":["048113"]},"sent":"2026-10-20T20:00:00-05:00","effective":"2026-10-20T20:00:00-05:00","onset":"2026-10-20T22:00:00-05:00","expires":"2099-10-21T18:00:00-05:00"}},
+ {"id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.2","type":"Feature","geometry":null,
+  "properties":{"@id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.2","id":"urn:oid:2.49.0.1.840.0.2","event":"Heat Advisory","severity":"Moderate","headline":"Heat Advisory for the Phoenix metro","areaDesc":"Maricopa, AZ; Pinal, AZ","geocode":{"UGC":["AZZ540"]},"sent":"2026-10-20T19:00:00-07:00","onset":"2026-10-20T19:00:00-07:00","expires":"2099-10-21T20:00:00-07:00"}},
+ {"id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.3","type":"Feature","geometry":null,
+  "properties":{"@id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.3","id":"urn:oid:2.49.0.1.840.0.3","event":"Small Craft Advisory","severity":"Minor","headline":"Small craft advisory","areaDesc":"Coastal waters","geocode":{"UGC":["ANZ335"]},"sent":"2026-10-20T19:00:00-04:00","expires":"2099-10-21T20:00:00-04:00"}},
+ {"id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.4","type":"Feature","geometry":null,
+  "properties":{"@id":"https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.4","id":"urn:oid:2.49.0.1.840.0.4","event":"High Wind Warning","severity":"Severe","headline":"Expired high wind warning","areaDesc":"Somewhere, CA","geocode":{"UGC":["CAZ001"]},"sent":"2020-01-01T00:00:00Z","expires":"2020-01-02T00:00:00Z"}}
+]}

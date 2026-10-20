@@ -65,6 +65,7 @@ import { markLcpDebug } from '@/utils/lcp-debug';
 import type { MonitorPanel } from '@/components/MonitorPanel';
 import type { NuclearReactorStatusPanel } from '@/components/NuclearReactorStatusPanel';
 import type { NuclearEventReportsPanel } from '@/components/NuclearEventReportsPanel';
+import type { GridAlertsPanel } from '@/components/GridAlertsPanel';
 import type { ClimateNewsPanel } from '@/components/ClimateNewsPanel';
 import { isDesktopRuntime, waitForSidecarReady } from '@/services/runtime';
 import { hasPremiumAccess } from '@/services/panel-gating';
@@ -626,6 +627,10 @@ export class App {
     if (shouldPrime('nuclear-events')) {
       const panel = this.state.panels['nuclear-events'] as NuclearEventReportsPanel | undefined;
       if (panel) primeTask('nuclear-events', () => panel.fetchData());
+    }
+    if (shouldPrime('grid-alerts')) {
+      const panel = this.state.panels['grid-alerts'] as GridAlertsPanel | undefined;
+      if (panel) primeTask('grid-alerts', () => panel.fetchData());
     }
     if (shouldPrime('climate-news')) {
       const panel = this.state.panels['climate-news'] as ClimateNewsPanel | undefined;
@@ -2739,6 +2744,13 @@ export class App {
       () => (this.state.panels['nuclear-events'] as NuclearEventReportsPanel).fetchData(),
       REFRESH_INTERVALS.nrcEventReports,
       () => this.isPanelNearViewport('nuclear-events')
+    );
+
+    this.refreshScheduler.scheduleRefresh(
+      'grid-alerts',
+      () => (this.state.panels['grid-alerts'] as GridAlertsPanel).fetchData(),
+      REFRESH_INTERVALS.gridAlerts,
+      () => this.isPanelNearViewport('grid-alerts')
     );
 
     this.refreshScheduler.scheduleRefresh(

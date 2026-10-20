@@ -21,14 +21,9 @@ env:
     scripts/_html-entities.mjs
     scripts/apply-openapi-filter-param-schemas.mjs
     scripts/generate-request-validation.mjs
-    scripts/generate-scorecard-edge-mirrors.mjs
     scripts/lib/main-module.mjs
     scripts/lib/openapi-codegen.mjs
-    scripts/openapi-inject-async-jobs.mjs
     scripts/openapi-inject-billing-verification.mjs
-    scripts/openapi-inject-china-corridors.mjs
-    scripts/openapi-inject-china-decision-signals.mjs
-    scripts/openapi-inject-company-monitoring-contract.mjs
     scripts/openapi-inject-deprecated.mjs
     scripts/openapi-inject-examples.mjs
     scripts/openapi-inject-idempotency.mjs
@@ -37,15 +32,6 @@ env:
     scripts/openapi-inject-required.mjs
     scripts/openapi-inject-security.mjs
     scripts/openapi-inject-servers.mjs
-    scripts/openapi-inject-webhooks.mjs
-    scripts/openapi-restrict-provider-redistribution.mjs
-    scripts/scorecard/v1/_input-registry.mts
-    scripts/scorecard/v1/_methodology.mts
-    scripts/scorecard/v1/_score-country.mts
-    scripts/scorecard/v1/_snapshot.mts
-    scripts/scorecard/v1/_source-adapters.mts
-    scripts/scorecard/v1/_source-registry.mts
-    scripts/scorecard/v1/_types.mts
     scripts/shared/geography.js
     scripts/shared/giving-published-estimate-claims.json
     scripts/shared/iso2-to-region.json
@@ -80,9 +66,6 @@ env:
     server/gateway.ts
     server/request-validator.ts
     server/router.ts
-    server/worldmonitor/consumer-prices/v1/get-consumer-price-basket-series.ts
-    server/worldmonitor/consumer-prices/v1/_selection.ts
-    server/worldmonitor/supply-chain/v1/scenario-templates.ts
     shared/aircraft-emergencies.ts
     shared/attribution-rider.ts
     shared/compare-and-delete-script.cjs
@@ -109,13 +92,6 @@ env:
   GENERATED_PATHS: >-
     src/generated/
     docs/api/
-    server/worldmonitor/scorecard/v1/_input-registry.ts
-    server/worldmonitor/scorecard/v1/_methodology.ts
-    server/worldmonitor/scorecard/v1/_score-country.ts
-    server/worldmonitor/scorecard/v1/_snapshot.ts
-    server/worldmonitor/scorecard/v1/_source-adapters.ts
-    server/worldmonitor/scorecard/v1/_source-registry.ts
-    server/worldmonitor/scorecard/v1/_types.ts
 
 permissions: {}
 

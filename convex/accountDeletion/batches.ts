@@ -33,7 +33,6 @@ export const PERSONAL_DELETE_TABLES = [
   "telegramPairingTokens",
   "userApiKeys",
   "embedKeys",
-  "mcpProTokens",
   "userReferralCodes",
   "userReferralCredits",
   "entitlements",
@@ -100,11 +99,6 @@ async function takePersonalRows(
     case "embedKeys":
       return ctx.db
         .query("embedKeys")
-        .withIndex("by_userId", (q) => q.eq("userId", userId))
-        .take(limit);
-    case "mcpProTokens":
-      return ctx.db
-        .query("mcpProTokens")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
         .take(limit);
     case "userReferralCodes":
@@ -286,13 +280,6 @@ async function erasePersonal(
         deletion._id,
         "embedKeyHashes",
         rows.map((row) => (row as Doc<"embedKeys">).keyHash),
-      );
-    } else if (table === "mcpProTokens") {
-      writes += await mergeDeletionStrings(
-        ctx,
-        deletion._id,
-        "mcpTokenIds",
-        rows.map((row) => String(row._id)),
       );
     }
     for (const row of rows) {
@@ -581,7 +568,7 @@ async function eraseEmailKeyed(
 async function mergeDeletionStrings(
   ctx: MutationCtx,
   deletionId: Id<"accountDeletions">,
-  field: "keyHashes" | "embedKeyHashes" | "mcpTokenIds",
+  field: "keyHashes" | "embedKeyHashes",
   extras: string[],
 ): Promise<number> {
   if (extras.length === 0) return 0;

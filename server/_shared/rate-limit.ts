@@ -608,34 +608,24 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   '/api/news/v1/search-fact-checks': { limit: 20, window: '60 s' },
   // /verify claim search: public; a cache miss reads every feed cache.
   '/api/news/v1/search-claim-headlines': { limit: 30, window: '60 s' },
-  '/api/aviation/v1/track-aircraft': { limit: 30, window: '60 s' },
-  '/api/aviation/v1/list-aircraft-emergencies': { limit: 20, window: '60 s' },
-  '/api/aviation/v1/search-google-flights': { limit: 30, window: '60 s' },
-  '/api/aviation/v1/search-google-dates': { limit: 10, window: '60 s' },
-  '/api/aviation/v1/list-aviation-news': { limit: 30, window: '60 s' },
   // Public YouTube video lookups call oEmbed on cache misses (channel live
   // detection is retired) and keep their own fail-closed gateway budget.
-  '/api/aviation/v1/get-youtube-live-stream-info': { limit: 30, window: '60 s' },
   // Interactive fare searches use one provider request on a cache miss.
   // 30/min leaves headroom under the provider's 300-600/min shared quota.
-  '/api/aviation/v1/search-flight-prices': { limit: 30, window: '60 s' },
   // LLM article summarization is Pro-gated, but still needs a scoped,
   // fail-closed budget so Redis degradation cannot silently lift the
   // per-endpoint spend control.
   '/api/news/v1/list-feed-digest': { limit: 30, window: '60 s' },
   '/api/news/v1/summarize-article': { limit: 30, window: '60 s' },
   '/api/news/v1/summarize-article-cache': { limit: 3000, window: '60 s' },
-  '/api/intelligence/v1/classify-event': { limit: 600, window: '60 s' },
   // Full Telegram bodies match the first-party feed's 60/min ceiling. Anonymous
   // sessions remain IP-scoped; verified paid principals retain user identity.
   // The endpoint registry fails closed so outages cannot lift this cap.
-  '/api/intelligence/v1/list-telegram-feed': { limit: 60, window: '60 s' },
   // LLM-backed situational deduction (imports callLlmReasoning) can drive
   // provider spend on cache misses, so it must fail closed on Redis outage
   // rather than inherit the global fail-open fallback. Mirror the sibling
   // classify-event budget (same limit/window) — both are AI-backed Intelligence
   // RPCs. (#4676)
-  '/api/intelligence/v1/deduct-situation': { limit: 600, window: '60 s' },
   // Historical intelligence memory (#5694): both semantic routes embed the
   // caller's free text through the OpenRouter embeddings API on every cache
   // miss, so they are provider-backed spend, not pure reads. They are also
@@ -661,9 +651,6 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // post-filter) — roughly 3MB of Convex read budget, which the 600/min
   // availability-first fallback did not bound. 120/min keeps a timeline read
   // comfortable while capping that worst case.
-  '/api/intelligence/v1/search-intel-history': { limit: 30, window: '60 s' },
-  '/api/intelligence/v1/get-similar-events': { limit: 30, window: '60 s' },
-  '/api/intelligence/v1/get-intel-timeline': { limit: 120, window: '60 s' },
   // Batch humanitarian-summary fans out to the external HAPI (humdata) provider
   // on cache miss — up to 25 countries per request, 5 concurrent upstream
   // fetches. Batch aircraft-details fans out to the external Wingbits provider —
@@ -671,24 +658,18 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // them at the same 30/min budget as the other provider-proxy routes
   // (sanctions lookup / resilience ranking); conservative because a single
   // request already amplifies into many upstream calls. (#4676)
-  '/api/conflict/v1/get-humanitarian-summary-batch': { limit: 30, window: '60 s' },
   // Single aircraft-details is a caller-controlled Wingbits lookup. Keep it
   // aligned with the batch sibling so cache misses cannot become an unlimited
   // paid-provider probe under anonymous or rotating callers.
-  '/api/military/v1/get-aircraft-details': { limit: 30, window: '60 s' },
-  '/api/military/v1/get-aircraft-details-batch': { limit: 30, window: '60 s' },
   // Webcam image resolution proxies Windy on a caller-controlled cache miss.
   // Keep it at the standard provider-proxy budget instead of the global fallback.
   '/api/webcam/v1/get-webcam-image': { limit: 30, window: '60 s' },
   // Live lookups can fan out to position, schedule and photo providers.
-  '/api/military/v1/get-wingbits-live-flight': { limit: 30, window: '60 s' },
-  '/api/imagery/v1/search-imagery': { limit: 30, window: '60 s' },
   // Generic batch fan-out: one request re-dispatches up to 20 gateway GETs, so
   // cap the multiplier at the same 30/min budget as the other batch routes.
   '/api/batch/v1/execute': { limit: 30, window: '60 s' },
   // Legacy /api/sanctions-entity-search rate limit was 30/min per IP. Preserve
   // that budget now that LookupSanctionEntity proxies OpenSanctions live.
-  '/api/sanctions/v1/lookup-sanction-entity': { limit: 30, window: '60 s' },
   // Corporate intelligence (#5695): each cache miss proxies SEC EDGAR and/or
   // Finnhub on the caller's behalf, and the per-company inputs are effectively
   // unbounded (any ticker/name/domain), so these cannot inherit the fail-open
@@ -699,10 +680,6 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // moves with the clock, so the miss rate is high. Same shape as the sibling
   // provider-proxy routes above; it must not inherit the global fail-open
   // budget on a Redis outage.
-  '/api/intelligence/v1/get-country-coverage': { limit: 30, window: '60 s' },
-  '/api/intelligence/v1/get-company-enrichment': { limit: 30, window: '60 s' },
-  '/api/intelligence/v1/list-company-signals': { limit: 30, window: '60 s' },
-  '/api/intelligence/v1/search-sec-filings': { limit: 30, window: '60 s' },
   // Public market/economic provider proxies (#6236): caller-controlled symbols,
   // indicators, and year ranges create unbounded cache-key cardinality; the
   // country-index and price-history routes are bounded to their tracked
@@ -754,15 +731,9 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // passes, but generated mutation routes still need a fail-closed policy
   // before any later lane can wire them. Import can carry 100 rows, so keep its
   // request budget lower than the single-company mutations.
-  '/api/company-monitoring/v1/create-monitored-company': { limit: 30, window: '60 s' },
-  '/api/company-monitoring/v1/update-monitored-company': { limit: 30, window: '60 s' },
-  '/api/company-monitoring/v1/set-monitored-company-state': { limit: 30, window: '60 s' },
-  '/api/company-monitoring/v1/import-monitored-company-batch': { limit: 10, window: '60 s' },
   // Lead capture: preserve the 3/hr and 5/hr budgets from legacy api/contact.js
   // and api/register-interest.js. Lower limits than normal IP rate limit since
   // these hit Convex + Resend per request.
-  '/api/leads/v1/submit-contact': { limit: 3, window: '1 h' },
-  '/api/leads/v1/register-interest': { limit: 5, window: '1 h' },
   // #9093 reader error reports: anonymous writes to the review queue.
   '/api/news/v1/submit-error-report': { limit: 5, window: '1 h' },
   // #9093 /trust page read: public and CDN-cached, bounded per IP.
@@ -770,63 +741,6 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // Operator review: secret-gated, but still bounded against secret guessing.
   '/api/news/v1/list-error-reports': { limit: 60, window: '60 s' },
   '/api/news/v1/review-error-report': { limit: 60, window: '60 s' },
-  // Scenario engine: legacy /api/scenario/v1/run capped at 10 jobs/min/IP via
-  // inline Upstash INCR. Gateway preserves the same budget while using a
-  // trusted paid-user principal when available, otherwise the client IP.
-  '/api/scenario/v1/run-scenario': { limit: 10, window: '60 s' },
-  // #3734: trigger-simulation PRO endpoint, same shape as run-scenario.
-  // It follows the same trusted-principal-or-IP attribution contract.
-  '/api/forecast/v1/trigger-simulation': { limit: 10, window: '60 s' },
-  // Live tanker map (Energy Atlas): one user with 6 chokepoints × 1 call/min
-  // = 6 req/min/IP base load. 60/min headroom covers tab refreshes + zoom
-  // pans within a single user without flagging legitimate traffic.
-  '/api/maritime/v1/get-vessel-snapshot': { limit: 60, window: '60 s' },
-  // Country Resilience ranking can synchronously warm the full country table
-  // on cold/stale cache paths; keep it well below the global 600/min fallback.
-  '/api/resilience/v1/get-resilience-ranking': { limit: 30, window: '60 s' },
-  // Indicator drill-down fans out across the full scorer source graph on a
-  // cold per-country cache miss. Match the MCP minute ceiling and fail closed.
-  '/api/resilience/v1/get-resilience-indicators': { limit: 60, window: '60 s' },
-  // #3805 / PR #3821: MCP proxy is a top-level Vercel Edge Function in
-  // `api/mcp-proxy.ts` (registered as `external-protocol` in
-  // api/api-route-exceptions.json — JSON-RPC shape dictated by the MCP spec),
-  // so it does NOT flow through the gateway and `checkEndpointRateLimit`
-  // never fires for it. The handler reads this policy and enforces it
-  // in-handler via `checkScopedRateLimit` — keeping the registry as the
-  // single source of truth so future audit additions (and the
-  // enforce-rate-limit-policies lint) see the endpoint. The audit script
-  // resolves edge-function paths via api/api-route-exceptions.json instead
-  // of the OpenAPI specs.
-  '/api/mcp-proxy': { limit: 30, window: '60 s' },
-  // Docs MCP facade (`api/docs-mcp.ts`, external-protocol exception — serves
-  // /docs/mcp, proxying the Mintlify docs MCP server and lifting its
-  // protocol-level tool-call failures into proper JSON-RPC error objects).
-  // Anonymous by design (upstream is fully public), so the per-IP minute
-  // limit is the whole abuse defence; 60/min mirrors the MCP public-method
-  // posture. Enforced in-handler via `checkScopedRateLimit`, same pattern as
-  // /api/mcp-proxy.
-  '/api/docs-mcp': { limit: 60, window: '60 s' },
-  // A2A concierge endpoint (`api/a2a.ts`, external-protocol exception —
-  // JSON-RPC shape dictated by the A2A spec, served at /a2a). Anonymous and
-  // quota-free by design (routes over the public tool catalog + public
-  // freshness envelope only), so the per-IP minute limit is the whole abuse
-  // defence; 60/min mirrors the MCP public-method posture. Enforced
-  // in-handler via `checkScopedRateLimit`, same pattern as /api/mcp-proxy.
-  '/api/a2a': { limit: 60, window: '60 s' },
-  // NLWeb /ask endpoint (`api/ask.ts`, external-protocol exception — request/
-  // response shape dictated by the NLWeb spec, served at /ask). Same anonymous
-  // cheap-catalog posture as /api/a2a, same in-handler enforcement.
-  '/api/ask': { limit: 60, window: '60 s' },
-  // Agent-skills import proxy (`api/skills/fetch-agentskills.ts`, registered
-  // as `migration-pending` in api/api-route-exceptions.json). Fetches one
-  // skill definition from a fixed three-host allowlist on agentskills.io.
-  // Anonymous by design (the settings importer calls it same-origin before
-  // the user has done anything privileged), so the per-IP minute limit is the
-  // whole abuse defence; 30/min is the provider-proxy budget above, and the
-  // handler also caches the fetched payload so repeat imports never leave our
-  // edge. Enforced in-handler via `checkScopedRateLimit`, same pattern as
-  // /api/docs-mcp. (#6234)
-  '/api/skills/fetch-agentskills': { limit: 30, window: '60 s' },
   // Legacy `api/*.js` provider proxies (`api/youtube/live.js`,
   // `api/reverse-geocode.js`), both registered in
   // api/api-route-exceptions.json. Neither flows through the gateway, and
@@ -873,12 +787,6 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // its account owner so every display for one partner shares the same budget.
   // The CDN absorbs most canonical public requests before this policy runs.
   '/api/embed/map-frame': { limit: 120, window: '60 s' },
-  // Widget agent is a top-level edge proxy (api/widget-agent.ts) that spends a
-  // frontier-model call on every POST. It does not flow through the gateway, so
-  // the handler enforces this budget in-process, keyed on the validated
-  // user/key identity rather than the edge egress IP. 20/hour matches the
-  // relay's pro bucket; basic callers are still capped tighter on the relay.
-  '/api/widget-agent': { limit: 20, window: '1 h' },
   // Checkout session creation (api/create-checkout.ts) relays to Dodo. Same
   // per-user 5/min fail-closed budget as the customer portal, enforced
   // in-handler after JWT validation. A Redis outage must not lift it.
@@ -901,55 +809,8 @@ interface RateLimitPolicyDecision {
 // here can drift back to the gateway's availability-first global fallback.
 export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimitPolicyDecision> = {
   '/api/news/v1/list-feed-digest': { reason: 'Cold digest builds fan out to RSS providers and require a fail-closed caller budget.' },
-  '/api/aviation/v1/track-aircraft': {
-    reason: 'Distinct aircraft viewports call Wingbits on cache misses and can fall back to authenticated OpenSky quota.',
-  },
-  '/api/aviation/v1/list-aircraft-emergencies': {
-    reason: 'Public emergency aircraft reads fan out to three provider queries on shared cache misses.',
-  },
-  '/api/aviation/v1/search-google-flights': { reason: 'Public flight searches perform a live Google shopping request on each cache miss.' },
-  '/api/aviation/v1/search-google-dates': { reason: 'Public date searches can trigger up to six Google calendar requests per cache miss.' },
-  '/api/aviation/v1/list-aviation-news': {
-    reason: 'Public aviation news can fan out to nine RSS feeds when the shared snapshot is unavailable.',
-  },
-  '/api/aviation/v1/get-youtube-live-stream-info': {
-    reason: 'Public YouTube video lookups call oEmbed on cache misses; channel live detection is retired.',
-  },
-  '/api/aviation/v1/search-flight-prices': {
-    reason: 'Caller-selected fare searches consume Travelpayouts request quota on cache misses.',
-  },
   '/api/news/v1/summarize-article': {
     reason: 'LLM-backed summarization can drive provider spend on cache misses.',
-  },
-  '/api/intelligence/v1/classify-event': {
-    reason: 'AI classification performs expensive provider-backed analysis.',
-  },
-  '/api/intelligence/v1/list-telegram-feed': {
-    reason: 'Full Telegram message extraction must retain the endpoint cap during Redis outages.',
-  },
-  '/api/intelligence/v1/deduct-situation': {
-    reason: 'LLM-backed situational deduction can drive provider spend on cache misses.',
-  },
-  '/api/intelligence/v1/search-intel-history': {
-    reason: 'Semantic history search embeds the caller\'s query through a paid embeddings provider on every request.',
-  },
-  '/api/intelligence/v1/get-similar-events': {
-    reason: 'Precedent lookup embeds the caller\'s situation text through a paid embeddings provider on every request.',
-  },
-  '/api/conflict/v1/get-humanitarian-summary-batch': {
-    reason: 'Batch summary fans out to the external HAPI (humdata) provider on cache miss.',
-  },
-  '/api/intelligence/v1/get-country-coverage': {
-    reason: 'Country coverage fans out to two Google News feeds and the live military-flights path on cache miss.',
-  },
-  '/api/intelligence/v1/get-company-enrichment': {
-    reason: 'Per-company composite fans out to SEC EDGAR and Finnhub on cache miss.',
-  },
-  '/api/intelligence/v1/list-company-signals': {
-    reason: 'Per-company signal discovery fans out to SEC EDGAR and Finnhub on cache miss.',
-  },
-  '/api/intelligence/v1/search-sec-filings': {
-    reason: 'Full-text filing search proxies SEC EDGAR on cache miss with unbounded query cardinality.',
   },
   '/api/market/v1/analyze-stock': {
     reason: 'Per-symbol analysis can fan out to Finnhub plus the Exa, Brave, and SerpAPI search ladder on cache miss.',
@@ -978,50 +839,17 @@ export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimit
   '/api/economic/v1/list-world-bank-indicators': {
     reason: 'Caller-controlled indicator, country, and year inputs proxy World Bank on cache miss.',
   },
-  '/api/company-monitoring/v1/create-monitored-company': {
-    reason: 'Account-scoped portfolio mutation must not become fail-open when its dark contract is wired.',
-  },
-  '/api/company-monitoring/v1/update-monitored-company': {
-    reason: 'Account-scoped portfolio mutation must not become fail-open when its dark contract is wired.',
-  },
-  '/api/company-monitoring/v1/set-monitored-company-state': {
-    reason: 'Account-scoped lifecycle mutation must not become fail-open when its dark contract is wired.',
-  },
-  '/api/company-monitoring/v1/import-monitored-company-batch': {
-    reason: 'A bounded import can write up to 100 portfolio rows and must fail closed when its dark contract is wired.',
-  },
-  '/api/military/v1/get-aircraft-details-batch': {
-    reason: 'Batch enrichment fans out to the external Wingbits provider on cache miss.',
-  },
-  '/api/military/v1/get-aircraft-details': {
-    reason: 'Single aircraft enrichment proxies the external Wingbits provider on cache miss.',
-  },
   '/api/webcam/v1/get-webcam-image': {
     reason: 'Webcam image resolution proxies the Windy provider on cache miss.',
   },
-  '/api/military/v1/get-wingbits-live-flight': {
-    reason: 'Live aircraft lookups fan out to external providers on short-lived cache misses.',
-  },
-  '/api/imagery/v1/search-imagery': {
-    reason: 'Imagery searches proxy the external STAC catalog on cache misses.',
-  },
   '/api/batch/v1/execute': {
     reason: 'Generic batch fan-out multiplies one request into up to 20 gateway sub-requests.',
-  },
-  '/api/sanctions/v1/lookup-sanction-entity': {
-    reason: 'Live sanctions lookup proxies an external provider.',
   },
   '/api/news/v1/search-fact-checks': {
     reason: 'Public fact-check lookup proxies the quota-limited Google Fact Check Tools API on cache misses (#9094).',
   },
   '/api/news/v1/search-claim-headlines': {
     reason: 'Public claim search reads every full-variant RSS feed cache on a pool miss.',
-  },
-  '/api/leads/v1/submit-contact': {
-    reason: 'Lead capture writes to Convex and sends email.',
-  },
-  '/api/leads/v1/register-interest': {
-    reason: 'Lead capture writes to Convex and sends email.',
   },
   '/api/news/v1/submit-error-report': {
     reason: 'Anonymous error reports write to the review queue (#9093).',
@@ -1031,21 +859,6 @@ export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimit
   },
   '/api/news/v1/review-error-report': {
     reason: 'Operator review is gated by a shared secret; the limit bounds guessing (#9093).',
-  },
-  '/api/scenario/v1/run-scenario': {
-    reason: 'Scenario runs are mutation-like jobs with a historical 10/min cap.',
-  },
-  '/api/forecast/v1/trigger-simulation': {
-    reason: 'Forecast simulation trigger starts expensive backend work.',
-  },
-  '/api/maritime/v1/get-vessel-snapshot': {
-    reason: 'Live vessel snapshots can generate high-frequency upstream load.',
-  },
-  '/api/resilience/v1/get-resilience-ranking': {
-    reason: 'Cold/stale cache paths can synchronously warm the full country table.',
-  },
-  '/api/resilience/v1/get-resilience-indicators': {
-    reason: 'Cold per-country diagnostic builds fan out across the full resilience source graph.',
   },
   '/api/infrastructure/v1/reverse-geocode': {
     reason: 'Proxies Nominatim (egress-IP ban enforcement), same provider and egress IPs as the legacy edge route. Must fail closed on a Redis outage rather than inherit the fail-open 600/min fallback.',
@@ -1059,9 +872,6 @@ export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimit
   '/api/embed/map-frame': {
     reason: 'The keyless map frame is fully anonymous and fans out across four seed reads. Fail closed rather than inherit the availability-first global fallback: those reads come from the same Redis that would be degraded, so a fail-open origin would serve empty layers at unbounded volume while the CDN copy keeps real data on screen for the stale-while-revalidate window.',
   },
-  '/api/widget-agent': {
-    reason: 'Each POST proxies a frontier-model widget generation. The edge must keep a per-identity cap when Redis is down instead of spending uncapped.',
-  },
   '/api/create-checkout': {
     reason: 'Checkout session creation relays to the paid Dodo provider. A Redis outage must not lift the per-user cap.',
   },
@@ -1072,12 +882,6 @@ export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimit
 // routes should not be added here; add them to ENDPOINT_RATE_POLICIES and
 // FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED instead.
 export const GLOBAL_RATE_LIMIT_FALLBACK_READ_ROUTES: Record<string, RateLimitPolicyDecision> = {
-  '/api/aviation/v1/list-airport-delays': {
-    reason: 'Read-only cache-backed airport delay listing; availability-first fallback is acceptable.',
-  },
-  '/api/intelligence/v1/list-material-events': {
-    reason: 'Read-only Redis read of the seeded 8-K stream; no upstream fetch on miss, so availability-first fallback carries no spend risk.',
-  },
 };
 
 // Explicit allow-list of NON-GET (post/put/patch/delete) gateway routes that are
@@ -1097,10 +901,6 @@ export const RATE_LIMIT_MUTATION_FALLBACK_EXEMPT: Record<string, RateLimitPolicy
   '/api/infrastructure/v1/record-baseline-snapshot': {
     reason:
       'Deprecated compatibility route that rejects client-supplied baseline writes before Redis; the fail-open fallback cannot admit a mutation.',
-  },
-  '/api/v2/shipping/webhooks': {
-    reason:
-      'Webhook registration is API-key authenticated (validateApiKey) and premium-gated before any work, so unauthenticated abuse is already blocked; the handler only writes to Redis, with no external provider or LLM spend.',
   },
 };
 
@@ -1137,45 +937,8 @@ export function hasEndpointRatePolicy(pathname: string): boolean {
   return pathname in ENDPOINT_RATE_POLICIES;
 }
 
-let nativeGoogleDatesAdmissions: number[] = [];
-let nativeGoogleFlightsAdmissions: number[] = [];
-let nativeAviationNewsAdmissions: number[] = [];
-
 export async function checkEndpointRateLimit(request: Request, pathname: string, corsHeaders: Record<string, string>, opts: EndpointRateLimitOptions = {}): Promise<Response | null> {
   if (!hasEndpointRatePolicy(pathname)) return null;
-  // Native transport authentication happens before this gateway. Use one
-  // bounded local budget with the in-process cache; cloud and Docker use Redis.
-  if ((pathname === '/api/aviation/v1/search-google-dates'
-    || pathname === '/api/aviation/v1/search-google-flights')
-    && process.env.LOCAL_API_MODE === 'tauri-sidecar') {
-    const policy = ENDPOINT_RATE_POLICIES[pathname]!;
-    const windowSeconds = durationToSeconds(policy.window);
-    const now = Date.now();
-    const admissions = pathname === '/api/aviation/v1/search-google-dates'
-      ? nativeGoogleDatesAdmissions
-      : nativeGoogleFlightsAdmissions;
-    const activeAdmissions = admissions.filter(time => time > now - windowSeconds * 1000);
-    if (activeAdmissions.length >= policy.limit) {
-      return tooManyRequestsResponse(policy.limit, activeAdmissions[0]! + windowSeconds * 1000, corsHeaders, windowSeconds);
-    }
-    activeAdmissions.push(now);
-    if (pathname === '/api/aviation/v1/search-google-dates') nativeGoogleDatesAdmissions = activeAdmissions;
-    else nativeGoogleFlightsAdmissions = activeAdmissions;
-    return null;
-  }
-  if (pathname === '/api/aviation/v1/list-aviation-news'
-    && process.env.LOCAL_API_MODE === 'tauri-sidecar') {
-    const policy = ENDPOINT_RATE_POLICIES[pathname]!;
-    const windowSeconds = durationToSeconds(policy.window);
-    const now = Date.now();
-    nativeAviationNewsAdmissions = nativeAviationNewsAdmissions.filter(time => time > now - windowSeconds * 1000);
-    if (nativeAviationNewsAdmissions.length >= policy.limit) {
-      return tooManyRequestsResponse(policy.limit, nativeAviationNewsAdmissions[0]! + windowSeconds * 1000, corsHeaders, windowSeconds);
-    }
-    nativeAviationNewsAdmissions.push(now);
-    return null;
-  }
-
   // IP-scoped endpoint budgets depend on a real client IP. A cf-connecting-ip
   // without x-wm-edge-proof is either a direct-origin spoof or a Transform Rule
   // miss — reject rather than share a Cloudflare PoP bucket (#8402). Principal-
@@ -1355,9 +1118,6 @@ export async function checkFailClosedScopedIpRateLimit(
 }
 
 export function __resetRateLimitForTest(): void {
-  nativeGoogleDatesAdmissions = [];
-  nativeGoogleFlightsAdmissions = [];
-  nativeAviationNewsAdmissions = [];
   ratelimit = null;
   endpointLimiters.clear();
   scopedLimiters.clear();

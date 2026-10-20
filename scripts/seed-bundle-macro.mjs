@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 import { runBundle, HOUR, DAY } from './_bundle-runner.mjs';
 import { CHINA_MACRO_CACHE_KEY } from './_china-macro-contract.mjs';
-import { orderMacroSections } from './_macro-bundle-order.mjs';
-import { EDUCATION_SECTION_TIMEOUT_MS } from './seed-education-attainment.mjs';
 import { PHYSICAL_PREMIUM_SECTION_TIMEOUT_MS } from './seed-physical-premiums.mjs';
 
-const EDUCATION_SECTION = { label: 'Education-Attainment', script: 'seed-education-attainment.mjs', seedMetaKey: 'resilience:education-attainment', canonicalKey: 'resilience:education-attainment:v1', completionMetaKey: 'seed-completion:resilience:education-attainment', intervalMs: 7 * DAY, timeoutMs: EDUCATION_SECTION_TIMEOUT_MS };
 // SGE SHAU/SHAG daily PM benchmarks joined only to the already-seeded
 // commodity and FX snapshots. Keep this section outside MACRO_SECTIONS so it
 // always receives an early admission slot with 80 seconds of bundle headroom.
@@ -29,12 +26,9 @@ const MACRO_SECTIONS = [
   { label: 'StatCan-WDS', script: 'seed-statcan-wds.mjs', seedMetaKey: 'economic:statcan-wds', canonicalKey: 'economic:statcan-wds:v1', completionMetaKey: 'seed-completion:economic:statcan-wds', intervalMs: DAY, timeoutMs: 120_000 },
   // Official-source requests are sequential and bounded per host. Blocked
   // PBoC/GACC candidates stay explicitly unavailable rather than using proxies.
-  { label: 'China-Macro', script: 'seed-china-macro.mjs', seedMetaKey: 'economic:china-macro', freshnessMetaKey: 'seed-meta:economic:china-macro-transport', completionMetaKey: 'seed-meta:economic:china-macro-complete', canonicalKey: CHINA_MACRO_CACHE_KEY, requireCanonical: true, intervalMs: 36 * HOUR, timeoutMs: 240_000 },
-  { label: 'China-Release-Calendar', script: 'seed-china-release-calendar.mjs', seedMetaKey: 'economic:china-release-calendar', canonicalKey: 'economic:china:release-calendar:v1', intervalMs: 36 * HOUR, timeoutMs: 240_000 },
   // Six official agencies, each capped at one listing plus three documents with
   // a 400ms same-host cadence. The section is independent from macro sources:
   // failures retain the last valid policy event set through runSeed.
-  { label: 'China-Policy-Events', script: 'seed-china-policy-events.mjs', seedMetaKey: 'china:policy-events', canonicalKey: 'china:policy-events:v1', intervalMs: 6 * HOUR, timeoutMs: 220_000 },
   { label: 'BIS-Extended', script: 'seed-bis-extended.mjs', seedMetaKey: 'economic:bis-extended', canonicalKey: 'economic:bis:dsr:v1', completionMetaKey: 'seed-completion:economic:bis-extended', intervalMs: 12 * HOUR, timeoutMs: 300_000 },
   { label: 'BLS-Series', script: 'seed-bls-series.mjs', seedMetaKey: 'economic:bls-series', canonicalKey: 'bls:series:v1', completionMetaKey: 'seed-completion:economic:bls-series', intervalMs: DAY, timeoutMs: 120_000 },
   { label: 'Eurostat', script: 'seed-eurostat-country-data.mjs', seedMetaKey: 'economic:eurostat-country-data', canonicalKey: 'economic:eurostat-country-data:v1', intervalMs: DAY, timeoutMs: 300_000 },
@@ -55,7 +49,6 @@ const MACRO_SECTIONS = [
   // wayback-snap-direct → wayback-snap-proxy, ≤125s/URL). Worst-case ≤250s;
   // 300_000 gives ~50s margin and matches peer sections. Pre-PR-#3415 the section
   // was 120_000 — too tight for the multi-tier fallback, would SIGTERM mid-fetch.
-  { label: 'FATF-Listing', script: 'seed-fatf-listing.mjs', seedMetaKey: 'economic:fatf-listing', canonicalKey: 'economic:fatf-listing:v1', intervalMs: 30 * DAY, timeoutMs: 300_000 },
   // Full CPI history is six FRED series from 1947. Kept at the tail so a slow
   // FRED day cannot take the admission slot of an established member.
   { label: 'US-CPI', script: 'seed-us-cpi.mjs', seedMetaKey: 'economic:us-cpi', canonicalKey: 'economic:us-cpi:v1', completionMetaKey: 'seed-completion:economic:us-cpi', intervalMs: DAY, timeoutMs: 180_000 },
@@ -80,12 +73,7 @@ const MACRO_SECTIONS = [
 // producer cannot starve established production members every day. Give it
 // first priority on the 08:00 Sunday tick. The 09:00 retry always restores
 // Physical to the first slot, even if Education failed and remains due.
-const sections = orderMacroSections(
-  new Date(),
-  EDUCATION_SECTION,
-  PHYSICAL_PREMIUM_SECTION,
-  MACRO_SECTIONS,
-);
+const sections = [PHYSICAL_PREMIUM_SECTION, ...MACRO_SECTIONS];
 
 await runBundle('macro', sections, {
   // Railway kills cron containers at 10 minutes. Defer sections whose full

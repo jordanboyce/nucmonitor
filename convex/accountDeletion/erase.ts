@@ -396,7 +396,6 @@ const externalSnapshotValidator = v.union(
     cancelledDodoSubscriptionIds: v.array(v.string()),
     keyHashes: v.array(v.string()),
     embedKeyHashes: v.array(v.string()),
-    mcpTokenIds: v.array(v.string()),
     redisClearedAt: v.optional(v.number()),
     clerkDeletedAt: v.optional(v.number()),
   }),
@@ -417,7 +416,6 @@ export const getExternalEraseSnapshot = internalQuery({
       cancelledDodoSubscriptionIds: row.cancelledDodoSubscriptionIds ?? [],
       keyHashes: row.keyHashes ?? [],
       embedKeyHashes: row.embedKeyHashes ?? [],
-      mcpTokenIds: row.mcpTokenIds ?? [],
       redisClearedAt: row.redisClearedAt,
       clerkDeletedAt: row.clerkDeletedAt,
     };

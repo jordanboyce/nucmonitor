@@ -277,7 +277,7 @@ test('every custom Error subclass sets this.name explicitly', async () => {
     }
   }
 
-  assert.ok(checked >= 19, `expected to scan the known custom Error classes, scanned ${checked}`);
+  assert.ok(checked >= 14, `expected to scan the known custom Error classes, scanned ${checked}`);
   assert.deepEqual(
     offenders,
     [],

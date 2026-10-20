@@ -400,12 +400,6 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   // and therefore requires an explicit gateway cache tier. The two semantic
   // reads are POSTs and cache successful results inside their handlers.
 
-  // Partner-facing shipping/v2. route-intelligence is premium-gated; gateway
-  // short-circuits to slow-browser. Entry required by tests/route-cache-tier.test.mjs.
-  '/api/v2/shipping/route-intelligence': 'slow-browser',
-  // GET /webhooks lists caller's webhooks — premium-gated; short-circuited to
-  // slow-browser. Entry required by tests/route-cache-tier.test.mjs.
-  '/api/v2/shipping/webhooks': 'slow-browser',
 
   // Company Monitoring is account-private and remains unrouted until #6003.
   // Keep every generated read no-store so future activation cannot inherit a

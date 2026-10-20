@@ -59,34 +59,34 @@ const chip = (map: LayerPicker, layer: string): HTMLButtonElement => {
 
 describe('MapComponent.toggleLayer chip state', () => {
   it('renders the row-wrapping-button shape the selector has to cope with', () => {
-    const map = createPicker({ pipelines: true });
-    const button = chip(map, 'pipelines');
+    const map = createPicker({ irradiators: true });
+    const button = chip(map, 'irradiators');
 
     // Guards the premise: if the wrapper ever stops carrying data-layer, the
     // bug these tests lock down is gone and they should be revisited, not
     // silently kept passing for the wrong reason.
-    expect(button.closest('.layer-toggle-row')?.getAttribute('data-layer')).toBe('pipelines');
-    expect(map.container.querySelector('[data-layer="pipelines"]')).not.toBe(button);
+    expect(button.closest('.layer-toggle-row')?.getAttribute('data-layer')).toBe('irradiators');
+    expect(map.container.querySelector('[data-layer="irradiators"]')).not.toBe(button);
   });
 
   it('clears active on the chip when a static layer is switched off', () => {
-    const map = createPicker({ pipelines: true });
-    expect(chip(map, 'pipelines').classList.contains('active')).toBe(true);
+    const map = createPicker({ irradiators: true });
+    expect(chip(map, 'irradiators').classList.contains('active')).toBe(true);
 
-    map.toggleLayer('pipelines');
+    map.toggleLayer('irradiators');
 
-    expect(map.state.layers.pipelines).toBe(false);
-    expect(chip(map, 'pipelines').classList.contains('active')).toBe(false);
+    expect(map.state.layers.irradiators).toBe(false);
+    expect(chip(map, 'irradiators').classList.contains('active')).toBe(false);
   });
 
   it('sets active on the chip when a static layer is switched on', () => {
-    const map = createPicker({ pipelines: false });
-    expect(chip(map, 'pipelines').classList.contains('active')).toBe(false);
+    const map = createPicker({ irradiators: false });
+    expect(chip(map, 'irradiators').classList.contains('active')).toBe(false);
 
-    map.toggleLayer('pipelines');
+    map.toggleLayer('irradiators');
 
-    expect(map.state.layers.pipelines).toBe(true);
-    expect(chip(map, 'pipelines').classList.contains('active')).toBe(true);
+    expect(map.state.layers.irradiators).toBe(true);
+    expect(chip(map, 'irradiators').classList.contains('active')).toBe(true);
   });
 
   it('parks an async layer in loading, then clears both classes when switched off', () => {
@@ -115,15 +115,15 @@ describe('MapComponent.toggleLayer chip state', () => {
   });
 
   it('leaves an accurate active count for the layer cap to read', () => {
-    const map = createPicker({ pipelines: true, nuclear: true, cables: false });
+    const map = createPicker({ irradiators: true, weather: true, fires: false });
     const activeChips = () =>
       map.container.querySelectorAll('button.layer-toggle.active').length;
 
     const before = activeChips();
-    map.toggleLayer('pipelines');
+    map.toggleLayer('irradiators');
     expect(activeChips()).toBe(before - 1);
 
-    map.toggleLayer('cables');
+    map.toggleLayer('fires');
     expect(activeChips()).toBe(before);
   });
 });

@@ -599,17 +599,8 @@ window.addEventListener('storage', (event) => {
   if (event.key === FONT_SCALE_STORAGE_KEY) applyFontScale();
 });
 
-// Set data-variant on <html> so CSS theme overrides activate
-if (SITE_VARIANT && SITE_VARIANT !== 'full') {
-  document.documentElement.dataset.variant = SITE_VARIANT;
-
-  // Swap favicons to variant-specific versions before browser finishes fetching defaults
-  document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(link => {
-    link.href = link.href
-      .replace(/\/favico\/favicon/g, `/favico/${SITE_VARIANT}/favicon`)
-      .replace(/\/favico\/apple-touch-icon/g, `/favico/${SITE_VARIANT}/apple-touch-icon`);
-  });
-}
+// Set data-variant on <html> so the nuclear theme overrides activate
+document.documentElement.dataset.variant = SITE_VARIANT;
 
 // Remove no-transition class after first paint to enable smooth theme transitions
 requestAnimationFrame(() => {

@@ -19,7 +19,7 @@ export const EMBEDDABLE_LAYERS = [
 ] as const;
 
 export type EmbedTheme = 'dark' | 'light';
-export type EmbedVariant = 'full' | 'nuclear';
+export type EmbedVariant = 'nuclear';
 
 export interface EmbedCenter {
   lat: number;
@@ -41,7 +41,7 @@ export const DEFAULT_EMBED_LAYER_IDS: EmbedLayerId[] = ['earthquakes', 'weather'
 export const DEFAULT_EMBED_CENTER: EmbedCenter = { lat: 20, lon: 0 };
 export const DEFAULT_EMBED_ZOOM = 1;
 export const DEFAULT_EMBED_THEME: EmbedTheme = 'dark';
-export const DEFAULT_EMBED_VARIANT: EmbedVariant = 'full';
+export const DEFAULT_EMBED_VARIANT: EmbedVariant = 'nuclear';
 
 const EMBED_LAYER_BY_ID = new Map<string, (typeof EMBEDDABLE_LAYERS)[number]>(
   EMBEDDABLE_LAYERS.map((layer) => [layer.id.toLowerCase(), layer]),
@@ -55,7 +55,7 @@ const EMBED_LAYER_ALIASES = new Map<string, EmbedLayerId>(([
 ] as const).map(([alias, id]) => [alias.toLowerCase(), id]));
 
 const VALID_THEMES = new Set<EmbedTheme>(['dark', 'light']);
-const VALID_VARIANTS = new Set<EmbedVariant>(['full', 'nuclear']);
+const VALID_VARIANTS = new Set<EmbedVariant>(['nuclear']);
 
 export function createBlankMapLayers(): MapLayers {
   return {

@@ -21,7 +21,6 @@ import {
 import type { MapLayers } from '../types';
 
 export const WEBMCP_MAP_LAYER_MONITORS = [
-  'world',
   'nuclear',
 ] as const;
 export type WebMcpMapLayerMonitor = (typeof WEBMCP_MAP_LAYER_MONITORS)[number];
@@ -40,9 +39,7 @@ const MONITOR_SET = new Set<string>(WEBMCP_MAP_LAYER_MONITORS);
 const RENDERER_SET = new Set<string>(WEBMCP_MAP_LAYER_RENDERERS);
 const STATE_SET = new Set<string>(WEBMCP_MAP_LAYER_STATES);
 const LAYER_ID_PATTERN = new RegExp(DASHBOARD_LAYER_ACTION_TARGET_ID_PATTERN);
-const MAP_VARIANTS = new Set<MapVariant>([
-  'full', 'nuclear',
-]);
+const MAP_VARIANTS = new Set<MapVariant>(['nuclear']);
 
 export type MapLayerCatalogInvalidReason =
   | 'malformed_arguments'
@@ -106,7 +103,7 @@ export type MapLayerCatalogResult = MapLayerCatalogSuccess | MapLayerCatalogInva
 const CATALOG_ARG_KEYS = ['monitor', 'renderer', 'state', 'cursor', 'limit'] as const;
 
 export function monitorToVariant(monitor: WebMcpMapLayerMonitor): MapVariant {
-  return monitor === 'world' ? 'full' : monitor;
+  return monitor;
 }
 
 export function rendererFamily(kind: RendererKind): WebMcpMapLayerRenderer {
@@ -114,7 +111,7 @@ export function rendererFamily(kind: RendererKind): WebMcpMapLayerRenderer {
 }
 
 export function normalizeCatalogVariant(variant: string): MapVariant {
-  return MAP_VARIANTS.has(variant as MapVariant) ? variant as MapVariant : 'full';
+  return MAP_VARIANTS.has(variant as MapVariant) ? variant as MapVariant : 'nuclear';
 }
 
 function invalid(

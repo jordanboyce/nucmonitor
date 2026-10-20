@@ -569,6 +569,6 @@ export class SearchSelectionDispatcher {
   }
 
   private variant(): MapVariant {
-    return (this.bindings.getVariant() || 'full') as MapVariant;
+    return (this.bindings.getVariant() || 'nuclear') as MapVariant;
   }
 }

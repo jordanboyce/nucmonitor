@@ -12,7 +12,6 @@
 //   3. get_dashboard_context()    — reads bounded visible dashboard state.
 //   4. list_map_layers()          — pages the canonical map-layer catalog.
 //   5. list_dashboard_panels()    — pages the canonical panel catalog.
-//   6. switch_monitor()           — switches World/Tech/Finance/Commodity/Energy/Good News.
 //   7. open_settings()            — opens the settings overlay.
 //   8. open_alerts()              — opens the alerts/notifications tab.
 //   9. open_dashboard_panel()     — opens an already-live panel.
@@ -58,7 +57,7 @@ import {
   WEBMCP_TOOL_BUDGETS,
   type WebMcpSpaToolName,
 } from '../config/webmcp';
-import { SITE_VARIANTS, isSiteVariant, type SiteVariant } from '../config/variant';
+import { SITE_VARIANTS } from '../config/variant';
 import {
   DASHBOARD_PANEL_CATALOG_CATEGORY_KEYS,
   DASHBOARD_PANEL_CATALOG_DEFAULT_LIMIT,
@@ -141,10 +140,6 @@ export interface WebMcpAppBindings {
     query: DashboardPanelCatalogQuery,
     options?: WebMcpExecutionOptions,
   ): DashboardPanelCatalogPage | Promise<DashboardPanelCatalogPage>;
-  switchMonitor(
-    monitor: SiteVariant,
-    options?: WebMcpExecutionOptions,
-  ): WebMcpNavigationResult | Promise<WebMcpNavigationResult>;
   openSettings(
     options?: WebMcpExecutionOptions,
   ): WebMcpNavigationResult | Promise<WebMcpNavigationResult>;
@@ -340,10 +335,8 @@ export interface PanelTabSelectionResult {
   message: string;
 }
 
-export const WEBMCP_MONITOR_KEYS = SITE_VARIANTS;
 
-export type WebMcpMonitorKey = SiteVariant;
-export type WebMcpNavDestination = WebMcpMonitorKey | 'settings' | 'alerts' | 'mission_picker';
+export type WebMcpNavDestination = 'settings' | 'alerts' | 'mission_picker';
 export type WebMcpMonitorNavigation = 'none' | 'reload' | 'assign';
 
 export interface WebMcpNavigationResult {
@@ -533,7 +526,6 @@ export const WEBMCP_TOOL_CANCELLATION_POLICY: Readonly<
   [WEBMCP_SPA_TOOL.searchDashboard]: 'read-only',
   [WEBMCP_SPA_TOOL.getPanelLayout]: 'read-only',
   [WEBMCP_SPA_TOOL.openSearch]: 'view-state',
-  [WEBMCP_SPA_TOOL.switchMonitor]: 'cancellation-required',
   [WEBMCP_SPA_TOOL.openSettings]: 'view-state',
   [WEBMCP_SPA_TOOL.openAlerts]: 'view-state',
   [WEBMCP_SPA_TOOL.openSignIn]: 'view-state',
@@ -583,11 +575,7 @@ const SEARCH_RESULT_TYPE_BUCKETS = new Set([
   'command',
   'country',
   'news',
-  'hotspot',
   'market',
-  'prediction',
-  'conflict',
-  'base',
   'pipeline',
   'cable',
   'datacenter',
@@ -595,24 +583,12 @@ const SEARCH_RESULT_TYPE_BUCKETS = new Set([
   'outage',
   'nuclear',
   'irradiator',
-  'techcompany',
-  'ailab',
-  'startup',
-  'techevent',
-  'techhq',
-  'accelerator',
-  'exchange',
-  'financialcenter',
-  'centralbank',
-  'commodityhub',
-  'flight',
 ]);
 const TOOL_FAILURE_MESSAGES: Record<WebMcpSpaToolName, string> = {
   openSearch: 'World Monitor could not open search.',
   get_dashboard_context: 'World Monitor could not read dashboard context.',
   list_map_layers: 'World Monitor could not list map layers.',
   list_dashboard_panels: 'World Monitor could not list dashboard panels.',
-  switch_monitor: 'World Monitor could not switch monitors.',
   open_settings: 'World Monitor could not open settings.',
   open_alerts: 'World Monitor could not open alerts.',
   open_dashboard_panel: 'World Monitor could not open that dashboard panel.',
@@ -1719,33 +1695,6 @@ function hasOnlyOwnKeys(
   return Object.keys(value).every((key) => allowed.has(key));
 }
 
-type SwitchMonitorInput =
-  | { ok: true; monitor: SiteVariant }
-  | {
-    ok: false;
-    reason: 'malformed_arguments' | 'unknown_monitor';
-    message: string;
-  };
-
-function validateSwitchMonitorInput(args: Record<string, unknown>): SwitchMonitorInput {
-  if (!hasOnlyOwnKeys(args, ['monitor'])) {
-    return {
-      ok: false,
-      reason: 'malformed_arguments',
-      message: 'switch_monitor accepts only a monitor key.',
-    };
-  }
-  const monitor = typeof args.monitor === 'string' ? args.monitor : '';
-  if (!isSiteVariant(monitor)) {
-    return {
-      ok: false,
-      reason: 'unknown_monitor',
-      message: 'Unknown monitor.',
-    };
-  }
-  return { ok: true, monitor };
-}
-
 async function applyDashboardAction(
   action: unknown,
   app: WebMcpAppBindings,
@@ -1952,7 +1901,7 @@ export function buildWebMcpTools(
           },
           category: {
             type: 'string',
-            description: 'Settings category key, such as core or marketsFinance.',
+            description: 'Settings category key, such as core or nuclearHub.',
             enum: [...DASHBOARD_PANEL_CATALOG_CATEGORY_KEYS],
           },
           enabled: {
@@ -2003,44 +1952,6 @@ export function buildWebMcpTools(
             resultCount: result.panels.length,
             hasMore: result.hasMore === true,
           };
-        },
-      }),
-    },
-    {
-      name: WEBMCP_SPA_TOOL.switchMonitor,
-      title: 'Switch Monitor',
-      description:
-        'Switch the visible dashboard to World (full), Tech (tech), Finance (finance), Commodity (commodity), Energy (energy), or Good News (happy) through the header variant switcher. Use those stable keys, not display labels. Returns the selected destination and effective dashboard state.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          monitor: {
-            type: 'string',
-            description: 'Stable monitor key: full, tech, finance, commodity, energy, or happy.',
-            enum: [...SITE_VARIANTS],
-          },
-        },
-        required: ['monitor'],
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: false },
-      execute: withBindings(WEBMCP_SPA_TOOL.switchMonitor, async (args, extra) => {
-        const input = validateSwitchMonitorInput(args);
-        if (!input.ok) {
-          throw new SafeWebMcpError('switch_monitor input preflight did not run.');
-        }
-        return boundDashboardNavigationResult(await app.switchMonitor(input.monitor, extra));
-      }, trackEvent, {
-        preflight: async (args, extra) => {
-          const input = validateSwitchMonitorInput(args);
-          if (input.ok) return undefined;
-          return boundDashboardNavigationResult({
-            ok: false,
-            status: 'invalid',
-            reason: input.reason,
-            message: input.message,
-            context: await currentNavigationContext(app, extra),
-          });
         },
       }),
     },

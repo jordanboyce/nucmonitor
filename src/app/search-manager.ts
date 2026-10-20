@@ -22,7 +22,7 @@ import {
   isLayerExecutable,
   isLayerEntitled,
 } from '@/config/map-layer-definitions';
-import type { MapVariant, RendererKind } from '@/config/map-layer-definitions';
+import type { RendererKind } from '@/config/map-layer-definitions';
 import { LAYER_PRESETS, LAYER_KEY_MAP } from '@/config/commands';
 import { getCountryBbox } from '@/services/country-geometry';
 import { UNDERSEA_CABLES, NUCLEAR_FACILITIES } from '@/config/geo-map';
@@ -196,7 +196,7 @@ export class SearchManager implements AppModule {
     this.ctx.searchModal.setLayerExecutableFn((layerKey) => {
       const key = (LAYER_KEY_MAP[layerKey] || layerKey) as keyof MapLayers;
       if (!(key in this.ctx.mapLayers)) return false;
-      const variantAllowed = getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant);
+      const variantAllowed = getAllowedLayerKeys(SITE_VARIANT);
       if (!variantAllowed.has(key)) return false;
       const kind = this.ctx.map?.isGlobeMode?.()
         ? 'globe'
@@ -364,7 +364,7 @@ export class SearchManager implements AppModule {
   private isLayerCommandExecutable(layerKey: string): boolean {
     const key = (LAYER_KEY_MAP[layerKey] || layerKey) as keyof MapLayers;
     if (!(key in this.ctx.mapLayers)) return false;
-    const allowed = getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant);
+    const allowed = getAllowedLayerKeys(SITE_VARIANT);
     if (!allowed.has(key)) return false;
     const renderer: RendererKind = this.ctx.map?.isGlobeMode?.()
       ? 'globe'
@@ -417,11 +417,11 @@ export class SearchManager implements AppModule {
   private isSearchResultVisible(result: SearchResult): boolean {
     const requiredLayer = this.resultRequiredLayer(result);
     if (!requiredLayer) return true;
-    return getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant).has(requiredLayer);
+    return getAllowedLayerKeys(SITE_VARIANT).has(requiredLayer);
   }
 
   private isEntityLayerExecutable(layer: keyof MapLayers): boolean {
-    const allowed = getAllowedLayerKeys((SITE_VARIANT || 'full') as MapVariant);
+    const allowed = getAllowedLayerKeys(SITE_VARIANT);
     if (!allowed.has(layer)) return false;
     const renderer: RendererKind = this.ctx.map?.isGlobeMode?.()
       ? 'globe'

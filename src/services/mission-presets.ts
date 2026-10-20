@@ -82,57 +82,6 @@ export const MISSION_PRESETS: readonly MissionPreset[] = [
     ],
     variants: ['nuclear'],
   },
-  {
-    id: 'osint-newsroom',
-    label: 'News Seeker',
-    shortLabel: 'News',
-    description: 'Breaking news, regional headlines, and webcams.',
-    icon: 'N',
-    view: 'global',
-    zoom: 2.1,
-    timeRange: '24h',
-    panels: [
-      'map',
-      'live-news',
-      'politics',
-      'middleeast',
-      'europe',
-      'africa',
-      'latam',
-      'asia',
-      'us',
-      'live-webcams',
-    ],
-    layers: [
-      'outages',
-      'webcams',
-      'weather',
-      'natural',
-      'fires',
-    ],
-  },
-  {
-    id: 'macro-market-watch',
-    label: 'Stock Geek',
-    shortLabel: 'Stocks',
-    description: 'Stocks, commodities, the energy complex, and event context.',
-    icon: '$',
-    view: 'america',
-    zoom: 3,
-    timeRange: '7d',
-    panels: [
-      'map',
-      'markets',
-      'commodities',
-      'energy-complex',
-    ],
-    layers: [
-      'pipelines',
-      'outages',
-      'weather',
-      'natural',
-    ],
-  },
 ];
 
 const DYNAMIC_PANEL_PREFIXES = ['cw-', 'mcp-'];
@@ -144,7 +93,7 @@ const isDynamicPanel = (key: string): boolean =>
   key === 'runtime-config' || DYNAMIC_PANEL_PREFIXES.some((prefix) => key.startsWith(prefix));
 
 const getVariantDefaultPanels = (variant: string): string[] =>
-  VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.full ?? [];
+  VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.nuclear ?? [];
 
 const hasAnyActiveLayer = (layers: MapLayers): boolean =>
   Object.values(layers).some(Boolean);
@@ -329,7 +278,7 @@ export function resetMissionPresetState(
   defaultLayers: MapLayers = DEFAULT_MAP_LAYERS,
   variant: string = SITE_VARIANT,
 ): ResetMissionPresetState {
-  const variantPanels = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.full ?? [];
+  const variantPanels = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.nuclear ?? [];
   const variantPanelSet = new Set(variantPanels);
   const nextPanelSettings: Record<string, PanelConfig> = {};
   const allKeys = new Set([

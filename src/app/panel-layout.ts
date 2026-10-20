@@ -177,27 +177,6 @@ const WEB_CLERK_PRO_ONLY_PANELS = new Set<string>([]);
 const LATE_REGISTERED_PANEL_KEYS = new Set(['live-news']);
 const CW_PRO_GATE_TAB_RECOVERY_KEY = 'worldmonitor-cw-pro-gate-tab-recovery-v1';
 
-const DASHBOARD_REFERENCE_LINKS = [
-  { label: 'Countries', path: '/countries/' },
-  { label: 'Chokepoints', path: '/chokepoints/' },
-  { label: 'Crises', path: '/crises/' },
-  { label: 'Tools', path: '/tools/' },
-  { label: 'Accuracy', path: '/accuracy/' },
-] as const;
-
-export const VARIANT_SWITCHER_DASHBOARD_URLS = {
-  full: 'https://www.worldmonitor.app/dashboard',
-  nuclear: 'https://nuclear.worldmonitor.app/dashboard',
-} as const;
-
-export function variantSwitcherHref(
-  targetVariant: keyof typeof VARIANT_SWITCHER_DASHBOARD_URLS,
-  currentVariant: string,
-  isLocal: boolean,
-): string {
-  return isLocal || currentVariant === targetVariant ? '#' : VARIANT_SWITCHER_DASHBOARD_URLS[targetVariant];
-}
-
 // TEMPORARY MIRROR of each panel constructor's footprint (`defaultRowSpan` /
 // `className: 'panel-wide'`, declared in src/components/*Panel.ts). A deferred
 // shell never instantiates its component, so it cannot read that footprint
@@ -845,14 +824,6 @@ export class PanelLayoutManager implements AppModule {
       }
     })();
     const bootShellFootprint = import.meta.env.DEV ? captureBootShellFootprint(this.ctx.container) : null;
-    const referenceOrigin = this.ctx.isDesktopApp || window.location.hostname.endsWith('.worldmonitor.app')
-      ? 'https://www.worldmonitor.app'
-      : '';
-    const referenceLinksHtml = DASHBOARD_REFERENCE_LINKS.map(({ label, path }) => {
-      const href = `${referenceOrigin}${path}`;
-      return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
-    }).join('');
-
     markLcpDebug('wm:layout:render-start');
     document.documentElement.classList.add('wm-layout-hydrated');
     setTrustedHtml(this.ctx.container, trustedHtml(`
@@ -861,31 +832,6 @@ export class PanelLayoutManager implements AppModule {
       <div id="proBannerSlot" class="pro-banner-slot" aria-live="polite"></div>
       <div class="header" role="banner">
         <div class="header-left">
-          <div class="variant-switcher">${(() => {
-        const local = this.ctx.isDesktopApp || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        const inIframe = window.self !== window.top;
-        const vHref = (v: keyof typeof VARIANT_SWITCHER_DASHBOARD_URLS) =>
-          variantSwitcherHref(v, SITE_VARIANT, local);
-        const vTarget = (v: string) => !local && SITE_VARIANT !== v && inIframe ? 'target="_blank" rel="noopener"' : '';
-        return `
-            <a href="${vHref('full')}"
-               class="variant-option ${SITE_VARIANT === 'full' ? 'active' : ''}"
-               data-variant="full"
-               ${vTarget('full')}
-               title="${t('header.world')}${SITE_VARIANT === 'full' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">🌍</span>
-              <span class="variant-label">${t('header.world')}</span>
-            </a>
-            <span class="variant-divider"></span>
-            <a href="${vHref('nuclear')}"
-               class="variant-option ${SITE_VARIANT === 'nuclear' ? 'active' : ''}"
-               data-variant="nuclear"
-               ${vTarget('nuclear')}
-               title="${t('header.nuclear')}${SITE_VARIANT === 'nuclear' ? ` ${t('common.currentVariant')}` : ''}">
-              <span class="variant-icon">☢️</span>
-              <span class="variant-label">${t('header.nuclear')}</span>
-            </a>`;
-      })()}</div>
           <span class="logo">MONITOR</span><span class="logo-mobile">World Monitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
           <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="credit-link">
             <svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
@@ -942,19 +888,6 @@ export class PanelLayoutManager implements AppModule {
           <button class="mobile-auth-fallback" id="mobileAuthFallback" type="button">Sign In</button>
         </div>
         <div class="mobile-menu-divider"></div>
-        ${(() => {
-        const variants = [
-          { key: 'full', icon: '🌍', label: t('header.world') },
-          { key: 'nuclear', icon: '☢️', label: t('header.nuclear') },
-        ];
-        return variants.map(v =>
-          `<button class="mobile-menu-item mobile-menu-variant ${v.key === SITE_VARIANT ? 'active' : ''}" data-variant="${v.key}">
-            <span class="mobile-menu-item-icon">${v.icon}</span>
-            <span class="mobile-menu-item-label">${v.label}</span>
-            ${v.key === SITE_VARIANT ? '<span class="mobile-menu-check">✓</span>' : ''}
-          </button>`
-        ).join('');
-      })()}
         <div class="mobile-menu-divider"></div>
         <button class="mobile-menu-item" id="mobileMenuRegion">
           <span class="mobile-menu-item-icon">🌐</span>
@@ -981,8 +914,7 @@ export class PanelLayoutManager implements AppModule {
         </a>
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-footer-links">
-          ${referenceLinksHtml}
-          <a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>
+          <a href="/pro#pricing" target="_blank" rel="noopener">Pricing</a>
           <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
           <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
           <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
@@ -1068,8 +1000,7 @@ export class PanelLayoutManager implements AppModule {
           </div>
         </div>
         <nav aria-label="World Monitor references">
-          ${referenceLinksHtml}
-          <a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>
+          <a href="/pro#pricing" target="_blank" rel="noopener">Pricing</a>
           <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
           <a href="https://www.worldmonitor.app/docs/documentation" target="_blank" rel="noopener">Docs</a>
           <a href="https://status.worldmonitor.app/" target="_blank" rel="noopener">Status</a>
@@ -2015,9 +1946,7 @@ export class PanelLayoutManager implements AppModule {
     return hasPanelSettingEntry(this.ctx.panelSettings, key);
   }
 
-  private static readonly NEWS_PANEL_TOOLTIPS: Record<string, string> = {
-    centralbanks: t('components.centralBankWatch.infoTooltip'),
-  };
+  private static readonly NEWS_PANEL_TOOLTIPS: Record<string, string> = {};
 
   private createNewsPanel(key: string, labelKey: string): void {
     this.createNewsPanelWithLabel(key, t(labelKey), PanelLayoutManager.NEWS_PANEL_TOOLTIPS[key], key);
@@ -2382,10 +2311,6 @@ export class PanelLayoutManager implements AppModule {
     // Failed-fetch reload guard: src/main.ts:285-290 (installChunkReloadGuard).
     const mapModulePromise = import('@/components/MapContainer');
 
-    this.createNewsPanel('politics', 'panels.politics');
-
-    this.lazyDefaultPanel('markets', () => import('@/components/MarketPanel'), 'MarketPanel');
-
     this.lazyImportedPanel('monitors', () => import('@/components/MonitorPanel'), 'MonitorPanel', (MonitorPanel) => {
       const monitorPanel = new MonitorPanel(this.ctx.monitors);
       monitorPanel.onChanged((monitors) => {
@@ -2397,7 +2322,6 @@ export class PanelLayoutManager implements AppModule {
     });
 
     this.lazyDefaultPanel('commodities', () => import('@/components/MarketPanel'), 'CommoditiesPanel');
-    this.lazyDefaultPanel('energy-complex', () => import('@/components/EnergyComplexPanel'), 'EnergyComplexPanel');
     // NucMonitor — nuclear hub panels. Reactor status self-fetches (primed and
     // scheduled in App.ts); hazards receives feeds from data-loader; the
     // directory is static registry data rendered at construction.
@@ -2423,24 +2347,14 @@ export class PanelLayoutManager implements AppModule {
       }),
     );
 
-    this.createNewsPanel('gov', 'panels.gov');
-
-    this.createNewsPanel('middleeast', 'panels.middleeast');
-    this.createNewsPanel('thinktanks', 'panels.thinktanks');
-    this.createNewsPanel('science', 'panels.science');
-
-    this.createNewsPanel('africa', 'panels.africa');
-    this.createNewsPanel('latam', 'panels.latam');
-    this.createNewsPanel('asia', 'panels.asia');
     this.createNewsPanel('energy', 'panels.energy');
     this.createNewsPanel('nuclear-regulatory', 'panels.nuclearRegulatory');
     this.createNewsPanel('nuclear-industry', 'panels.nuclearIndustry');
     this.createNewsPanel('nuclear-policy', 'panels.nuclearPolicy');
 
-    // Iterate CANONICAL_FEEDS (union of all variants), not just the active
-    // variant's FEEDS preset — so a news panel the user customized in from
-    // another variant (e.g. Finance `forex` added to a `full` session) still
-    // gets a NewsPanel created. The panelSettings gate inside
+    // Iterate CANONICAL_FEEDS, not just the FEEDS preset — so an on-demand
+    // news panel the user enabled still gets a NewsPanel created. The
+    // panelSettings gate inside
     // newsPanelKeyForCategory ensures only panels the user actually has an entry
     // for are instantiated.
     //
@@ -2468,8 +2382,6 @@ export class PanelLayoutManager implements AppModule {
 
     this.lazyDefaultPanel('satellite-fires', () => import('@/components/SatelliteFiresPanel'), 'SatelliteFiresPanel');
 
-    this.lazyDefaultPanel('disease-outbreaks', () => import('@/components/DiseaseOutbreaksPanel'), 'DiseaseOutbreaksPanel');
-
     this.lazyImportedPanel('climate', () => import('@/components/ClimateAnomalyPanel'), 'ClimateAnomalyPanel', (ClimateAnomalyPanel) => {
       const p = new ClimateAnomalyPanel();
       p.setZoneClickHandler((lat: number, lon: number) => { this.ctx.map?.setCenter(lat, lon, 4); });
@@ -2494,14 +2406,11 @@ export class PanelLayoutManager implements AppModule {
       return new LiveNewsPanel();
     });
 
-    this.lazyDefaultPanel('live-webcams', () => import('@/components/LiveWebcamsPanel'), 'LiveWebcamsPanel');
-    this.lazyDefaultPanel('windy-webcams', () => import('@/components/PinnedWebcamsPanel'), 'PinnedWebcamsPanel');
-
     if (this.ctx.isDesktopApp) {
       this.lazyImportedPanel('runtime-config', () => import('@/components/RuntimeConfigPanel'), 'RuntimeConfigPanel', (RuntimeConfigPanel) => new RuntimeConfigPanel({ mode: 'alert' }));
     }
 
-    const variantOrder = (VARIANT_DEFAULTS[SITE_VARIANT] ?? VARIANT_DEFAULTS['full'] ?? []).filter(k => k !== 'map');
+    const variantOrder = (VARIANT_DEFAULTS[SITE_VARIANT] ?? []).filter(k => k !== 'map');
     const activePanelSet = new Set(Object.keys(this.ctx.panelSettings));
     const crossVariantKeys = Object.keys(this.ctx.panelSettings).filter(k => !variantOrder.includes(k) && k !== 'map');
     const defaultOrder = [...variantOrder.filter(k => activePanelSet.has(k)), ...crossVariantKeys];

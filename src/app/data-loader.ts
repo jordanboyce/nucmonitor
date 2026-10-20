@@ -81,8 +81,6 @@ import type { ListFeedDigestResponse } from '@/generated/client/worldmonitor/new
 import type { ListMarketQuotesResponse, ListCommodityQuotesResponse } from '@/generated/client/worldmonitor/market/v1/service_client';
 import type { CommoditiesPanel, MarketPanel } from '@/components/MarketPanel';
 import type { ChinaCorporateDisclosureSnapshot } from '@/components/market-disclosures';
-import type { EnergyComplexPanel } from '@/components/EnergyComplexPanel';
-import type { DiseaseOutbreaksPanel } from '@/components/DiseaseOutbreaksPanel';
 import type { SatelliteFiresPanel } from '@/components/SatelliteFiresPanel';
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import type { NewsItem as ProtoNewsItem } from '@/generated/client/worldmonitor/news/v1/service_client';
@@ -668,11 +666,8 @@ export class DataLoaderManager implements AppModule {
       tasks.push({ name: 'news', task: () => runGuarded('news', () => this.loadNews()) });
     }
 
-    if (shouldLoadAny(['markets', 'commodities', 'energy-complex'])) {
+    if (shouldLoadAny(['markets', 'commodities'])) {
       tasks.push({ name: 'markets', task: () => runGuarded('markets', () => this.loadMarkets()) });
-    }
-    if (shouldLoad('energy-complex')) {
-      tasks.push({ name: 'oil', task: () => runGuarded('oil', () => this.loadOilAnalytics()) });
     }
 
     // Intelligence signals: run for any variant that shows these panels
@@ -680,7 +675,7 @@ export class DataLoaderManager implements AppModule {
       tasks.push({ name: 'intelligence', task: () => runGuarded('intelligence', () => this.loadIntelligenceSignals()) });
     }
 
-    if (SITE_VARIANT === 'full' && (shouldLoad('satellite-fires') || this.ctx.mapLayers.natural)) {
+    if (shouldLoad('satellite-fires') || this.ctx.mapLayers.fires) {
       // Lock under the map-layer key ('fires') so a hydration load and a
       // loadDataForLayer('fires') toggle one-flight each other instead of
       // double-fetching (loadFirmsData has no internal guard). `name` stays
@@ -1503,7 +1498,6 @@ export class DataLoaderManager implements AppModule {
         this.ctx.statusPanel?.updateApi('Finnhub', { status: 'error' });
         (this.ctx.panels['markets'] as MarketPanel | undefined)?.showRetrying(t('common.failedMarketData'));
         (this.ctx.panels['commodities'] as CommoditiesPanel | undefined)?.showRetrying(t('common.failedCommodities'));
-        (this.ctx.panels['energy-complex'] as EnergyComplexPanel | undefined)?.showRetrying(t('common.failedCommodities'));
       }
       return;
     }
@@ -1584,20 +1578,17 @@ export class DataLoaderManager implements AppModule {
       }
 
       const commoditiesPanel = this.ctx.panels['commodities'] as CommoditiesPanel | undefined;
-      const energyPanel = this.ctx.panels['energy-complex'] as EnergyComplexPanel | undefined;
       const mapCommodity = (c: MarketData) => ({ symbol: c.symbol, display: c.display, price: c.price, change: c.change, sparkline: c.sparkline });
-      const energySymbols = new Set(['CL=F', 'BZ=F', 'NG=F']);
-      const filterCommodityTape = (data: MarketData[]) => data.filter((item) => item.symbol !== '^VIX' && !energySymbols.has(item.symbol));
-      const filterEnergyTape = (data: MarketData[]) => data.filter((item) => energySymbols.has(item.symbol));
+      // The nuclear hub's "Energy Commodities" panel carries the whole tape,
+      // energy contracts included; only the VIX row is not a commodity.
+      const filterCommodityTape = (data: MarketData[]) => data.filter((item) => item.symbol !== '^VIX');
 
-      if (commoditiesPanel || energyPanel) {
+      if (commoditiesPanel) {
         // Hydrate commodities from bootstrap (same pattern as sectors/markets)
         const hydratedCommodities = getHydratedData('commodityQuotes') as ListCommodityQuotesResponse | undefined;
-        const skipFetch = stockAvailability.skipCommodityFetch;
-        let metalsLoaded = skipFetch;
-        let energyLoaded = skipFetch;
+        let loaded = stockAvailability.skipCommodityFetch;
 
-        if (!(metalsLoaded && energyLoaded) && hydratedCommodities?.quotes?.length) {
+        if (!loaded && hydratedCommodities?.quotes?.length) {
           // Warm the circuit-breaker cache so SWR serves stale data if the
           // first scheduled live call fails (bootstrap hydration bypasses the RPC).
           warmCommodityCache(hydratedCommodities);
@@ -1611,39 +1602,25 @@ export class DataLoaderManager implements AppModule {
             sparkline: q.sparkline?.length > 0 ? q.sparkline : undefined,
           }));
           const commodityMapped = filterCommodityTape(data).map(mapCommodity);
-          const energyMapped = filterEnergyTape(data);
-          if (commoditiesPanel && commodityMapped.some(d => d.price !== null)) {
+          if (commodityMapped.some(d => d.price !== null)) {
             commoditiesPanel.renderCommodities(commodityMapped);
-            metalsLoaded = true;
-          }
-          if (energyMapped.some(d => d.price !== null)) {
-            energyPanel?.updateTape(energyMapped);
-            energyLoaded = true;
+            loaded = true;
           }
         }
 
-        for (let attempt = 0; attempt < 1 && (!metalsLoaded || !energyLoaded); attempt++) {
+        if (!loaded) {
           const commoditiesResult = await fetchCommodityQuotes(COMMODITIES, {
             onBatch: (partial) => {
-              const commodityMapped = filterCommodityTape(partial).map(mapCommodity);
-              const energyMapped = filterEnergyTape(partial);
-              if (commoditiesPanel) commoditiesPanel.renderCommodities(commodityMapped);
-              energyPanel?.updateTape(energyMapped);
+              commoditiesPanel.renderCommodities(filterCommodityTape(partial).map(mapCommodity));
             },
           });
           const commodityMapped = filterCommodityTape(commoditiesResult.data).map(mapCommodity);
-          const energyMapped = filterEnergyTape(commoditiesResult.data);
-          if (commoditiesPanel && commodityMapped.some(d => d.price !== null)) {
+          if (commodityMapped.some(d => d.price !== null)) {
             commoditiesPanel.renderCommodities(commodityMapped);
-            metalsLoaded = true;
-          }
-          if (energyMapped.some(d => d.price !== null)) {
-            energyPanel?.updateTape(energyMapped);
-            energyLoaded = true;
+            loaded = true;
           }
         }
-        if (!metalsLoaded) commoditiesPanel?.renderCommodities([]);
-        if (!energyLoaded) energyPanel?.updateTape([]);
+        if (!loaded) commoditiesPanel.renderCommodities([]);
       }
 
       // Physical premiums + divergence index are Pro (#6436/#6448). Skipping
@@ -1927,70 +1904,10 @@ export class DataLoaderManager implements AppModule {
     }
   }
 
-  async loadOilAnalytics(): Promise<void> {
-    const energyPanel = this.ctx.panels['energy-complex'] as EnergyComplexPanel | undefined;
-    try {
-      const {
-        fetchOilAnalytics, fetchCrudeInventoriesRpc, fetchNatGasStorageRpc,
-        getEuGasStorageData, getOilStocksAnalysisData, fetchLngVulnerability,
-      } = await import('@/services/economic');
-      const [data, crudeResp, natGasResp, euGasResp, oilStocksResp] = await Promise.allSettled([
-        fetchOilAnalytics(),
-        fetchCrudeInventoriesRpc(),
-        fetchNatGasStorageRpc(),
-        getEuGasStorageData(),
-        getOilStocksAnalysisData(),
-      ]);
-      if (data.status === 'fulfilled') {
-        energyPanel?.updateAnalytics(data.value);
-        const hasData = !!(data.value.wtiPrice || data.value.brentPrice || data.value.usProduction || data.value.usInventory);
-        this.ctx.statusPanel?.updateApi('EIA', { status: hasData ? 'ok' : 'error' });
-        if (hasData) {
-          const metricCount = [data.value.wtiPrice, data.value.brentPrice, data.value.usProduction, data.value.usInventory].filter(Boolean).length;
-          dataFreshness.recordUpdate('oil', metricCount || 1);
-        } else {
-          dataFreshness.recordError('oil', 'Oil analytics returned no values');
-        }
-      } else {
-        console.error('[App] Oil analytics failed:', data.reason);
-        this.ctx.statusPanel?.updateApi('EIA', { status: 'error' });
-        dataFreshness.recordError('oil', String(data.reason));
-      }
-      if (crudeResp.status === 'fulfilled' && crudeResp.value.weeks.length > 0) {
-        energyPanel?.updateCrudeInventories(crudeResp.value.weeks);
-      } else if (crudeResp.status === 'rejected') {
-        console.warn('[App] Crude inventories fetch failed:', crudeResp.reason);
-      }
-      if (natGasResp.status === 'fulfilled' && natGasResp.value.weeks.length > 0) {
-        energyPanel?.updateNatGas(natGasResp.value.weeks);
-      }
-      if (euGasResp.status === 'fulfilled' && !euGasResp.value.unavailable) {
-        energyPanel?.updateEuGasStorage(euGasResp.value);
-      }
-      if (oilStocksResp.status === 'fulfilled' && !oilStocksResp.value.unavailable) {
-        energyPanel?.setOilStocksAnalysis(oilStocksResp.value);
-      }
-      // Fire-and-forget: LNG vulnerability is hydration-only today (no network fallback).
-      // Decoupled so a future fetch path does not delay core energy panel rendering.
-      fetchLngVulnerability().then(lngData => {
-        energyPanel?.updateLngVulnerability(lngData);
-      }).catch(() => {
-        energyPanel?.updateLngVulnerability(null);
-      });
-    } catch (e) {
-      console.error('[App] Oil analytics failed:', e);
-      this.callPanel('energy-complex', 'showError', undefined, () => void this.loadOilAnalytics());
-      this.ctx.statusPanel?.updateApi('EIA', { status: 'error' });
-      dataFreshness.recordError('oil', String(e));
-    }
-  }
-
   async loadDiseaseOutbreaks(): Promise<void> {
     try {
       const data = await fetchDiseaseOutbreaks();
       if (Array.isArray(data.outbreaks) && Number.isFinite(data.fetchedAt) && data.fetchedAt > 0) {
-        const panel = this.ctx.panels['disease-outbreaks'] as DiseaseOutbreaksPanel | undefined;
-        panel?.updateData(data.outbreaks);
         this.ctx.map?.setDiseaseOutbreaks(data.outbreaks);
         this.ctx.map?.setLayerReady('diseaseOutbreaks', true);
       }

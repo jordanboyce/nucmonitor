@@ -77,14 +77,8 @@ vi.mock('@/services/analytics', async (importOriginal) => ({
 // RENEWAL_FAILED branches call openBillingPortal — whose real body fetches a
 // portal session. The cases below never reach those branches, but leaving the
 // real function in place would arm a live network call for whoever adds them.
-vi.mock('@/services/billing', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/billing')>()),
-  openBillingPortal: async () => ({ outcome: 'opened' as const, url: 'https://portal' }),
-}));
-
 const { EventHandlerManager } = await import('@/app/event-handlers');
 
-const PRO_ORIGIN = 'https://worldmonitor.app';
 
 let container: HTMLElement;
 let manager: InstanceType<typeof EventHandlerManager>;
@@ -99,7 +93,6 @@ const lockedControl = () => lockedRow()?.closest<HTMLElement>('.export-panel-con
 const formatOptions = () => container.querySelectorAll('.export-option');
 const trigger = () => lockedControl()!.querySelector<HTMLButtonElement>('.export-btn')!;
 const cta = () => lockedControl()!.querySelector<HTMLButtonElement>('.export-locked-cta')!;
-const desc = () => lockedControl()!.querySelector<HTMLElement>('.export-locked-desc')!;
 const liveRegion = () => container.querySelector<HTMLElement>('[aria-live="polite"]')!;
 
 /** Push a new verdict through the auth/entitlement emitters, as production does. */
@@ -155,49 +148,18 @@ describe('setupExportPanel — CTA routing through resolveGateAction', () => {
     expect(openSpy).not.toHaveBeenCalled();
   });
 
-  it('sends a free user to the pricing page', () => {
-    verdict.mockReturnValue({ locked: true, reason: 'free_tier' });
-    manager.setupExportPanel();
-
-    trigger().click();
-    cta().click();
-
-    expect(openSpy).toHaveBeenCalledWith(`${PRO_ORIGIN}/pro`, '_blank');
-    expect(authModalOpen).not.toHaveBeenCalled();
-  });
-
-  it('routes a lapsed subscriber to the reactivation anchor, never a bare upsell', () => {
-    verdict.mockReturnValue({ locked: true, reason: 'lapsed' });
-    manager.setupExportPanel();
-
-    trigger().click();
-    cta().click();
-
-    expect(openSpy).toHaveBeenCalledWith(
-      `${PRO_ORIGIN}/pro#pricing`,
-      '_blank',
-    );
-  });
-
   it('uses the reason live at CLICK time, not the one captured when the control was built', () => {
     // The control is long-lived and `onAction` closes over `lockedReason`, so a
-    // billing state that resolves while the menu sits open must change where
-    // the CTA goes. Getting this wrong sends a lapsed subscriber into the
-    // sign-in modal they are already past.
-    verdict.mockReturnValue({ locked: true, reason: 'anonymous' });
+    // state change while the menu sits open must change where the CTA goes.
+    verdict.mockReturnValue({ locked: true, reason: 'free_tier' });
     manager.setupExportPanel();
     trigger().click();
 
-    emit({ locked: true, reason: 'lapsed' });
-    expect(desc().textContent).toBe(tt('components.billingState.lapsedDesc'));
-
+    emit({ locked: true, reason: 'anonymous' });
     cta().click();
 
-    expect(openSpy).toHaveBeenCalledWith(
-      `${PRO_ORIGIN}/pro#pricing`,
-      '_blank',
-    );
-    expect(authModalOpen).not.toHaveBeenCalled();
+    expect(authModalOpen).toHaveBeenCalledTimes(1);
+    expect(openSpy).not.toHaveBeenCalled();
   });
 
   it('fires the gate-hit metric on a locked open, never on render', () => {

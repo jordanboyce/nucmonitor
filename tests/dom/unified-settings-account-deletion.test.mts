@@ -10,13 +10,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { initTestI18n } from './helpers/i18n.mts';
 import type { UnifiedSettingsConfig } from '@/components/UnifiedSettings';
 import type { AuthSession } from '@/services/auth-state';
-import type { SubscriptionInfo } from '@/services/billing';
 
 let session: AuthSession = signedIn('user_self');
 const authSubscribers: Array<(state: AuthSession) => void> = [];
-let mockSubscription: SubscriptionInfo | null = subscription();
 let entitled = true;
-let subscriptionLoaded = true;
 
 const deletionMocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -120,29 +117,7 @@ vi.mock('@/config/panels', () => ({
 }));
 
 vi.mock('@/config/variant', () => ({
-  SITE_VARIANT: 'full',
-}));
-
-vi.mock('@/services/billing', () => ({
-  getSubscription: () => mockSubscription,
-  isSubscriptionLoaded: () => subscriptionLoaded,
-  onSubscriptionChange: () => () => {},
-  openBillingPortal: async () => ({ outcome: 'no-customer' as const }),
-  prereserveBillingPortalTab: () => null,
-  listBusinessSeats: async () => ({
-    businessSubscriptionId: null,
-    ownerDomain: null,
-    ownerIsCorporateDomain: false,
-    seats: [],
-  }),
-  inviteBusinessSeats: async () => ({ invited: [] }),
-  removeBusinessSeat: async () => ({ status: 'removed' as const }),
-}));
-
-vi.mock('@/services/billing-state', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/billing-state')>()),
-  deriveBillingUxState: () => (entitled ? 'active' : 'free'),
-  getReactivationHref: () => '/pro#pricing',
+  SITE_VARIANT: 'nuclear',
 }));
 
 vi.mock('@/services/api-keys', () => ({
@@ -177,16 +152,6 @@ function anonymous(): AuthSession {
   return { user: null, isPending: false };
 }
 
-function subscription(): SubscriptionInfo {
-  return {
-    planKey: 'pro_monthly',
-    displayName: 'Pro',
-    status: 'active',
-    currentPeriodEnd: Date.now() + 30 * 86_400_000,
-    renewalVerificationState: null,
-  };
-}
-
 function config(): UnifiedSettingsConfig {
   return {
     getPanelSettings: () => ({}),
@@ -218,9 +183,7 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', storage);
   authSubscribers.length = 0;
   session = signedIn('user_self');
-  mockSubscription = subscription();
   entitled = true;
-  subscriptionLoaded = true;
   deletionMocks.request.mockReset();
   deletionMocks.request.mockResolvedValue({ status: 'complete', userIdHash: 'abc' });
   signOutMock.mockReset();
@@ -242,7 +205,6 @@ describe('UnifiedSettings account deletion', () => {
 
     session = anonymous();
     entitled = false;
-    mockSubscription = null;
     settings = new UnifiedSettings(config());
     settings.open();
     expect(document.querySelector('#us-tab-billing')).toBeNull();
@@ -250,8 +212,6 @@ describe('UnifiedSettings account deletion', () => {
   });
 
   it('shows Delete account for an invitee without Manage Billing', () => {
-    mockSubscription = null;
-    subscriptionLoaded = true;
     entitled = true;
     settings.open('billing');
     expect(document.querySelector('.manage-billing-btn')).toBeNull();

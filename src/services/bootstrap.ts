@@ -1,3 +1,4 @@
+import { bootstrapReadPath, SHARED_READ_CREDENTIALS } from '@/config/access-mode';
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
 import {
@@ -189,8 +190,8 @@ export async function ensureHydrated(key: string): Promise<unknown | undefined> 
   const promise = (async () => {
     try {
       const resp = await fetch(
-        toApiUrl(`/api/bootstrap?keys=${encodeURIComponent(key)}&public=1`),
-        { credentials: 'omit', signal: AbortSignal.timeout(10_000) },
+        toApiUrl(bootstrapReadPath(`keys=${encodeURIComponent(key)}`)),
+        { credentials: SHARED_READ_CREDENTIALS, signal: AbortSignal.timeout(10_000) },
       );
       if (!resp.ok) return undefined;
       const payload = (await resp.json()) as { data?: Record<string, unknown> };
@@ -301,7 +302,7 @@ async function fetchTier(
   shouldCommit: CommitGuard = () => true,
 ): Promise<BootstrapTierHydrationState> {
   const requestStartedAt = performance.now();
-  const requestUrl = toApiUrl(`/api/bootstrap?tier=${tier}&public=1`);
+  const requestUrl = toApiUrl(bootstrapReadPath(`tier=${tier}`));
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     const cached = await readCachedTier(tier, true); // age gate skipped: any snapshot beats blank offline
     if (cached) {
@@ -343,7 +344,8 @@ async function fetchTier(
     // the omit here — or let the wm-session interceptor's `?? 'include'` default
     // apply by taking this call out of isCredentiallessPublicDataRequest's exact
     // shape — and hydration fails as an opaque console CORS error, not a test.
-    const resp = await fetch(requestUrl, { signal, credentials: 'omit' });
+    // Partner deployments read the session-gated tier URL instead (access-mode.ts).
+    const resp = await fetch(requestUrl, { signal, credentials: SHARED_READ_CREDENTIALS });
     if (!resp.ok) {
       failedOutcome = 'http-error';
     } else {

@@ -14,12 +14,10 @@
  * is equally wrong in the other direction: it is true for every Pro subscriber,
  * and export is a Pro Business takeaway.
  *
- * MUST stay a leaf that only imports the zero-import `billing-state` module: it
+ * MUST stay a leaf with no imports: it
  * is unit-tested under `tsx --test` (no jsdom, no Vite globals), and both
  * services and the app layer import it.
  */
-
-import { getBillingGateOverride, type BillingUxState } from '../billing-state';
 
 /** Formats the dashboard can genuinely produce. Keep this list aligned with
  * `src/utils/export.ts`; unknown catalog values must never become UI actions. */
@@ -77,8 +75,6 @@ export interface ExportGateInputs {
   signedIn: boolean;
   /** Loaded entitlement features, or null when no snapshot has arrived. */
   features: ExportGateFeatures | null;
-  /** Billing UX state, used to refine a generic upgrade denial (#4771). */
-  billingState: BillingUxState;
 }
 
 export type ExportGateVerdict =
@@ -121,7 +117,7 @@ export function resolveExportLock(input: ExportGateInputs): ExportGateLockReason
   if (features.dataExport === true) return null;
   if (features.dataExport === undefined && features.tier >= 2) return null;
 
-  return getBillingGateOverride(input.billingState) ?? 'free_tier';
+  return 'free_tier';
 }
 
 /**
@@ -237,7 +233,7 @@ export function resolveTabCap(input: ExportGateInputs, currentTabCount: number):
     input,
     currentTabCount,
     cap,
-    getBillingGateOverride(input.billingState) ?? 'free_tier',
+    'free_tier',
   );
 }
 

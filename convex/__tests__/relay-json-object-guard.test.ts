@@ -13,8 +13,6 @@ const routes = [
   "/relay/followed-countries",
   "/relay/entitlement",
   "/relay/register-referral-code",
-  "/relay/create-checkout",
-  "/relay/customer-portal",
   "/relay/bulk-suppress-emails",
 ];
 

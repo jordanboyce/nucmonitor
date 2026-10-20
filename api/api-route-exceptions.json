@@ -253,34 +253,6 @@
       "reason": "Reads / writes user dashboard preferences. Auth-gated; part of user/v1 service work pending Clerk migration.",
       "owner": "@SebastienMelki",
       "removal_issue": "TBD"
-    },
-    {
-      "path": "api/create-checkout.ts",
-      "category": "deferred",
-      "reason": "Creates a Dodo Payments checkout session. Payments domain is still stabilizing (Clerk + Dodo integration); migrate once shape is frozen.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
-      "path": "api/customer-portal.ts",
-      "category": "deferred",
-      "reason": "Issues a Dodo customer-portal redirect URL. Paired with create-checkout.ts; migrate together.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
-      "path": "api/product-catalog.js",
-      "category": "deferred",
-      "reason": "Returns Dodo product catalog (pricing tiers). Migrate alongside the rest of the payments surface.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
-    },
-    {
-      "path": "api/referral/me.ts",
-      "category": "deferred",
-      "reason": "Returns the signed-in user's referral state. Auth-gated; part of user/v1 service.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
     }
   ]
 }

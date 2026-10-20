@@ -19,6 +19,7 @@ import { PRO_FRESH_CACHE_RPC_PATHS } from '../src/shared/pro-fresh-rpc';
 import { USER_API_KEY_GATEWAY_VALIDATION_ERROR, getHeaderApiKey, validateApiKey } from '../api/_api-key.js';
 // @ts-expect-error — JS module, no declaration file
 import { timingSafeEqualSecret } from '../api/_crypto.js';
+import { isPartnerMode, verifyPartnerRequest } from '../api/_partner-access.js';
 // @ts-expect-error — JS module, no declaration file
 import { captureSilentError } from '../api/_sentry-edge.js';
 import { mapErrorToResponse } from './error-mapper';
@@ -1348,8 +1349,11 @@ export function createDomainGateway(
     // Classification ignores attached credentials because a Vercel cache hit
     // happens before this function sees them; the public URL must therefore
     // have one response contract for every caller.
+    // Partner deployments serve no shared anonymous reads (docs/partner-access.md);
+    // the keyless form endpoints in PUBLIC_NO_AUTH_RPC_PATHS stay open.
+    const partnerMode = isPartnerMode();
     const isPublicNoAuthRpc = PUBLIC_NO_AUTH_RPC_PATHS.has(pathname)
-      || isPublicSharedRpcRequest(request.url, request.method);
+      || (!partnerMode && isPublicSharedRpcRequest(request.url, request.method));
     // The resilience ranking seed-refresh bypass retired with the resilience domain.
     const seedRefreshVerified = false;
     const relayWarmPingVerified = await isRelayWarmPingRequest(request, pathname);
@@ -1598,12 +1602,15 @@ export function createDomainGateway(
     // Override: routes that deliberately resolved a sessionUserId pass this layer.
     // Never for a legacy Pro bearer route: a session proves identity, not Pro,
     // and skipping that gate would hand a free account the premium handler.
+    // In partner mode a Clerk session proves identity, not partnership, so it
+    // stands in for the key only when that account is on the partner list.
     if (
       (isTierGated || requiresDirectLlmQuota || needsProFreshnessResolution) &&
       !needsLegacyProBearerGate &&
       sessionUserId &&
       keyCheck.required &&
-      !keyCheck.valid
+      !keyCheck.valid &&
+      (!partnerMode || (await verifyPartnerRequest(request)).ok)
     ) {
       keyCheck = { valid: true, required: false };
     }

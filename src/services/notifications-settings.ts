@@ -1,7 +1,4 @@
-import { WEB_APP_ORIGIN } from '@/config/web-origin';
-import { openExternalUrl } from '@/services/external-navigation';
 import { escapeHtml } from '@/utils/sanitize';
-import { checkoutConsentHtml } from '@/utils/legal-links';
 import { renderSVG } from 'uqr';
 import {
   getChannelsData,
@@ -195,6 +192,7 @@ function getTelegramBotUsername(): string {
 }
 
 export function renderNotificationsSettings(host: NotificationsSettingsHost): NotificationsSettingsResult {
+  // Alerts need an account to deliver to; every signed-in partner has them.
   const isPro = !!host.isSignedIn && hasTier(1);
   const preselectCountry = normalizePreselectCountry(host.preselectCountry);
 
@@ -207,10 +205,7 @@ export function renderNotificationsSettings(host: NotificationsSettingsHost): No
   } else {
     html += `<div class="wm-pref-group-content wm-notif-tab-content">`;
     html += `<div class="ai-flow-toggle-desc">Get real-time intelligence alerts delivered to Telegram, Slack, Discord, and Email with configurable sensitivity, quiet hours, and digest scheduling.</div>`;
-    // Assent above the CTA (#6976) — this button starts checkout for a signed-in
-    // free user, so the Terms are presented before the jump to Dodo.
-    html += checkoutConsentHtml(WEB_APP_ORIGIN);
-    html += `<button type="button" class="panel-locked-cta" id="usNotifUpgradeBtn">Upgrade to Pro</button>`;
+    html += `<button type="button" class="panel-locked-cta" id="usNotifUpgradeBtn">Sign in to set up alerts</button>`;
     html += `</div>`;
   }
 
@@ -224,15 +219,7 @@ export function renderNotificationsSettings(host: NotificationsSettingsHost): No
         const upgradeBtn = container.querySelector<HTMLButtonElement>('#usNotifUpgradeBtn');
         if (upgradeBtn) {
           upgradeBtn.addEventListener('click', () => {
-            if (!host.isSignedIn) {
-              import('@/services/clerk').then(m => m.openSignIn()).catch(() => {
-                void openExternalUrl(`${WEB_APP_ORIGIN}/pro`);
-              });
-              return;
-            }
-            import('@/services/checkout').then(m => import('@/config/products').then(p => m.startCheckout(p.DEFAULT_UPGRADE_PRODUCT))).catch(() => {
-              void openExternalUrl(`${WEB_APP_ORIGIN}/pro`);
-            });
+            void import('@/services/clerk').then(m => m.openSignIn());
           }, { signal });
         }
         return () => ac.abort();

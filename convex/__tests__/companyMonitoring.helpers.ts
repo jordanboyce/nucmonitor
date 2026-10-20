@@ -55,11 +55,22 @@ export async function grant(
   userId: string,
   planKey = "api_starter",
 ) {
-  return t.mutation(internal.payments.billing.grantComplimentaryEntitlement, {
-    userId,
-    planKey,
-    days: 30,
-    reason: "company monitoring onboarding test",
+  // Billing is gone; tests seed the entitlement row a grant used to write.
+  const now = Date.now();
+  await t.run(async (ctx) => {
+    const existing = await ctx.db
+      .query("entitlements")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    const row = {
+      userId,
+      planKey,
+      features: getFeaturesForPlan(planKey),
+      validUntil: now + 30 * 86_400_000,
+      updatedAt: now,
+    };
+    if (existing) await ctx.db.replace(existing._id, row);
+    else await ctx.db.insert("entitlements", row);
   });
 }
 

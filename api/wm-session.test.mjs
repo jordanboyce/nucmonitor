@@ -805,3 +805,59 @@ test('desktop legacy exchange uses host-only cookies and enterprise headers rema
   assert.equal(auth.valid, true);
   assert.equal(auth.kind, 'enterprise');
 });
+
+// ── Partner mode (docs/partner-access.md) ────────────────────────────────
+
+const { __resetPartnerAccessForTests } = await import('./_partner-access.js');
+const { SignJWT, exportJWK, generateKeyPair } = await import('jose');
+
+async function partnerFixture() {
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = { ...(await exportJWK(publicKey)), kid: 'k1', alg: 'RS256', use: 'sig' };
+  const issuer = 'https://clerk.partner.test';
+  process.env.ACCESS_MODE = 'partner';
+  process.env.CLERK_JWT_ISSUER_DOMAIN = issuer;
+  process.env.PARTNER_ALLOWED_DOMAINS = 'utility.example';
+  __resetPartnerAccessForTests();
+  const upstash = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = input instanceof URL ? input.href : typeof input === 'string' ? input : input.url;
+    if (url === `${issuer}/.well-known/jwks.json`) return Response.json({ keys: [jwk] });
+    return upstash(input, init);
+  };
+  const sign = (email) => new SignJWT({ email })
+    .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+    .setIssuer(issuer)
+    .setSubject(`user_${email}`)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(privateKey);
+  return { sign };
+}
+
+function partnerReq(token) {
+  const headers = new Headers({ origin: 'https://worldmonitor.app' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return new Request('https://api.worldmonitor.app/api/wm-session', { method: 'POST', headers });
+}
+
+test('partner mode refuses to mint a session without a signed-in partner', async () => {
+  const { sign } = await partnerFixture();
+
+  const anonymous = await handler(partnerReq(''));
+  assert.equal(anonymous.status, 401);
+  assert.deepEqual(await anonymous.json(), { error: 'sign_in_required' });
+  assert.equal(cookieValue(setCookies(anonymous), 'wm-session'), '');
+
+  const stranger = await handler(partnerReq(await sign('someone@elsewhere.example')));
+  assert.equal(stranger.status, 403);
+  assert.deepEqual(await stranger.json(), { error: 'partner_access_required' });
+  assert.equal(cookieValue(setCookies(stranger), 'wm-session'), '');
+});
+
+test('partner mode mints a session for an allowlisted partner', async () => {
+  const { sign } = await partnerFixture();
+  const resp = await handler(partnerReq(await sign('ops@utility.example')));
+  assert.equal(resp.status, 200);
+  assert.match(cookieValue(setCookies(resp), 'wm-session'), /^wms_/);
+});

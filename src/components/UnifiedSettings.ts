@@ -36,32 +36,15 @@ import { signOut } from '@/services/clerk';
 import { requestOwnAccountDeletion } from '@/services/account-deletion';
 import { track, trackApiAction } from '@/services/analytics';
 import {
-  getEntitlementState,
-  getEntitlementVerificationStatus,
   hasEmbedAccessForAccount,
   hasFeature,
-  isEntitled,
   onEntitlementChange,
   onEntitlementVerificationChange,
 } from '@/services/entitlements';
-import { hasPremiumAccess } from '@/services/panel-gating';
-import { getSubscription, isSubscriptionLoaded, onSubscriptionChange, openBillingPortal, prereserveBillingPortalTab } from '@/services/billing';
-import { BusinessSeatsSection } from '@/components/BusinessSeatsSection';
-import {
-  deriveBillingUxState,
-  getReactivationHref,
-  getSubscriptionStatusTone,
-  type BillingStatusTone,
-} from '@/services/billing-state';
 import { createApiKey, listApiKeys, revokeApiKey, type ApiKeyInfo } from '@/services/api-keys';
 import { createEmbedKey, listEmbedKeys, revokeEmbedKey, type EmbedKeyInfo } from '@/services/embed-keys';
-import {
-  acknowledgePlanLimitNotice,
-  listCurrentPlanLimitNotices,
-  type ApiPlanLimitNotice,
-} from '@/services/api-plan-limit-notices';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
-import { checkoutConsentHtml, legalLinksHtml, LEGAL_LINK_ATTR } from '@/utils/legal-links';
+import { legalLinksHtml, LEGAL_LINK_ATTR } from '@/utils/legal-links';
 import { createFocusTrap, type FocusTrap } from '@/utils/focus-trap';
 import {
   overlayHistory,
@@ -164,18 +147,13 @@ export class UnifiedSettings {
   private embedKeyCreating = false;
   private embedKeysError = '';
   private newlyCreatedEmbedKey: string | null = null;
-  private planLimitNotices: ApiPlanLimitNotice[] = [];
-  private planLimitNoticesLoading = false;
-  private planLimitNoticesError = '';
   // ---- Business Pro seats (plan 2026-07-24-001 U7) ----
-  private readonly businessSeatsSection: BusinessSeatsSection;
   private accountUserId: string | null = getAuthState().user?.id ?? null;
   private accountDataGeneration = 0;
   private accountEntitlementRefreshPending = false;
   private unsubscribeAuth: (() => void) | null = null;
   private unsubscribeEntitlement: (() => void) | null = null;
   private unsubscribeEntitlementVerification: (() => void) | null = null;
-  private unsubscribeSubscription: (() => void) | null = null;
   private deletionDialog: HTMLElement | null = null;
   private deletionFocusTrap: FocusTrap | null = null;
   private deletionBusy = false;
@@ -193,7 +171,6 @@ export class UnifiedSettings {
     declareOverlay(this.overlay, { reload: 'blocking' });
     this.overlay.setAttribute('aria-label', t('header.settings'));
     this.focusTrap = createFocusTrap(this.overlay);
-    this.businessSeatsSection = new BusinessSeatsSection(this.overlay);
 
     this.resetPanelDraft();
 
@@ -223,81 +200,13 @@ export class UnifiedSettings {
         return;
       }
 
-      if (target.closest('.upgrade-pro-cta')) {
-        this.handleUpgradeClick();
-        return;
-      }
-
       if (target.closest('.retry-plan-status-btn')) {
         window.location.reload();
         return;
       }
 
-      if (target.closest('.upgrade-to-business-btn')) {
-        // Self-serve Starter→Business upgrade (#4634): open the Dodo customer
-        // portal, which surfaces the prorated plan change via the product
-        // collection ("Allow Subscription Updates" enabled). Same hosted open
-        // path as Manage Billing — Dodo owns payment + 3DS + proration; a failed
-        // charge (prevent_change) leaves the customer on Starter.
-        const reservedWin = prereserveBillingPortalTab();
-        void openBillingPortal(reservedWin).then((result) => {
-          // The portal session exists but no window opened (native handoff
-          // refused and the browser fallback was blocked). Saying nothing here
-          // reads as a dead click on a paid feature.
-          if (result.outcome === 'open-failed') {
-            showToast('Could not open the billing portal. Please allow pop-ups and try again.');
-            return;
-          }
-          if (result.outcome === 'no-customer') {
-            showToast(
-              'Billing portal unavailable. Email support@worldmonitor.app for help.',
-            );
-          }
-        });
-        return;
-      }
-
       if (target.closest('[data-delete-account]')) {
         this.openDeletionDialog();
-        return;
-      }
-
-      if (target.closest('.manage-billing-btn')) {
-        // Pre-reserve the portal tab synchronously inside the click
-        // handler so the popup blocker doesn't suppress the eventual
-        // window.open inside openBillingPortal (which runs after an
-        // await of the Convex action).
-        const reservedWin = prereserveBillingPortalTab();
-        void openBillingPortal(reservedWin).then((result) => {
-          // NO_CUSTOMER: user is entitled but has no Dodo customer row
-          // (comp grant, restore race, or post-purge cancellation). Send
-          // them somewhere actionable instead of leaving them in a
-          // generic Dodo portal that won't recognise them.
-          // The portal session exists but no window opened (native handoff
-          // refused and the browser fallback was blocked). Saying nothing here
-          // reads as a dead click on a paid feature.
-          if (result.outcome === 'open-failed') {
-            showToast('Could not open the billing portal. Please allow pop-ups and try again.');
-            return;
-          }
-          if (result.outcome === 'no-customer') {
-            showToast(
-              'Billing portal unavailable. Email support@worldmonitor.app for help.',
-            );
-          }
-        });
-        return;
-      }
-
-      const planNoticeAck = target.closest<HTMLElement>('[data-plan-limit-ack]');
-      if (planNoticeAck?.dataset.planLimitAck) {
-        void this.handleAcknowledgePlanLimitNotice(planNoticeAck.dataset.planLimitAck);
-        return;
-      }
-
-      const planNoticeCta = target.closest<HTMLElement>('[data-plan-limit-cta]');
-      if (planNoticeCta?.dataset.planLimitCta) {
-        this.handlePlanLimitNoticeCta(planNoticeCta.dataset.planLimitCta);
         return;
       }
 
@@ -436,17 +345,6 @@ export class UnifiedSettings {
         return;
       }
 
-      const businessInviteBtn = target.closest<HTMLElement>('.business-seats-invite-btn');
-      if (businessInviteBtn) {
-        void this.businessSeatsSection.handleInvite();
-        return;
-      }
-
-      const businessRemoveBtn = target.closest<HTMLElement>('.business-seat-remove-btn');
-      if (businessRemoveBtn?.dataset.grantId) {
-        void this.businessSeatsSection.handleRemove(businessRemoveBtn.dataset.grantId);
-        return;
-      }
     });
 
     this.overlay.addEventListener('change', (e) => {
@@ -512,10 +410,6 @@ export class UnifiedSettings {
     this.embedKeyCreating = false;
     this.embedKeysError = '';
     this.newlyCreatedEmbedKey = null;
-    this.planLimitNotices = [];
-    this.planLimitNoticesLoading = false;
-    this.planLimitNoticesError = '';
-    this.businessSeatsSection.resetForAccountChange();
 
     // Replace any rendered A-owned plaintext/list data synchronously. Account
     // loaders stay suppressed until the new entitlement snapshot rerenders.
@@ -611,21 +505,6 @@ export class UnifiedSettings {
     this.unsubscribeEntitlementVerification = onEntitlementVerificationChange(() => {
       this.replaceUpgradeSection();
     });
-    this.unsubscribeSubscription?.();
-    this.unsubscribeSubscription = onSubscriptionChange(() => {
-      this.replaceUpgradeSection();
-      // Ask for seats whenever the account has ANY subscription row, and let
-      // the server decide who owns seats. Filtering here on the display row's
-      // plan/status would miss an owner whose Business row is outranked by
-      // another subscription (see BusinessSeatsSection.businessSubscriptionId);
-      // free accounts have no row at all, so they still never query.
-      if (getSubscription() !== null) {
-        void this.businessSeatsSection.load();
-      }
-    });
-    if (getSubscription() !== null) {
-      void this.businessSeatsSection.load();
-    }
   }
 
   /**
@@ -698,8 +577,6 @@ export class UnifiedSettings {
     this.unsubscribeEntitlement = null;
     this.unsubscribeEntitlementVerification?.();
     this.unsubscribeEntitlementVerification = null;
-    this.unsubscribeSubscription?.();
-    this.unsubscribeSubscription = null;
     this.closeDeletionDialog();
     this.resetPanelDraft();
     safeStorageRemove('wm-settings-open');
@@ -760,8 +637,6 @@ export class UnifiedSettings {
     this.unsubscribeEntitlement = null;
     this.unsubscribeEntitlementVerification?.();
     this.unsubscribeEntitlementVerification = null;
-    this.unsubscribeSubscription?.();
-    this.unsubscribeSubscription = null;
     this.unsubscribeAuth?.();
     this.unsubscribeAuth = null;
     this.closeDeletionDialog();
@@ -834,7 +709,7 @@ export class UnifiedSettings {
         </div>
         <div class="unified-settings-tabs" role="tablist" aria-label="Settings">
           <button class="${tabClass('settings')}" tabindex="${this.activeTab === 'settings' ? 0 : -1}" data-tab="settings" role="tab" aria-selected="${this.activeTab === 'settings'}" id="us-tab-settings" aria-controls="us-tab-panel-settings">${t('header.tabSettings')}</button>
-          ${isSignedIn ? `<button class="${tabClass('billing')}" tabindex="${this.activeTab === 'billing' ? 0 : -1}" data-tab="billing" role="tab" aria-selected="${this.activeTab === 'billing'}" id="us-tab-billing" aria-controls="us-tab-panel-billing">Plan &amp; billing</button>` : ''}
+          ${isSignedIn ? `<button class="${tabClass('billing')}" tabindex="${this.activeTab === 'billing' ? 0 : -1}" data-tab="billing" role="tab" aria-selected="${this.activeTab === 'billing'}" id="us-tab-billing" aria-controls="us-tab-panel-billing">Account</button>` : ''}
           <button class="${tabClass('panels')}" tabindex="${this.activeTab === 'panels' ? 0 : -1}" data-tab="panels" role="tab" aria-selected="${this.activeTab === 'panels'}" id="us-tab-panels" aria-controls="us-tab-panel-panels">${t('header.tabPanels')}</button>
           <button class="${tabClass('sources')}" tabindex="${this.activeTab === 'sources' ? 0 : -1}" data-tab="sources" role="tab" aria-selected="${this.activeTab === 'sources'}" id="us-tab-sources" aria-controls="us-tab-panel-sources">${t('header.tabSources')}</button>
           ${showNotificationsTab ? `<button class="${tabClass('notifications')}" tabindex="${this.activeTab === 'notifications' ? 0 : -1}" data-tab="notifications" role="tab" aria-selected="${this.activeTab === 'notifications'}" id="us-tab-notifications" aria-controls="us-tab-panel-notifications">${t('header.tabNotifications')}</button>` : ''}
@@ -847,8 +722,8 @@ export class UnifiedSettings {
         ${isSignedIn ? `
         <div class="unified-settings-tab-panel${this.activeTab === 'billing' ? ' active' : ''}" data-panel-id="billing" id="us-tab-panel-billing" role="tabpanel" aria-labelledby="us-tab-billing">
           <div class="billing-settings-intro">
-            <h2>Plan &amp; billing</h2>
-            <p>See your current plan and manage payment details, invoices, or cancellation.</p>
+            <h2>Account</h2>
+            <p>Your access level and account controls.</p>
           </div>
           ${this.renderUpgradeSection()}
           ${this.renderAccountDeletionSection()}
@@ -929,9 +804,6 @@ export class UnifiedSettings {
     this.attachApiKeysHandlers();
     this.attachEmbedKeysHandlers();
     if (loadAccountData) {
-      if (this.activeTab === 'api-keys') {
-        void this.loadPlanLimitNotices();
-      }
       if (this.activeTab === 'api-keys' && getAuthState().user && hasFeature('apiAccess')) {
         void this.loadApiKeys();
       }
@@ -973,7 +845,6 @@ export class UnifiedSettings {
     );
 
     if (tab === 'api-keys' && getAuthState().user && hasFeature('apiAccess')) {
-      void this.loadPlanLimitNotices();
       void this.loadApiKeys();
     }
 
@@ -997,140 +868,14 @@ export class UnifiedSettings {
   // Pending state shown while the plan is still resolving — used both before
   // the entitlement snapshot arrives and, for an entitled owner, while the
   // subscription watch is still settling (#6772).
-  private renderPlanCheckingState(): string {
-    return `
-        <div class="upgrade-pro-section upgrade-pro-loading" role="status" aria-live="polite">
-          <div class="upgrade-pro-title">Checking your plan…</div>
-          <div class="upgrade-pro-desc">This usually takes only a moment.</div>
-        </div>
-      `;
-  }
-
   private renderUpgradeSection(): string {
-    // Non-Dodo premium (API key / tester key / Clerk pro role without a
-    // Convex subscription): neither "Upgrade" nor "Manage Billing" is
-    // actionable. Still explain the account state here; a hidden billing
-    // section would recreate the discoverability problem this tab fixes.
-    if (!isEntitled() && hasPremiumAccess()) {
-      return `
-        <div class="upgrade-pro-section upgrade-pro-external" data-billing-state="external">
-          <div class="upgrade-pro-title">Premium access</div>
-          <div class="upgrade-pro-desc">This access is not billed through your NucMonitor account. No payment method or invoices are available here.</div>
-        </div>
-      `;
-    }
-    const sub = getSubscription();
-    const billingState = deriveBillingUxState(sub, getEntitlementState(), Date.now());
-    if (billingState === 'lapsed') {
-      const planName = sub?.displayName ?? 'Pro';
-      return `
-        <div class="upgrade-pro-section upgrade-pro-lapsed" data-billing-state="lapsed">
-          <div class="upgrade-pro-title">${escapeHtml(t('components.billingState.resubscribe'))}: ${escapeHtml(planName)}</div>
-          <div class="upgrade-pro-desc">${escapeHtml(t('components.billingState.lapsedDesc'))}</div>
-          <a class="upgrade-pro-cta-link" href="${WEB_APP_ORIGIN}${getReactivationHref(sub?.planKey)}" target="_blank" rel="noopener">${escapeHtml(t('components.billingState.resubscribe'))} →</a>
-        </div>
-      `;
-    }
-    // Signed-in user whose Convex entitlement snapshot has not arrived yet.
-    // Rendering "Upgrade to Pro" in this window is how paying users click through to
-    // /api/create-checkout and hit 409 duplicate_subscription — same race
-    // as the 2026-04-17/18 panel-overlay incident fixed in panel-gating.ts,
-    // different surface. The verification service stays pending across the
-    // complete Clerk/Convex retry schedule and publishes unavailable only
-    // after a terminal handoff or subscription failure.
-    const verificationStatus = getEntitlementVerificationStatus();
-    if (
-      getAuthState().user
-      && getEntitlementState() === null
-      && (verificationStatus === 'idle' || verificationStatus === 'pending')
-    ) {
-      return this.renderPlanCheckingState();
-    }
-    if (isEntitled()) {
-      const sub = getSubscription();
-      // A Pro owner's entitlement snapshot can arrive before their own
-      // subscription watch settles. In that window getSubscription() is null
-      // but the user is NOT a Business invitee — falling through would render
-      // "Billing is managed by your plan owner" and hide Manage Billing from a
-      // paying owner. Treat an unresolved watch like the pending state above;
-      // the invitee copy below is reserved for a *settled* null (#6772).
-      if (sub === null && !isSubscriptionLoaded()) {
-        return this.renderPlanCheckingState();
-      }
-      const planName = sub?.displayName ?? 'Pro';
-      const now = Date.now();
-      // A Business Pro grant invitee has no own subscription row (sub === null)
-      // but IS entitled (we're inside the isEntitled() branch) — they hold a
-      // grant that is working, so paint them like an active plan.
-      const tone: BillingStatusTone = sub === null
-        ? 'active'
-        : getSubscriptionStatusTone(sub, now);
-
-      let statusLine = '';
-      if (sub?.currentPeriodEnd) {
-        const dateStr = new Date(sub.currentPeriodEnd).toLocaleDateString();
-        if (sub.status === 'active') {
-          statusLine = `Renews: ${dateStr}`;
-        } else if (sub.status === 'on_hold') {
-          statusLine = 'On hold -- please update payment method';
-        } else if (sub.status === 'cancelled') {
-          statusLine = `Cancelled -- access until ${dateStr}`;
-        } else if (sub.status === 'expired') {
-          statusLine = 'Expired';
-        } else {
-          // A status this client does not model yet. We are inside the
-          // isEntitled() branch, so access is working — say only that, and
-          // point at the billing portal rather than leaving the `unknown`
-          // tone as a bare grey dot with no sentence at all.
-          statusLine = 'See Manage Billing for your current plan details.';
-        }
-      }
-
-      // An invitee holding a Business Pro grant has Pro features but no own
-      // subscription row — they hold a grant, not a subscription, so the
-      // billing surface remains owner-only. Show their plan status without
-      // the Manage Billing CTA that would 404 against Dodo.
-      const hasOwnSubscription = sub !== null;
-      if (!hasOwnSubscription) {
-        statusLine = 'Billing is managed by your plan owner.';
-      }
-
-      return `
-        <div class="upgrade-pro-section upgrade-pro-active" data-billing-tone="${tone}">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${statusLine ? '8' : '0'}px;">
-            <span class="upgrade-pro-tone-dot"></span>
-            <span class="upgrade-pro-plan-name">${escapeHtml(planName)}</span>
-          </div>
-          ${statusLine ? `<div class="upgrade-pro-status-line">${escapeHtml(statusLine)}</div>` : ''}
-          ${sub?.planKey === 'api_starter' ? `<button class="upgrade-to-business-btn" style="margin-right:8px;">Upgrade to Business</button>` : ''}
-          ${hasOwnSubscription ? `<button class="manage-billing-btn">Manage Billing</button>` : ''}
-        </div>
-        ${hasOwnSubscription ? `<div id="usBusinessSeats">${this.businessSeatsSection.renderContent()}</div>` : ''}
-      `;
-    }
-
-    // A terminal auth/subscription failure still does not prove the user is
-    // free. Keep checkout unavailable, offer a fresh verification attempt,
-    // and retain the safe /pro link in a separate tab.
-    if (getAuthState().user && getEntitlementState() === null) {
-      return `
-        <div class="upgrade-pro-section upgrade-pro-fallback">
-          <div class="upgrade-pro-title">Plan status unavailable</div>
-          <div class="upgrade-pro-desc">We could not verify your current plan. Try again or view plans in a new tab.</div>
-          <button class="manage-billing-btn retry-plan-status-btn" style="margin-bottom:8px;">Try again</button>
-          <a class="upgrade-pro-cta-link" href="${WEB_APP_ORIGIN}/pro" target="_blank" rel="noopener">View plans →</a>
-        </div>
-      `;
-    }
-
+    // One access level: whoever is signed in here is a partner with full access.
     return `
-      <div class="upgrade-pro-section" data-billing-state="free">
-        <div class="upgrade-pro-title">NucMonitor Free</div>
-        <div class="upgrade-pro-desc">Your current plan is Free. Upgrade for all panels, AI analysis, and priority data refresh.</div>
-        ${checkoutConsentHtml(WEB_APP_ORIGIN)}
-        <button class="upgrade-pro-cta">Upgrade to Pro</button>
-      </div>
-    `;
+        <div class="upgrade-pro-section upgrade-pro-active" data-billing-tone="active">
+          <div class="upgrade-pro-title">Partner access</div>
+          <div class="upgrade-pro-desc">Full access to every panel, export and alert. Contact your NucMonitor administrator to add teammates or API keys.</div>
+        </div>
+      `;
   }
 
   private renderAccountDeletionSection(): string {
@@ -1278,45 +1023,6 @@ export class UnifiedSettings {
       this.deletionError = message;
       this.syncDeletionConfirmEnabled();
     }
-  }
-
-  // Business Pro seats (#4634/#4635) state/render/handlers live in
-  // BusinessSeatsSection — see this.businessSeatsSection.
-
-  private handleUpgradeClick(): void {
-    // Defense in depth: re-check at click time so a late-arriving "you're a
-    // paying user" snapshot routes to the billing portal instead of creating
-    // a second checkout against an active subscription.
-    if (isEntitled()) {
-      this.close();
-      const reservedWin = prereserveBillingPortalTab();
-      void openBillingPortal(reservedWin).then((result) => {
-        // The portal session exists but no window opened (native handoff
-        // refused and the browser fallback was blocked). Saying nothing here
-        // reads as a dead click on a paid feature.
-        if (result.outcome === 'open-failed') {
-          showToast('Could not open the billing portal. Please allow pop-ups and try again.');
-          return;
-        }
-        if (result.outcome === 'no-customer') {
-          showToast(
-            'Billing portal unavailable. Email support@worldmonitor.app for help.',
-          );
-        }
-      });
-      return;
-    }
-    this.close();
-    if (this.config.isDesktopApp) {
-      // Desktop deliberately skips in-app checkout and sends the user to the
-      // pricing page — but a bare window.open only opens another WebView
-      // window. `openExternalUrl` hands it to the OS browser (#5911).
-      void openExternalUrl(`${WEB_APP_ORIGIN}/pro`);
-      return;
-    }
-    import('@/services/checkout').then(m => import('@/config/products').then(p => m.startCheckout(p.DEFAULT_UPGRADE_PRODUCT))).catch(() => {
-      void openExternalUrl(`${WEB_APP_ORIGIN}/pro`);
-    });
   }
 
   private categoryMatchesVariant(catDef: { variants?: string[] }): boolean {
@@ -1606,166 +1312,6 @@ export class UnifiedSettings {
     counter.textContent = t('header.sourcesEnabled', { enabled: String(enabledTotal), total: String(allSources.length) });
   }
 
-  private async loadPlanLimitNotices(): Promise<void> {
-    const request = this.captureAccountRequest();
-    if (!request || this.planLimitNoticesLoading) return;
-    this.planLimitNoticesLoading = true;
-    this.planLimitNoticesError = '';
-    try {
-      const notices = await listCurrentPlanLimitNotices();
-      if (!this.isAccountRequestCurrent(request)) return;
-      this.planLimitNotices = notices;
-    } catch (err) {
-      if (!this.isAccountRequestCurrent(request)) return;
-      console.warn('[settings] Failed to load API plan-limit notices:', err);
-      this.planLimitNoticesError = err instanceof Error
-        ? err.message
-        : 'Failed to load API plan-limit notices';
-    } finally {
-      if (this.isAccountRequestCurrent(request)) {
-        this.planLimitNoticesLoading = false;
-        this.renderPlanLimitNoticeBlocks();
-      }
-    }
-  }
-
-  private renderPlanLimitNoticeBlocks(): void {
-    const html = this.renderPlanLimitNotices();
-    this.overlay.querySelectorAll<HTMLElement>('[data-plan-limit-notices]').forEach((el) => {
-      setTrustedHtml(el, trustedHtml(html, "legacy direct innerHTML migration"));
-    });
-  }
-
-  private planLimitDimensionLabel(dimension: ApiPlanLimitNotice['dimension']): string {
-    switch (dimension) {
-      case 'api_daily_requests': return 'Daily API requests';
-      case 'api_minute_burst': return 'API burst traffic';
-      case 'mcp_daily_calls': return 'Daily MCP usage';
-      case 'mcp_minute_burst': return 'MCP burst traffic';
-    }
-  }
-
-  private planLimitStateLabel(state: ApiPlanLimitNotice['state']): string {
-    if (state === 'warning') return 'Nearing plan limit';
-    if (state === 'sustained_burst') return 'Burst limit exceeded';
-    return 'Plan limit exceeded';
-  }
-
-  private renderPlanLimitNotices(): string {
-    if (!this.planLimitNoticesError && this.planLimitNotices.length === 0) return '';
-    const error = this.planLimitNoticesError
-      ? `<div class="api-keys-error api-plan-limit-notices-error" role="alert">${escapeHtml(this.planLimitNoticesError)}</div>`
-      : '';
-    const nf = new Intl.NumberFormat();
-    return `
-      <div class="api-plan-limit-notices" aria-live="polite">
-        ${error}
-        ${this.planLimitNotices.map((notice) => {
-          const limit = notice.limit == null ? 'unlimited' : nf.format(notice.limit);
-          const usage = nf.format(notice.usage);
-          const ratio = notice.usageRatio == null ? '' : ` (${Math.round(notice.usageRatio * 100)}%)`;
-          const cta = notice.ctaKind === 'contact_support'
-            ? 'Contact support'
-            : notice.ctaKind === 'billing_portal'
-            ? 'Manage billing'
-            : notice.ctaKind === 'checkout'
-            ? 'Upgrade'
-            : '';
-          return `
-            <div class="api-plan-limit-notice ${escapeHtml(notice.state)}">
-              <div class="api-plan-limit-notice-main">
-                <div class="api-plan-limit-notice-title">${escapeHtml(this.planLimitStateLabel(notice.state))}</div>
-                <div class="api-plan-limit-notice-body">
-                  ${escapeHtml(this.planLimitDimensionLabel(notice.dimension))}: ${escapeHtml(usage)} used / ${escapeHtml(limit)} included${escapeHtml(ratio)} in ${escapeHtml(notice.windowKey)}.
-                  You can upgrade for more room or reduce traffic to stay on this plan.
-                </div>
-              </div>
-              <div class="api-plan-limit-notice-actions">
-                ${notice.ctaKind === 'checkout' ? checkoutConsentHtml(WEB_APP_ORIGIN) : ''}
-                ${cta ? `<button class="btn btn-primary api-plan-limit-notice-cta" data-plan-limit-cta="${escapeHtml(notice._id)}">${escapeHtml(cta)}</button>` : ''}
-                <button class="btn btn-ghost api-plan-limit-notice-ack" data-plan-limit-ack="${escapeHtml(notice._id)}">Dismiss</button>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
-
-  private async handleAcknowledgePlanLimitNotice(noticeId: string): Promise<void> {
-    const request = this.captureAccountRequest();
-    if (!request) return;
-    try {
-      await acknowledgePlanLimitNotice(noticeId);
-      if (!this.isAccountRequestCurrent(request)) return;
-      this.planLimitNotices = this.planLimitNotices.filter((notice) => notice._id !== noticeId);
-      this.renderPlanLimitNoticeBlocks();
-    } catch (err) {
-      if (!this.isAccountRequestCurrent(request)) return;
-      console.warn('[settings] Failed to acknowledge API plan-limit notice:', err);
-      showToast('Could not dismiss this notice. Try again.');
-    }
-  }
-
-  private handlePlanLimitNoticeCta(noticeId: string): void {
-    const notice = this.planLimitNotices.find((item) => item._id === noticeId);
-    if (!notice) return;
-    if (notice.ctaKind === 'billing_portal') {
-      const reservedWin = prereserveBillingPortalTab();
-      void openBillingPortal(reservedWin).then((result) => {
-        // The portal session exists but no window opened (native handoff
-        // refused and the browser fallback was blocked). Saying nothing here
-        // reads as a dead click on a paid feature.
-        if (result.outcome === 'open-failed') {
-          showToast('Could not open the billing portal. Please allow pop-ups and try again.');
-          return;
-        }
-        if (result.outcome === 'no-customer') {
-          showToast('Billing portal unavailable. Email support@worldmonitor.app for help.');
-        }
-      });
-      return;
-    }
-    if (notice.ctaKind === 'checkout') {
-      // Never send an active subscriber to a fresh checkout. The upgrade target
-      // (api_starter) sits in a DIFFERENT tierGroup than an existing Pro sub, and
-      // getCheckoutBlockingSubscription only blocks a same-tierGroup duplicate
-      // (#4797) — so startCheckout would STACK a second live subscription and
-      // double-charge. Route entitled users to the billing portal instead (same
-      // precedent as handleUpgradeClick); its no-customer outcome surfaces the
-      // support path for a subscription managed outside Dodo.
-      if (isEntitled()) {
-        const reservedWin = prereserveBillingPortalTab();
-        void openBillingPortal(reservedWin).then((result) => {
-          // The portal session exists but no window opened (native handoff
-          // refused and the browser fallback was blocked). Saying nothing here
-          // reads as a dead click on a paid feature.
-          if (result.outcome === 'open-failed') {
-            showToast('Could not open the billing portal. Please allow pop-ups and try again.');
-            return;
-          }
-          if (result.outcome === 'no-customer') {
-            showToast('Billing portal unavailable. Email support@worldmonitor.app for help.');
-          }
-        });
-        return;
-      }
-      this.close();
-      import('@/services/checkout').then(m => import('@/config/products').then((p) => {
-        const product = notice.upgradeTargetPlanKey === 'api_starter'
-          ? p.DODO_PRODUCTS.API_STARTER_MONTHLY
-          : p.DODO_PRODUCTS.PRO_MONTHLY;
-        return m.startCheckout(product);
-      })).catch(() => {
-        void openExternalUrl(`${WEB_APP_ORIGIN}/pro`);
-      });
-      return;
-    }
-    if (notice.ctaKind === 'contact_support') {
-      window.location.href = `mailto:support@worldmonitor.app?subject=${encodeURIComponent('NucMonitor API plan limit upgrade')}`;
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // API Keys tab
   // ---------------------------------------------------------------------------
@@ -1779,18 +1325,13 @@ export class UnifiedSettings {
       });
     }
 
-    // Gate CTA click (sign-in for anonymous, checkout for free)
+    // Gate CTA click (sign-in for anonymous)
     const gateBtn = this.overlay.querySelector<HTMLElement>('.api-keys-gate-btn');
     if (gateBtn) {
       gateBtn.addEventListener('click', () => {
         if (!getAuthState().user) {
           this.close();
           import('@/services/clerk').then(m => m.openSignIn()).catch(() => {});
-        } else {
-          this.close();
-          import('@/services/checkout').then(m => import('@/config/products').then(p => m.startCheckout(p.DODO_PRODUCTS.API_STARTER_MONTHLY))).catch(() => {
-            void openExternalUrl(`${WEB_APP_ORIGIN}/pro`);
-          });
         }
       });
     }
@@ -1809,20 +1350,8 @@ export class UnifiedSettings {
         </div>`;
     }
 
-    if (!hasFeature('apiAccess')) {
-      const upgradeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>`;
-      return `
-        <div class="panel-locked-state">
-          <div class="panel-locked-icon">${upgradeIcon}</div>
-          <div class="panel-locked-desc">Create and manage API keys to access NucMonitor data programmatically.</div>
-          ${checkoutConsentHtml(WEB_APP_ORIGIN)}
-          <button class="panel-locked-cta api-keys-gate-btn">Upgrade to API Starter</button>
-        </div>`;
-    }
-
     return `
       <div class="api-keys-section">
-        <div data-plan-limit-notices>${this.renderPlanLimitNotices()}</div>
         <div class="api-keys-header">
           <p class="api-keys-desc">Create API keys to access NucMonitor data programmatically. Keys are shown once on creation — store them securely.</p>
         </div>

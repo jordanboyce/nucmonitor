@@ -1,3 +1,4 @@
+import { bootstrapReadPath, SHARED_READ_CREDENTIALS } from '@/config/access-mode';
 import { createCircuitBreaker, getCSSColor } from '@/utils';
 import { getHydratedData } from '@/services/bootstrap';
 import { toApiUrl } from '@/services/runtime';
@@ -80,8 +81,8 @@ export async function fetchWeatherAlerts(): Promise<WeatherAlert[]> {
     // shared/bootstrap-tier-keys.js: this module is in the embed bundle, and that
     // import would pull the whole 127-entry registry in for one 13-char string.
     const resp = await fetch(
-      toApiUrl('/api/bootstrap?keys=weatherAlerts&public=1'),
-      { credentials: 'omit', signal: AbortSignal.timeout(8000) },
+      toApiUrl(bootstrapReadPath('keys=weatherAlerts')),
+      { credentials: SHARED_READ_CREDENTIALS, signal: AbortSignal.timeout(8000) },
     );
     if (!resp.ok) throw new Error(`Bootstrap fetch failed: ${resp.status}`);
     const json = await resp.json() as { data?: { weatherAlerts?: { alerts?: BootstrapAlert[] } } };

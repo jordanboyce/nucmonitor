@@ -16,8 +16,6 @@ const envNames = {
 type Role = keyof typeof credentials;
 const routes: [string, 'POST' | 'GET', Role[]][] = [
   ['notification-channels', 'POST', ['gateway']],
-  ['create-checkout', 'POST', ['gateway']],
-  ['customer-portal', 'POST', ['gateway']],
   ['register-referral-code', 'POST', ['gateway']],
   ['channels', 'POST', ['delivery']],
   ['deactivate', 'POST', ['delivery']],

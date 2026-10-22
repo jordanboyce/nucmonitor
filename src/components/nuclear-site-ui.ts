@@ -22,6 +22,7 @@ import {
   type UsNuclearFacility,
   type UsNuclearFacilityCategory,
 } from '@/config/us-nuclear-facilities';
+import { SECOND_ATOMIC_AGE, secondAtomicAgeToolsFor } from '@/config/second-atomic-age';
 import type { FacilityHazardKind } from '@/services/nuclear-facility-hazards';
 import {
   buildSiteRiskCsv,
@@ -243,6 +244,7 @@ export function renderFacilityDetail(f: UsNuclearFacility, summary: SiteRiskSumm
       <span class="nfd-detail-label">Research</span>
       ${nrcFacilityResearchLinks(f).map((l) => `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a>`).join(' · ')}
       · <a href="${NRC_RESEARCH_SOURCES.operatingExperience}" target="_blank" rel="noopener" title="NRC reactor operational experience results and databases (INL)">Operating experience</a>
+      ${secondAtomicAgeToolsFor(f.category).slice(0, 3).map((t) => ` · <a href="${escapeHtml(t.url)}" target="_blank" rel="noopener" title="${escapeHtml(`${t.title} — ${SECOND_ATOMIC_AGE.name}`)}">${escapeHtml(t.title)}</a>`).join('')}
     </div>
     <div class="nsu-detail-actions">
       <span class="nsu-links">

@@ -370,6 +370,43 @@
 .nsu-research a { color: var(--nuc-accent); white-space: nowrap; }
 .nfd-research { margin-top: 4px; }
 
+/* Advanced Nuclear Buildout: index cards for The Second Atomic Age's tools. */
+.anb-intro { margin: 0 0 8px; font-size: 11px; line-height: 1.5; color: var(--text-secondary, #bbb); }
+.anb-intro a { color: var(--nuc-accent); }
+.anb-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.anb-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+.anb-tool:hover { border-color: var(--nuc-accent); background: var(--nuc-accent-dim); }
+.anb-tool-kind {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim, #888);
+}
+.anb-tool-tracker .anb-tool-kind { color: var(--nuc-accent); }
+.anb-tool-title { font-size: 12px; font-weight: 600; }
+.anb-tool-summary { font-size: 10.5px; line-height: 1.4; color: var(--text-secondary, #bbb); }
+.anb-sites .anb-site-main { min-width: 0; }
+.anb-site-name { font-size: 12px; font-weight: 600; }
+.anb-site-status { white-space: nowrap; }
+.anb-site-actions { white-space: nowrap; text-align: right; font-size: 11px; }
+.anb-site-actions a { color: var(--nuc-accent); }
+
 /* Part 21 reports and Preliminary Notifications below the ENR table. */
 .ner-more { margin-top: 10px; }
 .ner-more-head {

@@ -169,6 +169,7 @@ export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, Deferred
   'nuclear-events': { rowSpan: 2 },
   'nuclear-hazards': { rowSpan: 2 },
   'nuclear-facilities': { rowSpan: 2 },
+  'nuclear-buildout': { rowSpan: 2 },
 };
 
 const DEFERRED_DYNAMIC_PANEL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {
@@ -2020,6 +2021,17 @@ export class PanelLayoutManager implements AppModule {
         const p = new NuclearFacilityDirectoryPanel();
         p.setLocationClickHandler((lat: number, lon: number, facilityId?: string) => {
           // Zoom 7 frames the 50-mile ingestion EPZ ring drawn around the site.
+          this.ctx.map?.setCenter(lat, lon, facilityId ? 7 : 6);
+          if (facilityId) this.ctx.map?.setSelectedUsNuclearFacility(facilityId);
+        });
+        return p;
+      }),
+    );
+
+    this.lazyPanel('nuclear-buildout', () =>
+      this.importPanel('nuclear-buildout', () => import('@/components/AdvancedNuclearBuildoutPanel'), 'AdvancedNuclearBuildoutPanel', (AdvancedNuclearBuildoutPanel) => {
+        const p = new AdvancedNuclearBuildoutPanel();
+        p.setLocationClickHandler((lat: number, lon: number, facilityId?: string) => {
           this.ctx.map?.setCenter(lat, lon, facilityId ? 7 : 6);
           if (facilityId) this.ctx.map?.setSelectedUsNuclearFacility(facilityId);
         });

@@ -26,6 +26,7 @@ export * from './NuclearReactorStatusPanel';
 export * from './NuclearEventReportsPanel';
 export * from './NuclearFacilityHazardsPanel';
 export * from './NuclearFacilityDirectoryPanel';
+export * from './AdvancedNuclearBuildoutPanel';
 export * from './BreakingNewsBanner';
 export * from './WorldClockPanel';
 export * from './ClimateNewsPanel';

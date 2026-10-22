@@ -485,7 +485,11 @@ export async function fetchSpp(deps) {
 // ─── NWS ─────────────────────────────────────────────────────────────────────
 
 export function buildNwsAlertsUrl() {
-  const params = new URLSearchParams({ status: 'actual', message_type: 'alert,update', limit: '500' });
+  // No `limit`: /alerts/active rejects it with HTTP 400 ("Query parameter
+  // "limit" is not recognized"), which failed this source on every tick. The
+  // endpoint returns every active alert matching the event filter; the caller
+  // trims to its own cap.
+  const params = new URLSearchParams({ status: 'actual', message_type: 'alert,update' });
   params.set('event', GRID_HAZARD_EVENT_NAMES.join(','));
   return `${NWS_ALERTS_URL}?${params.toString()}`;
 }

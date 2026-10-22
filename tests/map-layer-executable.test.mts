@@ -39,9 +39,12 @@ describe('LAYER_REGISTRY — renderer axis', () => {
     // for it, and Map.ts SVG fallback has no render code. `renderers: ['deck']`
     // is the signal that non-DeckGL contexts must not flip it on.
     assert.deepEqual(LAYER_REGISTRY.diseaseOutbreaks.renderers, ['deck']);
+    // gridAlerts (ISO/BA grid stress markers) is likewise painted only by
+    // DeckGLMap.createGridAlertsLayer.
+    assert.deepEqual(LAYER_REGISTRY.gridAlerts.renderers, ['deck']);
     const deckOnly = (Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>)
       .filter((key) => LAYER_REGISTRY[key].renderers.length === 1 && LAYER_REGISTRY[key].renderers[0] === 'deck');
-    assert.deepEqual(deckOnly, ['diseaseOutbreaks']);
+    assert.deepEqual(deckOnly, ['diseaseOutbreaks', 'gridAlerts']);
   });
 
   test('the deckGLOnly flag is fully removed from the definition shape', () => {

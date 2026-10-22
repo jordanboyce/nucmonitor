@@ -612,7 +612,9 @@ const SEED_META = {
     cutover: {
       mode: 'activation-marker',
       fromKey: null,
-      issue: null,
+      // Owner reference is the fork PR that lands the probe
+      // (jordanboyce/nucmonitor#1); this repository has issues disabled.
+      issue: 1,
       activationKey: 'seed-activated:energy:grid-alerts',
     },
   },

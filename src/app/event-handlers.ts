@@ -1,3 +1,4 @@
+import { IS_PARTNER_MODE } from '@/config/access-mode';
 import type {
   AppContext,
   AppModule,
@@ -1912,6 +1913,10 @@ export class EventHandlerManager implements AppModule {
   }
 
   setupAuthWidget(): void {
+    // The public demo has no accounts: nothing to sign in to, so no sign-in
+    // button, no auth modal and no account row in the mobile menu
+    // (panel-layout renders neither mount). Partner mode keeps all of it.
+    if (!IS_PARTNER_MODE) return;
     const modal = new AuthLauncher();
     this.ctx.authModal = modal;
 

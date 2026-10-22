@@ -23,7 +23,7 @@ export const config = { runtime: 'edge' };
 // are heavy HTML, so this function fetches the trailing window of daily pages,
 // parses them with the shared label-based parser, merges updates/retractions
 // across days, and returns compact JSON.
-// https://www.nrc.gov/reading-rm/doc-collections/event-status/event/
+// https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports
 
 export const DEFAULT_DAYS = 14;
 export const MAX_DAYS = 30;
@@ -94,7 +94,7 @@ export async function collectNrcEventReports(now: Date, days: number): Promise<N
     results.push(...await Promise.all(dates.slice(i, i + FETCH_CONCURRENCY).map(fetchDay)));
   }
   return {
-    source: 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/',
+    source: 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports',
     fetchedAt: now.toISOString(),
     days: results.map(({ date, url, status }) => ({ date, url, status })),
     events: mergeNrcEventReports(results.flatMap((r) => r.events)),

@@ -49,7 +49,7 @@ they are not needed.
 |---|---|
 | `/` | Landing page (`public/landing.html`) with the request-access form. |
 | `/dashboard` | The dashboard. `/stocks` and `/stocks/:symbol` are legacy client routes that also load it. |
-| `/api/nrc-reactor-status`, `/api/nrc-event-reports` | Live proxies to nrc.gov. These are the first things to verify after deploying: open the two NRC panels and confirm real rows and events appear (the sample rows carry SAMPLE; real ones do not). |
+| `/api/nrc-reactor-status`, `/api/nrc-event-reports`, `/api/nrc-safety-reports` | Live proxies to nrc.gov (reactor status, Event Notification Reports, Part 21 reports and Preliminary Notifications). These are the first things to verify after deploying: open the two NRC panels and confirm real rows and events appear (the sample rows carry SAMPLE; real ones do not). |
 | `/api/request-access` | Landing-page intake. Returns 503 "intake not configured" with the contact address until `CONVEX_URL` is set. |
 | `/legal/terms`, `/legal/privacy`, `/legal/license` | Placeholder legal pages (`public/legal/`). Replace before a pilot. |
 | `/trust/` | Label-history page for the news panels. |

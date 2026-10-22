@@ -14,6 +14,7 @@ import {
   getNrcRegion,
   NRC_REGION_NAMES,
   nrcDocketUrl,
+  nrcFacilityResearchLinks,
   US_NUCLEAR_CATEGORY_LABELS,
   US_NUCLEAR_REGISTRY_AS_OF,
   US_NUCLEAR_REGISTRY_SOURCES,
@@ -68,6 +69,8 @@ export function buildSiteBriefDocument(summary: SiteRiskSummary, options: SiteBr
   ];
   if (f.docket) facts.push(['Docket', link(nrcDocketUrl(f.docket), f.docket)]);
   if (f.isfsi) facts.push(['Spent fuel', 'Dry storage (ISFSI) on site']);
+  const research = nrcFacilityResearchLinks(f).map((l) => link(l.url, l.label));
+  if (research.length) facts.push(['NRC records', research.join(' · ')]);
 
   const unitRows = units.map((u) => {
     const p = power.find((x) => x.registryUnit === u.name);

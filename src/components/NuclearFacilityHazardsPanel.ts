@@ -1,7 +1,7 @@
 import { Panel } from './Panel';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { bindActivationKeys } from '@/utils/activation';
-import { US_NUCLEAR_CATEGORY_LABELS } from '@/config/us-nuclear-facilities';
+import { US_NUCLEAR_CATEGORY_LABELS, US_NUCLEAR_REGISTRY_SOURCES } from '@/config/us-nuclear-facilities';
 import { summarizeFacilityHazards, type FacilityHazardKind } from '@/services/nuclear-facility-hazards';
 import {
   INGESTION_EPZ_MILES,
@@ -192,7 +192,7 @@ export class NuclearFacilityHazardsPanel extends Panel {
       <div class="nfh-filters">${chips}</div>
       ${renderSiteFilterToolbar(this.filters, { watchCount: watchlist.size })}
       ${body}
-      <div class="nfh-footer">Feeds: USGS · NWS · NASA FIRMS · EPA RadNet / Safecast · NHC / EONET · internet outage monitors${this.snapshot.computedAt ? ` · updated ${escapeHtml(this.snapshot.computedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}` : ''}. Proximity only — confirm with <a href="https://www.nrc.gov/reading-rm/doc-collections/event-status/event/" target="_blank" rel="noopener">NRC Event Notification Reports</a>.</div>
+      <div class="nfh-footer">Feeds: USGS · NWS · NASA FIRMS · EPA RadNet / Safecast · NHC / EONET · internet outage monitors${this.snapshot.computedAt ? ` · updated ${escapeHtml(this.snapshot.computedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}` : ''}. Proximity only — confirm with <a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcEventReports}" target="_blank" rel="noopener">NRC Event Notification Reports</a>.</div>
     `;
     this.setSafeContent(unsafeRawHtml(html, 'NuclearFacilityHazardsPanel render: all dynamic values escaped'));
   }

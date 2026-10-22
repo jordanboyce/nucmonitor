@@ -3,7 +3,7 @@
 // The NRC Operations Center publishes one HTML page per calendar day listing
 // every event a licensee (or an Agreement State, on a licensee's behalf)
 // reported under 10 CFR 50.72, 50.73, 20.2201, Part 21 and friends:
-//   https://www.nrc.gov/reading-rm/doc-collections/event-status/event/YYYY/YYYYMMDDen.html
+//   https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports/YYYY/YYYYMMDDen
 //
 // Each event is a small block of tables: a header row naming the event
 // category and number, a label/value grid (Facility, Region, State, Unit,
@@ -86,7 +86,7 @@ export interface NrcEventReport {
   sourceUrl: string;
 }
 
-export const NRC_EVENT_REPORTS_INDEX = 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/';
+export const NRC_EVENT_REPORTS_INDEX = 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports';
 export const NRC_EVENT_NARRATIVE_MAX_CHARS = 4000;
 
 export const NRC_EMERGENCY_CLASS_LABELS: Record<NrcEmergencyClass, string> = {
@@ -124,7 +124,7 @@ export function nrcEventReportPageUrl(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, '0');
   const d = String(date.getUTCDate()).padStart(2, '0');
-  return `${NRC_EVENT_REPORTS_INDEX}${y}/${y}${m}${d}en.html`;
+  return `${NRC_EVENT_REPORTS_INDEX}/${y}/${y}${m}${d}en`;
 }
 
 // ── HTML → text ────────────────────────────────────────────────────────────

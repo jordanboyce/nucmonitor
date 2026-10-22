@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { OutputBundle } from 'rollup';
@@ -591,6 +591,69 @@ function miitNewsPlugin(): Plugin {
   };
 }
 
+// The NRC proxies (reactor status, Event Notification Reports, Part 21 /
+// Preliminary Notifications) are plain edge handlers outside the sebuf
+// gateway, so without this the dev server would answer them with index.html
+// and the NRC panels would only ever show their SAMPLE rows locally. The
+// production handlers gate on the anonymous browser session, which the dev
+// server cannot mint (no WM_SESSION_SECRET, no Redis), so this calls their
+// collectors directly: a local, unauthenticated read of public nrc.gov data.
+type NrcDevRoute = (server: ViteDevServer, url: URL) => Promise<{ status: number; contentType: string; body: string }>;
+
+const NRC_DEV_ROUTES: Record<string, NrcDevRoute> = {
+  '/api/nrc-reactor-status': async (server) => {
+    const mod = await server.ssrLoadModule('/api/nrc-reactor-status.js');
+    const upstream = await fetch(mod.NRC_REACTOR_STATUS_URL, {
+      headers: { 'User-Agent': 'NucMonitor/dev', Accept: 'text/plain, */*;q=0.5' },
+      signal: AbortSignal.timeout(15_000),
+    });
+    const text = await upstream.text();
+    if (!upstream.ok || !mod.looksLikeReactorStatusFile(text)) {
+      return { status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'NRC reactor status upstream error', status: upstream.status }) };
+    }
+    return { status: 200, contentType: 'text/plain; charset=utf-8', body: text };
+  },
+  '/api/nrc-event-reports': async (server, url) => {
+    const mod = await server.ssrLoadModule('/api/nrc-event-reports.ts');
+    const payload = await mod.collectNrcEventReports(new Date(), mod.parseDaysParam(url.searchParams.get('days')));
+    return { status: 200, contentType: 'application/json', body: JSON.stringify(payload) };
+  },
+  '/api/nrc-safety-reports': async (server) => {
+    const mod = await server.ssrLoadModule('/api/nrc-safety-reports.ts');
+    const payload = await mod.collectNrcSafetyReports(new Date());
+    return { status: 200, contentType: 'application/json', body: JSON.stringify(payload) };
+  },
+};
+
+function nrcReportsDevPlugin(): Plugin {
+  return {
+    name: 'nrc-reports-dev',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.url ?? '/', 'http://localhost');
+        const route = NRC_DEV_ROUTES[url.pathname];
+        if (!route) return next();
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        try {
+          const { status, contentType, body } = await route(server, url);
+          res.statusCode = status;
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'no-store');
+          res.end(req.method === 'HEAD' ? undefined : body);
+        } catch (error) {
+          console.error('[nrc-reports-dev]', error);
+          res.statusCode = 502;
+          res.end();
+        }
+      });
+    },
+  };
+}
+
 function rssProxyPlugin(): Plugin {
   return {
     name: 'rss-proxy',
@@ -789,6 +852,7 @@ export default defineConfig(({ mode }) => {
       polymarketPlugin(),
       rssProxyPlugin(),
       miitNewsPlugin(),
+      nrcReportsDevPlugin(),
       gpsjamDevPlugin(),
       sebufApiPlugin(),
       brotliPrecompressPlugin(),

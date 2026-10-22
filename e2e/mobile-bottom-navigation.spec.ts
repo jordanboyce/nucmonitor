@@ -43,7 +43,8 @@ test.describe('mobile primary navigation (#5201 P0)', () => {
 
     await page.locator('[data-mobile-tab="more"]').click();
     await expect(page.locator('#mobileMenu')).toHaveClass(/open/);
-    await expect(page.locator('#mobileAuthFallback, #mobileAuthWidgetMount .auth-signin-btn').first()).toBeVisible();
+    // The public demo has no accounts, so the More sheet carries no account row.
+    await expect(page.locator('#mobileAuthFallback, #mobileAuthWidgetMount')).toHaveCount(0);
     await page.evaluate(() => history.back());
     await expect(page.locator('#mobileMenu')).not.toHaveClass(/open/);
     await expect(page.locator('[data-mobile-tab="today"]')).toHaveAttribute('aria-current', 'page');
@@ -52,26 +53,12 @@ test.describe('mobile primary navigation (#5201 P0)', () => {
     await expect(page.locator('[data-mobile-tab="alerts"]')).toHaveAttribute('aria-current', 'page');
   });
 
-  test('keeps the account entry visible in the header before More opens', async ({ page }) => {
-    const headerAuth = page.locator('#authWidgetMount');
-    const signIn = headerAuth.locator('.auth-signin-btn');
-
+  test('shows no sign-in entry in the header of the public demo', async ({ page }) => {
+    // There are no accounts on the public demo (docs/partner-access.md): the
+    // header renders no auth widget at all rather than a dead Sign In button.
     await expect(page.locator('#mobileMenu')).not.toHaveClass(/open/);
-    await expect(headerAuth).toBeVisible();
-    await expect(signIn).toBeVisible();
-    await expect(signIn).toHaveAccessibleName('Sign In');
-    await expect(headerAuth.locator('.auth-signup-link')).toBeHidden();
-
-    const box = await signIn.boundingBox();
-    const headerBox = await page.locator('.header').boundingBox();
-    expect(box).not.toBeNull();
-    expect(headerBox).not.toBeNull();
-    expect(box?.width).toBeGreaterThanOrEqual(44);
-    expect(box?.height).toBeGreaterThanOrEqual(44);
-    expect(box?.y).toBeGreaterThanOrEqual(headerBox?.y ?? Number.POSITIVE_INFINITY);
-    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
-      (headerBox?.y ?? 0) + (headerBox?.height ?? 0),
-    );
+    await expect(page.locator('#authWidgetMount')).toHaveCount(0);
+    await expect(page.locator('.auth-signin-btn')).toHaveCount(0);
 
     const logoBox = await page.locator('.logo-mobile').boundingBox();
     expect(logoBox).not.toBeNull();

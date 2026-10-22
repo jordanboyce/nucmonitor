@@ -35,6 +35,13 @@ import { fileURLToPath } from 'node:url';
 import { isMainModule } from './lib/main-module.mjs';
 import { collectTsFiles, lexSource } from './lib/source-scan.mjs';
 
+// Repo-relative, forward-slash path so the inventory keys above match on
+// Windows too (path.relative yields backslashes there, which made every
+// recorded write look missing and the pre-push gate fail on a clean tree).
+function relPath(root, abs) {
+  return path.relative(root, abs).split(path.sep).join('/');
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -221,7 +228,7 @@ export function scanRepo(root = REPO_ROOT) {
   const codeByFile = new Map(
     allFiles.map((abs) => {
       const { code, ok, terminalMode } = lexSource(readFileSync(abs, 'utf8'));
-      if (!ok) unlexable.push(`${path.relative(root, abs)} (ended in ${terminalMode})`);
+      if (!ok) unlexable.push(`${relPath(root, abs)} (ended in ${terminalMode})`);
       return [abs, code];
     }),
   );
@@ -233,7 +240,7 @@ export function scanRepo(root = REPO_ROOT) {
 
   const subclassFiles = allFiles.filter(
     (abs) =>
-      !GUARD_EXEMPT_FILES.has(path.relative(root, abs)) &&
+      !GUARD_EXEMPT_FILES.has(relPath(root, abs)) &&
       [...collectClassBases(codeByFile.get(abs) ?? '').keys()].some((name) =>
         derivesFromPanel(name, baseOf),
       ),
@@ -242,7 +249,7 @@ export function scanRepo(root = REPO_ROOT) {
   const observed = subclassFiles
     .flatMap((abs) =>
       directWritesIn(codeByFile.get(abs) ?? '').map(
-        (label) => `${path.relative(root, abs)} :: ${label}`,
+        (label) => `${relPath(root, abs)} :: ${label}`,
       ),
     )
     .sort();

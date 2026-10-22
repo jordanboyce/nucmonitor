@@ -20,6 +20,7 @@ optional and listed under "later".
 |---|---|---|---|
 | `VITE_VARIANT` | `nuclear` | build | Selects the NucMonitor dashboard (the only variant). |
 | `VITE_SHOWCASE_SCENARIO` | `1` | build | Labeled sample scenario instead of live hazard feeds ([showcase-mode.md](showcase-mode.md)). Leave empty once the seed workers run. |
+| `WM_SESSION_SECRET` | `openssl rand -hex 32` | runtime | Signs the anonymous browser session that `/api/wm-session` mints for every dashboard request. Without it that endpoint returns 503, every panel request is rejected with 401, and the NRC panels only ever show their SAMPLE rows. |
 | `VITE_ACCESS_MODE` | *(empty)* | build | Public demo. `partner` turns on the sign-in gate ([partner-access.md](partner-access.md)). |
 | `ACCESS_MODE` | *(empty)* | runtime | Server side of the same switch. |
 | `APP_ORIGINS` | `https://<your-domain>` | runtime | CORS allowlist for the edge functions and gateway. The deployment's own origin is always admitted, so this matters only once a custom domain and the `*.vercel.app` URL are both in use. |

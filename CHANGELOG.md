@@ -39,3 +39,9 @@ repository.
   commodity, happy and energy dashboards, the desktop app, the CLI, the SDK,
   the marketing site and the non-nuclear data domains were removed.
 - English is the only interface language.
+
+### Fixed
+
+- Deployment checklist: `WM_SESSION_SECRET` is required at runtime. The demo
+  guide listed no secrets, but without it `/api/wm-session` returns 503 and
+  every panel request is rejected with 401 (docs/deploy-demo.md).

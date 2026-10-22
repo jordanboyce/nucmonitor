@@ -1,11 +1,9 @@
 import type { Monitor, PanelConfig, MapLayers } from '@/types';
-import { WEB_APP_ORIGIN } from '@/config/web-origin';
 import {
   isStockResearchPath,
   stockResearchSymbolFromPath,
 } from '@/features/stock-research/stock-research-route';
 import { openStockResearchOverlay } from '@/features/stock-research/stock-research-overlay';
-import { openExternalUrl } from '@/services/external-navigation';
 import type { AppContext } from '@/app/app-context';
 import { applyVisibleMapDimension } from '@/app/map-dimension-control';
 import {
@@ -2581,12 +2579,6 @@ export class App {
 
     body.append(title, detail);
 
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'update-toast-action';
-    action.dataset.action = 'upgrade';
-    action.textContent = 'Upgrade';
-
     const dismiss = document.createElement('button');
     dismiss.type = 'button';
     dismiss.className = 'update-toast-dismiss';
@@ -2594,7 +2586,7 @@ export class App {
     dismiss.setAttribute('aria-label', 'Dismiss');
     dismiss.textContent = '\u00d7';
 
-    toast.append(body, action, dismiss);
+    toast.append(body, dismiss);
 
     this.followedCountriesCapDropToastTimer = window.setTimeout(() => {
       toast.remove();
@@ -2604,16 +2596,7 @@ export class App {
       const clickedAction = (e.target as HTMLElement)
         .closest<HTMLElement>('[data-action]')
         ?.dataset.action;
-      if (clickedAction === 'upgrade') {
-        // Absolute + routed: the relative form resolved against
-        // tauri://localhost in the desktop WebView (#5911).
-        void openExternalUrl(`${WEB_APP_ORIGIN}/pro#pricing`);
-        if (this.followedCountriesCapDropToastTimer !== null) {
-          window.clearTimeout(this.followedCountriesCapDropToastTimer);
-          this.followedCountriesCapDropToastTimer = null;
-        }
-        toast.remove();
-      } else if (clickedAction === 'dismiss') {
+      if (clickedAction === 'dismiss') {
         if (this.followedCountriesCapDropToastTimer !== null) {
           window.clearTimeout(this.followedCountriesCapDropToastTimer);
           this.followedCountriesCapDropToastTimer = null;

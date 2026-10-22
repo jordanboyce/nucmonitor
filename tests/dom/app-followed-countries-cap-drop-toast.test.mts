@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const openExternalUrl = vi.hoisted(() => vi.fn(async (_url: string) => true));
-vi.mock('@/services/external-navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/external-navigation')>()),
-  openExternalUrl,
-}));
-
 // App.init() is driven only as far as the cap-drop listener registration.
 // These stubs replace the network, IndexedDB, and global-install steps that
 // precede it; nothing here stands in for the listener itself.
@@ -40,13 +34,13 @@ vi.mock('@/services/followed-countries', async (importOriginal) => ({
 }));
 
 import { App } from '@/App';
-import { WEB_APP_ORIGIN } from '@/config/web-origin';
 import { WM_FOLLOWED_COUNTRIES_CAP_DROP } from '@/services/followed-countries';
 
 // The cap-drop EVENT is emitted and asserted at runtime in
 // tests/followed-countries-sign-in-handoff.test.mjs. This suite checks that
 // App.init() subscribes to it and App.destroy() unsubscribes, and drives the
-// App-side renderer that turns it into an upgrade toast.
+// App-side renderer that turns it into a toast. NucMonitor has no paid plans,
+// so the toast only explains the cap; there is no upgrade action.
 function dispatchCapDrop(kept: number, dropped: number): void {
   window.dispatchEvent(new CustomEvent(WM_FOLLOWED_COUNTRIES_CAP_DROP, { detail: { kept, dropped } }));
 }
@@ -71,7 +65,6 @@ function currentToast(): HTMLElement | null {
 describe('App followed-countries cap-drop toast', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    openExternalUrl.mockClear();
   });
 
   afterEach(() => {
@@ -113,7 +106,7 @@ describe('App followed-countries cap-drop toast', () => {
     fetchSpy.mockRestore();
   });
 
-  it('renders one accessible upgrade toast that explains the cap', () => {
+  it('renders one accessible toast that explains the cap without an upgrade action', () => {
     const app = makeApp();
     showToast(app, 1, 2);
     showToast(app, 1, 2);
@@ -126,6 +119,8 @@ describe('App followed-countries cap-drop toast', () => {
     expect(toast.querySelector('.update-toast-title')?.textContent).toBe('Follow limit reached');
     expect(toast.querySelector('.update-toast-detail')?.textContent)
       .toMatch(/^1 kept\. 2 countries were not added because the free plan supports \d+ followed countries\.$/);
+    expect(toast.querySelector('[data-action="upgrade"]')).toBeNull();
+    expect(toast.querySelector('.update-toast-action')).toBeNull();
   });
 
   it('auto-dismisses after its timer and clears the handle', () => {
@@ -139,27 +134,12 @@ describe('App followed-countries cap-drop toast', () => {
     expect(Reflect.get(app, 'followedCountriesCapDropToastTimer')).toBeNull();
   });
 
-  it('upgrade opens the absolute pricing URL through openExternalUrl and clears the timer', () => {
-    const app = makeApp();
-    showToast(app, 2, 1);
-
-    currentToast()!.querySelector<HTMLButtonElement>('[data-action="upgrade"]')!.click();
-
-    expect(openExternalUrl).toHaveBeenCalledTimes(1);
-    expect(openExternalUrl).toHaveBeenCalledWith(`${WEB_APP_ORIGIN}/pro#pricing`);
-    expect(new URL(openExternalUrl.mock.calls[0]![0]).protocol).toBe('https:');
-    expect(currentToast()).toBeNull();
-    expect(Reflect.get(app, 'followedCountriesCapDropToastTimer')).toBeNull();
-    expect(vi.getTimerCount()).toBe(0);
-  });
-
-  it('dismiss removes the toast and clears the timer without navigating', () => {
+  it('dismiss removes the toast and clears the timer', () => {
     const app = makeApp();
     showToast(app, 2, 1);
 
     currentToast()!.querySelector<HTMLButtonElement>('[data-action="dismiss"]')!.click();
 
-    expect(openExternalUrl).not.toHaveBeenCalled();
     expect(currentToast()).toBeNull();
     expect(Reflect.get(app, 'followedCountriesCapDropToastTimer')).toBeNull();
     expect(vi.getTimerCount()).toBe(0);

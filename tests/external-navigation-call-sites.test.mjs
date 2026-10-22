@@ -10,7 +10,6 @@ const callSiteFiles = [
   'src/app/desktop-updater.ts',
   'src/settings-main.ts',
   'src/components/RuntimeConfigPanel.ts',
-  'src/App.ts', // followed-countries cap-drop toast upgrade action (#5911)
 ];
 
 describe('external navigation call-site contract (#6120)', () => {
@@ -55,7 +54,6 @@ describe('external navigation call-site contract (#6120)', () => {
       ['src/app/desktop-updater.ts', 1], //         non-desktop update link
       ['src/settings-main.ts', 0],
       ['src/components/RuntimeConfigPanel.ts', 0],
-      ['src/App.ts', 0],
     ]);
 
     const unaccounted = [];

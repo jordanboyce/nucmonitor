@@ -68,6 +68,13 @@ import ts from 'typescript';
 import { isMainModule } from './lib/main-module.mjs';
 import { collectTsFiles } from './lib/source-scan.mjs';
 
+// Repo-relative, forward-slash path so the inventory keys match on Windows
+// too (path.relative yields backslashes there, which made every recorded
+// dereference look new and the pre-push gate fail on a clean tree).
+function relPath(root, abs) {
+  return path.relative(root, abs).split(path.sep).join('/');
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -355,13 +362,13 @@ export function rawStorageUsesIn(source) {
 export function scanRepo(root = REPO_ROOT) {
   const allFiles = collectTsFiles(path.join(root, 'src'), { readdirSync, lstatSync, join: path.join });
   const scanned = allFiles.filter(
-    (abs) => !GUARD_EXEMPT_FILES.has(path.relative(root, abs)),
+    (abs) => !GUARD_EXEMPT_FILES.has(relPath(root, abs)),
   );
 
   const observed = scanned
     .flatMap((abs) =>
       rawStorageUsesIn(readFileSync(abs, 'utf8')).map(
-        (label) => `${path.relative(root, abs)} :: ${label}`,
+        (label) => `${relPath(root, abs)} :: ${label}`,
       ),
     )
     .sort();

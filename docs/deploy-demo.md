@@ -21,6 +21,8 @@ optional and listed under "later".
 | `VITE_VARIANT` | `nuclear` | build | Selects the NucMonitor dashboard (the only variant). |
 | `VITE_SHOWCASE_SCENARIO` | `1` | build | Labeled sample scenario instead of live hazard feeds ([showcase-mode.md](showcase-mode.md)). Leave empty once the seed workers run. |
 | `WM_SESSION_SECRET` | `openssl rand -hex 32` | runtime | Signs the anonymous browser session that `/api/wm-session` mints for every dashboard request. Without it that endpoint returns 503, every panel request is rejected with 401, and the NRC panels only ever show their SAMPLE rows. |
+| `UPSTASH_REDIS_REST_URL` | from Upstash | runtime | `/api/wm-session` rate-limits session issuance and fails closed by design (`api/wm-session.js`, pinned by its tests). With no Redis it returns 503 "Rate-limit service temporarily unavailable" and the dashboard gets no session, so every panel request is rejected with 401. A free Upstash database is enough for the demo. |
+| `UPSTASH_REDIS_REST_TOKEN` | from Upstash | runtime | Token for the database above. |
 | `VITE_ACCESS_MODE` | *(empty)* | build | Public demo. `partner` turns on the sign-in gate ([partner-access.md](partner-access.md)). |
 | `ACCESS_MODE` | *(empty)* | runtime | Server side of the same switch. |
 | `APP_ORIGINS` | `https://<your-domain>` | runtime | CORS allowlist for the edge functions and gateway. The deployment's own origin is always admitted, so this matters only once a custom domain and the `*.vercel.app` URL are both in use. |
@@ -77,4 +79,4 @@ they are not needed.
 | Live hazard feeds | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and the seed workers from [SELF_HOSTING.md](../SELF_HOSTING.md); then drop `VITE_SHOWCASE_SCENARIO`. |
 | Request intake stored in Convex | Deploy the Convex project (`npx convex deploy`), set `CONVEX_URL` (runtime) and `VITE_CONVEX_URL` (build). Review requests with `npx convex run partnerAccess:listAccessRequests`. |
 | Partner sign-in | [partner-access.md](partner-access.md): Clerk keys, `ACCESS_MODE=partner`, invites. |
-| Rate limiting on the edge functions | The same Upstash variables; without them the limiter fails open (the demo endpoints are read-only proxies). |
+| Rate limiting on the edge functions | The same Upstash variables. The read-only proxies fail open without them, but `/api/wm-session` does not (see section 2), which is why Upstash is listed as required. |

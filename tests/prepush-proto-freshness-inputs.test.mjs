@@ -14,7 +14,7 @@ import { strict as assert } from 'node:assert';
 import { after, describe, test } from 'node:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { parse as parseYaml } from 'yaml';
@@ -57,8 +57,13 @@ function walkScriptReads(absPath, inputs, seen = new Set()) {
   for (const match of source.matchAll(/from\s+['"](\.[^'"]+)['"]/g)) {
     const resolved = resolve(dirname(absPath), match[1]);
     for (const candidate of [resolved, `${resolved}.mjs`, `${resolved}.js`, `${resolved}.ts`]) {
-      if (!existsSync(candidate) || !candidate.startsWith(`${ROOT}/`)) continue;
-      const rel = relative(ROOT, candidate);
+      if (!existsSync(candidate)) continue;
+      // Compare through path.relative and normalize to forward slashes: on
+      // Windows both ROOT and candidate carry backslashes, so a string-prefix
+      // check against `${ROOT}/` and the 'server/' tests below never matched
+      // and relative imports were silently dropped from the consumed set.
+      const rel = relative(ROOT, candidate).split(sep).join('/');
+      if (rel.startsWith('..') || isAbsolute(rel)) continue;
       if (
         !rel.startsWith('scripts/')
         && !rel.startsWith('shared/')

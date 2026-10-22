@@ -115,8 +115,15 @@ function round(value, digits = 0) {
   return Math.round(value * f) / f;
 }
 
+// Upstream stamps are published without a zone designator (ERCOT
+// "2026-10-20T20:55:12", SWPC "2026-10-20 18:00:00.000"). Date.parse would
+// read those as host-local time, so the same payload would hash to a
+// different instant depending on where the seeder runs. Pin them to UTC.
+const ZONELESS_STAMP = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/;
 function isoOrNull(value) {
-  const t = Date.parse(String(value ?? ''));
+  const raw = String(value ?? '').trim();
+  const m = ZONELESS_STAMP.exec(raw);
+  const t = Date.parse(m ? `${m[1]}T${m[2]}Z` : raw);
   return Number.isFinite(t) ? new Date(t).toISOString() : null;
 }
 

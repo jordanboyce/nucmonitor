@@ -11,7 +11,10 @@ import { escapeHtml } from '@/utils/sanitize';
 import {
   getNrcRegion,
   NRC_REGION_NAMES,
+  NRC_RESEARCH_SOURCES,
   nrcDocketUrl,
+  nrcFacilityPageUrl,
+  nrcFacilityResearchLinks,
   US_NUCLEAR_CATEGORY_LABELS,
   US_NUCLEAR_FACILITIES,
   US_NUCLEAR_REGISTRY_SOURCES,
@@ -192,7 +195,7 @@ export function renderFacilityDetail(f: UsNuclearFacility, summary: SiteRiskSumm
         ${units.map((u) => {
           const p = unitPower(u.name);
           return `<tr>
-            <td>${escapeHtml(u.name)}${u.docket ? ` · <a href="${nrcDocketUrl(u.docket)}" target="_blank" rel="noopener">${escapeHtml(u.docket)}</a>` : ''}</td>
+            <td>${nrcFacilityPageUrl(u.docket) ? `<a href="${nrcFacilityPageUrl(u.docket)}" target="_blank" rel="noopener" title="NRC facility page">${escapeHtml(u.name)}</a>` : escapeHtml(u.name)}${u.docket ? ` · <a href="${nrcDocketUrl(u.docket)}" target="_blank" rel="noopener" title="ADAMS documents for docket ${escapeHtml(u.docket)}">${escapeHtml(u.docket)}</a>` : ''}</td>
             <td>${escapeHtml(u.type)}</td>
             <td>${u.netMwe ?? (u.thermalMw !== undefined ? `${u.thermalMw} MWt` : '—')}</td>
             <td><span class="nfd-unit-status nfd-unit-${escapeHtml(u.status)}">${escapeHtml(u.status)}${u.shutdownYear ? ` ${u.shutdownYear}` : ''}</span></td>
@@ -225,7 +228,7 @@ export function renderFacilityDetail(f: UsNuclearFacility, summary: SiteRiskSumm
       <div><span class="nfd-detail-label">Operator</span><span>${escapeHtml(f.operator)}</span></div>
       <div><span class="nfd-detail-label">Regulator</span><span>${escapeHtml(f.regulator)}${region ? ` · NRC ${escapeHtml(NRC_REGION_NAMES[region])}` : ''}</span></div>
       <div><span class="nfd-detail-label">Location</span><span>${escapeHtml(f.city ? `${f.city}, ${f.state}` : f.state)} · ${f.lat.toFixed(3)}, ${f.lon.toFixed(3)}</span></div>
-      ${f.docket ? `<div><span class="nfd-detail-label">Docket</span><span><a href="${nrcDocketUrl(f.docket)}" target="_blank" rel="noopener">${escapeHtml(f.docket)}</a></span></div>` : ''}
+      ${f.docket ? `<div><span class="nfd-detail-label">Docket</span><span><a href="${nrcDocketUrl(f.docket)}" target="_blank" rel="noopener" title="ADAMS documents for docket ${escapeHtml(f.docket)}">${escapeHtml(f.docket)}</a></span></div>` : ''}
       ${f.isfsi ? '<div><span class="nfd-detail-label">Spent fuel</span><span>Dry storage (ISFSI) on site</span></div>' : ''}
     </div>
     ${unitsTable}
@@ -236,6 +239,11 @@ export function renderFacilityDetail(f: UsNuclearFacility, summary: SiteRiskSumm
       <span>nearest ${escapeHtml(formatMiles(summary?.nearestMi ?? null))}</span>
     </div>
     ${hazards}
+    <div class="nsu-research">
+      <span class="nfd-detail-label">Research</span>
+      ${nrcFacilityResearchLinks(f).map((l) => `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a>`).join(' · ')}
+      · <a href="${NRC_RESEARCH_SOURCES.operatingExperience}" target="_blank" rel="noopener" title="NRC reactor operational experience results and databases (INL)">Operating experience</a>
+    </div>
     <div class="nsu-detail-actions">
       <span class="nsu-links">
         ${f.url ? `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener">Reference page</a> · ` : ''}<a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcEventReports}" target="_blank" rel="noopener">NRC event reports</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcReactorStatus}" target="_blank" rel="noopener">NRC reactor status</a>

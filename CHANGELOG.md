@@ -42,6 +42,8 @@ repository.
 
 ### Fixed
 
-- Deployment checklist: `WM_SESSION_SECRET` is required at runtime. The demo
-  guide listed no secrets, but without it `/api/wm-session` returns 503 and
-  every panel request is rejected with 401 (docs/deploy-demo.md).
+- Deployment checklist: `WM_SESSION_SECRET` and an Upstash Redis are required
+  at runtime. The demo guide listed no secrets, but `/api/wm-session` signs
+  sessions with the secret and rate-limits issuance fail-closed through Redis;
+  without either it returns 503 and every panel request is rejected with 401
+  (docs/deploy-demo.md).

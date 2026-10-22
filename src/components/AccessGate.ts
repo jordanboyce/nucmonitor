@@ -130,7 +130,7 @@ export function showDemoBanner(): void {
     )
     : h('div', { className: 'access-demo-banner', role: 'note' },
       h('strong', {}, 'Demo'),
-      ' — public data only. Partner deployments add sign-in, alerts and API access.',
+      ' — public data only, no account needed. Partner deployments add private instances, alerts and API access.',
     );
   const close = h('button', { type: 'button', className: 'access-demo-banner-close', 'aria-label': 'Dismiss demo notice' }, '×');
   close.addEventListener('click', () => banner.remove());

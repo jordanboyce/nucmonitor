@@ -17,6 +17,13 @@
       "removal_issue": null
     },
     {
+      "path": "api/nrc-safety-reports.ts",
+      "category": "upstream-proxy",
+      "reason": "Fetches the NRC's yearly Part 21 (10 CFR 21 defect and noncompliance) report tables and Preliminary Notification tables for the current and previous year, parses the HTML rows with the shared parser in shared/nrc-safety-reports.ts, and returns compact JSON. nrc.gov publishes these only as HTML tables with no API, feed or CORS headers; the shape follows the NRC pages, not a product contract.",
+      "owner": "@jordanboyce",
+      "removal_issue": null
+    },
+    {
       "path": "api/request-access.ts",
       "category": "internal-helper",
       "reason": "Form intake for the public landing page (public/landing.html): validates a request-access form, applies a per-IP budget and stores it through the Convex partnerAccess:requestAccess mutation. Not a product data API; the only consumer is the landing page.",

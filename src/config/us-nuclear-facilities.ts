@@ -12,20 +12,59 @@
 
 export const US_NUCLEAR_REGISTRY_AS_OF = '2026-10';
 
+// nrc.gov moved to a new information architecture in 2026 (the old
+// /reading-rm/, /reactors/ and /info-finder/ paths now redirect, and some
+// facility pages were dropped without a redirect). Every URL below was
+// checked against the live site in October 2026.
 export const US_NUCLEAR_REGISTRY_SOURCES = {
-  nrcOperatingReactors: 'https://www.nrc.gov/reactors/operating/list-power-reactor-units.html',
-  nrcFacilityLocator: 'https://www.nrc.gov/info-finder/region-state/',
-  nrcReactorStatus: 'https://www.nrc.gov/reading-rm/doc-collections/event-status/reactor-status/',
-  nrcEventReports: 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/',
-  nrcDecommissioning: 'https://www.nrc.gov/info-finder/decommissioning/power-reactor/',
-  nrcResearchReactors: 'https://www.nrc.gov/reactors/non-power/',
-  nrcFuelCycle: 'https://www.nrc.gov/materials/fuel-cycle-fac.html',
-  nrcNewReactors: 'https://www.nrc.gov/reactors/new-reactors.html',
-  nrcUraniumRecovery: 'https://www.nrc.gov/materials/uranium-recovery.html',
+  nrcOperatingReactors: 'https://www.nrc.gov/facilities-safety/operating-reactors/list-power-reactor-units',
+  nrcFacilityLocator: 'https://www.nrc.gov/facilities-safety/facility-finder/region-state',
+  nrcFacilityFinder: 'https://www.nrc.gov/facilities-safety/facility-finder',
+  nrcReactorStatus: 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/power-reactor-status-reports',
+  nrcEventReports: 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports',
+  nrcDecommissioning: 'https://www.nrc.gov/facilities-safety/facility-finder/decommissioning/power-reactor',
+  nrcResearchReactors: 'https://www.nrc.gov/facilities-safety/non-power-facilities',
+  nrcFuelCycle: 'https://www.nrc.gov/facilities-safety/fuel-cycle-facilities',
+  nrcNewReactors: 'https://www.nrc.gov/facilities-safety/new-reactors',
+  nrcUraniumRecovery: 'https://www.nrc.gov/materials/uranium-recovery',
   doeSites: 'https://www.energy.gov/em/mission-and-sites',
   nnsaSites: 'https://www.energy.gov/nnsa/nnsa-locations',
   eiaNuclear: 'https://www.eia.gov/nuclear/',
   iaeaPris: 'https://pris.iaea.org/PRIS/CountryStatistics/CountryDetails.aspx?current=US',
+} as const;
+
+/**
+ * NRC and Idaho National Laboratory research surfaces that complement the
+ * live feeds. None of these publish an API or RSS (the NRC retired its RSS
+ * feeds with the Lyris list service in January 2026), so they are offered as
+ * deep links. The INL-hosted applications (LERSearch, NROD, NMED) sit behind
+ * bot protection that rejects non-browser clients; link, do not scrape.
+ */
+export const NRC_RESEARCH_SOURCES = {
+  /** ADAMS Public Search, the public document library (replaced the retired WBA front end). */
+  adams: 'https://adams-search.nrc.gov/',
+  adamsAbout: 'https://www.nrc.gov/documents-reports/adams-public-documents',
+  /** INL-hosted search over Licensee Event Reports (10 CFR 50.73). */
+  lerSearch: 'https://lersearch.inl.gov/LERSearchCriteria.aspx',
+  inspectionReportSearch: 'https://lersearch.inl.gov/IRSearchCriteria.aspx',
+  eventNotificationSearch: 'https://lersearch.inl.gov/ENSearchCriteria.aspx',
+  /** Reactor Operational Experience results (initiating events, LOOP, component and system studies). */
+  operatingExperience: 'https://nrcoe.inl.gov/',
+  nrod: 'https://nrcoe.inl.gov/NROD',
+  initiatingEvents: 'https://nrcoe.inl.gov/InitEvent',
+  lossOfOffsitePower: 'https://nrcoe.inl.gov/LOSP',
+  componentPerformance: 'https://nrcoe.inl.gov/CompPerf',
+  reliabilityCalculator: 'http://rads.inl.gov/calculator',
+  /** Nuclear Material Events Database; the database itself is access-controlled, the annual reports are public. */
+  nmed: 'https://nmed.inl.gov/',
+  /** SAPHIRE probabilistic risk assessment software and the SPAR models (users group, registration required). */
+  saphire: 'https://saphire.inl.gov/',
+  part21Reports: 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports/part-21-reports',
+  preliminaryNotifications: 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports/preliminary-notification-reports',
+  reactorOversight: 'https://www.nrc.gov/facilities-safety/operating-reactors/reactor-oversight-process-rop',
+  escalatedEnforcement: 'https://www.nrc.gov/documents-reports/document-collections/enforcement-documents/significant-enforcement-actions/reactor-licensees',
+  newsReleases: 'https://www.nrc.gov/about-nrc/news-releases/index',
+  emailUpdates: 'https://www.nrc.gov/public-involve/listserver',
 } as const;
 
 export type UsNuclearFacilityCategory =
@@ -580,7 +619,7 @@ export const US_NUCLEAR_FACILITIES: UsNuclearFacility[] = [
     state: 'WY', city: 'Kemmerer', lat: 41.792, lon: -110.538, operator: 'TerraPower (US SFR Owner)', regulator: 'NRC', docket: '05000613',
     units: [{ name: 'Unit 1', docket: '05000613', type: 'SFR (Natrium)', netMwe: 345, status: 'construction' }],
     notes: 'Sodium-cooled fast reactor with molten-salt thermal storage (345 MWe, 500 MWe peak) replacing a retiring coal plant; DOE Advanced Reactor Demonstration Program award. Non-nuclear construction began June 2024 while the NRC construction permit review proceeded.',
-    url: 'https://www.nrc.gov/reactors/new-reactors/advanced/who-were-working-with/applicant-projects/kemmerer-1.html',
+    url: 'https://www.nrc.gov/facilities-safety/new-reactors/advanced-reactors/who-were-working-with/past-licensing-activities/kemmerer-power-station-unit-1',
   },
   {
     id: 'kairos-hermes', name: 'Kairos Power Hermes Test Reactors', category: 'new-build', status: 'construction',
@@ -590,28 +629,28 @@ export const US_NUCLEAR_FACILITIES: UsNuclearFacility[] = [
       { name: 'Hermes 2', type: 'FHR (two-unit demo)', status: 'construction' },
     ],
     notes: 'First non-light-water reactor construction permit issued by the NRC in decades (Hermes, December 2023; Hermes 2, November 2024). Site is the former K-33 footprint at the East Tennessee Technology Park.',
-    url: 'https://www.nrc.gov/reactors/non-power/new-facility-licensing/hermes-kairos.html',
+    url: 'https://www.nrc.gov/facilities-safety/non-power-facilities/new-facility-licensing/hermes-kairos-application',
   },
   {
     id: 'x-energy-long-mott', name: 'Long Mott Generating Station (X-energy / Dow)', category: 'new-build', status: 'licensing',
     state: 'TX', city: 'Seadrift', lat: 28.421, lon: -96.726, operator: 'Long Mott Energy (Dow / X-energy)', regulator: 'NRC',
     units: [{ name: 'Xe-100 (4 modules)', type: 'HTGR (pebble bed)', netMwe: 320, status: 'licensing' }],
     notes: 'Four Xe-100 high-temperature gas reactors to supply process heat and power to Dow\'s Seadrift chemical site; construction permit application accepted by the NRC in 2025 under the Advanced Reactor Demonstration Program.',
-    url: 'https://www.nrc.gov/reactors/new-reactors/advanced.html',
+    url: 'https://www.nrc.gov/facilities-safety/new-reactors/advanced-reactors/who-were-working-with/advanced-reactor-application-projects/long-mott-energy-llc',
   },
   {
     id: 'acu-msrr', name: 'Abilene Christian University Molten Salt Research Reactor', category: 'new-build', status: 'construction',
     state: 'TX', city: 'Abilene', lat: 32.469, lon: -99.710, operator: 'Abilene Christian University / Natura Resources', regulator: 'NRC',
     units: [{ name: 'MSRR', type: 'MSR (liquid-fuel)', thermalMw: 1, status: 'construction' }],
     notes: 'First liquid-fueled molten salt reactor construction permit in the US (September 2024); a university research reactor intended as a prototype for Natura\'s MSR-100.',
-    url: 'https://www.nrc.gov/reactors/non-power/new-facility-licensing/abilene-christian.html',
+    url: 'https://www.nrc.gov/facilities-safety/non-power-facilities/new-facility-licensing/msrr-abilene-christian-university-application',
   },
   {
     id: 'tva-clinch-river', name: 'Clinch River Nuclear Site (TVA BWRX-300)', category: 'new-build', status: 'licensing',
     state: 'TN', city: 'Oak Ridge', lat: 35.892, lon: -84.384, operator: 'Tennessee Valley Authority', regulator: 'NRC',
     units: [{ name: 'Unit 1', type: 'BWRX-300 (SMR)', netMwe: 300, status: 'licensing' }],
     notes: 'TVA holds an early site permit (2019) and filed a construction permit application for a GE Vernova Hitachi BWRX-300 in 2025, the first US utility application for that design.',
-    url: 'https://www.nrc.gov/reactors/new-reactors/smr.html',
+    url: 'https://www.nrc.gov/facilities-safety/new-reactors/advanced-reactors/who-were-working-with/advanced-reactor-application-projects/tva-clinch-river-cpa',
   },
   {
     id: 'holtec-palisades-smr', name: 'Palisades SMR-300 Project', category: 'new-build', status: 'licensing',
@@ -933,54 +972,55 @@ export const US_NUCLEAR_FACILITIES: UsNuclearFacility[] = [
     id: 'urenco-usa', name: 'Urenco USA (Louisiana Energy Services)', category: 'fuel-cycle', status: 'operating',
     state: 'NM', city: 'Eunice', lat: 32.437, lon: -103.132, operator: 'Urenco USA', regulator: 'NRC', docket: '07003103',
     notes: 'The only operating commercial enrichment plant in the US (gas centrifuge, ~4.9 million SWU/yr) and expanding by roughly 15% in response to the ban on Russian enriched uranium imports.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/urenco.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/urenco-enrichment-fac-nm-lc',
   },
   {
     id: 'centrus-piketon', name: 'Centrus American Centrifuge Plant', category: 'fuel-cycle', status: 'operating',
     state: 'OH', city: 'Piketon', lat: 39.005, lon: -83.000, operator: 'Centrus Energy (American Centrifuge Operating)', regulator: 'NRC', docket: '07007004',
     notes: 'First US production of high-assay low-enriched uranium (HALEU, up to 20% U-235) for advanced reactors, under a DOE demonstration contract since 2023.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/usecfacility.html',
+    url: 'https://www.nrc.gov/facilities-safety/fuel-cycle-facilities/new-fuel-cycle-facility-licensing/gas-centrifuge-enrichment-facility-licensing/centrus-energy-corpamerican-centrifuge-operating-llc-formerly-usec-inc-gas-centrifuge-enrichme',
   },
   {
     id: 'honeywell-metropolis', name: 'Honeywell Metropolis Works', category: 'fuel-cycle', status: 'operating',
     state: 'IL', city: 'Metropolis', lat: 37.140, lon: -88.752, operator: 'Honeywell International', regulator: 'NRC', docket: '04003392',
     notes: 'The only US uranium conversion plant (U3O8 to UF6); restarted in 2023 after a five-year idle.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/honeywell.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/honeywell-works-uranium-conv-il-lc',
   },
   {
     id: 'westinghouse-columbia', name: 'Westinghouse Columbia Fuel Fabrication Facility', category: 'fuel-cycle', status: 'operating',
     state: 'SC', city: 'Hopkins', lat: 33.957, lon: -80.933, operator: 'Westinghouse Electric Co.', regulator: 'NRC', docket: '07001151',
     notes: 'PWR fuel assemblies; license renewed in 2024 for 40 years with groundwater remediation conditions.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/westinghouse.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/westinghouse-fuel-fab-fac-sc-lc',
   },
   {
     id: 'gnf-wilmington', name: 'Global Nuclear Fuel-Americas', category: 'fuel-cycle', status: 'operating',
     state: 'NC', city: 'Wilmington', lat: 34.371, lon: -77.925, operator: 'Global Nuclear Fuel (GE Vernova / Hitachi)', regulator: 'NRC', docket: '07001113',
     notes: 'BWR fuel fabrication; NRC approved HALEU fuel fabrication at the site in 2024 for advanced reactor demonstrations.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/globalnuclear.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/global-nuc-fuels-america-fuel-fab-lc',
   },
   {
     id: 'framatome-richland', name: 'Framatome Richland Fuel Fabrication', category: 'fuel-cycle', status: 'operating',
     state: 'WA', city: 'Richland', lat: 46.343, lon: -119.312, operator: 'Framatome Inc.', regulator: 'NRC', docket: '07001257',
     notes: 'PWR and BWR fuel fabrication; licensed in 2024 to handle enrichments up to 8% for accident-tolerant and higher-burnup fuels.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/framatome.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/areva-np-lc',
   },
   {
     id: 'bwxt-lynchburg', name: 'BWXT Nuclear Operations Group', category: 'fuel-cycle', status: 'operating',
     state: 'VA', city: 'Lynchburg', lat: 37.427, lon: -79.231, operator: 'BWX Technologies', regulator: 'NRC', docket: '07000027',
     notes: 'Category I facility fabricating naval reactor fuel and down-blending HEU; also the planned TRISO fuel line for microreactors.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/bwxt.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/bwxt-nuclear-lc',
   },
   {
     id: 'nfs-erwin', name: 'Nuclear Fuel Services', category: 'fuel-cycle', status: 'operating',
     state: 'TN', city: 'Erwin', lat: 36.128, lon: -82.416, operator: 'Nuclear Fuel Services (BWXT)', regulator: 'NRC', docket: '07000143',
     notes: 'Category I facility producing naval reactor fuel and down-blending surplus HEU into commercial LEU.',
-    url: 'https://www.nrc.gov/materials/fuel-cycle-fac/nfs.html',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/nuclear-fuel-services',
   },
   {
     id: 'triso-x', name: 'TRISO-X Fuel Fabrication Facility (TX-1)', category: 'fuel-cycle', status: 'licensing',
     state: 'TN', city: 'Oak Ridge', lat: 35.955, lon: -84.370, operator: 'TRISO-X (X-energy)', regulator: 'NRC', docket: '07007027',
     notes: 'First commercial-scale TRISO HALEU fuel plant, under NRC Part 70 licensing review at the Horizon Center industrial park.',
+    url: 'https://www.nrc.gov/facilities-safety/facility-finder/fc/triso-x',
   },
   {
     id: 'gle-paducah', name: 'Global Laser Enrichment Paducah Laser Enrichment Facility', category: 'fuel-cycle', status: 'licensing',
@@ -1199,8 +1239,171 @@ export function matchNrcUnitName(unitLabel: string): { facility: UsNuclearFacili
   return undefined;
 }
 
+// ADAMS Public Search (adams-search.nrc.gov) encodes a saved query as a
+// double-URL-encoded JSON object in the path. The property ids are the
+// search application's own constants (captured from its advanced-search form).
+export const ADAMS_SEARCH_BASE = 'https://adams-search.nrc.gov/results/';
+const ADAMS_DOCKET_PROPERTY = '48232224-3128-4397-886a-b16465fb1a41';
+
+interface AdamsPropertyFilter {
+  propertyItem: string;
+  keywords: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  dateOperator: 'between';
+  textOperator: 'equals' | 'contains' | 'starts';
+  isDate: boolean;
+}
+
+export interface AdamsQuery {
+  keywords: string;
+  legacyLibFilter: boolean;
+  mainLibFilter: boolean;
+  any: AdamsPropertyFilter[];
+  all: AdamsPropertyFilter[];
+}
+
+function adamsFilter(propertyItem: string, keywords: string, textOperator: AdamsPropertyFilter['textOperator']): AdamsPropertyFilter {
+  return { propertyItem, keywords, startDate: '', endDate: '', startTime: '', endTime: '', dateOperator: 'between', textOperator, isDate: false };
+}
+
+/** Build the ADAMS Public Search URL for a query object. */
+export function adamsSearchUrl(query: AdamsQuery): string {
+  return ADAMS_SEARCH_BASE + encodeURIComponent(encodeURIComponent(JSON.stringify(query)));
+}
+
+/** Reverse of `adamsSearchUrl`; returns undefined for anything that is not one of ours. */
+export function parseAdamsSearchUrl(url: string): AdamsQuery | undefined {
+  if (!url.startsWith(ADAMS_SEARCH_BASE)) return undefined;
+  try {
+    return JSON.parse(decodeURIComponent(decodeURIComponent(url.slice(ADAMS_SEARCH_BASE.length)))) as AdamsQuery;
+  } catch {
+    return undefined;
+  }
+}
+
+/** ADAMS full-text search for free keywords (a plant name, an accession number). */
+export function adamsKeywordUrl(keywords: string): string {
+  return adamsSearchUrl({ keywords, legacyLibFilter: true, mainLibFilter: true, any: [], all: [] });
+}
+
+/**
+ * ADAMS Public Search filtered to one NRC docket (property "Docket Number"
+ * equals). The docket number is the stable public key for any licensed
+ * facility: every inspection report, LER, license amendment and piece of
+ * correspondence carries it.
+ */
 export function nrcDocketUrl(docket: string): string {
-  // ADAMS public search pre-filtered to the docket; the NRC docket number is
-  // the stable public key for any licensed facility.
-  return `https://adams.nrc.gov/wba/#/search/${encodeURIComponent(`DocketNumber:${docket}`)}`;
+  return adamsSearchUrl({
+    keywords: '',
+    legacyLibFilter: true,
+    mainLibFilter: true,
+    any: [],
+    all: [adamsFilter(ADAMS_DOCKET_PROPERTY, docket, 'equals')],
+  });
+}
+
+/**
+ * NRC facility-finder page slugs for operating power reactor units, keyed by
+ * unit docket. Captured from the "Operating Nuclear Power Reactors (by
+ * Location or Name)" list plus the Palisades restart page; the page carries
+ * the unit's license, resident inspector, project manager, ROP assessment and
+ * emergency plan links. The NRC has not published pages for the AP1000 units
+ * Vogtle 3 and 4 (dockets 052-00025/26), so those fall back to ADAMS.
+ */
+export const NRC_FACILITY_FINDER_SLUGS: Readonly<Record<string, string>> = {
+  '05000313': 'ano1', '05000368': 'ano2',
+  '05000334': 'bv1', '05000412': 'bv2',
+  '05000456': 'brai1', '05000457': 'brai2',
+  '05000259': 'bf1', '05000260': 'bf2', '05000296': 'bf3',
+  '05000325': 'bru1', '05000324': 'bru2',
+  '05000454': 'byro1', '05000455': 'byro2',
+  '05000483': 'call',
+  '05000317': 'calv1', '05000318': 'calv2',
+  '05000413': 'cat1', '05000414': 'cat2',
+  '05000461': 'clin',
+  '05000397': 'wash2',
+  '05000445': 'cp1', '05000446': 'cp2',
+  '05000298': 'cns',
+  '05000315': 'cook1', '05000316': 'cook2',
+  '05000346': 'davi',
+  '05000275': 'diab1', '05000323': 'diab2',
+  '05000237': 'dres2', '05000249': 'dres3',
+  '05000348': 'far1', '05000364': 'far2',
+  '05000341': 'ferm2',
+  '05000333': 'fitz',
+  '05000244': 'ginn',
+  '05000416': 'gg1',
+  '05000400': 'har1',
+  '05000321': 'hat1', '05000366': 'hat2',
+  '05000354': 'hope',
+  '05000373': 'lasa1', '05000374': 'lasa2',
+  '05000352': 'lim1', '05000353': 'lim2',
+  '05000369': 'mcg1', '05000370': 'mcg2',
+  '05000336': 'mill2', '05000423': 'mill3',
+  '05000263': 'mont',
+  '05000220': 'nmp1', '05000410': 'nmp2',
+  '05000338': 'na1', '05000339': 'na2',
+  '05000269': 'oco1', '05000270': 'oco2', '05000287': 'oco3',
+  '05000528': 'palo1', '05000529': 'palo2', '05000530': 'palo3',
+  '05000277': 'pb2', '05000278': 'pb3',
+  '05000255': 'pali',
+  '05000440': 'perr1',
+  '05000266': 'poin1', '05000301': 'poin2',
+  '05000282': 'prai1', '05000306': 'prai2',
+  '05000254': 'quad1', '05000265': 'quad2',
+  '05000458': 'rbs1',
+  '05000261': 'rob2',
+  '05000335': 'stl1', '05000389': 'stl2',
+  '05000272': 'salm1', '05000311': 'salm2',
+  '05000443': 'seab1',
+  '05000327': 'seq1', '05000328': 'seq2',
+  '05000498': 'stp1', '05000499': 'stp2',
+  '05000280': 'sur1', '05000281': 'sur2',
+  '05000387': 'susq1', '05000388': 'susq2',
+  '05000250': 'tp3', '05000251': 'tp4',
+  '05000395': 'sum',
+  '05000424': 'vog1', '05000425': 'vog2',
+  '05000382': 'wat3',
+  '05000390': 'wb1', '05000391': 'wb2',
+  '05000482': 'wc',
+};
+
+/** The NRC facility-finder page for an operating power reactor unit, when the NRC publishes one. */
+export function nrcFacilityPageUrl(docket: string | undefined): string | undefined {
+  const slug = docket ? NRC_FACILITY_FINDER_SLUGS[docket] : undefined;
+  return slug ? `https://www.nrc.gov/facilities-safety/facility-finder/reactors/${slug}` : undefined;
+}
+
+/** Research links for one facility: ADAMS by docket, the NRC facility page, and the INL search tools. */
+export function nrcFacilityResearchLinks(facility: UsNuclearFacility): Array<{ label: string; url: string }> {
+  const links: Array<{ label: string; url: string }> = [];
+  const units = facility.units ?? [];
+  const unitPages = units
+    .map((u) => ({ unit: u, url: nrcFacilityPageUrl(u.docket) }))
+    .filter((x): x is { unit: UsReactorUnit; url: string } => Boolean(x.url));
+  for (const { unit, url } of unitPages) {
+    links.push({ label: unitPages.length > 1 ? `NRC page · ${unit.name}` : 'NRC facility page', url });
+  }
+  const dockets = [facility.docket, ...units.map((u) => u.docket)].filter((d): d is string => Boolean(d));
+  const seen = new Set<string>();
+  for (const docket of dockets) {
+    if (seen.has(docket)) continue;
+    seen.add(docket);
+    links.push({ label: `ADAMS docket ${docket}`, url: nrcDocketUrl(docket) });
+  }
+  if (!dockets.length) links.push({ label: 'ADAMS search', url: adamsKeywordUrl(facility.name) });
+  // LERs and inspection reports exist only for NRC licensees; DOE and NNSA
+  // sites report through DOE's own occurrence reporting system instead.
+  const nrcLicensed = facility.regulator !== 'DOE' && facility.regulator !== 'NNSA';
+  if (!nrcLicensed) return links;
+  if (facility.category === 'power-reactor' || facility.category === 'restart' || facility.category === 'decommissioning') {
+    links.push({ label: 'Licensee Event Reports', url: NRC_RESEARCH_SOURCES.lerSearch });
+    links.push({ label: 'Inspection reports', url: NRC_RESEARCH_SOURCES.inspectionReportSearch });
+  } else {
+    links.push({ label: 'Event notification search', url: NRC_RESEARCH_SOURCES.eventNotificationSearch });
+  }
+  return links;
 }

@@ -866,7 +866,11 @@ nul_list "${TESTS_CHANGED[@]}" | bash scripts/prepush-changed-tests.sh run-node 
 nul_list "${DOM_TESTS_CHANGED[@]}" | bash scripts/prepush-changed-tests.sh run-dom || exit 1
 
 echo "Running edge function tests..."
-if [ "$RUN_FRONTEND" = true ] || [ "$RUN_ALL" = true ]; then
+if [ ! -f tests/edge-functions.test.mjs ]; then
+  # Removed with the standalone products in the NucMonitor trim (767b8af2e);
+  # the api/ node suites run through `npm run test:sidecar` and CI instead.
+  echo "  Skipped (tests/edge-functions.test.mjs is not part of this repository)."
+elif [ "$RUN_FRONTEND" = true ] || [ "$RUN_ALL" = true ]; then
   node --test tests/edge-functions.test.mjs || exit 1
 else
   echo "  Skipped (no api/ or src/ changes)."

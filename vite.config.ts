@@ -109,7 +109,7 @@ const PANEL_CLUSTER: Record<string, PanelChunkName> = {
   ClimateAnomaly: 'panels-risk',
   RadiationWatch: 'panels-risk',
   // NucMonitor nuclear hub
-  NuclearReactorStatus: 'panels-risk', NuclearEventReports: 'panels-risk', NuclearFacilityHazards: 'panels-risk', NuclearFacilityDirectory: 'panels-risk',
+  NuclearReactorStatus: 'panels-risk', NuclearEventReports: 'panels-risk', NuclearFacilityHazards: 'panels-risk', NuclearFacilityDirectory: 'panels-risk', AdvancedNuclearBuildout: 'panels-risk',
   RuntimeConfig: 'panels-risk', SatelliteFires: 'panels-risk',
   WorldClock: 'panels-risk',
 };

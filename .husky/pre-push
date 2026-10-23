@@ -1070,7 +1070,12 @@ else
 fi
 
 echo "Running version sync check..."
-npm run version:check || exit 1
+if node -e "process.exit((require(\"./package.json\").scripts||{})[\"version:check\"] ? 0 : 1)"; then
+  npm run version:check || exit 1
+else
+  # Dropped with the desktop release pipeline in the NucMonitor trim; nothing left to sync.
+  echo "  Skipped (no version:check script in this repository)."
+fi
 
 echo "All pre-push gates passed."
 

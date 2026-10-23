@@ -35,8 +35,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { isMainModule } from './lib/main-module.mjs';
 
-// fileURLToPath, not URL.pathname: the latter yields '/D:/...' on Windows,
-// which path.join then turns into 'D:D:...' and nothing resolves.
+// fileURLToPath, not URL.pathname: the latter is '/D:/...' on Windows and
+// path.join turns it into 'D:\D:\...'.
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PREMIUM_PATHS_SRC = join(ROOT, 'src/shared/premium-paths.ts');
 const GEN_CLIENT_DIR = join(ROOT, 'src/generated/client');

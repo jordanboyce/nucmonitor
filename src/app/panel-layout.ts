@@ -1,3 +1,4 @@
+import { IS_PARTNER_MODE } from '@/config/access-mode';
 import { subscribeRuntimeConfig } from '@/services/runtime-config';
 import type { AppContext, AppModule } from '@/app/app-context';
 import { replayPendingCalls, clearAllPendingCalls } from '@/app/pending-panel-data';
@@ -168,6 +169,7 @@ export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, Deferred
   'nuclear-events': { rowSpan: 2 },
   'nuclear-hazards': { rowSpan: 2 },
   'nuclear-facilities': { rowSpan: 2 },
+  'nuclear-buildout': { rowSpan: 2 },
   'grid-alerts': { rowSpan: 2, className: 'panel-wide' },
 };
 
@@ -632,7 +634,7 @@ export class PanelLayoutManager implements AppModule {
           ${this.ctx.isDesktopApp ? '' : `<button class="copy-link-btn embed-link-btn" id="embedLinkBtn">${t('header.embed')}</button>`}
           ${this.ctx.isDesktopApp ? '' : `<button class="fullscreen-btn" id="fullscreenBtn" title="${t('header.fullscreen')}" aria-label="${t('header.fullscreen')}">⛶</button>`}
           <span id="unifiedSettingsMount"></span>
-          <span id="authWidgetMount" class="auth-widget-mount"></span>
+          ${IS_PARTNER_MODE ? '<span id="authWidgetMount" class="auth-widget-mount"></span>' : ''}
         </div>
       </div>
       <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
@@ -644,12 +646,12 @@ export class PanelLayoutManager implements AppModule {
           </button>
         </div>
         <div class="mobile-menu-divider"></div>
-        <div class="mobile-menu-account" aria-label="Account">
+        ${IS_PARTNER_MODE ? `<div class="mobile-menu-account" aria-label="Account">
           <span class="mobile-menu-account-icon" aria-hidden="true">◯</span>
           <div id="mobileAuthWidgetMount"></div>
           <button class="mobile-auth-fallback" id="mobileAuthFallback" type="button">Sign In</button>
         </div>
-        <div class="mobile-menu-divider"></div>
+        <div class="mobile-menu-divider"></div>` : ''}
         <div class="mobile-menu-divider"></div>
         <button class="mobile-menu-item" id="mobileMenuRegion">
           <span class="mobile-menu-item-icon">🌐</span>
@@ -672,7 +674,7 @@ export class PanelLayoutManager implements AppModule {
         </button>
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-footer-links">
-          <a href="https://www.nrc.gov/reading-rm/doc-collections/event-status/" target="_blank" rel="noopener">NRC reports</a>
+          <a href="https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with" target="_blank" rel="noopener">NRC reports</a>
           <a href="https://github.com/jordanboyce/nucmonitor" target="_blank" rel="noopener">Source</a>
         </div>
         <div class="mobile-menu-version">v${__APP_VERSION__}</div>
@@ -750,8 +752,8 @@ export class PanelLayoutManager implements AppModule {
           </div>
         </div>
         <nav aria-label="Official sources">
-          <a href="https://www.nrc.gov/reading-rm/doc-collections/event-status/" target="_blank" rel="noopener">NRC event &amp; status reports</a>
-          <a href="https://www.nrc.gov/info-finder/region-state/" target="_blank" rel="noopener">NRC facility locator</a>
+          <a href="https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with" target="_blank" rel="noopener">NRC event &amp; status reports</a>
+          <a href="https://www.nrc.gov/facilities-safety/facility-finder/region-state" target="_blank" rel="noopener">NRC facility locator</a>
           <a href="https://www.weather.gov/alerts" target="_blank" rel="noopener">NWS alerts</a>
           <a href="https://www.epa.gov/radnet" target="_blank" rel="noopener">EPA RadNet</a>
         </nav>
@@ -2028,6 +2030,17 @@ export class PanelLayoutManager implements AppModule {
     );
     this.lazyPanel('grid-alerts', () =>
       this.importPanel('grid-alerts', () => import('@/components/GridAlertsPanel'), 'GridAlertsPanel', (GridAlertsPanel) => new GridAlertsPanel()),
+    );
+
+    this.lazyPanel('nuclear-buildout', () =>
+      this.importPanel('nuclear-buildout', () => import('@/components/AdvancedNuclearBuildoutPanel'), 'AdvancedNuclearBuildoutPanel', (AdvancedNuclearBuildoutPanel) => {
+        const p = new AdvancedNuclearBuildoutPanel();
+        p.setLocationClickHandler((lat: number, lon: number, facilityId?: string) => {
+          this.ctx.map?.setCenter(lat, lon, facilityId ? 7 : 6);
+          if (facilityId) this.ctx.map?.setSelectedUsNuclearFacility(facilityId);
+        });
+        return p;
+      }),
     );
 
     this.createNewsPanel('nuclear-headlines', 'panels.nuclearHeadlines');

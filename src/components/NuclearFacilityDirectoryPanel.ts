@@ -3,6 +3,7 @@ import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { bindActivationKeys } from '@/utils/activation';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 import {
+  NRC_RESEARCH_SOURCES,
   summarizeUsNuclearFleet,
   US_NUCLEAR_FACILITIES,
   US_NUCLEAR_REGISTRY_AS_OF,
@@ -231,6 +232,7 @@ export class NuclearFacilityDirectoryPanel extends Panel {
       ${renderSiteFilterToolbar(this.filters, { showCategory: false, watchCount: watchlistSnapshot().size })}
       <div class="nfd-list">${this.listHtml()}</div>
       <div class="nfd-footer">Registry reviewed ${escapeHtml(US_NUCLEAR_REGISTRY_AS_OF)} · <a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcOperatingReactors}" target="_blank" rel="noopener">NRC operating reactors</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.nrcFacilityLocator}" target="_blank" rel="noopener">NRC facility locator</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.doeSites}" target="_blank" rel="noopener">DOE sites</a> · <a href="${US_NUCLEAR_REGISTRY_SOURCES.iaeaPris}" target="_blank" rel="noopener">IAEA PRIS</a></div>
+      <div class="nfd-footer nfd-research">Research: <a href="${NRC_RESEARCH_SOURCES.adams}" target="_blank" rel="noopener" title="ADAMS Public Search, the NRC document library">ADAMS documents</a> · <a href="${NRC_RESEARCH_SOURCES.lerSearch}" target="_blank" rel="noopener">Licensee Event Reports</a> · <a href="${NRC_RESEARCH_SOURCES.inspectionReportSearch}" target="_blank" rel="noopener">Inspection reports</a> · <a href="${NRC_RESEARCH_SOURCES.operatingExperience}" target="_blank" rel="noopener" title="Initiating events, loss of offsite power, component and system reliability studies (INL)">Operating experience</a> · <a href="${NRC_RESEARCH_SOURCES.nrod}" target="_blank" rel="noopener">NROD</a> · <a href="${NRC_RESEARCH_SOURCES.part21Reports}" target="_blank" rel="noopener">Part 21</a> · <a href="${NRC_RESEARCH_SOURCES.preliminaryNotifications}" target="_blank" rel="noopener">Preliminary Notifications</a> · <a href="${NRC_RESEARCH_SOURCES.nmed}" target="_blank" rel="noopener" title="Nuclear Material Events Database annual reports">NMED</a> · <a href="${NRC_RESEARCH_SOURCES.escalatedEnforcement}" target="_blank" rel="noopener">Enforcement</a> · <a href="${NRC_RESEARCH_SOURCES.saphire}" target="_blank" rel="noopener" title="SAPHIRE PRA software and SPAR models (users group)">SAPHIRE</a></div>
     `;
     this.setSafeContent(unsafeRawHtml(html, 'NuclearFacilityDirectoryPanel render: all dynamic values escaped'));
     this.setCount(this.visible().length);

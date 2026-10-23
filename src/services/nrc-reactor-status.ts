@@ -13,8 +13,8 @@ import { applyShowcaseStatusOverrides, getShowcaseScenario } from '@/services/sh
 
 export type { NrcFleetPowerSummary, NrcReactorStatusRow, NrcReactorStatusSnapshot };
 
-export const NRC_REACTOR_STATUS_PAGE = 'https://www.nrc.gov/reading-rm/doc-collections/event-status/reactor-status/';
-export const NRC_EVENT_REPORTS_PAGE = 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/';
+export const NRC_REACTOR_STATUS_PAGE = 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/power-reactor-status-reports';
+export const NRC_EVENT_REPORTS_PAGE = 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports';
 
 export interface NrcUnitStatus extends NrcReactorStatusRow {
   /** Registry facility the NRC unit label resolved to, when matched. */

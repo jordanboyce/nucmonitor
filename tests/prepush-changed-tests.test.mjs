@@ -31,7 +31,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = join(REPO_ROOT, 'scripts', 'prepush-changed-tests.sh');
@@ -112,15 +112,19 @@ function partition(mode, { cwd, changed = CHANGED } = {}) {
 
 function loadDomTestConfig(env = {}) {
   const probe = join(fixtureDir('wm-dom-config-probe-'), 'probe.mts');
+  // A file URL, not a bare path: on Windows `import('D:\\...')` is rejected as
+  // an unsupported URL scheme.
   writeFileSync(
     probe,
-    `const m = await import(${JSON.stringify(join(REPO_ROOT, 'vitest.dom.config.mts'))});\n` +
+    `const m = await import(${JSON.stringify(pathToFileURL(join(REPO_ROOT, 'vitest.dom.config.mts')).href)});\n` +
       'console.log(JSON.stringify(m.default?.test ?? null));\n',
   );
   const childEnv = { ...process.env };
   delete childEnv.VITEST_MAX_THREADS;
   Object.assign(childEnv, env);
-  const out = execFileSync(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [probe], {
+  // Run tsx's JS entry through the current node binary: node_modules/.bin/tsx
+  // is a .cmd shim on Windows, which execFileSync cannot spawn (ENOENT).
+  const out = execFileSync(process.execPath, [join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs'), probe], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     env: childEnv,
@@ -203,7 +207,9 @@ describe('pre-push changed-test partition', () => {
     }
   });
 
-  test('a path containing a newline stays one path', () => {
+  // NTFS cannot create a filename containing a newline, so this case is
+  // POSIX-only; the NUL-delimiting it proves is exercised on Linux CI.
+  test('a path containing a newline stays one path', { skip: process.platform === 'win32' && 'newline in a filename is not representable on Windows' }, () => {
     // The reason the list is NUL-delimited: a line reader would split this
     // into two entries, neither of which exists, and the old code would have
     // silently dropped both.

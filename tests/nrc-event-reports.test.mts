@@ -22,8 +22,8 @@ import { enrichNrcEvents, facilitiesWithRecentEvents, matchEventFacility } from 
 const fixture = (name: string): string =>
   readFileSync(new URL(`./fixtures/nrc-event-reports/${name}`, import.meta.url), 'utf8');
 
-const DAY1_URL = 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/2026/20261015en.html';
-const DAY2_URL = 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/2026/20261016en.html';
+const DAY1_URL = 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports/2026/20261015en';
+const DAY2_URL = 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports/2026/20261016en';
 
 describe('nrc event report parser', () => {
   const day1 = parseNrcEventReportPage(fixture('20261015en.html'), DAY1_URL);
@@ -189,7 +189,7 @@ describe('nrc event report helpers', () => {
   });
 
   it('builds daily page URLs', () => {
-    assert.equal(nrcEventReportPageUrl(new Date(Date.UTC(2026, 0, 5))), 'https://www.nrc.gov/reading-rm/doc-collections/event-status/event/2026/20260105en.html');
+    assert.equal(nrcEventReportPageUrl(new Date(Date.UTC(2026, 0, 5))), 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/event-notification-reports/2026/20260105en');
   });
 
   it('keeps table structure in the text rendering', () => {
@@ -216,14 +216,14 @@ describe('nrc event report endpoint', () => {
 
   it('merges pages, tolerates missing days and reports failures', async () => {
     const pages: Record<string, string> = {
-      '20261016en.html': fixture('20261016en.html'),
-      '20261015en.html': fixture('20261015en.html'),
+      '20261016en': fixture('20261016en.html'),
+      '20261015en': fixture('20261015en.html'),
     };
     globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input);
       const name = url.slice(url.lastIndexOf('/') + 1);
-      if (name === '20261013en.html') return new Response('boom', { status: 503 });
-      if (name === '20261012en.html') return new Response('<h1>Page Not Found</h1>', { status: 200 });
+      if (name === '20261013en') return new Response('boom', { status: 503 });
+      if (name === '20261012en') return new Response('<h1>Page Not Found</h1>', { status: 200 });
       const body = pages[name];
       return body ? new Response(body, { status: 200 }) : new Response('nf', { status: 404 });
     }) as typeof fetch;

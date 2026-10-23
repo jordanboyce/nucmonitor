@@ -9,8 +9,8 @@ export const config = { runtime: 'edge' };
 // NRC Power Reactor Status Report, bulk file covering the trailing 365 days.
 // Pipe-delimited text (ReportDt|Unit|Power|Reason|Change|...), one row per
 // unit per calendar day. Published once a day by the NRC Operations Center.
-// https://www.nrc.gov/reading-rm/doc-collections/event-status/reactor-status/
-export const NRC_REACTOR_STATUS_URL = 'https://www.nrc.gov/reading-rm/doc-collections/event-status/reactor-status/PowerReactorStatusForLast365Days.txt';
+// https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/power-reactor-status-reports
+export const NRC_REACTOR_STATUS_URL = 'https://www.nrc.gov/documents-reports/document-collections/events-reports-associated-with/power-reactor-status-reports/PowerReactorStatusForLast365Days.txt';
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const MAX_BODY_BYTES = 8 * 1024 * 1024;

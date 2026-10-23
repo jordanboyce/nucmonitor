@@ -1,4 +1,4 @@
-import { getNrcRegion, NRC_REGION_NAMES, nrcDocketUrl, US_NUCLEAR_CATEGORY_LABELS, US_NUCLEAR_STATUS_LABELS, type UsNuclearFacility } from '@/config/us-nuclear-facilities';
+import { getNrcRegion, NRC_REGION_NAMES, nrcFacilityResearchLinks, US_NUCLEAR_CATEGORY_LABELS, US_NUCLEAR_STATUS_LABELS, type UsNuclearFacility } from '@/config/us-nuclear-facilities';
 import type { NewsItem, NewsLocationMarker, NuclearFacility, GammaIrradiator, Pipeline, UnderseaCable, CableAdvisory, RepairShip, InternetOutage, AIDataCenter, NaturalEvent } from '@/types';
 import type { Earthquake } from '@/services/earthquakes';
 import type { WeatherAlert } from '@/services/weather';
@@ -618,7 +618,7 @@ export class MapPopup {
         ${unitRows ? `<div class="popup-section"><table class="popup-table us-nuclear-units"><thead><tr><th>Unit</th><th>Type</th><th>MWe</th><th>Status</th></tr></thead><tbody>${unitRows}</tbody></table></div>` : ''}
         <div class="popup-section popup-links">
           ${facility.url ? `<a href="${escapeHtml(facility.url)}" target="_blank" rel="noopener">Reference page</a>` : ''}
-          ${facility.docket ? `<a href="${nrcDocketUrl(facility.docket)}" target="_blank" rel="noopener">NRC docket ${escapeHtml(facility.docket)}</a>` : ''}
+          ${nrcFacilityResearchLinks(facility).slice(0, 3).map((l) => `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a>`).join('')}
           ${facility.isfsi ? '<span class="popup-tag">Spent fuel stored on site (ISFSI)</span>' : ''}
         </div>
       </div>

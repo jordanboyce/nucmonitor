@@ -41,8 +41,8 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
-// fileURLToPath, not URL.pathname: the latter yields '/D:/...' on Windows,
-// which path.join then turns into 'D:D:...' and nothing resolves.
+// fileURLToPath, not URL.pathname: the latter is '/D:/...' on Windows and
+// path.join turns it into 'D:\D:\...'.
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OPENAPI_DIR = join(ROOT, 'docs/api');
 const RATE_LIMIT_SRC = join(ROOT, 'server/_shared/rate-limit.ts');

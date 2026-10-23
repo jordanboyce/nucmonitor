@@ -797,11 +797,7 @@ fi
 if [ "$RUN_ALL" != true ]; then
   if [ "$RUN_RESILIENCE" = true ]; then
     echo "Running resilience tests (resilience files changed)..."
-    if ls tests/resilience-*.test.mjs tests/resilience-*.test.mts >/dev/null 2>&1; then
-      timeout 120 npx tsx --test --test-concurrency="$WM_PREPUSH_TEST_CONCURRENCY" tests/resilience-*.test.mjs tests/resilience-*.test.mts || exit 1
-    else
-      echo "  No resilience suites in this tree, skipping."
-    fi
+    timeout 120 npx tsx --test --test-concurrency="$WM_PREPUSH_TEST_CONCURRENCY" tests/resilience-*.test.mjs tests/resilience-*.test.mts || exit 1
   fi
   if [ "$RUN_SEED" = true ]; then
     echo "Running seed tests (scripts/ changed)..."
@@ -815,13 +811,7 @@ if [ "$RUN_ALL" != true ]; then
   fi
   if [ "$RUN_SERVER" = true ]; then
     echo "Running server handler tests (server/ changed)..."
-    SERVER_TESTS_PRESENT=()
-    for server_test in "${SERVER_TESTS[@]}"; do [ -f "$server_test" ] && SERVER_TESTS_PRESENT+=("$server_test"); done
-    if [ "${#SERVER_TESTS_PRESENT[@]}" -gt 0 ]; then
-      timeout 120 npx tsx --test --test-concurrency="$WM_PREPUSH_TEST_CONCURRENCY" "${SERVER_TESTS_PRESENT[@]}" || exit 1
-    else
-      echo "  No server handler suites in this tree, skipping."
-    fi
+    timeout 120 npx tsx --test --test-concurrency="$WM_PREPUSH_TEST_CONCURRENCY" "${SERVER_TESTS[@]}" || exit 1
   fi
   if [ "$RUN_RESILIENCE" = false ] && [ "$RUN_SEED" = false ] && [ "$RUN_SERVER" = false ] \
     && [ "${#TESTS_CHANGED[@]}" -eq 0 ] && [ "${#DOM_TESTS_CHANGED[@]}" -eq 0 ]; then
@@ -877,7 +867,9 @@ nul_list "${DOM_TESTS_CHANGED[@]}" | bash scripts/prepush-changed-tests.sh run-d
 
 echo "Running edge function tests..."
 if [ ! -f tests/edge-functions.test.mjs ]; then
-  echo "  Skipped (tests/edge-functions.test.mjs is not in this tree)."
+  # Removed with the standalone products in the NucMonitor trim (767b8af2e);
+  # the api/ node suites run through `npm run test:sidecar` and CI instead.
+  echo "  Skipped (tests/edge-functions.test.mjs is not part of this repository)."
 elif [ "$RUN_FRONTEND" = true ] || [ "$RUN_ALL" = true ]; then
   node --test tests/edge-functions.test.mjs || exit 1
 else
@@ -1078,10 +1070,11 @@ else
 fi
 
 echo "Running version sync check..."
-if node -e "process.exit(require('./package.json').scripts?.['version:check'] ? 0 : 1)"; then
+if node -e "process.exit((require(\"./package.json\").scripts||{})[\"version:check\"] ? 0 : 1)"; then
   npm run version:check || exit 1
 else
-  echo "  Skipped (no version:check script in package.json)."
+  # Dropped with the desktop release pipeline in the NucMonitor trim; nothing left to sync.
+  echo "  Skipped (no version:check script in this repository)."
 fi
 
 echo "All pre-push gates passed."

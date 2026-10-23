@@ -35,13 +35,6 @@ import { fileURLToPath } from 'node:url';
 import { isMainModule } from './lib/main-module.mjs';
 import { collectTsFiles, lexSource } from './lib/source-scan.mjs';
 
-// Repo-relative, forward-slash path so the inventory keys above match on
-// Windows too (path.relative yields backslashes there, which made every
-// recorded write look missing and the pre-push gate fail on a clean tree).
-function relPath(root, abs) {
-  return path.relative(root, abs).split(path.sep).join('/');
-}
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -219,6 +212,10 @@ export function adviceFor(label) {
 /** Scan the tree and return everything the assertions and the CLI both need. */
 export function scanRepo(root = REPO_ROOT) {
   const componentsDir = path.join(root, 'src/components');
+  // Inventory entries are written with forward slashes; path.relative yields
+  // backslashes on Windows, which made the guard report every legacy write as
+  // new and every inventory line as stale there.
+  const rel = (abs) => path.relative(root, abs).split(path.sep).join('/');
   const allFiles = collectTsFiles(componentsDir, { readdirSync, lstatSync, join: path.join });
   // Track files the lexer could not read confidently. A mis-lex does not throw
   // — it silently blanks real code, and the guard then reports a clean scan of
@@ -228,7 +225,7 @@ export function scanRepo(root = REPO_ROOT) {
   const codeByFile = new Map(
     allFiles.map((abs) => {
       const { code, ok, terminalMode } = lexSource(readFileSync(abs, 'utf8'));
-      if (!ok) unlexable.push(`${relPath(root, abs)} (ended in ${terminalMode})`);
+      if (!ok) unlexable.push(`${rel(abs)} (ended in ${terminalMode})`);
       return [abs, code];
     }),
   );
@@ -240,7 +237,7 @@ export function scanRepo(root = REPO_ROOT) {
 
   const subclassFiles = allFiles.filter(
     (abs) =>
-      !GUARD_EXEMPT_FILES.has(relPath(root, abs)) &&
+      !GUARD_EXEMPT_FILES.has(rel(abs)) &&
       [...collectClassBases(codeByFile.get(abs) ?? '').keys()].some((name) =>
         derivesFromPanel(name, baseOf),
       ),
@@ -249,7 +246,7 @@ export function scanRepo(root = REPO_ROOT) {
   const observed = subclassFiles
     .flatMap((abs) =>
       directWritesIn(codeByFile.get(abs) ?? '').map(
-        (label) => `${relPath(root, abs)} :: ${label}`,
+        (label) => `${rel(abs)} :: ${label}`,
       ),
     )
     .sort();

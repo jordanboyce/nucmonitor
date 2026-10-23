@@ -454,7 +454,12 @@ export async function fetchNyiso(deps) {
 // ─── SPP ─────────────────────────────────────────────────────────────────────
 
 export function normalizeSppConditions(html) {
-  const text = String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+  const text = String(html || '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script(?:\s+[^>]*)?\s*>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style(?:\s+[^>]*)?\s*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ');
   const patterns = [
     /energy emergency alert\s*(?:level\s*)?([123])/i,
     /conservative operations? advisory/i,

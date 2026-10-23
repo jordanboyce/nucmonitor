@@ -354,14 +354,18 @@ export function rawStorageUsesIn(source) {
 /** Scan the tree and return everything the assertions and the CLI both need. */
 export function scanRepo(root = REPO_ROOT) {
   const allFiles = collectTsFiles(path.join(root, 'src'), { readdirSync, lstatSync, join: path.join });
+  // Inventory entries are written with forward slashes; path.relative yields
+  // backslashes on Windows, which made the guard report every legacy use as
+  // new and every inventory line as stale there.
+  const rel = (abs) => path.relative(root, abs).split(path.sep).join('/');
   const scanned = allFiles.filter(
-    (abs) => !GUARD_EXEMPT_FILES.has(path.relative(root, abs)),
+    (abs) => !GUARD_EXEMPT_FILES.has(rel(abs)),
   );
 
   const observed = scanned
     .flatMap((abs) =>
       rawStorageUsesIn(readFileSync(abs, 'utf8')).map(
-        (label) => `${path.relative(root, abs)} :: ${label}`,
+        (label) => `${rel(abs)} :: ${label}`,
       ),
     )
     .sort();

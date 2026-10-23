@@ -207,6 +207,7 @@ const SPLIT_RISK_PANEL_IMPORTS: Array<[string, string, string]> = [
   ['nuclear-events', '@/components/NuclearEventReportsPanel', 'NuclearEventReportsPanel'],
   ['nuclear-hazards', '@/components/NuclearFacilityHazardsPanel', 'NuclearFacilityHazardsPanel'],
   ['nuclear-facilities', '@/components/NuclearFacilityDirectoryPanel', 'NuclearFacilityDirectoryPanel'],
+  ['nuclear-buildout', '@/components/AdvancedNuclearBuildoutPanel', 'AdvancedNuclearBuildoutPanel'],
   ['climate-news', '@/components/ClimateNewsPanel', 'ClimateNewsPanel'],
 ];
 

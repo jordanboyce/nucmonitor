@@ -749,6 +749,7 @@ describe('applyMissionPresetToState', () => {
       'nuclear-events',
       'nuclear-hazards',
       'nuclear-facilities',
+      'nuclear-buildout',
       'radiation-watch',
       'satellite-fires',
       'climate',

@@ -17,6 +17,7 @@ const NUCLEAR_PANELS: Record<string, PanelConfig> = {
   'nuclear-events': { name: 'NRC Event Notifications', enabled: true, priority: 1 },
   'nuclear-hazards': { name: 'Facility All-Hazards Watch', enabled: true, priority: 1 },
   'nuclear-facilities': { name: 'US Nuclear Facility Directory', enabled: true, priority: 1 },
+  'nuclear-buildout': { name: 'Advanced Nuclear Buildout', enabled: true, priority: 2 },
   'nuclear-headlines': { name: 'Nuclear Headlines', enabled: true, priority: 1 },
   'nuclear-regulatory': { name: 'NRC, DOE & IAEA Official', enabled: true, priority: 1 },
   'nuclear-industry': { name: 'Nuclear Industry News', enabled: true, priority: 1 },
@@ -361,7 +362,7 @@ export const PANEL_CATEGORY_MAP: Record<string, { labelKey: string; panelKeys: s
 
   nuclearHub: {
     labelKey: 'header.panelCatNuclearHub',
-    panelKeys: ['nuclear-reactor-status', 'nuclear-events', 'nuclear-hazards', 'nuclear-facilities', 'radiation-watch', 'satellite-fires', 'climate'],
+    panelKeys: ['nuclear-reactor-status', 'nuclear-events', 'nuclear-hazards', 'nuclear-facilities', 'nuclear-buildout', 'radiation-watch', 'satellite-fires', 'climate'],
     variants: ['nuclear'],
   },
   nuclearNews: {

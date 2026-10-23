@@ -31,11 +31,13 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, basename } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { isMainModule } from './lib/main-module.mjs';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: the latter is '/D:/...' on Windows and
+// path.join turns it into 'D:\D:\...'.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PREMIUM_PATHS_SRC = join(ROOT, 'src/shared/premium-paths.ts');
 const GEN_CLIENT_DIR = join(ROOT, 'src/generated/client');
 const SRC_DIR = join(ROOT, 'src');

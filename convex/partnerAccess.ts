@@ -8,14 +8,9 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
-import { getFeaturesForPlan } from "./lib/entitlements";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DOMAIN_RE = /^(?:[a-z0-9-]+\.)+[a-z]{2,}$/;
-// Partner API keys reuse the existing per-user key flow; the gateway requires
-// the key owner's entitlement to carry apiAccess, which this plan grants.
-const PARTNER_API_PLAN_KEY = "enterprise";
-const PARTNER_API_VALID_DAYS = 365;
 
 function normalizeEmail(email: string): string {
   const value = email.trim().toLowerCase();
@@ -101,32 +96,6 @@ export const listInvites = internalQuery({
       note,
       createdAt,
     }));
-  },
-});
-
-/**
- * Let a partner account create API keys that the gateway accepts.
- * `npx convex run partnerAccess:grantApiAccess '{"userId":"user_..."}'`
- */
-export const grantApiAccess = internalMutation({
-  args: { userId: v.string(), days: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    const days = Math.max(1, Math.min(args.days ?? PARTNER_API_VALID_DAYS, 3650));
-    const row = {
-      userId: args.userId,
-      planKey: PARTNER_API_PLAN_KEY,
-      features: getFeaturesForPlan(PARTNER_API_PLAN_KEY),
-      validUntil: now + days * 86_400_000,
-      updatedAt: now,
-    };
-    const existing = await ctx.db
-      .query("entitlements")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .first();
-    if (existing) await ctx.db.replace(existing._id, row);
-    else await ctx.db.insert("entitlements", row);
-    return { userId: args.userId, validUntil: row.validUntil };
   },
 });
 

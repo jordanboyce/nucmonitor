@@ -77,8 +77,6 @@ export interface MapState {
 export interface MapComponentOptions {
   chrome?: boolean;
   isMobile?: boolean;
-  /** App-owned entitlement guard; omitted for the public embed renderer. */
-  canToggleLayer?: (layer: keyof MapLayers, currentlyEnabled: boolean | undefined) => boolean;
 }
 
 interface WorldTopology extends Topology {
@@ -185,7 +183,6 @@ export class MapComponent {
   private destroyed = false;
   // Mobile loads the lighter 110m country topology (U6); passed in from MapContainer.
   private readonly isMobile: boolean;
-  private readonly canToggleLayer: NonNullable<MapComponentOptions['canToggleLayer']>;
   private overlayAppendTarget: ParentNode | null = null;
   // #7112 overlay marker budget. `overlayMarkerCut` holds the marker objects
   // this render pass withheld; it is consulted by identity, so a feed that is
@@ -240,7 +237,6 @@ export class MapComponent {
     this.state = initialState;
     const chrome = options.chrome ?? true;
     this.isMobile = options.isMobile ?? false;
-    this.canToggleLayer = options.canToggleLayer ?? (() => true);
     this.mobileLabelVisibilityArmed = !this.isMobile;
 
     this.wrapper = document.createElement('div');
@@ -2468,7 +2464,6 @@ export class MapComponent {
   ]);
 
   public toggleLayer(layer: keyof MapLayers, source: 'user' | 'programmatic' = 'user'): void {
-    if (!this.canToggleLayer(layer, this.state.layers[layer])) return;
     console.log(`[Map.toggleLayer] ${layer}: ${this.state.layers[layer]} -> ${!this.state.layers[layer]}`);
     this.state.layers[layer] = !this.state.layers[layer];
     if (this.state.layers[layer]) {
@@ -2647,7 +2642,6 @@ export class MapComponent {
   }
 
   public enableLayer(layer: keyof MapLayers): void {
-    if (!this.canToggleLayer(layer, this.state.layers[layer])) return;
     if (!this.state.layers[layer]) {
       this.state.layers[layer] = true;
       const thresholds = MapComponent.LAYER_ZOOM_THRESHOLDS[layer];

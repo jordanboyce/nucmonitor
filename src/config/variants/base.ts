@@ -113,8 +113,6 @@ export const STORAGE_KEYS = {
   monitors: 'worldmonitor-monitors',
   mapLayers: 'worldmonitor-layers',
   disabledFeeds: 'worldmonitor-disabled-feeds',
-  sourceGateOwnership: 'worldmonitor-free-tier-source-ownership',
-  mapLayerGateOwnership: 'worldmonitor-free-tier-layer-ownership',
   panelLayoutVariant: 'worldmonitor-panel-layout-variant',
   // Schema version for the disabledFeeds set. Bumped on each migration that
   // mutates the set in a backwards-incompatible way. Currently:

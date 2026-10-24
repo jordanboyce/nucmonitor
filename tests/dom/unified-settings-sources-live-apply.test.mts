@@ -31,24 +31,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, type Mock, vi }
 import { initTestI18n } from './helpers/i18n.mts';
 import type { UnifiedSettingsConfig } from '@/components/UnifiedSettings';
 import type { AuthSession } from '@/services/auth-state';
-import type { EntitlementState } from '@/services/entitlements';
 
 const session: AuthSession = {
-  user: { id: 'A', name: 'User A', email: 'a@example.com', role: 'pro' },
+  user: { id: 'A', name: 'User A', email: 'a@example.com' },
   isPending: false,
-};
-
-const entitlementState: EntitlementState = {
-  planKey: 'pro',
-  features: {
-    tier: 1,
-    apiAccess: true,
-    apiRateLimit: 10_000,
-    maxDashboards: 10,
-    prioritySupport: true,
-    exportFormats: ['json'],
-  },
-  validUntil: Date.now() + 86_400_000,
 };
 
 const storageValues = new Map<string, string>();
@@ -67,33 +53,8 @@ vi.mock('@/services/auth-state', async (importOriginal) => ({
   subscribeAuthState: () => () => {},
 }));
 
-vi.mock('@/services/entitlements', () => ({
-  getEntitlementState: () => entitlementState,
-  getEntitlementVerificationStatus: () => 'ready',
-  hasFeature: () => true,
-  hasEmbedAccessForAccount: () => true,
-  isEntitled: () => true,
-  onEntitlementChange: () => () => {},
-  onEntitlementVerificationChange: () => () => {},
-}));
-
-vi.mock('@/services/panel-gating', () => ({
-  hasPremiumAccess: () => true,
-}));
-
-vi.mock('@/services/widget-store', () => ({
-  isProUser: () => true,
-}));
-
 vi.mock('@/services/preferences-content', () => ({
   renderPreferences: () => ({
-    html: '',
-    attach: () => () => {},
-  }),
-}));
-
-vi.mock('@/services/notifications-settings', () => ({
-  renderNotificationsSettings: () => ({
     html: '',
     attach: () => () => {},
   }),
@@ -111,49 +72,11 @@ vi.mock('@/config/panels', () => ({
   VARIANT_DEFAULTS: { full: [] },
   getEffectivePanelConfig: () => ({ name: '', enabled: false }),
   getVariantPanelCategories: () => [],
-  isPanelEntitled: () => true,
-  FREE_MAX_PANELS: 3,
-  countFreePanelCapUsage: () => 0,
-  isFreePanelCapCounted: () => false,
+  isPanelInVariantDefaults: () => false,
 }));
 
 vi.mock('@/config/variant', () => ({
   SITE_VARIANT: 'full',
-}));
-
-vi.mock('@/services/billing', () => ({
-  getSubscription: () => null,
-  isSubscriptionLoaded: () => true,
-  onSubscriptionChange: () => () => {},
-  openBillingPortal: async () => ({ outcome: 'no-customer' as const }),
-  prereserveBillingPortalTab: () => null,
-  listBusinessSeats: async () => ({
-    businessSubscriptionId: null,
-    ownerDomain: null,
-    ownerIsCorporateDomain: false,
-    seats: [],
-  }),
-  inviteBusinessSeats: async () => ({ invited: [] }),
-  removeBusinessSeat: async () => ({ status: 'removed' as const }),
-}));
-
-// Partial so the real status-tone helpers stay available: a full stub goes
-// stale the moment billing-state gains an export the panel renders (#7315).
-vi.mock('@/services/api-keys', () => ({
-  createApiKey: vi.fn(),
-  listApiKeys: vi.fn(),
-  revokeApiKey: vi.fn(),
-}));
-
-vi.mock('@/services/api-plan-limit-notices', () => ({
-  acknowledgePlanLimitNotice: vi.fn(),
-  listCurrentPlanLimitNotices: vi.fn(),
-}));
-
-vi.mock('@/services/mcp-clients', () => ({
-  listMcpClients: vi.fn(),
-  fetchMcpQuota: vi.fn(),
-  revokeMcpClient: vi.fn(),
 }));
 
 const { UnifiedSettings } = await import('@/components/UnifiedSettings');
@@ -326,14 +249,13 @@ describe('UnifiedSettings source selection live apply (#6380)', () => {
   });
 
   it('(e2) a re-entrant open() mid-session does not swallow an earlier toggle', () => {
-    // open() is callable on an overlay that is already up — the deep-dive
-    // "Notify me about this country" jump lands on the notifications tab that
-    // way. Re-snapshotting there would adopt the post-toggle set as the
-    // baseline and close() would see no movement at all.
+    // open() is callable on an overlay that is already up. Re-snapshotting
+    // there would adopt the post-toggle set as the baseline and close() would
+    // see no movement at all.
     settings.open('sources');
     sourceButton(PLAIN_SOURCE).click();
 
-    settings.open('notifications');
+    settings.open('panels');
     settings.close();
 
     expect(

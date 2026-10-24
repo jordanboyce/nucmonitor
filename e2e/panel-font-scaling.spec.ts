@@ -13,9 +13,7 @@ async function seedDashboard(page: Page): Promise<void> {
     sessionStorage.clear();
     sessionStorage.setItem('__panel_font_scale_seeded__', '1');
     localStorage.setItem('worldmonitor-variant', 'full');
-    localStorage.setItem('wm-pro-key', 'e2e-panel-font-scale');
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
-    localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
   });
 

@@ -39,7 +39,6 @@ export const BASELINE_ADVISORIES_BY_LOCKFILE = {
   'package-lock.json': [],
   'consumer-prices-core/package-lock.json': [],
   'blog-site/package-lock.json': [],
-  'pro-test/package-lock.json': [],
   'scripts/package-lock.json': [],
   'docker/runtime-package-lock.json': [],
 };

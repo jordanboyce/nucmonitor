@@ -8,7 +8,7 @@
  */
 
 import { mlWorker } from './ml-worker';
-import { getRpcBaseUrl, getRpcErrorStatusCode } from '@/services/rpc-client';
+import { getRpcBaseUrl } from '@/services/rpc-client';
 import { SITE_VARIANT } from '@/config';
 import { BETA_MODE } from '@/config/beta';
 import { isFeatureAvailable, type RuntimeFeatureId } from './runtime-config';
@@ -18,22 +18,11 @@ import type { SummarizeArticleResponse } from '@/generated/client/worldmonitor/n
 import { createCircuitBreaker } from '@/utils';
 import { buildSummaryCacheKey } from '@/utils/summary-cache-key';
 import { NewsServiceClient } from '@/services/generated-rpc-clients';
-import { premiumFetch } from '@/services/premium-fetch';
-import {
-  canAttemptServerSummarization,
-  configureSummarizeGate,
-  isServerSummarizationSuppressed,
-  parseSummarizeRetryAfterMs,
-  suppressServerSummarization,
-  suppressServerSummarizationFor,
-} from '@/services/summarize-gate';
-import { hasPremiumAccess } from '@/services/panel-gating';
 import {
   createSummarizationAttemptState,
   logChainOutcome,
   markSummarizationAttempt,
   markSummarizationShortCircuited,
-  markSummarizationSuppressed,
   type AttemptedSummarizationProvider,
   type SummarizationAttemptState,
 } from './summarization-outcome';
@@ -64,32 +53,6 @@ export interface SummarizeOptions {
 // ── Sebuf client (replaces direct fetch to /api/{provider}-summarize) ──
 
 const newsClient = new NewsServiceClient(getRpcBaseUrl(), { fetch: (...args) => globalThis.fetch(...args) });
-const premiumNewsClient = new NewsServiceClient(getRpcBaseUrl(), {
-  fetch: async (input, init) => {
-    const response = await premiumFetch(input, { ...init, forcePremium: true });
-    if (response.status === 429) {
-      const retryAfterMs = parseSummarizeRetryAfterMs(response.headers.get('Retry-After'));
-      if (retryAfterMs === null) {
-        // The server normally supplies Retry-After. A malformed/missing value
-        // must still stop this provider chain from multiplying the same 429.
-        suppressServerSummarization();
-      } else {
-        suppressServerSummarizationFor(retryAfterMs);
-      }
-    }
-    return response;
-  },
-});
-
-// #4913: summarize-article LLM spend is premium-gated server-side (#4687).
-// Gate every API-provider dispatch on the client-side entitlement signal so
-// anon/free principals fall straight to the browser-T5 provider with ZERO
-// network attempts — before this gate, every summarize attempt fanned out up
-// to 2 doomed RPCs (ollama→openrouter through the same gated endpoint).
-// panel-gating's hasPremiumAccess is the dual-signal source of truth.
-// translateText is deliberately NOT gated: it uses mode='translate' via the
-// plain newsClient, which the server allows for non-premium callers.
-configureSummarizeGate(() => hasPremiumAccess());
 const summaryBreaker = createCircuitBreaker<SummarizeArticleResponse>({ name: 'News Summarization', cacheTtlMs: 0 });
 
 const summaryResultBreaker = createCircuitBreaker<SummarizationResult | null>({
@@ -127,15 +90,6 @@ async function tryApiProvider(
   bodies?: string[],
 ): Promise<SummarizationResult | null> {
   if (!isFeatureAvailable(providerDef.featureId)) return null;
-  // Entitlement/suppression gate BEFORE any network dispatch (#4913) — a
-  // denial returns null so the chain falls through to browser T5.
-  if (!canAttemptServerSummarization()) {
-    // #5605: a denial while the post-403/429 cooldown is armed is a server
-    // outage, not the designed anon decline. Recording which one it was keeps
-    // a paying user's broken entitlement visible at the chain's log site.
-    if (isServerSummarizationSuppressed()) markSummarizationSuppressed(attemptState);
-    return null;
-  }
   let dispatched = false;
   try {
     const resp: SummarizeArticleResponse = await summaryBreaker.execute(async () => {
@@ -145,29 +99,16 @@ async function tryApiProvider(
       // than a source-order convention a regex has to police.
       dispatched = true;
       markSummarizationAttempt(attemptState, providerDef.provider);
-      try {
-        return await premiumNewsClient.summarizeArticle({
-          provider: providerDef.provider,
-          headlines,
-          mode: 'brief',
-          geoContext: geoContext || '',
-          variant: SITE_VARIANT,
-          lang: lang || 'en',
-          systemAppend: '',
-          bodies: bodies ?? [],
-        });
-      } catch (error) {
-        // Entitlement drift: probe said entitled, server said no. Suppress
-        // the whole provider chain for a window so drift can't recreate the
-        // flood at news-refresh rate; the breaker still counts the failure.
-        // Duck-typed via getRpcErrorStatusCode — a value import of the
-        // generated client's ApiError would pull the RPC client chunk into
-        // the main static graph (eager-chunk budget).
-        if (getRpcErrorStatusCode(error) === 403) {
-          suppressServerSummarization();
-        }
-        throw error;
-      }
+      return newsClient.summarizeArticle({
+        provider: providerDef.provider,
+        headlines,
+        mode: 'brief',
+        geoContext: geoContext || '',
+        variant: SITE_VARIANT,
+        lang: lang || 'en',
+        systemAppend: '',
+        bodies: bodies ?? [],
+      });
     }, emptySummaryFallback);
 
     // Breaker open: `execute` returned its default without contacting anyone.

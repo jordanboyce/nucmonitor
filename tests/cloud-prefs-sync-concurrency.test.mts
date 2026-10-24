@@ -19,10 +19,6 @@ const stubs: Record<string, string> = {
     'export const trustedHtml = (value) => value;',
     'export const setTrustedHtml = (element, value) => { element.innerHTML = value; };',
   ].join('\n'),
-  '@/services/source-cap': [
-    'export const computeCapDisabledSources = () => [];',
-    'export const findFullyDisabledCategories = () => [];',
-  ].join('\n'),
   '@/services/regional-feed-rollout': [
     'export const buildPreStrategicDefaultDisabledStates = () => [];',
     'export const buildRegionalFeedRolloutMigrationTargets = () => [];',
@@ -698,29 +694,6 @@ describe('cloud preference write serialization', () => {
     assert.equal(result.state, null);
   });
 
-  it('does not retain account A ownership for account B legacy cloud rows', async () => {
-    await runHarness(async (cloudPrefs, controls) => {
-      const sourceOwnership = 'worldmonitor-free-tier-source-ownership';
-      const layerOwnership = 'worldmonitor-free-tier-layer-ownership';
-      controls.seedRow('user-a-token', {
-        [sourceOwnership]: '["source-a"]',
-        [layerOwnership]: '["resilienceScore"]',
-      }, 1, 7);
-      controls.setToken('user-a-token');
-      await cloudPrefs.onSignIn('user-a', 'full');
-      assert.equal(localStorage.getItem(sourceOwnership), '["source-a"]');
-      assert.equal(localStorage.getItem(layerOwnership), '["resilienceScore"]');
-
-      cloudPrefs.onSignOut();
-      controls.seedRow('user-b-token', { 'worldmonitor-theme': 'light' }, 1, 7);
-      controls.setToken('user-b-token');
-      await cloudPrefs.onSignIn('user-b', 'full');
-
-      assert.equal(localStorage.getItem(sourceOwnership), null);
-      assert.equal(localStorage.getItem(layerOwnership), null);
-      assert.equal(localStorage.getItem('worldmonitor-theme'), 'light');
-    });
-  });
 });
 
 // #4746 - two same-user tabs share one KEY_DIRTY_KEYS entry. A faithful
@@ -998,19 +971,6 @@ describe('cloud prefs fail closed on undeterminable state (#7833 review)', () =>
     assert.equal(result.state, 'error');
   });
 
-  it('does not sign in when prior-account ownership cannot be determined', async () => {
-    // Skipping the sidecar cleanup on an account transition leaves account A's
-    // ownership values in place for B, so tier reconciliation attributes A's
-    // gate decisions to B.
-    const result = await runHarness(async (cloudPrefs, controls) => {
-      controls.seedRow('test-token', {}, 1);
-      controls.rejectReadsOf('wm-last-signed-in-as');
-      await cloudPrefs.onSignIn('user-b', 'full');
-    });
-
-    assert.equal(result.state, 'error', 'undeterminable provenance must fail closed');
-    assert.equal(result.postCount, 0, 'nothing may be uploaded on a provenance failure');
-  });
 });
 
 

@@ -20,8 +20,6 @@ function restoreEnv() {
 
 function configureDefaultEnv() {
   process.env.WM_SESSION_SECRET = SECRET;
-  process.env.WIDGET_AGENT_KEY = 'widget-secret';
-  process.env.PRO_WIDGET_KEY = 'pro-secret';
   process.env.WORLDMONITOR_VALID_KEYS = 'enterprise-secret';
   process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.io';
   process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
@@ -82,26 +80,6 @@ function cookieValue(cookies, name) {
   });
   if (!found) return '';
   return decodeURIComponent(found.slice(prefix.length).split(';')[0]);
-}
-
-function finalCookieJar(cookies) {
-  const jar = new Map();
-  for (const cookie of cookies) {
-    const [nameValue, ...attrs] = cookie.split(';').map((part) => part.trim());
-    const [name, encodedValue = ''] = nameValue.split('=');
-    const domainAttr = attrs.find((attr) => attr.toLowerCase().startsWith('domain='));
-    const pathAttr = attrs.find((attr) => attr.toLowerCase().startsWith('path='));
-    const maxAgeAttr = attrs.find((attr) => attr.toLowerCase().startsWith('max-age='));
-    const domain = domainAttr ? domainAttr.slice('domain='.length).toLowerCase() : 'api.worldmonitor.app';
-    const path = pathAttr ? pathAttr.slice('path='.length) : '/';
-    const key = `${name};${domain};${path}`;
-    if (maxAgeAttr && Number(maxAgeAttr.slice('max-age='.length)) <= 0) {
-      jar.delete(key);
-      continue;
-    }
-    jar.set(key, decodeURIComponent(encodedValue));
-  }
-  return jar;
 }
 
 function makeWaitUntilCtx() {
@@ -504,171 +482,6 @@ test('telemetry probes and closes the circuit after the outage window elapses', 
   }
 });
 
-test('no-key session refresh preserves existing HttpOnly key cookies', async () => {
-  const resp = await handler(makeReq('POST', { origin: 'https://worldmonitor.app' }));
-  assert.equal(resp.status, 200);
-  const cookies = setCookies(resp);
-  assert.ok(cookies.some((cookie) => cookie.startsWith('wm-session=')));
-  assert.ok(cookies.filter(c => c.startsWith('wm-widget-key=')).every(c => c.includes('Max-Age=0')));
-  assert.equal(cookies.some(c => c.startsWith('__Host-wm-widget-key=')), false);
-  assert.ok(cookies.filter(c => c.startsWith('wm-pro-key=')).every(c => c.includes('Max-Age=0')));
-  assert.equal(cookies.some(c => c.startsWith('__Host-wm-pro-key=')), false);
-});
-
-test('legacy widget/pro keys are moved into short-lived HttpOnly cookies', async () => {
-  const req = new Request('https://api.worldmonitor.app/api/wm-session', {
-    method: 'POST',
-    headers: {
-      origin: 'https://worldmonitor.app',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ widgetKey: 'widget-secret', proKey: 'pro-secret' }),
-  });
-  const resp = await handler(req);
-  assert.equal(resp.status, 200);
-  const cookies = setCookies(resp);
-  const joined = cookies.join('\n');
-  assert.match(joined, /__Host-wm-widget-key=widget-secret;.*HttpOnly/);
-  assert.match(joined, /__Host-wm-pro-key=pro-secret;.*HttpOnly/);
-  assert.ok(cookies.filter(c => c.startsWith('__Host-')).every(c => !/domain=/i.test(c)));
-
-  assert.match(joined, /Max-Age=43200/);
-});
-
-test('enterprise key can be exchanged into a short-lived HttpOnly pro cookie', async () => {
-  const req = new Request('https://api.worldmonitor.app/api/wm-session', {
-    method: 'POST',
-    headers: {
-      origin: 'https://worldmonitor.app',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ proKey: 'enterprise-secret' }),
-  });
-  const resp = await handler(req);
-  assert.equal(resp.status, 200);
-  const cookies = setCookies(resp);
-  assert.match(cookies.join('\n'), /__Host-wm-pro-key=enterprise-secret;.*HttpOnly/);
-});
-
-test('legacy widget/pro secret checks reject prefix and length mismatches', async () => {
-  const previousWidget = process.env.WIDGET_AGENT_KEY;
-  const previousPro = process.env.PRO_WIDGET_KEY;
-  const previousEnterprise = process.env.WORLDMONITOR_VALID_KEYS;
-  process.env.WIDGET_AGENT_KEY = 'widget-secret-with-a-distinct-length';
-  process.env.PRO_WIDGET_KEY = 'pro-secret-with-a-longer-distinct-length';
-  process.env.WORLDMONITOR_VALID_KEYS = 'enterprise-short,enterprise-secret-with-a-longer-length';
-
-  try {
-    const accepted = await handler(new Request('https://api.worldmonitor.app/api/wm-session', {
-      method: 'POST',
-      headers: {
-        origin: 'https://worldmonitor.app',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        widgetKey: 'widget-secret-with-a-distinct-length',
-        proKey: 'enterprise-secret-with-a-longer-length',
-      }),
-    }));
-    assert.equal(accepted.status, 200);
-
-    const prefixOnly = await handler(new Request('https://api.worldmonitor.app/api/wm-session', {
-      method: 'POST',
-      headers: {
-        origin: 'https://worldmonitor.app',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        widgetKey: 'widget-secret-with-a-distinct',
-        proKey: 'enterprise-secret-with-a-longer',
-      }),
-    }));
-    assert.equal(prefixOnly.status, 401);
-
-    const differentLength = await handler(new Request('https://api.worldmonitor.app/api/wm-session', {
-      method: 'POST',
-      headers: {
-        origin: 'https://worldmonitor.app',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        widgetKey: 'widget-secret-with-a-distinct-length-extra',
-        proKey: 'enterprise-short-extra',
-      }),
-    }));
-    assert.equal(differentLength.status, 401);
-  } finally {
-    process.env.WIDGET_AGENT_KEY = previousWidget;
-    process.env.PRO_WIDGET_KEY = previousPro;
-    process.env.WORLDMONITOR_VALID_KEYS = previousEnterprise;
-  }
-});
-
-test('legacy key length boundary: 512 accepted, 513 rejected', async () => {
-  const previousEnterprise = process.env.WORLDMONITOR_VALID_KEYS;
-  const key512 = 'a'.repeat(512);
-  const key513 = 'b'.repeat(513);
-  process.env.WORLDMONITOR_VALID_KEYS = `${key512}`;
-
-  try {
-    const accepted = await handler(new Request('https://api.worldmonitor.app/api/wm-session', {
-      method: 'POST',
-      headers: {
-        origin: 'https://worldmonitor.app',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ proKey: key512 }),
-    }));
-    assert.equal(accepted.status, 200);
-
-    const rejected = await handler(new Request('https://api.worldmonitor.app/api/wm-session', {
-      method: 'POST',
-      headers: {
-        origin: 'https://worldmonitor.app',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ proKey: key513 }),
-    }));
-    assert.equal(rejected.status, 401);
-  } finally {
-    process.env.WORLDMONITOR_VALID_KEYS = previousEnterprise;
-  }
-});
-
-test('invalid legacy keys are rejected and not persisted as HttpOnly cookies', async () => {
-  const req = new Request('https://api.worldmonitor.app/api/wm-session', {
-    method: 'POST',
-    headers: {
-      origin: 'https://worldmonitor.app',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ widgetKey: 'wrong-widget-key', proKey: 'wrong-pro-key' }),
-  });
-  const resp = await handler(req);
-  assert.equal(resp.status, 401);
-  const body = await resp.json();
-  assert.equal(body.error, 'Invalid session key');
-  const joined = setCookies(resp).join('\n');
-  assert.doesNotMatch(joined, /wm-widget-key=wrong-widget-key/);
-  assert.doesNotMatch(joined, /wm-pro-key=wrong-pro-key/);
-});
-
-test('legacy cookie tombstones do not delete replacement HttpOnly key cookies', async () => {
-  const req = new Request('https://api.worldmonitor.app/api/wm-session', {
-    method: 'POST',
-    headers: {
-      origin: 'https://worldmonitor.app',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ widgetKey: 'widget-secret', proKey: 'pro-secret' }),
-  });
-  const resp = await handler(req);
-  assert.equal(resp.status, 200);
-  const jar = finalCookieJar(setCookies(resp));
-  assert.equal(jar.get('__Host-wm-widget-key;api.worldmonitor.app;/'), 'widget-secret');
-  assert.equal(jar.get('__Host-wm-pro-key;api.worldmonitor.app;/'), 'pro-secret');
-});
-
 test('Returns 503 when WM_SESSION_SECRET is missing', async () => {
   const stash = process.env.WM_SESSION_SECRET;
   delete process.env.WM_SESSION_SECRET;
@@ -749,61 +562,16 @@ test('vendor origins cannot mint a session even with a valid privileged cookie',
   }
 });
 
-test('refresh expires old broad and host cookies even without a replacement key', async () => {
-  const response = await handler(makeReqWithCookie('wm-pro-key=enterprise-secret; wm-widget-key=widget-secret'));
-  assert.equal(response.status, 200);
-  for (const name of ['wm-pro-key', 'wm-widget-key']) {
-    const tombstones = setCookies(response).filter(c => c.startsWith(`${name}=`));
-    assert.equal(tombstones.length, 2);
-    assert.ok(tombstones.every(c => c.includes('Max-Age=0')));
-    assert.ok(tombstones.some(c => c.includes('Domain=.worldmonitor.app')));
-    assert.ok(tombstones.some(c => !c.includes('Domain=')));
-  }
-  assert.equal(setCookies(response).some(c => c.startsWith('__Host-')), false);
-});
-
-test('exchange, authenticate, preserve, clear, and reject stale domain names', async () => {
-  const { validateApiKey } = await import('./_api-key.js');
-  const exchange = (body) => handler(new Request('https://api.worldmonitor.app/api/wm-session', {
-    method: 'POST',
-    headers: { origin: 'https://worldmonitor.app', 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  }));
-  const issued = await exchange({ proKey: 'enterprise-secret' });
-  const newCookie = setCookies(issued).find(c => c.startsWith('__Host-wm-pro-key='));
-  assert.ok(newCookie);
-  assert.doesNotMatch(newCookie, /Domain=/i);
-  const auth = async (cookie) => validateApiKey(new Request('https://api.worldmonitor.app/api/test', {
-    headers: { cookie },
-  }), { forceKey: true });
-  assert.equal((await auth(newCookie.split(';')[0])).valid, true);
-  assert.equal((await auth(`wm-pro-key=stale; ${newCookie.split(';')[0]}`)).valid, true);
-  assert.equal((await auth('wm-pro-key=enterprise-secret; wm-widget-key=enterprise-secret')).valid, false);
-  const refresh = await exchange({});
-  assert.equal(setCookies(refresh).some(c => c.startsWith('__Host-wm-pro-key=')), false);
-  const cleared = await exchange({ proKey: '' });
-  const jar = finalCookieJar([...setCookies(issued), ...setCookies(cleared)]);
-  assert.equal(jar.has('__Host-wm-pro-key;api.worldmonitor.app;/'), false);
-  const remaining = [...jar].map(([key, value]) => `${key.split(';')[0]}=${encodeURIComponent(value)}`).join('; ');
-  assert.equal((await auth(remaining)).valid, false);
-});
-
-test('desktop legacy exchange uses host-only cookies and enterprise headers remain supported', async () => {
-  const { validateApiKey } = await import('./_api-key.js');
+test('a submitted legacy key body is ignored: the response sets only the session cookie', async () => {
   const response = await handler(new Request('https://api.worldmonitor.app/api/wm-session', {
     method: 'POST',
-    headers: { origin: 'tauri://localhost', 'content-type': 'application/json' },
+    headers: { origin: 'https://worldmonitor.app', 'content-type': 'application/json' },
     body: JSON.stringify({ widgetKey: 'widget-secret', proKey: 'enterprise-secret' }),
   }));
   assert.equal(response.status, 200);
-  const keys = setCookies(response).filter(c => c.startsWith('__Host-'));
-  assert.equal(keys.length, 2);
-  assert.ok(keys.every(c => !/Domain=/i.test(c)));
-  const auth = await validateApiKey(new Request('https://api.worldmonitor.app/api/test', {
-    headers: { origin: 'tauri://localhost', 'X-WorldMonitor-Key': 'enterprise-secret' },
-  }));
-  assert.equal(auth.valid, true);
-  assert.equal(auth.kind, 'enterprise');
+  const cookies = setCookies(response);
+  assert.ok(cookies.length > 0);
+  assert.ok(cookies.every((cookie) => cookie.startsWith('wm-session=')), cookies.join(' | '));
 });
 
 // ── Partner mode (docs/partner-access.md) ────────────────────────────────

@@ -120,10 +120,10 @@ export const SITE_CLUSTER_RADIUS_LINES = 3;
 
 /**
  * 21 sites in 19 files when this gate landed; 22 with the sign-up resume overlay;
- * 10 after the NucMonitor trim removed the upstream dashboards' modals. A scan
- * that finds fewer has drifted.
+ * 10 after the NucMonitor trim removed the upstream dashboards' modals; 8 after
+ * the paid-tier overlays were removed. A scan that finds fewer has drifted.
  */
-export const MIN_SITE_COUNT = 10;
+export const MIN_SITE_COUNT = 8;
 
 /** The module that defines the vocabulary; its selector strings are not sites. */
 export const EXCLUDED_FILES = new Set(['src/utils/open-modal.ts']);
@@ -139,13 +139,11 @@ export const RELOAD_GUARD = 'findReloadBlockingModal';
  *
  * chunk-reload.ts reloads once on `vite:preloadError`, when the running bundle
  * can no longer load its own code. It stays immediate: a broken chunk under a
- * modal is worse than the reload, and the one overlay whose work a reload used
- * to destroy for good, the email-code sign-up, now resumes on the same attempt
- * (src/services/sign-up-resume.ts). Deferring it with a retry is optional
- * polish, not a sign-up fix (#8662).
+ * modal is worse than the reload. Deferring it with a retry is optional polish
+ * (#8662).
  */
 export const RELOAD_GUARD_EXEMPT = new Map([
-  ['src/bootstrap/chunk-reload.ts', 'failure recovery; an interrupted sign-up resumes via sign-up-resume'],
+  ['src/bootstrap/chunk-reload.ts', 'failure recovery; a broken chunk is worse than losing an open modal'],
 ]);
 
 /**
@@ -451,7 +449,7 @@ function main() {
 
   if (scan.sites.length < MIN_SITE_COUNT) {
     problems.push(
-      `Expected >= ${MIN_SITE_COUNT} overlay creation sites under src/ (10 after the NucMonitor trim), found ${scan.sites.length}: the scan or the creation idioms have drifted.`,
+      `Expected >= ${MIN_SITE_COUNT} overlay creation sites under src/ (8 after the paid-tier removal), found ${scan.sites.length}: the scan or the creation idioms have drifted.`,
     );
   }
 

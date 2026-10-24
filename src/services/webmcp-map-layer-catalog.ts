@@ -7,7 +7,6 @@ import {
   getAllowedLayerKeys,
   getCompleteLayerCatalogKeys,
   getOrderedLayerKeys,
-  isLayerEntitled,
   isLayerExecutable,
   resolveLayerLabel,
   type MapVariant,
@@ -55,7 +54,6 @@ export interface MapLayerCatalogSnapshot {
   enabledLayers: readonly string[];
   liveLayerKeys: readonly string[];
   runtimeAvailability?: MapLayerRuntimeAvailability;
-  hasPremium: boolean;
   deckGlActive: boolean;
   /** False when the host cannot deliver a target-side AbortSignal for set_map_layers. */
   targetCancellationSupported?: boolean;
@@ -76,7 +74,6 @@ export interface MapLayerCatalogEntry {
   enabled: boolean;
   monitorAvailable: boolean;
   rendererCompatible: boolean;
-  entitled: boolean;
   available: boolean;
   reason?: string;
 }
@@ -151,7 +148,6 @@ function enableUnavailableReason(
   );
   if (runtimeReason) return runtimeReason;
   if (!pageAllowed.has(layerKey)) return 'variant_disallowed';
-  if (!isLayerEntitled(layerKey, snapshot.hasPremium)) return 'layer_not_entitled';
   if (!isLayerExecutable(layerKey, snapshot.rendererKind)) return 'layer_not_executable';
   if (snapshot.targetCancellationSupported !== true) return 'target_cancellation_unsupported';
   return undefined;
@@ -173,7 +169,6 @@ function describeLayer(
     enabled: enabledSet.has(layerKey),
     monitorAvailable: listedAllowed.has(layerKey),
     rendererCompatible: isLayerExecutable(layerKey, snapshot.rendererKind),
-    entitled: isLayerEntitled(layerKey, snapshot.hasPremium),
     available: reason === undefined,
   };
   if (reason) entry.reason = reason;

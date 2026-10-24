@@ -499,8 +499,8 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
       // A chunk NAME does not tell you whose code is inside it: Rollup names a
       // chunk after its seed module and then hoists shared modules into it. On a
       // real build three names on this very list matched chunks holding our
-      // code — `i18n` (12/12 modules ours: safe-storage, billing-retry,
-      // premium-paths, runtime …, while a SECOND genuinely pure chunk shares the
+      // code — `i18n` (12/12 modules ours at the time: safe-storage, runtime …,
+      // while a SECOND genuinely pure chunk shares the
       // name `i18n`), `deck-stack` (src/components/DeckGLMap.ts), and `sentry`
       // (the pattern also matches `sentry-init-<hash>.js`, 5/5 ours) — so every
       // gate below was eligible to drop real first-party failures from them. No
@@ -895,16 +895,6 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
           && !hasFirstParty
           && /^Maximum call stack size exceeded\.?$/.test(msg)
           && isIosLike) return null;
-      // Suppress Chrome Mobile WebView 105+ Request constructor quirk ONLY when
-      // the Dodo checkout lazy chunk is in the stack (WORLDMONITOR-MH). The
-      // exact message is unique to the Fetch § Request() duplex requirement, but
-      // src/services/runtime.ts (runtime fetch patch) also constructs `new
-      // Request(init)` at lines 861/869/902 — without this provenance guard the
-      // same filter would hide a real first-party streaming-fetch regression.
-      // Guard on the vendored chunk name (checkout-*.js = Dodo SDK, lazy-loaded
-      // only when startCheckout runs) so a runtime.ts failure still surfaces.
-      if (/Failed to construct 'Request': The `duplex` member must be specified/.test(msg)
-          && frames.some(f => /\/assets\/checkout-[A-Za-z0-9_-]+\.js/.test(f.filename ?? ''))) return null;
       // Suppress "options is not defined" from browser extension overriding Navigator getter (WORLDMONITOR-JN).
       // Only suppress when stack has no first-party frames (filename=<anonymous> is the extension getter).
       if (/^options is not defined$/.test(msg) && frames.every(f => !f.filename || f.filename === '<anonymous>' || f.filename === '[native code]')) return null;
@@ -1192,10 +1182,8 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
           // / Chrome Mobile). It reaches us as an unhandled rejection out of
           // Clerk's sign-in passkey autofill (`navigator.credentials.get`),
           // which runs entirely inside the Clerk bundle — the event carries zero
-          // captured frames. Our own passkey path never leaks: `createPasskey()`
-          // in src/services/passkeys.ts wraps `user.createPasskey()` in
-          // try/catch and returns a classified outcome, and `navigator.
-          // credentials` appears nowhere else in src/ or api/. So a
+          // captured frames. `navigator.credentials` appears nowhere in src/
+          // or api/. So a
           // no-first-party occurrence is third-party SDK / OS noise, while a
           // future first-party WebAuthn call site would keep a source-mapped
           // .ts frame and still surface. WORLDMONITOR-11B's events came from
@@ -1213,17 +1201,11 @@ function buildSentryInitOptions(): Parameters<SentryNs['init']>[0] {
           // the CredMan entry above, and it arrives the same way — an unhandled
           // rejection out of the Clerk bundle with zero captured frames.
           //
-          // Kept HERE rather than in `ignoreErrors`, unlike the marketing
-          // copy in `pro-test/src/sentry-filter-policy.ts`, because the two
-          // surfaces have different licences: the marketing bundle calls no
-          // WebAuthn API at all, but this one does — `createPasskey()` in
-          // src/services/passkeys.ts drives `user.createPasskey()`. That path
-          // cannot leak today (it wraps the call in try/catch and returns a
-          // classified outcome), but a future first-party double-invoke is
-          // precisely the bug worth seeing, and it would keep a source-mapped
-          // .ts frame. `!hasFirstParty` is what preserves it (WORLDMONITOR-11T,
-          // observed on `/pro`; the same class reaches this surface through the
-          // dashboard's own Clerk sign-in).
+          // Kept HERE rather than in `ignoreErrors` so a future first-party
+          // WebAuthn double-invoke — precisely the bug worth seeing — would keep
+          // a source-mapped .ts frame and survive. `!hasFirstParty` is what
+          // preserves it (WORLDMONITOR-11T; the same class reaches this surface
+          // through the dashboard's own Clerk sign-in).
           || /^(?:Error: )?OperationError: A request is already pending\.$/.test(msg)
         )
       ) return null;

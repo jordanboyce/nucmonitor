@@ -277,7 +277,8 @@ test('every custom Error subclass sets this.name explicitly', async () => {
     }
   }
 
-  assert.ok(checked >= 14, `expected to scan the known custom Error classes, scanned ${checked}`);
+  // Floor re-derived after the paid-tier code (and its Error classes) was removed.
+  assert.ok(checked >= 8, `expected to scan the known custom Error classes, scanned ${checked}`);
   assert.deepEqual(
     offenders,
     [],

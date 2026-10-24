@@ -71,7 +71,6 @@ import { dataFreshness, type DataSourceId } from '@/services/data-freshness';
 import { fetchClimateAnomalies } from '@/services/climate';
 import { debounce, loadFromStorage, saveToStorage } from '@/utils';
 import { isFeatureEnabled } from '@/services/runtime-config';
-import { hasPremiumAccess } from '@/services/panel-gating';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
 import { filterFeedsByLanguage } from '@/services/feed-language';
 import { getAiFlowSettings } from '@/services/ai-flow-settings';
@@ -1625,12 +1624,7 @@ export class DataLoaderManager implements AppModule {
         if (!loaded) commoditiesPanel.renderCommodities([]);
       }
 
-      // Physical premiums + divergence index are Pro (#6436/#6448). Skipping
-      // the fetch leaves _physicalPremiums empty, which is exactly what
-      // _buildTabBar reads to decide whether the Physical tab exists — so a
-      // free viewer sees the commodity tape unchanged rather than a tab that
-      // opens onto a 401.
-      if (commoditiesPanel && hasPremiumAccess()) {
+      if (commoditiesPanel) {
         try {
           const physicalGeneration = this.physicalComparisonLoadGuard.begin();
           await loadPhysicalPremiumComparisonIfNeeded(
@@ -1638,7 +1632,6 @@ export class DataLoaderManager implements AppModule {
             () => (
               isCurrent()
               && this.physicalComparisonLoadGuard.isCurrent(physicalGeneration)
-              && hasPremiumAccess()
             ),
             fetchPhysicalPremiums,
             fetchPhysicalDivergence,
@@ -1672,11 +1665,6 @@ export class DataLoaderManager implements AppModule {
 
   async loadPhysicalPremiumComparison(signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
-    // Pro (#6436/#6448) — mirrors the guard on the bulk market pass above.
-    // This is the tab-activation entry point, so without it clicking Physical
-    // would re-fire the two gated RPCs for a free user on every open.
-    // Free→Pro / Pro→free transitions are handled in App.firePremiumLoaders().
-    if (!hasPremiumAccess()) return;
     const panel = this.ctx.panels['commodities'] as CommoditiesPanel | undefined;
     if (!panel) return;
     const generation = this.physicalComparisonLoadGuard.begin();
@@ -1687,18 +1675,11 @@ export class DataLoaderManager implements AppModule {
       () => (
         !signal?.aborted
         && this.physicalComparisonLoadGuard.isCurrent(generation)
-        && hasPremiumAccess()
       ),
       () => fetchPhysicalPremiums(signal),
       () => fetchPhysicalDivergence(signal),
     );
     signal?.throwIfAborted();
-  }
-
-  clearPhysicalPremiumComparison(): void {
-    this.physicalComparisonLoadGuard.begin();
-    const panel = this.ctx.panels['commodities'] as CommoditiesPanel | undefined;
-    panel?.clearPhysicalPremiums();
   }
 
   async loadNatural(): Promise<void> {

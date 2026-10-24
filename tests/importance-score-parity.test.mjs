@@ -19,7 +19,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { composeBriefFromDigestStories } from '../scripts/lib/brief-compose.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
@@ -426,7 +425,7 @@ describe('computeImportanceScore parity (digest ↔ relay)', () => {
     assert.equal(appleDeal, baseline);
   });
 
-  it('scheduled digest regression: scored US-Iran deal stories outrank stale conflict and survive composeBriefFromDigestStories', () => {
+  it('scheduled digest regression: scored US-Iran deal stories outrank stale conflict', () => {
     const dealTitles = [
       ['Reuters', 'US and Iran close deal to ease Hormuz tensions'],
       ['AP News', 'Iran deal could calm oil markets after Hormuz alarm'],
@@ -474,24 +473,5 @@ describe('computeImportanceScore parity (digest ↔ relay)', () => {
     const ordered = [...dealStories, staleConflict].sort((a, b) => b.currentScore - a.currentScore);
     assert.match(ordered[0].title, /Iran|US-Iran/i);
     assert.ok(ordered[0].currentScore > staleConflict.currentScore);
-
-    const envelope = composeBriefFromDigestStories(
-      {
-        userId: 'user_test',
-        variant: 'full',
-        digestMode: 'daily',
-        sensitivity: 'high',
-        digestTimezone: 'UTC',
-        updatedAt: oneHourAgo,
-      },
-      ordered,
-      { clusters: ordered.length, multiSource: 5 },
-      { nowMs: Date.now() },
-    );
-    assert.ok(envelope, 'expected scheduled digest compose to keep at least one story');
-    assert.ok(
-      envelope.data.stories.some((story) => /iran/i.test(story.headline) && /deal/i.test(story.headline)),
-      'expected a US-Iran deal story to survive scheduled digest composition',
-    );
   });
 });

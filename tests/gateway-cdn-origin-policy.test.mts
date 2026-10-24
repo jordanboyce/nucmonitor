@@ -179,7 +179,7 @@ describe('gateway CDN origin policy', () => {
   // Vercel's filesystem router serves these through api/**/[rpc].ts and echoes the
   // matched segment back as ?rpc=<lastPathSegment>. Production therefore sees a query
   // the hand-built URLs in these tests never had — which silently 401'd every public
-  // RPC (#5285). server/_shared/mcp-internal-hmac.ts strips the same echo for signing.
+  // RPC (#5285). server/_shared/request-canonical.ts strips the same echo for admission binding.
   for (const [path, rpc] of [
     ['/api/news/v1/list-feed-digest?variant=nuclear&lang=en&public=1', 'list-feed-digest'],
     ['/api/market/v1/get-fear-greed-index?public=1', 'get-fear-greed-index'],
@@ -285,37 +285,21 @@ describe('gateway CDN origin policy', () => {
     assert.equal(withKey.headers.get('CDN-Cache-Control'), null, 'premium endpoints must NOT have CDN caching');
   });
 
-  it('fails closed before unknown wm_ validation when the pre-auth limiter is unavailable', async () => {
+  it('rejects an unknown wm_ key as invalid without any per-user key lookup', async () => {
     const handler = createHandler();
-    const res = await handler(new Request('https://worldmonitor.app/api/market/v1/list-gulf-quotes', {
-      headers: {
-        Origin: 'https://worldmonitor.app',
-        'X-WorldMonitor-Key': 'wm_revoked_or_unknown_key',
-      },
-    }));
-    const body = await res.json();
+    for (const path of ['/api/market/v1/list-gulf-quotes', '/api/market/v1/analyze-stock?symbol=AAPL']) {
+      const res = await handler(new Request(`https://worldmonitor.app${path}`, {
+        headers: {
+          Origin: 'https://worldmonitor.app',
+          'X-WorldMonitor-Key': 'wm_revoked_or_unknown_key',
+        },
+      }));
+      const body = await res.json();
 
-    assert.equal(res.status, 503);
-    assert.equal(res.headers.get('X-RateLimit-Mode'), 'degraded');
-    assertNoSharedCacheHeaders(res);
-    assert.equal(body.error, 'Rate-limit service temporarily unavailable');
-    assert.doesNotMatch(JSON.stringify(body), /gateway validation|Convex|keyHash/i);
-  });
-
-  it('fails closed before unknown wm_ validation on premium RPCs when the limiter is unavailable', async () => {
-    const handler = createHandler();
-    const res = await handler(new Request('https://worldmonitor.app/api/market/v1/analyze-stock?symbol=AAPL', {
-      headers: {
-        Origin: 'https://worldmonitor.app',
-        'X-WorldMonitor-Key': 'wm_revoked_or_unknown_key',
-      },
-    }));
-    const body = await res.json();
-
-    assert.equal(res.status, 503);
-    assert.equal(res.headers.get('X-RateLimit-Mode'), 'degraded');
-    assertNoSharedCacheHeaders(res);
-    assert.equal(body.error, 'Rate-limit service temporarily unavailable');
-    assert.doesNotMatch(JSON.stringify(body), /gateway validation|Convex|keyHash/i);
+      assert.equal(res.status, 401, path);
+      assertNoSharedCacheHeaders(res);
+      assert.equal(body.error, 'Invalid API key');
+      assert.doesNotMatch(JSON.stringify(body), /gateway validation|Convex|keyHash/i);
+    }
   });
 });

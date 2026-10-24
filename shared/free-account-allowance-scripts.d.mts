@@ -1,2 +1,0 @@
-export const RESERVE_FREE_ACCOUNT_ALLOWANCE_SCRIPT: string;
-export const READ_FREE_ACCOUNT_ALLOWANCE_SCRIPT: string;

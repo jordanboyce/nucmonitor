@@ -3,41 +3,24 @@
  *
  * MUST NOT re-verify JWTs, re-hash keys, or re-validate API keys. The gateway has
  * already done that work — this function consumes the resolved values.
- *
- * Tier is the user's current entitlement tier (0 = free / unknown). For non-tier-gated
- * endpoints the gateway never resolves it, so we accept null/undefined and report 0.
  */
 
 export type AuthKind =
   | 'clerk_jwt'
-  | 'user_api_key'
   | 'enterprise_api_key'
-  | 'widget_key'
-  // #4866 — MCP OAuth bearer (the `kind: 'pro'` context on /mcp). Distinct
-  // from clerk_jwt so MCP-connector traffic never conflates with dashboard
-  // JWT traffic in Axiom; customer_id carries the same Clerk userId.
-  | 'mcp_oauth'
   | 'anon';
 
 export interface UsageIdentity {
   auth_kind: AuthKind;
   principal_id: string | null;
   customer_id: string | null;
-  tier: number;
-  plan_key: string | null;
 }
 
 export interface UsageIdentityInput {
+  /** Clerk user id of a verified partner account (partner mode only). */
   sessionUserId: string | null;
-  isUserApiKey: boolean;
+  /** The enterprise env key (WORLDMONITOR_VALID_KEYS) that authenticated the request. */
   enterpriseApiKey: string | null;
-  widgetKey: string | null;
-  clerkOrgId: string | null;
-  userApiKeyCustomerRef: string | null;
-  tier: number | null;
-  // #4572 — entitlement planKey (api_starter / api_business / …) when the
-  // gateway resolved one; null otherwise. 'enterprise' for env keys.
-  planKey: string | null;
 }
 
 // Static enterprise-key → customer map. Explicit so attribution is reviewable in code,
@@ -48,25 +31,11 @@ const ENTERPRISE_KEY_TO_CUSTOMER: Record<string, string> = {
 };
 
 export function buildUsageIdentity(input: UsageIdentityInput): UsageIdentity {
-  const tier = input.tier ?? 0;
-
-  if (input.isUserApiKey) {
-    return {
-      auth_kind: 'user_api_key',
-      principal_id: input.sessionUserId,
-      customer_id: input.userApiKeyCustomerRef ?? input.sessionUserId,
-      tier,
-      plan_key: input.planKey,
-    };
-  }
-
   if (input.sessionUserId) {
     return {
       auth_kind: 'clerk_jwt',
       principal_id: input.sessionUserId,
-      customer_id: input.clerkOrgId ?? input.sessionUserId,
-      tier,
-      plan_key: input.planKey,
+      customer_id: input.sessionUserId,
     };
   }
 
@@ -76,18 +45,6 @@ export function buildUsageIdentity(input: UsageIdentityInput): UsageIdentity {
       auth_kind: 'enterprise_api_key',
       principal_id: hashKeySync(input.enterpriseApiKey),
       customer_id: customer,
-      tier,
-      plan_key: input.planKey ?? 'enterprise',
-    };
-  }
-
-  if (input.widgetKey) {
-    return {
-      auth_kind: 'widget_key',
-      principal_id: hashKeySync(input.widgetKey),
-      customer_id: 'widget',
-      tier,
-      plan_key: null,
     };
   }
 
@@ -95,8 +52,6 @@ export function buildUsageIdentity(input: UsageIdentityInput): UsageIdentity {
     auth_kind: 'anon',
     principal_id: null,
     customer_id: null,
-    tier: 0,
-    plan_key: null,
   };
 }
 
@@ -104,7 +59,7 @@ export function buildUsageIdentity(input: UsageIdentityInput): UsageIdentity {
 // avoid logging raw key material. Edge crypto.subtle.digest is async; we
 // want a sync helper for the hot path. Two rounds with different seeds give
 // ~64 bits of state, dropping birthday-collision risk well below the
-// widget-key population horizon (32-bit collides ~65k keys).
+// key population horizon (32-bit collides ~65k keys).
 export function hashKeySync(key: string): string {
   let h1 = 2166136261;
   let h2 = 0x811c9dc5 ^ 0xa3b2c1d4;

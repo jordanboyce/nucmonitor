@@ -10,16 +10,13 @@ export class AuthHeaderWidget {
   private unmountUserButton: (() => void) | null = null;
   private onSignInClick?: () => void;
   private onSettingsClick?: () => void;
-  private onBillingClick?: () => void;
 
   constructor(
     onSignInClick?: () => void,
     onSettingsClick?: () => void,
-    onBillingClick?: () => void,
   ) {
     this.onSignInClick = onSignInClick;
     this.onSettingsClick = onSettingsClick;
-    this.onBillingClick = onBillingClick;
     this.container = document.createElement('div');
     this.container.className = 'auth-header-widget';
 
@@ -103,7 +100,6 @@ export class AuthHeaderWidget {
     userBtnEl.className = 'auth-clerk-user-button';
     this.container.appendChild(userBtnEl);
     this.unmountUserButton = mountUserButton(userBtnEl, {
-      onBillingClick: this.onBillingClick,
       onSettingsClick: this.onSettingsClick,
     });
   }

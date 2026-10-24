@@ -1,17 +1,16 @@
 /**
- * Composes the partner map frame from the domain handlers the equivalent RPCs
+ * Composes the embed map frame from the domain handlers the equivalent RPCs
  * already use, so this endpoint is a fan-out over one data path rather than a
  * second implementation of it.
  *
- * Every knob is a knob a stolen credential can turn, so the request carries
- * `layers` and nothing else — no bbox, no page size, no time window. Each
- * upstream is called with its own defaults.
+ * The request carries `layers` and nothing else — no bbox, no page size, no
+ * time window — so a public, shared-cacheable endpoint has no knob that could
+ * widen its upstream cost. Each upstream is called with its own defaults.
  */
 
 import {
-  EMBED_KEYED_REFRESH_MS,
   EMBED_LAYER_IDS,
-  getEmbedPanelFreeTier,
+  EMBED_REFRESH_MS,
   isEmbedLayerId,
   type EmbedLayerId,
 } from '../../shared/embed-panels';
@@ -20,8 +19,6 @@ import type {
   EmbedMapFrameLayerState,
   EmbedMapFrameResponse,
 } from '../../shared/embed-map-frame';
-
-export type EmbedMapFrameTier = 'free' | 'keyed';
 
 /**
  * The upstream reads, injected so the composition can be tested without Redis
@@ -34,7 +31,7 @@ export interface EmbedMapFrameSources {
 }
 
 /** Which upstreams each live layer needs. Absent ⇒ the layer is static data
- *  the client already ships, and needs only an entitlement answer. */
+ *  the client already ships, and needs no upstream read. */
 const SOURCES_BY_LAYER = {
   earthquakes: ['earthquakes', 'naturalEvents'],
   weather: ['weatherAlerts'],
@@ -54,39 +51,19 @@ function isLiveLayer(id: EmbedLayerId): id is LiveLayerId {
 }
 
 /**
- * The layers this tier may serve.
- *
- * The free set comes from the registry, not from a literal here — the whole
- * point of `EmbedPanelAccess` is that the free policy has one definition.
- */
-export function entitledLayersForTier(tier: EmbedMapFrameTier): readonly EmbedLayerId[] {
-  const free = getEmbedPanelFreeTier('map');
-  if (!free) throw new Error('map panel lost its free tier');
-  return tier === 'free' ? free.layers : EMBED_LAYER_IDS;
-}
-
-/**
  * The `Cache-Control` for a response.
  *
- * `shared` is granted ONLY to the exact public URL shape — the keyed tier gets
- * `private, no-store` unconditionally, matching `api/embed/entitlement.ts`.
- * There is no middle setting: #5386 is the incident where a body that was
- * merely "not public" still landed in a warm shared entry and answered a
- * different caller's request.
+ * `shared` is granted ONLY to the exact public URL shape; everything else is
+ * `private, no-store`. There is no middle setting: #5386 is the incident where
+ * a body that was merely "not public" still landed in a warm shared entry and
+ * answered a different caller's request.
  */
 export function cacheControlForEmbedFrame(shared: boolean): string {
   if (!shared) return 'private, no-store';
-  const seconds = Math.floor(refreshMsForTier('free') / 1000);
-  // The free tier stops costing us anything only if the CDN can actually hold
-  // it; `stale-while-revalidate` keeps a wall display rendering through an
+  const seconds = Math.floor(EMBED_REFRESH_MS / 1000);
+  // `stale-while-revalidate` keeps a wall display rendering through an
   // origin blip.
   return `public, max-age=60, s-maxage=${seconds}, stale-while-revalidate=600`;
-}
-
-export function refreshMsForTier(tier: EmbedMapFrameTier): number {
-  const free = getEmbedPanelFreeTier('map');
-  if (!free) throw new Error('map panel lost its free tier');
-  return tier === 'free' ? free.refreshMs : EMBED_KEYED_REFRESH_MS;
 }
 
 /**
@@ -97,8 +74,7 @@ export function refreshMsForTier(tier: EmbedMapFrameTier): number {
  * duplicates are normalised so the CDN cache key does not fragment.
  */
 export function parseRequestedLayers(raw: string | null): EmbedLayerId[] {
-  const free = getEmbedPanelFreeTier('map');
-  if (raw === null || raw.trim() === '') return free ? [...free.layers] : [];
+  if (raw === null || raw.trim() === '') return [...EMBED_LAYER_IDS];
   const seen = new Set<EmbedLayerId>();
   for (const part of raw.split(',')) {
     const id = part.trim();
@@ -109,21 +85,14 @@ export function parseRequestedLayers(raw: string | null): EmbedLayerId[] {
 
 export async function composeEmbedMapFrame(
   requestedLayers: readonly EmbedLayerId[],
-  tier: EmbedMapFrameTier,
   sources: EmbedMapFrameSources,
   now: number = Date.now(),
 ): Promise<EmbedMapFrameResponse> {
-  const entitled = new Set(entitledLayersForTier(tier));
   const layers: Partial<Record<EmbedLayerId, EmbedMapFrameLayerState>> = {};
 
-  // Only fetch what this tier may actually serve — an unentitled layer must
-  // not cost an upstream read, or the free tier would fund the paid one.
+  // Fetch only the upstreams the requested live layers need.
   const needed = new Set<SourceKey>();
   for (const id of requestedLayers) {
-    if (!entitled.has(id)) {
-      layers[id] = 'not-entitled';
-      continue;
-    }
     if (!isLiveLayer(id)) {
       layers[id] = 'ok';
       continue;
@@ -152,8 +121,7 @@ export async function composeEmbedMapFrame(
   }
 
   return {
-    tier,
-    refreshMs: refreshMsForTier(tier),
+    refreshMs: EMBED_REFRESH_MS,
     generatedAt: now,
     layers,
     data,

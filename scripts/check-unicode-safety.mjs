@@ -26,7 +26,7 @@ const ROOT = process.cwd();
 // `--staged` matches purely on EXCLUDED_PREFIXES and extension, so it scans
 // anything a commit touches; the full-repo walk only descends these roots. That
 // asymmetry means a directory absent here is still gated on commit but never
-// swept in CI. pro-test/ is a full React app and was in exactly that position.
+// swept in CI.
 export const SCAN_ROOTS = [
   'src',
   'server',
@@ -34,7 +34,6 @@ export const SCAN_ROOTS = [
   'scripts',
   'tests',
   'e2e',
-  'pro-test',
   '.github',
   '.husky',
 ];
@@ -52,14 +51,6 @@ export const EXCLUDED_PREFIXES = [
   'docs/',
   'blog-site/',
   'public/blog/',
-  // Built bundle, not source: pro-test/ compiles into here and each locale
-  // becomes its own hashed chunk, so the joiners allowed in locale data below
-  // reappear verbatim in public/pro/assets/fa-*.js. Excluding the output adds no
-  // unscanned surface because its INPUTS are scanned -- which is now the whole
-  // argument: #6898 gitignored public/pro/ and deleted the rebuild-and-byte-diff
-  // gate this comment used to lean on, so scanning the sources is what makes the
-  // exclusion safe.
-  'public/pro/',
   'scripts/data/',
   'scripts/node_modules/',
 ];
@@ -70,13 +61,13 @@ export const EXCLUDED_PREFIXES = [
 // commit carrying a correctly-typeset RTL or Indic string.
 //
 // The allowance is scoped to those two code points rather than skipping the
-// files, because these strings are rendered into a public pricing page: a bidi
-// control in an RTL locale can reverse a rendered digit run, so a price or a
-// licence term can display differently from the JSON a reviewer reads. Excluding
+// files, because these strings are rendered to users: a bidi control in an RTL
+// locale can reverse a rendered digit run, so a figure or a licence term can
+// display differently from the JSON a reviewer reads. Excluding
 // the whole path would turn off Trojan Source detection exactly where nobody
 // eyeballs the rendered output. Verified sufficient: the only such characters in
-// either catalog today are U+200B/200C/200D, and no bidi control anywhere.
-export const LOCALE_DATA_PREFIXES = ['src/locales/', 'pro-test/src/locales/'];
+// the catalog today are U+200B/200C/200D, and no bidi control anywhere.
+export const LOCALE_DATA_PREFIXES = ['src/locales/'];
 const LOCALE_ALLOWED_CODEPOINTS = new Set([0x200c, 0x200d]);
 
 export function isLocaleData(path) {

@@ -17,8 +17,6 @@ interface LayoutHarness {
   ctx: Pick<AppContext, 'panelSettings' | 'PANEL_ORDER_KEY'>;
   resolvedPanelOrder: string[];
   bottomSetMemory: Set<string>;
-  healStoredTabSnapshots: () => void;
-  updateTabCapLock: () => void;
   initPanelTabs: () => void;
   unregisterExportFlush: (() => void) | null;
   panelTabBar: { destroy: () => void } | null;
@@ -34,8 +32,6 @@ beforeEach(() => {
   manager.ctx = { panelSettings: { news: { name: 'News', enabled: false, priority: 1 } }, PANEL_ORDER_KEY: 'panel-order' };
   manager.resolvedPanelOrder = ['news'];
   manager.bottomSetMemory = new Set(['markets']);
-  manager.healStoredTabSnapshots = vi.fn();
-  manager.updateTabCapLock = vi.fn();
   manager.initPanelTabs();
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:settings');
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

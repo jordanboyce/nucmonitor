@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  getPanelToggleA11yState,
   getSettingsTabNavigationIndex,
   normalizeSettingsTab,
   restoreSettingsToggleFocus,
@@ -64,31 +63,8 @@ describe('panel toggles are real buttons', () => {
     assert.match(settings, /<button\b[^>]*type="button"[^>]*class="source-toggle-item/);
   });
 
-  it('unlocked panel toggles expose their current pressed state', () => {
-    assert.deepEqual(
-      getPanelToggleA11yState(false, true, 'Markets'),
-      { ariaPressed: 'true', ariaLabel: null },
-    );
-    assert.deepEqual(
-      getPanelToggleA11yState(false, false, 'Markets'),
-      { ariaPressed: 'false', ariaLabel: null },
-    );
-  });
-
-  it('locked Pro panels are upgrade actions rather than false toggles', () => {
-    assert.deepEqual(
-      getPanelToggleA11yState(true, false, 'Force posture'),
-      {
-        ariaPressed: null,
-        ariaLabel: 'Upgrade to Pro to use Force posture',
-      },
-    );
-    assert.match(
-      settings,
-      /a11yState\.ariaPressed === null \? '' : `aria-pressed=/,
-      'locked controls must omit aria-pressed',
-    );
-    assert.match(settings, /a11yState\.ariaLabel === null \? '' : `aria-label=/);
+  it('panel toggles expose their current pressed state', () => {
+    assert.match(settings, /class="panel-toggle-item[\s\S]*?aria-pressed="\$\{panel\.enabled\}"/);
   });
 
   it('source-toggle-item has aria-pressed', () => {
@@ -130,17 +106,14 @@ describe('keyboard — roving tablist', () => {
     assert.deepEqual(panels.map(panel => panel.classList.contains('active')), [false, false, true]);
   });
 
-  it('normalizes an unavailable MCP tab to the Settings tab', () => {
+  it('normalizes an unavailable tab to the Settings tab', () => {
     assert.equal(
-      normalizeSettingsTab('mcp-clients', ['settings', 'panels', 'sources', 'api-keys']),
+      normalizeSettingsTab('sources', ['settings', 'panels']),
       'settings',
     );
     assert.equal(
-      normalizeSettingsTab(
-        'mcp-clients',
-        ['settings', 'panels', 'sources', 'api-keys', 'mcp-clients'],
-      ),
-      'mcp-clients',
+      normalizeSettingsTab('sources', ['settings', 'panels', 'sources']),
+      'sources',
     );
   });
 

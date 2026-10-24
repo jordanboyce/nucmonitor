@@ -17,7 +17,6 @@ import {
   initialDashboardAssetNames,
   measureDistChunks,
   measureEmbedJs,
-  measureProDistChunks,
   validateBudgetSnapshot,
 } from '../scripts/bundle-budgets.mjs';
 
@@ -201,12 +200,11 @@ describe('deferred dashboard App graph', () => {
   });
 
   test('a deferred section is rejected outside the dashboard surface', () => {
-    const dist = makeAssetsFixture({ 'index-BLxGuKBb.js': 50_000 }, { writeIndex: false });
     const budget = {
-      ...buildBudgetSnapshot(measureProDistChunks(dist), 'pro'),
+      ...buildBudgetSnapshot(measureEmbedJs(makeEmbedFixture(3_000)), 'embed'),
       deferred: { total: { raw: 0 }, chunks: {} },
     };
-    assert.ok(validateBudgetSnapshot(budget, 'pro').some((p) => p.includes('only the dashboard')));
+    assert.ok(validateBudgetSnapshot(budget, 'embed').some((p) => p.includes('only the dashboard')));
   });
 
   test('--check exits 1 when the deferred App graph grew past tolerance', () => {
@@ -312,29 +310,6 @@ describe('measureDistChunks', () => {
     assert.ok(
       compareBundleBudgets(measured, budgetWithout).failures.some((f) => f.includes('toString')),
     );
-  });
-});
-
-describe('measureProDistChunks', () => {
-  test('measures every JS asset under dist/pro/assets', () => {
-    const dist = makeAssetsFixture(
-      {
-        'index-BLxGuKBb.js': 120_000,
-        'sentry-Ab12Cd34.js': 40_000,
-        'lazy-locale-Xx99Yy88.js': 8_000,
-      },
-      { writeIndex: false },
-    );
-    const measured = measureProDistChunks(dist);
-    assert.deepEqual(Object.keys(measured.chunks).sort(), ['index', 'lazy-locale', 'sentry']);
-    assert.equal(measured.total.raw, 168_000);
-  });
-
-  test('throws when dist/pro/assets has no JS files', () => {
-    const dist = mkdtempSync(join(tmpdir(), 'wm-bundle-budgets-'));
-    fixtures.push(dist);
-    mkdirSync(join(dist, 'assets'), { recursive: true });
-    assert.throws(() => measureProDistChunks(dist), /no JS assets/i);
   });
 });
 
@@ -581,18 +556,6 @@ describe('bundle-budgets CLI', () => {
     assert.equal(check.status, 2);
   });
 
-  test('--surface pro seeds and checks against dist/pro/assets', () => {
-    const dist = makeAssetsFixture(
-      { 'index-BLxGuKBb.js': 50_000, 'vendor-Xx99Yy88.js': 20_000 },
-      { writeIndex: false },
-    );
-    const budgetPath = join(dist, 'budget-pro.json');
-    const write = runCli(['--surface', 'pro', '--dist', dist, '--budget', budgetPath]);
-    assert.equal(write.status, 0, write.stderr);
-    const check = runCli(['--check', '--surface', 'pro', '--dist', dist, '--budget', budgetPath]);
-    assert.equal(check.status, 0, check.stderr);
-  });
-
   test('--surface embed seeds and checks against dist/embed.js', () => {
     const dist = makeEmbedFixture(3_000);
     const budgetPath = join(dist, 'budget-embed.json');
@@ -600,17 +563,6 @@ describe('bundle-budgets CLI', () => {
     assert.equal(write.status, 0, write.stderr);
     const check = runCli(['--check', '--surface', 'embed', '--dist', dist, '--budget', budgetPath]);
     assert.equal(check.status, 0, check.stderr);
-  });
-
-  test('--surface pro violations name the pro re-seed command', () => {
-    const dist = makeAssetsFixture({ 'index-BLxGuKBb.js': 100_000 }, { writeIndex: false });
-    const budgetPath = join(dist, 'budget-pro.json');
-    assert.equal(runCli(['--surface', 'pro', '--dist', dist, '--budget', budgetPath]).status, 0);
-    writeFileSync(join(dist, 'assets', 'index-BLxGuKBb.js'), chunkContent(160_000));
-
-    const check = runCli(['--check', '--surface', 'pro', '--dist', dist, '--budget', budgetPath]);
-    assert.equal(check.status, 1, check.stderr);
-    assert.ok(check.stderr.includes('`npm run bundle:budgets:pro`'), check.stderr);
   });
 
   test('--surface embed violations name the embed re-seed command', () => {

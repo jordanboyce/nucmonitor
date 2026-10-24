@@ -7,7 +7,6 @@
  * share the same name limits, last-tab guard, and stable denial reasons.
  */
 
-import type { ExportGateLockReason, TabCapVerdict } from './gates/export-resolver';
 import {
   DASHBOARD_TAB_NAME_MAX_LENGTH,
   isDashboardTabId,
@@ -28,7 +27,6 @@ export type DashboardTabDenialReason =
   | 'malformed_arguments'
   | 'invalid_name'
   | 'tab_not_found'
-  | 'tab_cap'
   | 'last_tab'
   | 'confirmation_required'
   | 'tabs_unavailable'
@@ -56,9 +54,6 @@ export interface DashboardTabListSnapshot {
   tabsTruncated: boolean;
   /** Inclusive start tab id for the next page when `tabsTruncated` is true. */
   nextCursor?: string;
-  canCreate: boolean;
-  cap: number | null;
-  createBlockReason?: ExportGateLockReason;
 }
 
 export interface DashboardTabMutationResult {
@@ -74,28 +69,11 @@ export interface DashboardTabMutationResult {
   alreadyExisted?: boolean;
   persisted?: boolean;
   tabCount?: number;
-  canCreate?: boolean;
-  cap?: number | null;
-  lockReason?: ExportGateLockReason;
 }
 
 export type DashboardTabActionResult = DashboardTabListSnapshot | DashboardTabMutationResult;
 
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
-
-function tabCapDenial(cap: Extract<TabCapVerdict, { allowed: false }>): {
-  ok: false;
-  reason: DashboardTabDenialReason;
-  message: string;
-  lockReason: ExportGateLockReason;
-} {
-  return {
-    ok: false,
-    reason: 'tab_cap',
-    message: 'Dashboard tab limit reached for this account.',
-    lockReason: cap.reason,
-  };
-}
 
 export const DASHBOARD_TAB_UNAVAILABLE_RESULT: DashboardTabMutationResult = {
   ok: false,
@@ -122,7 +100,6 @@ export function normalizeDashboardTabName(value: unknown): string | null {
 
 export function describeDashboardTabs(
   state: TabsState,
-  cap: TabCapVerdict,
 ): DashboardTabListSnapshot {
   const canDelete = state.tabs.length > 1;
   const tabs = state.tabs.map((tab) => ({
@@ -136,10 +113,7 @@ export function describeDashboardTabs(
     tabs,
     tabCount: tabs.length,
     tabsTruncated: false,
-    canCreate: cap.allowed,
-    cap: cap.cap,
   };
-  if (!cap.allowed) snapshot.createBlockReason = cap.reason;
   return snapshot;
 }
 
@@ -165,12 +139,11 @@ export function resolveSelectDashboardTab(
 
 export function resolveCreateDashboardTab(
   state: TabsState,
-  cap: TabCapVerdict,
   requestedName: unknown,
 ):
   | { ok: true; unchanged: boolean; alreadyExisted: true; tab: PanelTab }
   | { ok: true; unchanged: false; name: string }
-  | { ok: false; reason: DashboardTabDenialReason; message: string; lockReason?: ExportGateLockReason } {
+  | { ok: false; reason: DashboardTabDenialReason; message: string } {
   if (requestedName !== undefined) {
     const name = normalizeDashboardTabName(requestedName);
     if (!name) {
@@ -189,13 +162,7 @@ export function resolveCreateDashboardTab(
         tab: existing,
       };
     }
-    if (!cap.allowed) {
-      return tabCapDenial(cap);
-    }
     return { ok: true, unchanged: false, name };
-  }
-  if (!cap.allowed) {
-    return tabCapDenial(cap);
   }
   return { ok: true, unchanged: false, name: '' };
 }

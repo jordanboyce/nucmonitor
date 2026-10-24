@@ -126,7 +126,6 @@ export async function seedAnonymousDashboard(
     // budget spec. These values are restored on each document, matching the
     // original helper behavior across reloads.
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
-    localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
     localStorage.setItem('worldmonitor-variant', selectedVariant);
 

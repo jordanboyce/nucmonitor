@@ -21,11 +21,11 @@ const applyBody = panelLayout.slice(
 );
 const createBody = panelLayout.slice(
   panelLayout.indexOf('private createAndActivateTab('),
-  panelLayout.indexOf('public healStoredTabSnapshots('),
+  panelLayout.indexOf('private captureCurrentTabState('),
 );
 const switchBody = panelLayout.slice(
   panelLayout.indexOf('private switchToTab('),
-  panelLayout.indexOf('private updateTabCapLock('),
+  panelLayout.indexOf('private addTab('),
 );
 const renameBody = panelLayout.slice(
   panelLayout.indexOf('private renameTab('),
@@ -61,9 +61,7 @@ describe('WebMCP tab-action wiring', () => {
     assert.match(applyBody, /this\.createAndActivateTab\(/);
     assert.match(applyBody, /this\.renameTab\(resolved\.tab\.id, resolved\.name\)/);
     assert.match(applyBody, /this\.deleteTab\(resolved\.tab\.id\)/);
-    assert.match(applyBody, /canCreate:\s*cap\.allowed/);
     assert.match(applyBody, /alreadyExisted/);
-    assert.match(applyBody, /trackGateHit\('dashboard-tab'\)/);
     assert.match(applyBody, /DASHBOARD_TAB_UNAVAILABLE_RESULT/);
     assert.match(applyBody, /applyPersistReceipt\(/);
     assert.match(mutationResultBody, /applyPersistReceipt\(/);

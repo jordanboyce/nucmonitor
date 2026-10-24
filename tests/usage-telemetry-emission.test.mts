@@ -3,10 +3,8 @@
  * specifically the four fields the round-1 Codex review flagged:
  *
  *   - domain (must be 'shipping' for /api/v2/shipping/* routes, not 'v2')
- *   - customer_id (must be populated on legacy premium bearer-token success)
+ *   - customer_id (must be populated for a verified partner bearer)
  *   - auth_kind (must reflect the resolved identity, not stay 'anon')
- *   - tier (recorded when entitlement-gated routes succeed; covered indirectly
- *     by the legacy bearer success case via the Dodo `tier` branch)
  *
  * Strategy: enable telemetry (USAGE_TELEMETRY=1 + AXIOM_API_TOKEN=fake), stub
  * globalThis.fetch to intercept the Axiom ingest POST, and pass a real ctx
@@ -23,14 +21,6 @@ import { createDomainGateway, type GatewayCtx } from '../server/gateway.ts';
 import { deriveCountry } from '../server/_shared/usage.ts';
 import { issueSessionToken } from '../api/_session.js';
 import { createRedisFetch } from './helpers/fake-upstash-redis.mts';
-
-// Canonical `wm_` + 40 lowercase hex — the only shape generateKey()
-// (src/services/api-keys.ts) mints, and since #5379 validateUserApiKey rejects
-// anything else before hashing. The Convex mocks match on URL, not on the key
-// or its hash, so the exact values are arbitrary as long as they are shaped
-// like a real key.
-const TELEMETRY_FREE_USER_KEY = `wm_${'d'.repeat(40)}`;
-const TELEMETRY_ACTIVE_USER_KEY = `wm_${'e'.repeat(40)}`;
 
 // Anonymous browser access requires a wms_ session token (issue #3541).
 process.env.WM_SESSION_SECRET = process.env.WM_SESSION_SECRET
@@ -75,7 +65,6 @@ function makeRecordingCtx(): { ctx: GatewayCtx; settled: Promise<void> } {
 
 function installAxiomFetchSpy(
   originalFetch: typeof fetch,
-  opts: { entitlementsResponse?: unknown; apiKeyValidationResponse?: unknown } = {},
 ): {
   events: CapturedEvent[];
   restore: () => void;
@@ -94,18 +83,6 @@ function installAxiomFetchSpy(
       for (const ev of body) events.push(ev);
       return new Response('{}', { status: 200 });
     }
-    if (url.includes('/api/internal-validate-api-key')) {
-      return new Response(JSON.stringify(opts.apiKeyValidationResponse ?? null), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    if (url.includes('/api/internal-entitlements')) {
-      return new Response(JSON.stringify(opts.entitlementsResponse ?? null), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
     return originalFetch(input as Request | string | URL, init);
   }) as typeof fetch;
   return { events, restore: () => { globalThis.fetch = originalFetch; } };
@@ -115,16 +92,13 @@ const ORIGINAL_FETCH = globalThis.fetch;
 const ORIGINAL_USAGE_FLAG = process.env.USAGE_TELEMETRY;
 const ORIGINAL_AXIOM_TOKEN = process.env.AXIOM_API_TOKEN;
 const ORIGINAL_VALID_KEYS = process.env.WORLDMONITOR_VALID_KEYS;
-const ORIGINAL_CONVEX_SITE_URL = process.env.CONVEX_SITE_URL;
-const ORIGINAL_CONVEX_SHARED_SECRET = process.env.CONVEX_SERVER_SHARED_SECRET;
+const ORIGINAL_ACCESS_MODE = process.env.ACCESS_MODE;
+const ORIGINAL_PARTNER_EMAILS = process.env.PARTNER_ALLOWED_EMAILS;
 const ORIGINAL_REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const ORIGINAL_REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const ORIGINAL_CF_EDGE_PROOF_SECRET = process.env.CF_EDGE_PROOF_SECRET;
-const ORIGINAL_WIDGET_AGENT_KEY = process.env.WIDGET_AGENT_KEY;
 
 afterEach(() => {
-  if (ORIGINAL_WIDGET_AGENT_KEY == null) delete process.env.WIDGET_AGENT_KEY;
-  else process.env.WIDGET_AGENT_KEY = ORIGINAL_WIDGET_AGENT_KEY;
   globalThis.fetch = ORIGINAL_FETCH;
   if (ORIGINAL_USAGE_FLAG == null) delete process.env.USAGE_TELEMETRY;
   else process.env.USAGE_TELEMETRY = ORIGINAL_USAGE_FLAG;
@@ -132,10 +106,10 @@ afterEach(() => {
   else process.env.AXIOM_API_TOKEN = ORIGINAL_AXIOM_TOKEN;
   if (ORIGINAL_VALID_KEYS == null) delete process.env.WORLDMONITOR_VALID_KEYS;
   else process.env.WORLDMONITOR_VALID_KEYS = ORIGINAL_VALID_KEYS;
-  if (ORIGINAL_CONVEX_SITE_URL == null) delete process.env.CONVEX_SITE_URL;
-  else process.env.CONVEX_SITE_URL = ORIGINAL_CONVEX_SITE_URL;
-  if (ORIGINAL_CONVEX_SHARED_SECRET == null) delete process.env.CONVEX_SERVER_SHARED_SECRET;
-  else process.env.CONVEX_SERVER_SHARED_SECRET = ORIGINAL_CONVEX_SHARED_SECRET;
+  if (ORIGINAL_ACCESS_MODE == null) delete process.env.ACCESS_MODE;
+  else process.env.ACCESS_MODE = ORIGINAL_ACCESS_MODE;
+  if (ORIGINAL_PARTNER_EMAILS == null) delete process.env.PARTNER_ALLOWED_EMAILS;
+  else process.env.PARTNER_ALLOWED_EMAILS = ORIGINAL_PARTNER_EMAILS;
   if (ORIGINAL_REDIS_URL == null) delete process.env.UPSTASH_REDIS_REST_URL;
   else process.env.UPSTASH_REDIS_REST_URL = ORIGINAL_REDIS_URL;
   if (ORIGINAL_REDIS_TOKEN == null) delete process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -144,22 +118,29 @@ afterEach(() => {
   else process.env.CF_EDGE_PROOF_SECRET = ORIGINAL_CF_EDGE_PROOF_SECRET;
 });
 
-describe('gateway telemetry payload — widget credential', () => {
-  it('omits the validated relay credential from the Axiom payload', async () => {
-    const secret = 'synthetic-widget-relay-secret';
-    process.env.WIDGET_AGENT_KEY = secret;
+describe('gateway telemetry payload — enterprise credential', () => {
+  it('attributes an enterprise key by its hash and never ships the raw key', async () => {
+    const secret = 'synthetic-enterprise-operator-key';
+    process.env.WORLDMONITOR_VALID_KEYS = secret;
     process.env.USAGE_TELEMETRY = '1';
     process.env.AXIOM_API_TOKEN = 'test-token';
     const spy = installAxiomFetchSpy(ORIGINAL_FETCH);
-    const handler = createDomainGateway([]);
+    const handler = createDomainGateway([{
+      method: 'GET',
+      path: '/api/market/v1/list-market-quotes',
+      handler: async () => new Response('{"ok":true}', { status: 200 }),
+    }]);
     const recorder = makeRecordingCtx();
-    await handler(new Request('https://worldmonitor.app/api/market/v1/list-market-quotes', {
-      headers: { Origin: 'https://worldmonitor.app', 'x-widget-key': secret },
+    const res = await handler(new Request('https://worldmonitor.app/api/market/v1/list-market-quotes', {
+      headers: { Origin: 'https://worldmonitor.app', 'X-Api-Key': secret },
     }), recorder.ctx);
+    assert.equal(res.status, 200);
     await recorder.settled;
     assert.equal(spy.events.length, 1);
-    assert.equal(spy.events[0]!.auth_kind, 'widget_key');
-    assert.equal(spy.events[0]!.customer_id, 'widget');
+    assert.equal(spy.events[0]!.auth_kind, 'enterprise_api_key');
+    assert.equal(spy.events[0]!.customer_id, 'enterprise-unmapped');
+    assert.equal(spy.events[0]!.tier, 0);
+    assert.equal(spy.events[0]!.plan_key, null);
     assert.ok(!JSON.stringify(spy.events).includes(secret));
   });
 });
@@ -451,9 +432,11 @@ describe('gateway telemetry payload — bearer identity propagation', () => {
       .sign(privateKey);
   }
 
-  it('records customer_id from a successful legacy premium bearer call', async () => {
+  it('records customer_id for a verified partner bearer (partner mode)', async () => {
     process.env.USAGE_TELEMETRY = '1';
     process.env.AXIOM_API_TOKEN = 'test-token';
+    process.env.ACCESS_MODE = 'partner';
+    process.env.PARTNER_ALLOWED_EMAILS = 'ops@utility.example';
     const spy = installAxiomFetchSpy(ORIGINAL_FETCH);
 
     const handler = createDomainGateway([
@@ -464,7 +447,7 @@ describe('gateway telemetry payload — bearer identity propagation', () => {
       },
     ]);
 
-    const token = await signToken({ sub: 'user_pro', plan: 'pro' });
+    const token = await signToken({ sub: 'user_partner', email: 'ops@utility.example' });
     const recorder = makeRecordingCtx();
     const res = await handler(
       new Request('https://worldmonitor.app/api/market/v1/get-stock-analysis-history?symbol=AAPL', {
@@ -482,194 +465,10 @@ describe('gateway telemetry payload — bearer identity propagation', () => {
 
     assert.equal(spy.events.length, 1, 'expected exactly one telemetry event');
     const ev = spy.events[0]!;
-    // The whole point of fix #2: pre-fix this would have been null/anon.
-    assert.equal(ev.customer_id, 'user_pro', 'customer_id should be the bearer subject');
+    assert.equal(ev.customer_id, 'user_partner', 'customer_id should be the bearer subject');
     assert.equal(ev.auth_kind, 'clerk_jwt');
     assert.equal(ev.domain, 'market');
     assert.equal(ev.status, 200);
-  });
-
-  it("records tier=2 for an entitlement-gated success (the path the round-1 P2 fix targets)", async () => {
-    // /api/market/v1/analyze-stock requires tier 2 in ENDPOINT_ENTITLEMENTS.
-    // Pre-fix: usage.tier stayed null → emitted as 0. Post-fix: gateway re-reads
-    // entitlements after checkEntitlement allows the request, so tier=2 lands on
-    // the wire. We exercise this by stubbing the Convex entitlements fallback —
-    // Redis returns null without UPSTASH env, then getEntitlements falls through
-    // to the Convex HTTP path which we intercept via the same fetch spy.
-    process.env.USAGE_TELEMETRY = '1';
-    process.env.AXIOM_API_TOKEN = 'test-token';
-    process.env.CONVEX_SITE_URL = 'https://convex.test';
-    process.env.CONVEX_SERVER_SHARED_SECRET = 'test-shared-secret';
-
-    const fakeEntitlements = {
-      planKey: 'api_starter',
-      features: {
-        tier: 2,
-        apiAccess: true,
-        apiRateLimit: 1000,
-        maxDashboards: 10,
-        prioritySupport: false,
-        exportFormats: ['json'],
-      },
-      validUntil: Date.now() + 60_000,
-    };
-    const spy = installAxiomFetchSpy(ORIGINAL_FETCH, { entitlementsResponse: fakeEntitlements });
-
-    const handler = createDomainGateway([
-      {
-        method: 'GET',
-        path: '/api/market/v1/analyze-stock',
-        handler: async () => new Response('{"ok":true}', { status: 200 }),
-      },
-    ]);
-
-    // plan: 'api' so the legacy bearer-role short-circuit (`session.role === 'pro'`)
-    // does NOT fire — we want the entitlement-check path that populates usage.tier.
-    const token = await signToken({ sub: 'user_api', plan: 'api' });
-    const recorder = makeRecordingCtx();
-    const res = await handler(
-      new Request('https://worldmonitor.app/api/market/v1/analyze-stock?symbol=AAPL', {
-        headers: {
-          Origin: 'https://worldmonitor.app',
-          Authorization: `Bearer ${token}`,
-        },
-      }),
-      recorder.ctx,
-    );
-    assert.equal(res.status, 200, 'entitlement-gated request with sufficient tier should succeed');
-
-    await recorder.settled;
-    spy.restore();
-    delete process.env.CONVEX_SITE_URL;
-    delete process.env.CONVEX_SERVER_SHARED_SECRET;
-
-    assert.equal(spy.events.length, 1);
-    const ev = spy.events[0]!;
-    assert.equal(ev.tier, 2, `tier should reflect resolved entitlement, got ${ev.tier}`);
-    assert.equal(ev.customer_id, 'user_api');
-    assert.equal(ev.auth_kind, 'clerk_jwt');
-    assert.equal(ev.domain, 'market');
-    assert.equal(ev.route, '/api/market/v1/analyze-stock');
-  });
-
-  it('records plan_key for user API-key requests rejected by entitlement gate', async () => {
-    process.env.USAGE_TELEMETRY = '1';
-    process.env.AXIOM_API_TOKEN = 'test-token';
-    process.env.CONVEX_SITE_URL = 'https://convex.test';
-    process.env.CONVEX_SERVER_SHARED_SECRET = 'test-shared-secret';
-
-    const freeEntitlements = {
-      planKey: 'free',
-      features: {
-        tier: 0,
-        apiAccess: false,
-        apiRateLimit: 0,
-        maxDashboards: 3,
-        prioritySupport: false,
-        exportFormats: ['csv'],
-        mcpAccess: false,
-      },
-      validUntil: Date.now() + 60_000,
-    };
-    const spy = installAxiomFetchSpy(ORIGINAL_FETCH, {
-      apiKeyValidationResponse: { userId: 'user_free_api_key', keyId: 'key_free', name: 'Free key' },
-      entitlementsResponse: freeEntitlements,
-    });
-
-    const handler = createDomainGateway([
-      {
-        method: 'GET',
-        path: '/api/market/v1/analyze-stock',
-        handler: async () => new Response('{"ok":true}', { status: 200 }),
-      },
-    ]);
-
-    const recorder = makeRecordingCtx();
-    const res = await handler(
-      new Request('https://worldmonitor.app/api/market/v1/analyze-stock?symbol=AAPL', {
-        headers: {
-          Origin: 'https://worldmonitor.app',
-          'X-Api-Key': TELEMETRY_FREE_USER_KEY,
-        },
-      }),
-      recorder.ctx,
-    );
-    assert.equal(res.status, 403, 'free user API key should fail the tier-gated endpoint');
-
-    await recorder.settled;
-    spy.restore();
-
-    assert.equal(spy.events.length, 1);
-    const ev = spy.events[0]!;
-    assert.equal(ev.auth_kind, 'user_api_key');
-    assert.equal(ev.customer_id, 'user_free_api_key');
-    assert.equal(ev.tier, 0);
-    assert.equal(ev.plan_key, 'free');
-    assert.equal(ev.reason, 'tier_403');
-  });
-
-  it('records plan_key on a SERVED (200) user API-key request on a non-tier-gated route (#4613)', async () => {
-    // #4613: the served keyed path attributes plan_key via the #3199 per-account
-    // rate-limit block's recordUsageEntitlement — a DIFFERENT call site than the
-    // tier-gate rejection path (asserted above) or the clerk_jwt success path.
-    // Without this guard, a regression there emits plan_key=null on the paid API
-    // surface, silently breaking the per-plan usage / limit-abuse audit (#4572).
-    process.env.USAGE_TELEMETRY = '1';
-    process.env.AXIOM_API_TOKEN = 'test-token';
-    process.env.CONVEX_SITE_URL = 'https://convex.test';
-    process.env.CONVEX_SERVER_SHARED_SECRET = 'test-shared-secret';
-
-    const starterEntitlements = {
-      planKey: 'api_starter',
-      features: {
-        tier: 2,
-        apiAccess: true,
-        apiRateLimit: 1000,
-        maxDashboards: 25,
-        prioritySupport: false,
-        exportFormats: ['csv'],
-        mcpAccess: true,
-      },
-      validUntil: Date.now() + 60_000,
-    };
-    const spy = installAxiomFetchSpy(ORIGINAL_FETCH, {
-      apiKeyValidationResponse: { userId: 'user_active_api_key', keyId: 'key_active', name: 'Active key' },
-      entitlementsResponse: starterEntitlements,
-    });
-
-    // list-cyber-threats: a plain keyed RPC — not tier-gated, not premium, not
-    // public-no-auth — so the served path runs through the per-account block
-    // where user-key plan_key attribution happens.
-    const handler = createDomainGateway([
-      {
-        method: 'GET',
-        path: '/api/cyber/v1/list-cyber-threats',
-        handler: async () => new Response('{"ok":true}', { status: 200 }),
-      },
-    ]);
-
-    const recorder = makeRecordingCtx();
-    const res = await handler(
-      new Request('https://worldmonitor.app/api/cyber/v1/list-cyber-threats', {
-        headers: {
-          Origin: 'https://worldmonitor.app',
-          'X-Api-Key': TELEMETRY_ACTIVE_USER_KEY,
-        },
-      }),
-      recorder.ctx,
-    );
-    assert.equal(res.status, 200, 'active user API key should be served on a non-tier-gated route');
-
-    await recorder.settled;
-    spy.restore();
-
-    assert.equal(spy.events.length, 1);
-    const ev = spy.events[0]!;
-    assert.equal(ev.auth_kind, 'user_api_key');
-    assert.equal(ev.customer_id, 'user_active_api_key');
-    assert.equal(ev.tier, 2);
-    assert.equal(ev.plan_key, 'api_starter', 'served user-key request must attribute plan_key (#4613)');
-    assert.equal(ev.reason, 'ok');
   });
 
   it('still emits with auth_kind=anon when the bearer is invalid', async () => {

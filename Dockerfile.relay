@@ -36,8 +36,6 @@ RUN npm ci --prefix scripts --omit=dev --omit=optional --ignore-scripts
 
 # Relay script and shared helpers
 COPY scripts/ais-relay.cjs ./scripts/ais-relay.cjs
-COPY scripts/_widget-response-parser.cjs ./scripts/_widget-response-parser.cjs
-COPY scripts/_widget-data-policy.cjs ./scripts/_widget-data-policy.cjs
 COPY scripts/_opensky-account-cooldown.cjs ./scripts/_opensky-account-cooldown.cjs
 # Shared ingestion outcome/cooldown helpers imported by ais-relay.cjs.
 COPY scripts/_ingestion-coverage.cjs ./scripts/_ingestion-coverage.cjs
@@ -83,31 +81,13 @@ COPY scripts/shared/country-names.json ./scripts/shared/country-names.json
 # weather_alert countryCode. scripts/_weather-alert-select.mjs reads it at
 # import time; missing it is ERR_MODULE_NOT_FOUND / ENOENT at relay start.
 COPY scripts/shared/iso3-to-iso2.json ./scripts/shared/iso3-to-iso2.json
-# iso2-to-region.json backs regional_* country-scope matching in
-# notification-relay.cjs (#5359).
+# iso2-to-region.json backs regional country-scope matching in
+# scripts/shared/geography.js (#5359).
 COPY scripts/shared/iso2-to-region.json ./scripts/shared/iso2-to-region.json
-# notification-dedup.cjs is required by ais-relay.cjs and notification-relay.cjs
+# notification-dedup.cjs is required by ais-relay.cjs
 # (Slot B dedup-material helper, #4985). Missing it = ERR_MODULE_NOT_FOUND at
 # relay startup. Guarded by tests/dockerfile-relay-imports.test.mjs.
 COPY scripts/shared/notification-dedup.cjs ./scripts/shared/notification-dedup.cjs
-# notify-fields.cjs mirrors server/_shared/notify-fields.ts for the relay
-# (no TS loader under scripts/package.json); required by notification-relay.cjs.
-#
-# NOTE on the guard: tests/dockerfile-relay-imports.test.mjs seeds its BFS from
-# COPY'd entrypoints only, and notification-relay.cjs is NOT COPY'd here (it is
-# not this image's CMD), so the BFS can never reach this file — deleting this
-# line left that guard green (review finding). The explicit presence assertion
-# in that test is what pins this line now. notification-relay.cjs also imports
-# five scripts/lib/* modules absent from this image, so it cannot be running
-# from this image; see tests/dockerfile-relay-imports.test.mjs for the check
-# that keeps this COPY list and that claim honest.
-# Guarded by tests/notify-fields-parity.test.mjs (behaviour parity).
-COPY scripts/shared/notify-fields.cjs ./scripts/shared/notify-fields.cjs
-# notification-link-suppression.cjs is the operator blocked-link matcher
-# (#8401) required by notification-relay.cjs; it requires notify-fields.cjs
-# above. Same guard caveat: pinned explicitly in
-# tests/dockerfile-relay-imports.test.mjs because the BFS cannot reach it.
-COPY scripts/shared/notification-link-suppression.cjs ./scripts/shared/notification-link-suppression.cjs
 # market-hours.cjs gates the equity portion of the relay market seed loop on
 # the US-equity session (#4922d). Missing it = ERR_MODULE_NOT_FOUND at startup.
 COPY scripts/shared/market-hours.cjs ./scripts/shared/market-hours.cjs

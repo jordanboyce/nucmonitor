@@ -54,7 +54,6 @@ function createBindings(overrides = {}) {
       rendererKind: 'deck',
       enabledLayers: [],
       liveLayerKeys: ['conflicts', 'weather', 'hotspots'],
-      hasPremium: false,
       deckGlActive: true,
     }),
     listDashboardPanels: async () => ({
@@ -281,17 +280,7 @@ function createBindings(overrides = {}) {
     getAccessContext: async () => ({
       accountState: 'signed_out',
       clerk: 'unavailable',
-      productTier: 'anonymous',
-      capabilities: {
-        premiumAccess: false,
-        apiAccess: false,
-        mcpAccess: false,
-        dataExport: false,
-      },
-      limits: {
-        enabledPanels: { used: 1, cap: 40 },
-        dashboardTabs: { used: 1, cap: 3, canCreate: true },
-      },
+      usage: { enabledPanels: 1, dashboardTabs: 1 },
     }),
     openSignIn: async () => ({ ok: false, status: 'denied', reason: 'clerk_unavailable' }),
     ...overrides,
@@ -669,7 +658,6 @@ describe('WebMCP registry behavioral contract', () => {
         'move_panel',
         'rename_dashboard_tab',
         'select_dashboard_tab',
-        'set_country_followed',
         'set_map_layers',
         'set_map_mode',
         'set_panel_collapsed',
@@ -781,14 +769,6 @@ describe('WebMCP registry behavioral contract', () => {
         provider,
         'apply_mission_preset',
         JSON.stringify({ presetId: 'nuclear-hub' }),
-      ),
-      denial,
-    );
-    assert.deepEqual(
-      await executeRegistered(
-        provider,
-        'set_country_followed',
-        JSON.stringify({ iso2: 'DE', followed: true }),
       ),
       denial,
     );
@@ -995,7 +975,6 @@ describe('WebMCP registry behavioral contract', () => {
         rendererKind: 'deck',
         enabledLayers: [],
         liveLayerKeys: ['conflicts', 'weather', 'hotspots'],
-        hasPremium: true,
         deckGlActive: true,
       }),
       applyDashboardAction: async (action) => {

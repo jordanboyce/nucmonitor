@@ -167,7 +167,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; connect-src 'self' https: wss: blob: data: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'strict-dynamic' 'nonce-wm-static-bootstrap' 'sha256-h0RiSjzitWmlVHuHxDHV1z/h7io4rveTmT0yR7CKaJ0=' 'sha256-NvvaOCiTjHaXnbi1uzPOJWWAc9sJVTCfxjvLeZoerT8=' 'sha256-Z5TaQuwFMHlxoFSQYuTWfxuPE5RUOpVsZOttUGCcRNE=' 'sha256-Jgh3W4Qj3HWZPVSti0C073yuiaz611LO8OZRUCsN0x8=' 'sha256-llBxZlyh3eu6gbNvZXaeD9oZE2jgTvnh72FEO/GDErQ=' 'sha256-qBy8dsjFg+wfik0vT6vqHdUfbfSdoK+3noanAXUt4mk=' 'sha256-sMkhxXs3qUW2IR01a4d3tL1e2XQV0XUwxXAeL31nDjM=' 'wasm-unsafe-eval'; worker-src 'self' blob:; font-src 'self' data:; media-src 'self' data: blob: https:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://webcams.windy.com https://challenges.cloudflare.com https://*.clerk.accounts.dev https://vercel.live; frame-ancestors 'self' https://vercel.live; base-uri 'self'; object-src 'none'; form-action 'self'"
+          "value": "default-src 'self'; connect-src 'self' https: wss: blob: data: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'strict-dynamic' 'nonce-wm-static-bootstrap' 'sha256-h0RiSjzitWmlVHuHxDHV1z/h7io4rveTmT0yR7CKaJ0=' 'sha256-QU76mhEJwTEPiDLEOzpJ1JGhmZh0ziriRrP59e2s3Ow=' 'sha256-Z5TaQuwFMHlxoFSQYuTWfxuPE5RUOpVsZOttUGCcRNE=' 'sha256-Jgh3W4Qj3HWZPVSti0C073yuiaz611LO8OZRUCsN0x8=' 'sha256-llBxZlyh3eu6gbNvZXaeD9oZE2jgTvnh72FEO/GDErQ=' 'sha256-qBy8dsjFg+wfik0vT6vqHdUfbfSdoK+3noanAXUt4mk=' 'sha256-sMkhxXs3qUW2IR01a4d3tL1e2XQV0XUwxXAeL31nDjM=' 'wasm-unsafe-eval'; worker-src 'self' blob:; font-src 'self' data:; media-src 'self' data: blob: https:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://webcams.windy.com https://challenges.cloudflare.com https://*.clerk.accounts.dev https://vercel.live; frame-ancestors 'self' https://vercel.live; base-uri 'self'; object-src 'none'; form-action 'self'"
         }
       ]
     },
@@ -259,24 +259,6 @@
         {
           "key": "Cross-Origin-Resource-Policy",
           "value": "cross-origin"
-        }
-      ]
-    },
-    {
-      "source": "/api/slack/oauth/callback",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';"
-        }
-      ]
-    },
-    {
-      "source": "/api/discord/oauth/callback",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';"
         }
       ]
     },

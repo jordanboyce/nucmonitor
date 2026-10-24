@@ -1,7 +1,6 @@
 /**
- * Canonical legal-document identity, shared by the dashboard (`src/`) and
- * Convex (`convex/users.ts`, which stamps the accepted version onto the user
- * record). Pure data: no DOM, no Node, no Convex imports.
+ * Canonical legal-document identity for the dashboard (`src/`). Pure data:
+ * no DOM, no Node, no Convex imports.
  *
  * NucMonitor's legal text is deliberately short placeholder copy for the demo
  * deployment (public/legal/*.html). Replace it with reviewed documents before
@@ -9,7 +8,7 @@
  * acceptance always names the text that was shown.
  */
 
-/** ISO date of the current legal documents; the value stamped onto `users.termsVersion`. */
+/** ISO date of the current legal documents. */
 export const TERMS_VERSION = '2026-10-20';
 
 export const TERMS_PATH = '/legal/terms';

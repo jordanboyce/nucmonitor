@@ -25,13 +25,8 @@ async function seedDashboard(page: Page): Promise<void> {
     sessionStorage.clear();
     sessionStorage.setItem('__settings_live_apply_seeded__', '1');
     localStorage.setItem('worldmonitor-variant', 'full');
-    // Pro: the free tier clamps to FREE_MAX_PANELS (40) and the full variant
-    // already defaults over that, so a free profile has zero headroom and the
-    // modal would refuse the toggle with a cap toast before reaching the bug.
-    localStorage.setItem('wm-pro-key', 'e2e-live-apply');
     // Overlays that would otherwise steal the click target.
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
-    localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
     // Partial map: App merges every other ALL_PANELS key at its variant default.
     localStorage.setItem('worldmonitor-panels', JSON.stringify({

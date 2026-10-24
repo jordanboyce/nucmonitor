@@ -8,7 +8,6 @@
  */
 
 import { getRpcBaseUrl, getRpcErrorStatusCode } from '@/services/rpc-client';
-import { premiumFetch } from '@/services/premium-fetch';
 import type { GetFredSeriesResponse, GetFredSeriesBatchResponse, ListWorldBankIndicatorsResponse, WorldBankCountryData as ProtoWorldBankCountryData, GetEnergyPricesResponse, EnergyPrice as ProtoEnergyPrice, GetEnergyCapacityResponse, GetBisPolicyRatesResponse, GetBisExchangeRatesResponse, GetBisCreditResponse, GetChinaMacroSnapshotResponse, BisPolicyRate, BisExchangeRate, BisCreditToGdp, GetNationalDebtResponse, NationalDebtEntry, GetBlsSeriesResponse, GetCrudeInventoriesResponse, CrudeInventoryWeek, GetNatGasStorageResponse, NatGasStorageWeek, GetEcbFxRatesResponse, EcbFxRate, GetEuGasStorageResponse, EuGasStorageHistoryEntry, GetEurostatCountryDataResponse, EurostatCountryEntry, GetOilStocksAnalysisResponse, OilStocksAnalysisMember, OilStocksRegionalSummary, OilStocksRegionalSummaryEurope, OilStocksRegionalSummaryAsiaPacific, OilStocksRegionalSummaryNorthAmerica } from '@/generated/client/worldmonitor/economic/v1/service_client';
 import { createCircuitBreaker } from '@/utils/circuit-breaker';
 import { getCSSColor } from '@/utils';
@@ -18,19 +17,11 @@ import { ensureHydrated, getHydratedData } from '@/services/bootstrap';
 import { mergeCbrPolicyRate } from './cbr-policy-rate';
 import { degradedSources, toEurSpotRows, toFxStressRows, toRubQuoteRows, toUsdSpotRows, type FxPanelRows } from './fx-rates';
 import { toApiUrl } from '@/services/runtime';
-import { hasPremiumAccess } from '@/services/panel-gating';
 import { EconomicServiceClient } from '@/services/generated-rpc-clients';
 
 // ---- Client + Circuit Breakers ----
 
-// premiumFetch for the whole client so any method that becomes a
-// PREMIUM_RPC_PATHS path keeps working for signed-in browser pros with no
-// WORLDMONITOR_API_KEY (gateway runs validateApiKey with forceKey=true on
-// premium paths). premiumFetch no-ops safely when no
-// credentials are available, so the public methods (FRED, BLS, energy, BIS,
-// EU, oil) keep working unchanged. See src/services/supply-chain/index.ts for
-// the same pattern + #3242 review HIGH(new) #1 for the bug class this prevents.
-const client = new EconomicServiceClient(getRpcBaseUrl(), { fetch: premiumFetch });
+const client = new EconomicServiceClient(getRpcBaseUrl(), { fetch: (...args) => globalThis.fetch(...args) });
 const WB_BREAKERS_WARN_THRESHOLD = 50;
 const wbBreakers = new Map<string, ReturnType<typeof createCircuitBreaker<ListWorldBankIndicatorsResponse>>>();
 
@@ -735,13 +726,6 @@ async function _fetchNationalDebt(): Promise<GetNationalDebtResponse> {
       if (data.nationalDebt?.entries?.length) return data.nationalDebt;
     }
   } catch { /* fall through to RPC */ }
-
-  // Anonymous (non-premium) users stay on the shared bootstrap copy above.
-  // The RPC is free, but it serves the same seed, so a bootstrap miss would
-  // only repeat as an uncached per-visitor origin read on every page load.
-  if (!hasPremiumAccess()) {
-    return emptyNationalDebtFallback;
-  }
 
   try {
     return await nationalDebtBreaker.execute(async () => {

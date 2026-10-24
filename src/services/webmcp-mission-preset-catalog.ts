@@ -21,7 +21,6 @@ export const MISSION_PRESET_MIN_PANEL_MATCHES = 2;
  */
 export const MISSION_PRESET_UNAVAILABLE_REASONS = [
   'preset_incompatible',
-  'preset_not_entitled',
   'target_cancellation_unsupported',
 ] as const;
 
@@ -29,7 +28,6 @@ export const MISSION_PRESET_APPLY_DENY_REASONS = [
   'malformed_arguments',
   'unknown_preset',
   'preset_incompatible',
-  'preset_not_entitled',
   'app_destroyed',
   'apply_failed',
 ] as const;
@@ -51,14 +49,12 @@ export interface MissionPresetCatalogItem {
   layerCount: number;
   active: boolean;
   monitorCompatible: boolean;
-  entitled: boolean;
   available: boolean;
   unavailableReason?: MissionPresetUnavailableReason;
 }
 
 export interface MissionPresetCatalogLiveState {
   variant: string;
-  hasPremium: boolean;
   activePresetId: string | null;
   /**
    * When false, presets that would otherwise be available stay listed but are
@@ -66,11 +62,6 @@ export interface MissionPresetCatalogLiveState {
    * Omit for read-only discovery that does not care about mutation hosts.
    */
   targetCancellationSupported?: boolean;
-  /**
-   * Optional panel entitlement probe. When omitted, bundled presets stay
-   * entitled (matching visible mission control, which has no Pro gate).
-   */
-  isPanelEntitled?: (panelId: string) => boolean;
 }
 
 export interface MissionPresetCatalogResult {
@@ -102,7 +93,6 @@ export interface MissionPresetApplyDecision {
   presetId?: MissionPresetId;
   label?: string;
   monitorCompatible?: boolean;
-  entitled?: boolean;
 }
 
 const PRESET_ID_SET = new Set<string>(MISSION_PRESETS.map((preset) => preset.id));
@@ -136,25 +126,11 @@ export function isMissionPresetId(value: unknown): value is MissionPresetId {
   return typeof value === 'string' && PRESET_ID_SET.has(value);
 }
 
-function resolveEntitled(
-  panelIds: string[],
-  live: MissionPresetCatalogLiveState,
-): boolean {
-  if (live.hasPremium) return true;
-  if (!live.isPanelEntitled) return true;
-  // A free session stays entitled when every intended panel is individually
-  // entitled. Bundled presets avoid locked-only workspaces on web, so this
-  // normally stays true and mirrors the visible mission control.
-  return panelIds.every((panelId) => live.isPanelEntitled!(panelId));
-}
-
 function unavailableReason(item: {
   monitorCompatible: boolean;
-  entitled: boolean;
   targetCancellationSupported?: boolean;
 }): MissionPresetUnavailableReason | undefined {
   if (!item.monitorCompatible) return 'preset_incompatible';
-  if (!item.entitled) return 'preset_not_entitled';
   if (item.targetCancellationSupported === false) return 'target_cancellation_unsupported';
   return undefined;
 }
@@ -174,10 +150,8 @@ export function buildMissionPresetCatalogItem(
   const panelIds = monitorCompatible
     ? resolvedPreset.panels.filter((panelId) => panelId === 'map' || matchingPanels.includes(panelId))
     : [];
-  const entitled = resolveEntitled(matchingPanels, live);
   const reason = unavailableReason({
     monitorCompatible,
-    entitled,
     targetCancellationSupported: live.targetCancellationSupported,
   });
   const available = reason === undefined;
@@ -198,7 +172,6 @@ export function buildMissionPresetCatalogItem(
       }),
     active: live.activePresetId === preset.id,
     monitorCompatible,
-    entitled,
     available,
     ...(reason ? { unavailableReason: reason } : {}),
   };
@@ -273,18 +246,6 @@ export function evaluateMissionPresetApply(
       presetId: item.id,
       label: item.label,
       monitorCompatible: false,
-      entitled: item.entitled,
-    };
-  }
-  if (!item.entitled) {
-    return {
-      ok: false,
-      reason: 'preset_not_entitled',
-      message: 'That mission preset requires a higher plan.',
-      presetId: item.id,
-      label: item.label,
-      monitorCompatible: true,
-      entitled: false,
     };
   }
 
@@ -294,6 +255,5 @@ export function evaluateMissionPresetApply(
     presetId: item.id,
     label: item.label,
     monitorCompatible: true,
-    entitled: true,
   };
 }

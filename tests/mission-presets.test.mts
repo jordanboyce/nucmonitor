@@ -12,9 +12,6 @@ import {
   DEFAULT_MAP_LAYERS,
   VARIANT_DEFAULTS,
   getEffectivePanelConfig,
-  FREE_MAX_PANELS,
-  countFreePanelCapUsage,
-  restoreProGatedPanels,
 } from '../src/config/panels.ts';
 import {
   LAYER_REGISTRY,
@@ -498,14 +495,12 @@ async function loadEventHandlerBundle(): Promise<{
       };
     `],
     ['@/services/i18n', 'export function t(key) { return key; }'],
-    ['@/services/widget-store', 'export function deleteWidget(){} export function getWidget(){ return null; } export function saveWidget(){} export function isProUser(){ return globalThis.__missionIsProUser === true; } export function isProTierResolved(){ return globalThis.__missionIsProTierResolved === true; }'],
-    ['@/services/panel-gating', 'export const PanelGateReason = { NONE: "none", ANONYMOUS: "anonymous", FREE_TIER: "free_tier", PAYMENT_ON_HOLD: "payment_on_hold", RENEWAL_PENDING: "renewal_pending", RENEWAL_FAILED: "renewal_failed", LAPSED: "lapsed" }; export function hasPremiumAccess(){ return globalThis.__missionHasPremium === true; } export function resolveGateAction(){ return () => {}; }'],
     ['@/services/mcp-store', 'export function deleteMcpPanel(){} export function getMcpPanel(){ return null; } export function saveMcpPanel(){}'],
     ['@/services/runtime', 'export function isDesktopRuntime(){ return false; }'],
     ['@/services/tauri-bridge', 'export async function invokeTauri(){ return null; }'],
     ['@/services/gps-interference', 'export function getCachedGpsInterference(){ return null; }'],
     ['@/services/ml-worker', 'export const mlWorker = {};'],
-    ['@/services/auth-state', 'export function getAuthState(){ return { user: { role: "pro" } }; } export function subscribeAuthState(){ return () => {}; }'],
+    ['@/services/auth-state', 'export function getAuthState(){ return { user: null, isPending: false }; } export function subscribeAuthState(){ return () => {}; }'],
     ['@/services/tv-mode', 'export class TvModeController { constructor(){} toggle(){} updatePanelKeys(){} get active(){ return false; } }'],
     ['@/components', `
       export class PlaybackControl { onSnapshot(){} getElement(){ return document.createElement('div'); } }
@@ -625,20 +620,6 @@ function resetMissionGlobals(): void {
   delete (globalThis as { __missionFreshness?: unknown }).__missionFreshness;
   delete (globalThis as { __missionToastMessages?: unknown }).__missionToastMessages;
   delete (globalThis as { __missionAfterPaintTasks?: unknown }).__missionAfterPaintTasks;
-  delete (globalThis as { __missionIsProUser?: unknown }).__missionIsProUser;
-  delete (globalThis as { __missionIsProTierResolved?: unknown }).__missionIsProTierResolved;
-  delete (globalThis as { __missionHasPremium?: unknown }).__missionHasPremium;
-}
-
-function setMissionAccess(options: { premium?: boolean; tierResolved?: boolean } = {}): void {
-  const access = globalThis as {
-    __missionIsProUser?: boolean;
-    __missionIsProTierResolved?: boolean;
-    __missionHasPremium?: boolean;
-  };
-  access.__missionIsProUser = options.premium ?? true;
-  access.__missionIsProTierResolved = options.tierResolved ?? true;
-  access.__missionHasPremium = options.premium ?? true;
 }
 
 beforeEach(() => {
@@ -651,7 +632,6 @@ beforeEach(() => {
   defineLocalStorage(new MemoryStorage());
   defineBrowserGlobals();
   resetMissionGlobals();
-  setMissionAccess();
 });
 
 afterEach(() => {
@@ -1112,7 +1092,6 @@ function createMissionHarness(options: {
   mobile?: boolean;
   storage?: MemoryStorage;
   map?: ReturnType<typeof makeMapSpy>;
-  freeTierFallback?: boolean;
   onApplyPanels?: (settings: Record<string, PanelConfig>) => void;
 } = {}): MissionHarness {
   const storage = options.storage ?? new MemoryStorage();
@@ -1214,7 +1193,6 @@ function createMissionHarness(options: {
     },
     stopLayerActivity: (layer: keyof MapLayers) => callbacks.stopLayerActivity.push(String(layer)),
     mountLiveNewsIfReady: () => { callbacks.mountLiveNewsCalls += 1; },
-    isFreeTierFallbackActive: () => options.freeTierFallback === true,
   });
 
   return { ctx, callbacks, manager: manager as MissionHarness['manager'], storage };
@@ -1376,64 +1354,24 @@ describe('mission preset shell integration', () => {
   });
 
   for (const action of ['applyMissionPreset', 'applyMissionPresetForWebMcp', 'resetMissionPreset'] as const) {
-    for (const access of [
-      { label: 'settled free', premium: false, tierResolved: true, fallback: false, capped: true },
-      { label: 'pending', premium: false, tierResolved: false, fallback: false, capped: false },
-      { label: 'fallback free', premium: false, tierResolved: false, fallback: true, capped: true },
-      { label: 'Pro', premium: true, tierResolved: true, fallback: false, capped: false },
-      { label: 'Pro during fallback', premium: true, tierResolved: false, fallback: true, capped: false },
-    ]) {
-      it(`${action} commits the correct panel limit for ${access.label}`, () => {
-        setMissionAccess(access);
-        let rendered: Record<string, PanelConfig> | undefined;
-        const { ctx, manager } = createMissionHarness({
-          freeTierFallback: access.fallback,
-          onApplyPanels: (settings) => {
-            rendered = structuredClone(settings);
-            assert.deepEqual(readJsonStorage('worldmonitor-panels'), settings,
-              'the same selection must be persisted before rendering');
-          },
-        });
-        // Retained MCP panels count toward the cap and can overflow a small mission.
-        for (let i = 0; i < FREE_MAX_PANELS; i++) {
-          ctx.panelSettings[`mcp-feed-${i}`] = { name: `Feed ${i}`, enabled: true, priority: 99 };
-        }
-        const candidate = action === 'resetMissionPreset'
-          ? resetMissionPresetState(ctx.panelSettings, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear').panelSettings
-          : applyMissionPresetToState('nuclear-hub', ctx.panelSettings, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear').panelSettings;
-        assert.ok(countFreePanelCapUsage(candidate) > FREE_MAX_PANELS);
-        manager[action]('nuclear-hub');
-        assert.deepEqual(rendered, ctx.panelSettings);
-        assert.equal(ctx.panelSettings.map?.enabled, true);
-        if (access.capped) {
-          assert.equal(countFreePanelCapUsage(ctx.panelSettings), FREE_MAX_PANELS);
-          assert.equal(ctx.panelSettings['cw-market-note']?.enabled, false);
-          assert.equal(ctx.panelSettings['cw-market-note']?.proGated, true);
-          assert.deepEqual(enabledPanelKeys(restoreProGatedPanels(ctx.panelSettings)), enabledPanelKeys(candidate),
-            'an upgrade can restore the panels disabled by this gate');
-        } else {
-          assert.deepEqual(ctx.panelSettings, candidate, 'Pro and pending layouts keep the exact mission selection');
-        }
+    it(`${action} commits the exact mission panel selection`, () => {
+      let rendered: Record<string, PanelConfig> | undefined;
+      const { ctx, manager } = createMissionHarness({
+        onApplyPanels: (settings) => {
+          rendered = structuredClone(settings);
+          assert.deepEqual(readJsonStorage('worldmonitor-panels'), settings,
+            'the same selection must be persisted before rendering');
+        },
       });
-    }
-  }
-
-  it('caps the live reset even when storage writes fail', () => {
-    setMissionAccess({ premium: false, tierResolved: true });
-    const storage = new MemoryStorage();
-    storage.throwOnSet = true;
-    let renderedCount = -1;
-    const { ctx, manager } = createMissionHarness({
-      storage,
-      onApplyPanels: (settings) => { renderedCount = countFreePanelCapUsage(settings); },
+      const candidate = action === 'resetMissionPreset'
+        ? resetMissionPresetState(ctx.panelSettings, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear').panelSettings
+        : applyMissionPresetToState('nuclear-hub', ctx.panelSettings, NUCLEAR_DEFAULT_MAP_LAYERS, 'nuclear').panelSettings;
+      manager[action]('nuclear-hub');
+      assert.deepEqual(rendered, ctx.panelSettings);
+      assert.equal(ctx.panelSettings.map?.enabled, true);
+      assert.deepEqual(ctx.panelSettings, candidate);
     });
-    for (let i = 0; i < FREE_MAX_PANELS; i++) {
-      ctx.panelSettings[`mcp-feed-${i}`] = { name: `Feed ${i}`, enabled: true, priority: 99 };
-    }
-    manager.resetMissionPreset();
-    assert.equal(countFreePanelCapUsage(ctx.panelSettings), FREE_MAX_PANELS);
-    assert.equal(renderedCount, FREE_MAX_PANELS);
-  });
+  }
 
   it('still applies in-memory panel order and reset order when storage writes fail', async () => {
     const storage = new MemoryStorage();

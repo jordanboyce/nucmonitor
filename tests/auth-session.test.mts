@@ -3,9 +3,7 @@
  *
  * Covers the full validation matrix:
  *  - Returns invalid when CLERK_JWT_ISSUER_DOMAIN is not set (fail-closed)
- *  - Valid Pro token → { valid: true, role: 'pro' }
- *  - Valid Free token → { valid: true, role: 'free' }
- *  - Missing plan claim → defaults to 'free'
+ *  - Valid token → { valid: true, userId }
  *  - Small JWT clock skew → accepted within the bounded tolerance on both verification paths
  *  - Expired token beyond the tolerance → { valid: false, reason: 'invalid' }
  *  - Not-yet-valid token within the nbf tolerance → accepted on both paths
@@ -28,14 +26,12 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import { describe, it, before, after } from 'node:test';
 import { generateKeyPair, exportJWK, jwtVerify, SignJWT } from 'jose';
-import { userPrefsOptionsHttpHandler } from '../convex/http.ts';
 
 const EXPECTED_CLOCK_TOLERANCE_SECONDS = 5;
 
 type AuthSessionResult = {
   valid: boolean;
   userId?: string;
-  role?: string;
   reason?: 'invalid' | 'unverifiable';
   acceptedWithinClockTolerance?: true;
 };
@@ -48,12 +44,10 @@ type AuthSessionResult = {
 delete process.env.CLERK_JWT_ISSUER_DOMAIN;
 
 let validateBearerTokenNoEnv: (token: string) => Promise<AuthSessionResult>;
-let lookupClerkPlanNoEnv: (userId: string) => Promise<'free' | 'pro' | 'unavailable'>;
 
 before(async () => {
   const mod = await import('../server/auth-session.ts');
   validateBearerTokenNoEnv = mod.validateBearerToken;
-  lookupClerkPlanNoEnv = mod.lookupClerkPlan;
 });
 
 describe('validateBearerToken (no CLERK_JWT_ISSUER_DOMAIN)', () => {
@@ -61,7 +55,6 @@ describe('validateBearerToken (no CLERK_JWT_ISSUER_DOMAIN)', () => {
     const result = await validateBearerTokenNoEnv('some-random-token');
     assert.equal(result.valid, false);
     assert.equal(result.userId, undefined);
-    assert.equal(result.role, undefined);
   });
 
   it('returns invalid for empty token', async () => {
@@ -74,48 +67,6 @@ describe('validateBearerToken (no CLERK_JWT_ISSUER_DOMAIN)', () => {
     assert.equal(typeof result.valid, 'boolean');
     if (!result.valid) {
       assert.equal(result.userId, undefined);
-      assert.equal(result.role, undefined);
-    }
-  });
-
-  it('reports an unavailable plan lookup when Clerk server credentials are absent', async () => {
-    assert.equal(await lookupClerkPlanNoEnv('user_missing_config'), 'unavailable');
-  });
-});
-
-describe('lookupClerkPlan', () => {
-  it('distinguishes verified roles, missing users, and backend outages', async () => {
-    const originalSecret = process.env.CLERK_SECRET_KEY;
-    const originalFetch = globalThis.fetch;
-    const originalWarn = console.warn;
-    process.env.CLERK_SECRET_KEY = 'sk_test_embed_lookup';
-    console.warn = () => {};
-
-    try {
-      const mod = await import(`../server/auth-session.ts?plan-lookup=${Date.now()}`);
-      let response = new Response(JSON.stringify({ public_metadata: { plan: 'pro' } }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      globalThis.fetch = async () => response;
-      assert.equal(await mod.lookupClerkPlan('user_role_pro'), 'pro');
-
-      response = new Response(JSON.stringify({ public_metadata: { plan: 'free' } }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      assert.equal(await mod.lookupClerkPlan('user_role_free'), 'free');
-
-      response = new Response('', { status: 404 });
-      assert.equal(await mod.lookupClerkPlan('user_missing'), 'free');
-
-      response = new Response('', { status: 503 });
-      assert.equal(await mod.lookupClerkPlan('user_backend_down'), 'unavailable');
-    } finally {
-      globalThis.fetch = originalFetch;
-      console.warn = originalWarn;
-      if (originalSecret === undefined) delete process.env.CLERK_SECRET_KEY;
-      else process.env.CLERK_SECRET_KEY = originalSecret;
     }
   });
 });
@@ -248,38 +199,13 @@ describe('validateBearerToken (with JWKS)', () => {
     assert.deepEqual(getClerkJwtVerifyBaseOptions().requiredClaims, ['exp']);
   });
 
-  it('accepts a valid Pro token', async () => {
+  it('accepts a valid token', async () => {
     const token = await signToken({ sub: 'user_pro1', plan: 'pro' });
     const result = await validateBearerToken(token);
     assert.equal(result.valid, true);
     assert.equal(result.userId, 'user_pro1');
-    assert.equal(result.role, 'pro');
     // A token with real life left was not admitted by the tolerance.
     assert.equal(result.acceptedWithinClockTolerance, undefined);
-  });
-
-  it('accepts a valid Free token and normalizes role to free', async () => {
-    const token = await signToken({ sub: 'user_free1', plan: 'free' });
-    const result = await validateBearerToken(token);
-    assert.equal(result.valid, true);
-    assert.equal(result.userId, 'user_free1');
-    assert.equal(result.role, 'free');
-  });
-
-  it('treats missing plan claim as free', async () => {
-    const token = await signToken({ sub: 'user_noplan' });
-    const result = await validateBearerToken(token);
-    assert.equal(result.valid, true);
-    assert.equal(result.userId, 'user_noplan');
-    assert.equal(result.role, 'free');
-  });
-
-  it('treats unknown plan value as free', async () => {
-    const token = await signToken({ sub: 'user_weird', plan: 'enterprise' });
-    const result = await validateBearerToken(token);
-    assert.equal(result.valid, true);
-    assert.equal(result.userId, 'user_weird');
-    assert.equal(result.role, 'free');
   });
 
   it('accepts an audience-bearing token expired within the clock tolerance', async () => {
@@ -330,7 +256,6 @@ describe('validateBearerToken (with JWKS)', () => {
 
     const result = await validateBearerToken(token);
     assert.equal(result.valid, true);
-    assert.equal(result.role, 'pro');
   });
 
   it('rejects a token with an unexpected audience', async () => {
@@ -361,7 +286,6 @@ describe('validateBearerToken (with JWKS)', () => {
     const result = await validateBearerToken(token);
     assert.equal(result.valid, true, 'standard Clerk tokens without aud should be accepted');
     assert.equal(result.userId, 'user_noaud');
-    assert.equal(result.role, 'free');
   });
 
   it('accepts a no-audience token expired within the clock tolerance through the fallback path', async () => {
@@ -374,7 +298,6 @@ describe('validateBearerToken (with JWKS)', () => {
     const result = await validateBearerToken(token);
     assert.equal(result.valid, true);
     assert.equal(result.userId, 'user_noaud_within_tolerance');
-    assert.equal(result.role, 'free');
     assert.equal(result.acceptedWithinClockTolerance, true);
   });
 
@@ -413,7 +336,6 @@ describe('validateBearerToken (with JWKS)', () => {
     const noAudResult = await validateBearerToken(noAudToken);
     assert.equal(noAudResult.valid, true);
     assert.equal(noAudResult.userId, 'user_noaud_nbf_within');
-    assert.equal(noAudResult.role, 'free');
   });
 
   it('rejects a token with no exp claim (requiredClaims enforces the stated bound)', async () => {
@@ -610,9 +532,7 @@ describe('validateBearerToken (with JWKS)', () => {
     ]);
 
     assert.equal(r1.valid, true);
-    assert.equal(r1.role, 'pro');
     assert.equal(r2.valid, true);
-    assert.equal(r2.role, 'free');
   });
 
   // #8178 — Clerk browser session tokens set `azp` to the minting origin.
@@ -622,7 +542,6 @@ describe('validateBearerToken (with JWKS)', () => {
       const token = await signToken({ sub: `user_azp_${new URL(azp).hostname}`, plan: 'pro', azp });
       const result = await validateBearerToken(token);
       assert.equal(result.valid, true, `expected trusted azp accepted: ${azp}`);
-      assert.equal(result.role, 'pro');
     }
   });
 
@@ -717,49 +636,6 @@ describe('validateBearerToken (with JWKS)', () => {
     } finally {
       if (originalSite === undefined) delete process.env.SITE_URL;
       else process.env.SITE_URL = originalSite;
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Suite 3: Convex user-preferences CORS preflight
-// ---------------------------------------------------------------------------
-
-describe('userPrefsOptionsHttpHandler CORS', () => {
-  const invokePreflight = (origin?: string) => userPrefsOptionsHttpHandler(
-    {} as Parameters<typeof userPrefsOptionsHttpHandler>[0],
-    new Request('https://convex.example/api/user-prefs', {
-      method: 'OPTIONS',
-      headers: origin ? { Origin: origin } : undefined,
-    }),
-  );
-
-  it('emits CORS headers for each trusted origin shape', async () => {
-    for (const origin of [
-      'https://worldmonitor.app',
-      'https://worldmonitor-git-preview-xyz-eliewm.vercel.app',
-      'http://localhost:3000',
-    ]) {
-      const response = await invokePreflight(origin);
-      assert.equal(response.status, 204);
-      assert.equal(response.headers.get('access-control-allow-origin'), origin);
-      assert.equal(response.headers.get('access-control-allow-methods'), 'POST, OPTIONS');
-    }
-  });
-
-  it('omits CORS headers for untrusted and absent origins', async () => {
-    for (const origin of [
-      'https://evil.com',
-      'https://attackerworldmonitor.app',
-      'https://preview-xyz.worldmonitor.app',
-      'https://clerk.worldmonitor.app',
-      'https://abacus.worldmonitor.app',
-      undefined,
-    ]) {
-      const response = await invokePreflight(origin);
-      assert.equal(response.status, 204);
-      assert.equal(response.headers.get('access-control-allow-origin'), null);
-      assert.equal(response.headers.get('access-control-allow-methods'), null);
     }
   });
 });

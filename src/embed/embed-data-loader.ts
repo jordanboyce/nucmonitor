@@ -7,14 +7,8 @@ import { mapAlert } from '@/services/weather';
 import { toNaturalEvent } from '@/services/eonet';
 
 import { startSmartPollLoop, type SmartPollLoopHandle } from '@/services/smart-poll-loop';
-import {
-  EmbedMapFrameUnavailableError,
-  fetchEmbedMapFrame,
-  isEmbedGrantExpiring,
-  type EmbedGrant,
-  type EmbedGrantResult,
-} from './embed-fetch';
-import { EMBED_FREE_REFRESH_MS, type EmbedLayerId } from '../../shared/embed-panels';
+import { EmbedMapFrameUnavailableError, fetchEmbedMapFrame } from './embed-fetch';
+import { EMBED_REFRESH_MS, type EmbedLayerId } from '../../shared/embed-panels';
 import type { EmbedMapFrameLayerState, EmbedMapFrameResponse } from '../../shared/embed-map-frame';
 
 /**
@@ -28,7 +22,7 @@ export interface EmbedMapSurface {
   setLayerLoading(layer: keyof MapLayers, loading: boolean): void;
   setLayerReady(layer: keyof MapLayers, ready: boolean): void;
   getState(): { layers: MapLayers };
-  setLayers(layers: MapLayers, options?: { bypassEntitlementSanitization?: boolean }): void;
+  setLayers(layers: MapLayers): void;
 }
 
 /** Every embeddable layer's corresponding map layer. */
@@ -41,38 +35,24 @@ const MAP_LAYER_BY_EMBED_ID: Record<EmbedLayerId, keyof MapLayers> = {
 
 export type EmbedFrameFetcher = (
   layerIds: readonly EmbedLayerId[],
-  grant: EmbedGrant | null,
 ) => Promise<EmbedMapFrameResponse>;
 
 export interface EmbedDataLoaderOptions {
   fetchFrame?: EmbedFrameFetcher;
-  /** Re-runs the key → grant exchange when the current grant nears expiry. */
-  renewGrant?: () => Promise<EmbedGrantResult>;
-  now?: () => number;
 }
 
 /**
- * Drives the partner map frame from the single composed endpoint.
+ * Drives the embed map frame from the single composed endpoint.
  *
- * Keyless boots first and upgrades in place: the free tier is a growth
- * surface, so it must paint immediately rather than wait out the parent's
- * credential handshake. {@link upgrade} swaps in a grant, reloads, and
- * restarts the poll loop at the keyed cadence.
- *
- * The cadence itself is never a constant here — it comes back on every
- * response, so the tiering policy has exactly one owner.
+ * The cadence is never a constant here — it comes back on every response, so
+ * the refresh policy has exactly one owner (the edge).
  */
 export class EmbedDataLoader {
   private refreshLoop: SmartPollLoopHandle | null = null;
-  private grant: EmbedGrant | null = null;
-  private refreshMs = EMBED_FREE_REFRESH_MS;
-  private grantRetryNotBefore = 0;
-  private grantRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private refreshMs = EMBED_REFRESH_MS;
   private frameRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
   private readonly fetchFrame: EmbedFrameFetcher;
-  private readonly renewGrant: (() => Promise<EmbedGrantResult>) | null;
-  private readonly now: () => number;
 
   constructor(
     private readonly map: EmbedMapSurface,
@@ -80,8 +60,6 @@ export class EmbedDataLoader {
     options: EmbedDataLoaderOptions = {},
   ) {
     this.fetchFrame = options.fetchFrame ?? fetchEmbedMapFrame;
-    this.renewGrant = options.renewGrant ?? null;
-    this.now = options.now ?? (() => Date.now());
   }
 
   async start(): Promise<void> {
@@ -89,52 +67,18 @@ export class EmbedDataLoader {
     this.startLoop();
   }
 
-  /**
-   * Adopt a grant and re-render at the keyed tier.
-   *
-   * Called after the parent posts a credential and the exchange succeeds, and
-   * again whenever the frame re-mints an expired grant.
-   */
-  async upgrade(grant: EmbedGrant): Promise<void> {
-    if (this.destroyed) return;
-    this.grant = grant;
-    await this.loadOnce();
-    this.startLoop();
-  }
-
-  /** The grant this loader is polling with, so the caller can see it expire. */
-  currentGrant(): EmbedGrant | null {
-    return this.grant;
-  }
-
   destroy(): void {
     this.destroyed = true;
     this.stopLoop();
-    if (this.grantRetryTimer !== null) clearTimeout(this.grantRetryTimer);
     if (this.frameRetryTimer !== null) clearTimeout(this.frameRetryTimer);
   }
 
-  /** Exchange the embedding key after a free-tier boot, retrying transient failures. */
-  async requestGrant(): Promise<void> {
-    if (this.destroyed || !this.renewGrant) return;
-    const result = await this.renewGrant();
-    if (this.destroyed) return;
-    if (result.status === 'granted') {
-      this.grantRetryNotBefore = 0;
-      await this.upgrade(result.grant);
-      return;
-    }
-    if (result.status === 'unavailable') this.scheduleGrantRetry(result.retryAfterMs);
-  }
-
   async loadOnce(): Promise<void> {
-    if (await this.renewIfExpiring() === 'hold') return;
-
     const live = this.activeLayerIds.filter((id) => isLiveLayer(id));
     for (const id of live) this.map.setLayerLoading(MAP_LAYER_BY_EMBED_ID[id], true);
 
     try {
-      const frame = await this.fetchFrame(this.activeLayerIds, this.grant);
+      const frame = await this.fetchFrame(this.activeLayerIds);
       const nextRefreshMs = frame.refreshMs > 0 ? frame.refreshMs : this.refreshMs;
       const cadenceChanged = nextRefreshMs !== this.refreshMs;
       this.refreshMs = nextRefreshMs;
@@ -143,8 +87,7 @@ export class EmbedDataLoader {
         this.frameRetryTimer = null;
       }
       this.applyFrame(frame);
-      // A tier change (an upgrade, or a lapse dropping us back to free) moves
-      // the cadence, and the running timer is still on the old one.
+      // A server-side cadence change leaves the running timer on the old one.
       if (cadenceChanged && this.refreshLoop !== null) this.startLoop();
     } catch (error) {
       // A failed poll leaves the previous frame on screen — the map keeps
@@ -158,38 +101,6 @@ export class EmbedDataLoader {
     }
 
     for (const id of live) this.map.setLayerLoading(MAP_LAYER_BY_EMBED_ID[id], false);
-  }
-
-  /**
-   * Refresh the grant before it lapses, and decide whether this poll may run.
-   *
-   * `hold` means the grant is gone and we could not find out whether the
-   * account is still entitled. Polling anyway would return the free tier and
-   * silently strip eleven layers off a paying customer's display over a
-   * transient billing lookup — so the poll is skipped and the last frame
-   * stays up until the next cycle answers.
-   */
-  private async renewIfExpiring(): Promise<'go' | 'hold'> {
-    const grant = this.grant;
-    const now = this.now();
-    if (!grant || !this.renewGrant || !isEmbedGrantExpiring(grant, now)) return 'go';
-    if (now < this.grantRetryNotBefore) return grant.expiresAt <= now ? 'hold' : 'go';
-
-    const renewed = await this.renewGrant();
-    if (renewed.status === 'granted') {
-      this.grant = renewed.grant;
-      this.grantRetryNotBefore = 0;
-      return 'go';
-    }
-    if (renewed.status === 'denied') {
-      // Terminal: the account genuinely cannot embed any more. Fall back to
-      // the free tier rather than freezing on a stale paid frame.
-      this.grant = null;
-      this.grantRetryNotBefore = 0;
-      return 'go';
-    }
-    this.grantRetryNotBefore = now + renewed.retryAfterMs;
-    return grant.expiresAt <= now ? 'hold' : 'go';
   }
 
   private applyFrame(frame: EmbedMapFrameResponse): void {
@@ -217,7 +128,7 @@ export class EmbedDataLoader {
       nextLayers[layer] = rendered;
       this.map.setLayerReady(layer, rendered);
     }
-    this.map.setLayers(nextLayers, { bypassEntitlementSanitization: true });
+    this.map.setLayers(nextLayers);
     for (const id of rejected) this.clearLayerData(id);
   }
 
@@ -227,14 +138,6 @@ export class EmbedDataLoader {
       this.map.setNaturalEvents([]);
     }
     if (id === 'weather') this.map.setWeatherAlerts([]);
-  }
-
-  private scheduleGrantRetry(retryAfterMs: number): void {
-    if (this.grantRetryTimer !== null) clearTimeout(this.grantRetryTimer);
-    this.grantRetryTimer = setTimeout(() => {
-      this.grantRetryTimer = null;
-      void this.requestGrant();
-    }, retryAfterMs);
   }
 
   private scheduleFrameRetry(retryAfterMs: number): void {

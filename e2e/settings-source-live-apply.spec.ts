@@ -86,15 +86,8 @@ async function seedProFullVariant(page: Page, returningProfile = false): Promise
     sessionStorage.clear();
     sessionStorage.setItem('__settings_source_live_apply_seeded__', '1');
     localStorage.setItem('worldmonitor-variant', 'full');
-    // Pro so boot leaves the source selection alone. A free profile runs
-    // reconcileSourceLimitForTier (App.ts), which auto-disables sources down to
-    // FREE_MAX_SOURCES (80) — the full variant ships well over that — and
-    // persists the result to `disabledFeeds`. That is a source-set mutation this
-    // spec did not make, arriving on the same clock as the one it measures.
-    localStorage.setItem('wm-pro-key', 'e2e-source-live-apply');
     // Overlays that would otherwise steal the click target.
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
-    localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
     if (returning) {
       localStorage.setItem('worldmonitor-sources-reduction-v3', 'done');
@@ -181,7 +174,7 @@ async function disableFirstSources(page: Page, count: number): Promise<string[]>
 }
 
 test.describe('settings source live apply (#6380)', () => {
-  test('new curated regional sources stay opt-in for a returning Pro profile and retain a later choice', async ({ page }, testInfo) => {
+  test('new curated regional sources stay opt-in for a returning profile and retain a later choice', async ({ page }, testInfo) => {
     await seedProFullVariant(page, true);
     await bootUntilNewsSettles(page);
     await openSourcesTab(page);

@@ -91,8 +91,9 @@ describe('convex-function-exports enumerator', () => {
     const internals = listInternalConvexFunctionExports(REPO_CONVEX);
     const publics = listPublicConvexFunctionExports(REPO_CONVEX);
 
-    assert.ok(internals.length > 100, `expected many internals, got ${internals.length}`);
-    assert.ok(publics.length > 20, `expected several publics, got ${publics.length}`);
+    // Partner access + user preferences are the whole kept Convex surface.
+    assert.ok(internals.length >= 5, `expected the kept internals, got ${internals.length}`);
+    assert.ok(publics.length >= 2, `expected the kept publics, got ${publics.length}`);
 
     for (const entry of internals) {
       assert.ok(INTERNAL_FN_TYPES.has(entry.factory), entry.factory);

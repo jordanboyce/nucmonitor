@@ -1,8 +1,6 @@
 import { isSessionTokenShape, validateSessionToken } from './_session.js';
 import { timingSafeIncludes } from './_crypto.js';
 
-export const USER_API_KEY_GATEWAY_VALIDATION_ERROR = 'User API key requires gateway validation';
-
 const DESKTOP_ORIGIN_PATTERNS = [
   /^https?:\/\/tauri\.localhost(:\d+)?$/,
   /^https?:\/\/[a-z0-9-]+\.tauri\.localhost(:\d+)?$/i,
@@ -24,33 +22,22 @@ async function isValidEnterpriseKey(key) {
   return timingSafeIncludes(key, validKeys);
 }
 
-async function validateCredential(key, forceKey) {
+async function validateCredential(key) {
   if (isSessionTokenShape(key)) {
-    // Anonymous session tokens are NOT proof of any specific user identity
-    // — anyone can mint one via POST /api/wm-session. Reject when the caller
-    // demands a "real" key (premium / tier-gated endpoints set forceKey=true
-    // exactly because they need user-bound auth or a Pro-grade Bearer JWT).
-    if (forceKey) {
-      return { valid: false, required: true, error: 'Pro authentication required' };
-    }
+    // Anonymous session tokens are NOT proof of any specific user identity —
+    // anyone can mint one via POST /api/wm-session (outside partner mode).
+    // NucMonitor has no plans, so a valid one opens every data route.
     if (await validateSessionToken(key)) {
       return { valid: true, required: false, kind: 'session' };
     }
     return { valid: false, required: true, error: 'Invalid session token' };
   }
 
-  // Enterprise key (WORLDMONITOR_VALID_KEYS) — checked BEFORE the wm_ user-key
-  // fallthrough so an operator-issued key that happens to start with wm_ is
-  // still recognized. `credential` records the authority that actually won;
-  // downstream identity/rate-limit code must not infer it again from headers.
+  // Enterprise key (WORLDMONITOR_VALID_KEYS). `credential` records the
+  // authority that actually won; downstream identity/rate-limit code must not
+  // infer it again from headers.
   if (key && await isValidEnterpriseKey(key)) {
     return { valid: true, required: true, kind: 'enterprise', credential: key };
-  }
-
-  // wm_-prefixed user API keys — gateway re-validates against the user-key
-  // table. We must return required:true / valid:false for the gateway fallback.
-  if (key && key.startsWith('wm_')) {
-    return { valid: false, required: true, error: USER_API_KEY_GATEWAY_VALIDATION_ERROR };
   }
 
   if (key) {
@@ -80,26 +67,19 @@ function getCookie(req, name) {
 // client-controlled at the wire level (see issue #3541 / closed PR #3554).
 // Trusting any of them as a "this is a real browser" signal is forgeable by
 // curl in one line. The previous Referer-origin fallback and Origin-pattern
-// no-key trust path are both gone. Browsers now authenticate via:
+// no-key trust path are both gone. Callers now authenticate via:
 //   1. A short-lived wms_-prefixed session token (HMAC-signed by /api/wm-session).
-//      Kind: 'session'. Anonymous; satisfies basic gate, but downstream
-//      entitlement / premium checks must STILL run (a session token is freely
-//      mintable by anyone who can hit /api/wm-session — it is NOT proof of a
-//      paying user). Rejected when forceKey=true.
-//   2. A wm_-prefixed user API key (validated against the user-key table by gateway).
-//      Kind: 'user'. Returns required:true/valid:false here so the gateway's
-//      fallback at server/gateway.ts:~440 triggers validateUserApiKey().
-//   3. An enterprise key (WORLDMONITOR_VALID_KEYS). Kind: 'enterprise'. The
-//      ONLY kind that bypasses entitlement checks (operator-issued).
+//      Kind: 'session'. Anonymous outside partner mode; in partner mode it is
+//      minted only for a signed-in partner (api/_partner-access.js).
+//   2. An enterprise key (WORLDMONITOR_VALID_KEYS). Kind: 'enterprise'.
+//      Operator-issued; metered per key by the gateway.
 // Tauri desktop continues to authenticate via enterprise key.
 //
 // Async because session validation uses Web Crypto (crypto.subtle.sign).
 // All call sites await this — see grep for migration history.
-export async function validateApiKey(req, options = {}) {
-  const forceKey = options.forceKey === true;
+export async function validateApiKey(req) {
   const headerKey = getHeaderApiKey(req);
   const sessionCookie = getCookie(req, 'wm-session');
-  const testerCookies = [getCookie(req, '__Host-wm-pro-key'), getCookie(req, '__Host-wm-widget-key')].filter(Boolean);
   const origin = req.headers.get('Origin') || '';
 
   // Desktop app — always require an enterprise key.
@@ -112,26 +92,11 @@ export async function validateApiKey(req, options = {}) {
   // Explicit non-session headers remain authoritative. They are machine/API
   // credentials and must never silently fall back to ambient browser cookies.
   if (headerKey && !isSessionTokenShape(headerKey)) {
-    return validateCredential(headerKey, forceKey);
+    return validateCredential(headerKey);
   }
 
-  // Returning tester/widget users mint an anonymous wms_ token in a new tab,
-  // while their real tester credential is HttpOnly. Prefer that cookie only
-  // after it validates. A rotated cookie must not permanently shadow the fresh
-  // anonymous header/cookie on non-forceKey routes.
-  for (const testerCookie of testerCookies) {
-    if (await isValidEnterpriseKey(testerCookie)) {
-      return { valid: true, required: true, kind: 'enterprise', credential: testerCookie };
-    }
-  }
-
-  if (headerKey) return validateCredential(headerKey, forceKey);
-  if (sessionCookie) return validateCredential(sessionCookie, forceKey);
-
-  // Preserve the useful invalid-key error when the only credential is a stale
-  // tester cookie. The fallback above applies only when valid anonymous
-  // authority is also present.
-  if (testerCookies.length) return { valid: false, required: true, error: 'Invalid API key' };
+  if (headerKey) return validateCredential(headerKey);
+  if (sessionCookie) return validateCredential(sessionCookie);
 
   return { valid: false, required: true, error: 'API key required' };
 }

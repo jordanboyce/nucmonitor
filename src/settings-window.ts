@@ -9,13 +9,8 @@ import {
   ALL_PANELS,
   VARIANT_DEFAULTS,
   getEffectivePanelConfig,
-  isPanelEntitled,
-  FREE_MAX_PANELS,
-  countFreePanelCapUsage,
   userSetPanelEnabled,
-  isFreePanelCapCounted,
 } from '@/config';
-import { isProUser } from '@/services/widget-store';
 import { SITE_VARIANT } from '@/config/variant';
 import { loadFromStorage, saveToStorage } from '@/utils';
 import { t } from '@/services/i18n';
@@ -61,7 +56,7 @@ export function initSettingsWindow(): void {
 
   function render(): void {
     const panelEntries = Object.entries(panelSettings).filter(
-      ([key]) => (key !== 'runtime-config' || isDesktopApp) && (!key.startsWith('cw-') || isProUser())
+      ([key]) => (key !== 'runtime-config' || isDesktopApp) && !key.startsWith('cw-')
     );
     const panelHtml = panelEntries
       .map(
@@ -87,14 +82,6 @@ export function initSettingsWindow(): void {
           const panelKey = (item as HTMLElement).dataset.panel!;
           const config = panelSettings[panelKey];
           if (config) {
-            // Preserve saved config for dynamic cw-* panels; unknown keys should
-            // not collapse to getEffectivePanelConfig's disabled synthetic fallback.
-            const resolvedConfig = ALL_PANELS[panelKey] ? getEffectivePanelConfig(panelKey, SITE_VARIANT) : config;
-            if (!config.enabled && !isPanelEntitled(panelKey, resolvedConfig, isProUser())) return;
-            if (!config.enabled && !isProUser() && isFreePanelCapCounted(panelKey)) {
-              const enabledCount = countFreePanelCapUsage(panelSettings);
-              if (enabledCount >= FREE_MAX_PANELS) return;
-            }
             userSetPanelEnabled(config, !config.enabled);
             saveToStorage(STORAGE_KEYS.panels, panelSettings);
             render();

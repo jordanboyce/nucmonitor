@@ -107,8 +107,16 @@ describe('convex entry-point hygiene', () => {
   // both assertions pass over an empty list and prove nothing.
   it('recognises the real backend modules', () => {
     const entryPoints = convexEntryPoints();
-    assert.ok(entryPoints.length > 20, `expected the convex module fleet, found ${entryPoints.length}`);
-    for (const expected of ['apiKeys.ts', join('companyMonitoring', 'accounts.ts'), 'crons.ts']) {
+    // NucMonitor keeps only partner access and cloud preference sync.
+    // (auth.config.ts and convex.config.ts carry two dots, so they are config,
+    // not pushed modules.)
+    assert.deepEqual(entryPoints, [
+      'constants.ts',
+      'crons.ts',
+      'partnerAccess.ts',
+      'userPreferences.ts',
+    ]);
+    for (const expected of ['partnerAccess.ts', 'userPreferences.ts', 'crons.ts']) {
       assert.ok(entryPoints.includes(expected), `${expected} must be recognised as a pushed module`);
     }
   });

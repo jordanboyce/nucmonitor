@@ -1,16 +1,11 @@
 import { PINNED_WEBCAMS_KEY, normalizePinnedWebcamsPreference } from '../../shared/pinned-webcams';
-import {
-  ACCOUNT_PROVENANCE_PREFERENCE_KEYS,
-  ROLLING_DEPLOYMENT_PREFERENCE_KEYS,
-} from '../../shared/cloud-preferences-contract';
+import { ROLLING_DEPLOYMENT_PREFERENCE_KEYS } from '../../shared/cloud-preferences-contract';
 
 export const CLOUD_SYNC_KEYS = [
   'worldmonitor-panels',
   'worldmonitor-monitors',
   'worldmonitor-layers',
   'worldmonitor-disabled-feeds',
-  'worldmonitor-free-tier-source-ownership',
-  'worldmonitor-free-tier-layer-ownership',
   'worldmonitor-panel-spans',
   'worldmonitor-panel-col-spans',
   'panel-order',
@@ -53,17 +48,15 @@ export const CLOUD_SYNC_KEYS = [
 
 export type CloudSyncKey = (typeof CLOUD_SYNC_KEYS)[number];
 
-export const ACCOUNT_PROVENANCE_SYNC_KEYS: ReadonlySet<CloudSyncKey> = new Set(
-  ACCOUNT_PROVENANCE_PREFERENCE_KEYS satisfies readonly CloudSyncKey[],
-);
-
 /**
  * Keys whose absence from a cloud row means that the writer predates the key,
  * not that the user cleared it. Each key has an explicit reset value, so a
  * current writer can still propagate a deliberate clear across devices.
  */
 export const ABSENCE_TOLERANT_SYNC_KEYS: ReadonlySet<CloudSyncKey> = new Set(
-  ROLLING_DEPLOYMENT_PREFERENCE_KEYS satisfies readonly CloudSyncKey[],
+  (ROLLING_DEPLOYMENT_PREFERENCE_KEYS as readonly string[]).filter(
+    (key): key is CloudSyncKey => (CLOUD_SYNC_KEYS as readonly string[]).includes(key),
+  ),
 );
 
 export type CloudBlobKeyAction =

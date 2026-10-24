@@ -184,7 +184,7 @@ describe('App.destroy lifecycle cleanup contract', () => {
       'this.state.map?.destroy()',
       'this.webMcpController?.abort()',
       'mlWorker.terminate()',
-      'this.freeTierGate.cancelFallback()',
+      'this.unsubAuth?.()',
     ]) {
       assert.ok(body.includes(expected), `App.destroy() must keep ${expected}`);
     }

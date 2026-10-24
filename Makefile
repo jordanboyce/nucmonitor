@@ -132,7 +132,6 @@ generate: clean ## Generate code from proto definitions
 	@node scripts/openapi-inject-deprecated.mjs
 	@node scripts/openapi-inject-idempotency.mjs
 	@node scripts/openapi-inject-rate-limit-errors.mjs
-	@node scripts/openapi-inject-billing-verification.mjs
 	@echo "Code generation complete!"
 
 breaking: ## Check for breaking changes against main

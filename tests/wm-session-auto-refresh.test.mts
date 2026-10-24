@@ -8,8 +8,8 @@
 //       and the cached token is expired.
 //
 //   Layer 2 — refresh-on-401 inside the fetch interceptor:
-//     - A 401 from the API triggers ensureWmSession() and a single replay.
-//     - Premium-RPC paths short-circuit BEFORE the wms_ branch — no retry.
+//     - A 401 from the API triggers ensureWmSession() and a single replay,
+//       on every API path.
 //     - When the caller already supplied Authorization, the wms_ branch
 //       is skipped — no retry.
 //     - If the retry also 401s, the second response is returned (no infinite loop).
@@ -26,7 +26,6 @@
 import assert from 'node:assert/strict';
 import { describe, it, before, beforeEach, after } from 'node:test';
 
-import { withPremiumIntent } from '../src/services/premium-intent.ts';
 
 // ---------------------------------------------------------------------------
 // Stub browser globals BEFORE the wm-session module is imported. The module
@@ -182,7 +181,7 @@ describe('wm-session first RPC after mint (WORLDMONITOR-XP)', () => {
     const mintedToken = 'wms_first-rpc-header-token';
     let firstRpcKey: string | null = 'unset';
     let firstRpcCredentials: RequestCredentials | undefined;
-    let premiumKey: string | null = 'unset';
+    let analyzeKey: string | null = 'unset';
     let mintCalls = 0;
 
     currentFetchHandler = (input, init) => {
@@ -206,8 +205,8 @@ describe('wm-session first RPC after mint (WORLDMONITOR-XP)', () => {
         return Promise.resolve(new Response('ok', { status: 200 }));
       }
       if (url.includes('/api/market/v1/analyze-stock')) {
-        premiumKey = headers.get('X-WorldMonitor-Key');
-        return Promise.resolve(new Response('premium auth remains separate', { status: 200 }));
+        analyzeKey = headers.get('X-WorldMonitor-Key');
+        return Promise.resolve(new Response('ok', { status: 200 }));
       }
       return Promise.resolve(new Response('unhandled', { status: 500 }));
     };
@@ -217,12 +216,12 @@ describe('wm-session first RPC after mint (WORLDMONITOR-XP)', () => {
     );
     assert.equal(response.status, 200);
     assert.equal(mintCalls, 1, 'ensureWmSession must mint before the first RPC');
-    assert.equal(firstRpcKey, mintedToken, 'first non-premium RPC must carry X-WorldMonitor-Key: wms_…');
+    assert.equal(firstRpcKey, mintedToken, 'first RPC must carry X-WorldMonitor-Key: wms_…');
     assert.equal(firstRpcCredentials, 'include', 'cookie remains primary via credentials: include');
 
-    const premium = await wrappedFetch('https://api.worldmonitor.app/api/market/v1/analyze-stock');
-    assert.equal(premium.status, 200);
-    assert.equal(premiumKey, null, 'premium paths must not receive the anonymous wms_ header');
+    const analyze = await wrappedFetch('https://api.worldmonitor.app/api/market/v1/analyze-stock');
+    assert.equal(analyze.status, 200);
+    assert.equal(analyzeKey, mintedToken, 'every API path receives the anonymous wms_ header');
   });
 
   it('reload with only sessionStorage exp remints and attaches wms_ on first RPC', async () => {
@@ -406,7 +405,7 @@ describe('wm-session refresh-on-401 (Layer 2)', () => {
     assert.equal(mintCalls, 1, 'one mint between the 401 and the retry');
   });
 
-  it('does NOT retry when the path is in PREMIUM_RPC_PATHS', async () => {
+  it('recovers a 401 on the stock-analysis path like any other API path', async () => {
     setStoredSessionExp('wms_anything', FAR_FUTURE);
     await primeCachedFromStorage();
 
@@ -422,73 +421,21 @@ describe('wm-session refresh-on-401 (Layer 2)', () => {
         }));
       }
       attempts += 1;
-      return Promise.resolve(new Response('forbidden', { status: 401 }));
+      return Promise.resolve(attempts === 1
+        ? new Response('rejected cookie', { status: 401 })
+        : new Response('{}', { status: 200 }));
     };
 
-    // Pick any premium path — analyze-stock is one.
     const resp = await wrappedFetch('https://api.worldmonitor.app/api/market/v1/analyze-stock');
-    assert.equal(resp.status, 401);
-    assert.equal(attempts, 1, 'premium path must NOT trigger a retry inside this interceptor');
-    assert.equal(mintCalls, 0, 'premium path must NOT mint a wms_ token (the dedicated injector handles it)');
+    assert.equal(resp.status, 200, 'the replay recovers the request');
+    assert.equal(attempts, 2, 'one initial attempt plus one replay');
+    assert.ok(mintCalls >= 1, 'the replay is preceded by a fresh mint');
   });
 
-  it('does NOT retry a premium-intent request whose path is outside PREMIUM_RPC_PATHS', async () => {
-    // #5674 root cause. `/api/news/v1/summarize-article` is conditionally
-    // premium: the gateway charges Pro auth for spend-bearing summarize calls
-    // but keeps `mode: 'translate'` free — and translate NEEDS the anonymous
-    // wms_ cookie, so the path cannot join PREMIUM_RPC_PATHS without breaking
-    // free translation. premiumFetch marks the per-request intent instead;
-    // without honoring it here, every unauthenticated summarize 401 was read
-    // as a rejected cookie and blacked out anonymous browsing for 15 minutes.
-    setStoredSessionExp('wms_anything', FAR_FUTURE);
-    await primeCachedFromStorage();
-
-    let attempts = 0;
-    let mintCalls = 0;
-    currentFetchHandler = (input) => {
-      const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
-      if (url.includes('/api/wm-session')) {
-        mintCalls += 1;
-        return Promise.resolve(new Response(JSON.stringify({ exp: FAR_FUTURE }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }));
-      }
-      attempts += 1;
-      return Promise.resolve(new Response(JSON.stringify({ error: 'Pro authentication required' }), { status: 401 }));
-    };
-
-    const originalWarn = console.warn;
-    console.warn = () => {};
-    let resp: Response;
-    try {
-      resp = await wrappedFetch(
-        'https://api.worldmonitor.app/api/news/v1/summarize-article',
-        withPremiumIntent({ method: 'POST', body: JSON.stringify({ mode: 'summarize' }) }),
-      );
-    } finally {
-      console.warn = originalWarn;
-    }
-
-    assert.equal(resp.status, 401, 'the expected Pro denial reaches the caller unchanged');
-    assert.equal(attempts, 1, 'premium-intent request must NOT be replayed');
-    assert.equal(
-      mod.isWmSessionDead(),
-      false,
-      'an expected Pro denial must never enter the 15-minute anonymous cooldown',
-    );
-  });
-
-  it('still RECOVERS a 401 on the anonymous pro-fresh price tape', async () => {
-    // The sibling test below only proves the mint still happens on the happy
-    // path — it never 401s, so it passed while recovery was silently gone.
-    // This is the case that actually matters: `proFreshRpcFetch` sets
-    // forcePremium on the market-quote tape, but there `forcePremium` means
-    // "attach a Bearer opportunistically for a fresher cache tier", NOT "this
-    // route is Pro-only". Anonymous callers use these paths and they 401 when
-    // the wms_ cookie is rejected — exactly the HMAC-rotation / cache-flap
-    // episode Layer 2 exists to absorb. Marking them would turn a recoverable
-    // blip into a hard 401 and a dead price tape.
+  it('still RECOVERS a 401 on the anonymous price tape', async () => {
+    // Anonymous callers use the market-quote paths and they 401 when the wms_
+    // cookie is rejected — exactly the HMAC-rotation / cache-flap episode
+    // Layer 2 exists to absorb.
     memoryStorage.clear();
 
     let attempts = 0;
@@ -508,8 +455,6 @@ describe('wm-session refresh-on-401 (Layer 2)', () => {
         : new Response(JSON.stringify({ quotes: [] }), { status: 200 }));
     };
 
-    // Unmarked is what premiumFetch must produce for a pro-fresh target; the
-    // producer side of that contract is pinned in tests/premium-fetch.test.mts.
     const resp = await wrappedFetch(
       'https://api.worldmonitor.app/api/market/v1/list-market-quotes?symbols=AAPL',
       { credentials: 'include' },
@@ -521,44 +466,9 @@ describe('wm-session refresh-on-401 (Layer 2)', () => {
     assert.equal(mod.isWmSessionDead(), false);
   });
 
-  it('still mints a session for a premium-intent request that has none', async () => {
-    // The marker suppresses RECOVERY, not the session machinery. proFreshRpcFetch
-    // sets forcePremium on the market-quote tape, whose paths are not Pro-only —
-    // anonymous callers use them and they 401 with no cookie at all. Skipping the
-    // mint for marked requests would leave an anonymous first paint with nothing
-    // to send and no retry: a silently dead price tape.
-    memoryStorage.clear();
-
-    let mintCalls = 0;
-    let sawQuoteRequest = false;
-    currentFetchHandler = (input) => {
-      const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
-      if (url.includes('/api/wm-session')) {
-        mintCalls += 1;
-        return Promise.resolve(new Response(JSON.stringify({ exp: FAR_FUTURE }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }));
-      }
-      sawQuoteRequest = true;
-      return Promise.resolve(new Response(JSON.stringify({ quotes: [] }), { status: 200 }));
-    };
-
-    const resp = await wrappedFetch(
-      'https://api.worldmonitor.app/api/market/v1/list-market-quotes?symbols=AAPL',
-      withPremiumIntent({}),
-    );
-
-    assert.equal(resp.status, 200);
-    assert.equal(mintCalls, 1, 'a marked request with no session must still mint one');
-    assert.equal(sawQuoteRequest, true, 'the request must still reach the API');
-  });
-
-  it('still recovers the session for a translate-mode call on that same path', async () => {
-    // The complement of the test above: the free translate path carries no
-    // premium intent and DOES depend on the wms_ cookie, so a genuine dead
-    // cookie there must still trigger mint-and-replay. This is what makes the
-    // marker per-request rather than per-path.
+  it('still recovers the session for a translate-mode summarize call', async () => {
+    // The translate path depends on the wms_ cookie, so a genuine dead
+    // cookie there must still trigger mint-and-replay.
     setStoredSessionExp('wms_stale', FAR_FUTURE);
     await primeCachedFromStorage();
 
@@ -777,9 +687,8 @@ describe('wm-session refresh-on-401 (Layer 2)', () => {
   });
 
   it('captures ONE wm_session_dead Sentry warning per degraded episode, not one per suppressed call', async () => {
-    // reportServerError (premium-fetch.ts) deliberately skips the synthetic
-    // X-Wm-Session-Degraded 503s, so this once-per-episode capture is the
-    // only remote signal that anonymous browsing is degraded (#5245).
+    // This once-per-episode capture is the only remote signal that anonymous
+    // browsing is degraded (#5245).
     memoryStorage.clear();
 
     const { captures } = collectSentry();
@@ -898,10 +807,9 @@ describe('wm-session refresh-on-401 (Layer 2)', () => {
   });
 
   it('redacts identifier segments out of the route tag', async () => {
-    // PREMIUM_RPC_PATHS is an exact-match set, so a dynamic route does not
-    // match its parent entry and CAN reach this tag. Without redaction the
-    // subscriber id lands in an indexed Sentry tag and the tag's cardinality
-    // becomes unbounded — which would defeat the aggregation it exists for.
+    // A dynamic route CAN reach this tag. Without redaction the subscriber id
+    // lands in an indexed Sentry tag and the tag's cardinality becomes
+    // unbounded — which would defeat the aggregation it exists for.
     memoryStorage.clear();
 
     const captures: Array<{ ctx: { tags?: Record<string, string> } }> = [];
@@ -2417,7 +2325,6 @@ describe('wm-session cookie-persistence detection (Layer 3)', () => {
 
     let mints = 0;
     const fallbackToken = 'wms_header-fallback-token';
-    let premiumFallbackHeader: string | null = null;
     currentFetchHandler = (input, init) => {
       const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
       if (url.includes('/api/wm-session')) {
@@ -2433,10 +2340,6 @@ describe('wm-session cookie-persistence detection (Layer 3)', () => {
         }));
       }
       const headers = new Headers(init?.headers);
-      if (url.includes('/api/market/v1/analyze-stock')) {
-        premiumFallbackHeader = headers.get('X-WorldMonitor-Key');
-        return Promise.resolve(new Response('premium auth remains separate', { status: 401 }));
-      }
       if (headers.get('X-WorldMonitor-Key') === 'wm_explicit-user-key') {
         return Promise.resolve(new Response('explicit user key preserved', { status: 200 }));
       }
@@ -2463,14 +2366,6 @@ describe('wm-session cookie-persistence detection (Layer 3)', () => {
         { headers: { 'X-WorldMonitor-Key': 'wm_explicit-user-key' } },
       );
       assert.equal(explicit.status, 200, 'an explicit user key must outrank the anonymous fallback');
-
-      const premium = await wrappedFetch('https://api.worldmonitor.app/api/market/v1/analyze-stock');
-      assert.equal(premium.status, 401, 'premium auth remains owned by its dedicated injector');
-      assert.equal(
-        premiumFallbackHeader,
-        null,
-        'the anonymous fallback must never be injected into a premium route',
-      );
     } finally {
       console.warn = originalWarn;
     }

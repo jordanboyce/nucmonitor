@@ -8,10 +8,7 @@ import {
 } from '../src/app/panel-enablement.ts';
 import {
   ALL_PANELS,
-  FREE_MAX_PANELS,
-  countFreePanelCapUsage,
   getInitialPanelSettingsForVariant,
-  isFreePanelCapCounted,
   isPanelNativeToVariant,
 } from '../src/config/panels.ts';
 import {
@@ -33,7 +30,7 @@ function settingsWithFreeSlots(
   const settings = cloneSettings(variant);
   let counted = 0;
   for (const [key, config] of Object.entries(settings)) {
-    if (!isFreePanelCapCounted(key)) continue;
+    if (key === 'map') continue;
     if (counted < 5 && config.enabled) {
       counted += 1;
       continue;
@@ -46,43 +43,11 @@ function settingsWithFreeSlots(
   return settings;
 }
 
-function settingsAtFreeCap(
-  variant: string,
-  leaveDisabled: string,
-): Record<string, PanelConfig> {
-  const settings = cloneSettings(variant);
-  let counted = 0;
-  for (const [key, config] of Object.entries(settings)) {
-    if (key === leaveDisabled) {
-      config.enabled = false;
-      continue;
-    }
-    if (!isFreePanelCapCounted(key)) continue;
-    if (counted < FREE_MAX_PANELS) {
-      config.enabled = true;
-      counted += 1;
-    } else {
-      config.enabled = false;
-    }
-  }
-  // The nuclear catalog is smaller than the free cap; retained MCP panels count
-  // toward it, so they fill the remaining slots.
-  for (let i = 0; counted < FREE_MAX_PANELS; i += 1) {
-    settings[`mcp-pad-${i}`] = { name: `Pad ${i}`, enabled: true, priority: 99 };
-    counted += 1;
-  }
-  assert.equal(countFreePanelCapUsage(settings), FREE_MAX_PANELS);
-  assert.equal(settings[leaveDisabled]?.enabled, false);
-  return settings;
-}
-
 function evaluate(overrides: {
   panelId?: unknown;
   enabled?: unknown;
   panelSettings?: Record<string, PanelConfig>;
   variant?: string;
-  isPro?: boolean;
-  isPanelAllowed?: (panelId: string, config: PanelConfig) => boolean;
 }) {
   const variant = overrides.variant ?? 'nuclear';
   return evaluateSetPanelEnabled({
@@ -90,8 +55,6 @@ function evaluate(overrides: {
     enabled: overrides.enabled ?? true,
     panelSettings: overrides.panelSettings ?? cloneSettings(variant),
     variant,
-    isPro: overrides.isPro ?? false,
-    isPanelAllowed: overrides.isPanelAllowed,
   });
 }
 
@@ -220,71 +183,6 @@ describe('evaluateSetPanelEnabled', () => {
     assert.equal(result.effectiveEnabled, false);
   });
 
-  it('refuses unentitled enable but still allows disable of a live panel', () => {
-    const panelSettings = settingsWithFreeSlots('nuclear');
-    assert.equal(panelSettings['world-clock']?.enabled, false);
-    const deniedEnable = evaluate({
-      panelSettings,
-      panelId: 'world-clock',
-      enabled: true,
-      isPanelAllowed: () => false,
-    });
-    assert.equal(deniedEnable.reason, 'panel_not_entitled');
-    assert.equal(deniedEnable.ok, false);
-    assert.equal(deniedEnable.effectiveEnabled, false);
-
-    panelSettings['world-clock']!.enabled = true;
-    const allowedDisable = evaluate({
-      panelSettings,
-      panelId: 'world-clock',
-      enabled: false,
-      isPanelAllowed: () => false,
-    });
-    assert.equal(allowedDisable.ok, true);
-    assert.equal(allowedDisable.changed, true);
-    assert.equal(allowedDisable.effectiveEnabled, false);
-    assert.equal(allowedDisable.reason, undefined);
-  });
-
-  it('refuses a free-tier enable that would exceed the panel cap', () => {
-    const panelSettings = settingsAtFreeCap('nuclear', 'world-clock');
-    const result = evaluate({
-      panelSettings,
-      panelId: 'world-clock',
-      enabled: true,
-      isPro: false,
-    });
-    assert.equal(result.reason, 'panel_cap_exceeded');
-    assert.equal(result.ok, false);
-    assert.equal(result.changed, false);
-    assert.equal(result.effectiveEnabled, false);
-  });
-
-  it('does not count the map panel against the free-tier cap', () => {
-    const panelSettings = settingsAtFreeCap('nuclear', 'map');
-    const result = evaluate({
-      panelSettings,
-      panelId: 'map',
-      enabled: true,
-      isPro: false,
-    });
-    assert.equal(result.ok, true);
-    assert.equal(result.changed, true);
-    assert.equal(result.reason, undefined);
-  });
-
-  it('lets a Pro session enable past the free-tier cap', () => {
-    const panelSettings = settingsAtFreeCap('nuclear', 'world-clock');
-    const result = evaluate({
-      panelSettings,
-      panelId: 'world-clock',
-      enabled: true,
-      isPro: true,
-    });
-    assert.equal(result.ok, true);
-    assert.equal(result.changed, true);
-  });
-
   it('rejects unknown, runtime, and malformed identifiers before mutation policy', () => {
     assert.equal(evaluate({ panelId: 'not-a-real-panel' }).reason, 'unknown_panel');
     assert.equal(evaluate({ panelId: 'cw-custom-1' }).reason, 'unknown_panel');
@@ -306,28 +204,6 @@ describe('evaluateSetPanelEnabled', () => {
     assert.equal(result.effectiveEnabled, true);
   });
 
-  it('passes catalog config to the entitlement callback, not the stored entry', () => {
-    // The catalog carries no premium panel; a stale stored premium flag must
-    // not reach the entitlement decision.
-    const panelSettings = settingsWithFreeSlots('nuclear');
-    const stored: PanelConfig = { ...panelSettings['world-clock']!, enabled: false, premium: 'locked' };
-    panelSettings['world-clock'] = stored;
-    let seenPremium: PanelConfig['premium'] | undefined = 'locked';
-    const result = evaluate({
-      panelSettings,
-      panelId: 'world-clock',
-      enabled: true,
-      isPro: false,
-      isPanelAllowed: (_id, config) => {
-        seenPremium = config.premium;
-        return Boolean(config.premium) === false;
-      },
-    });
-    assert.equal(seenPremium, undefined);
-    assert.equal(result.ok, true);
-    assert.equal(stored.premium, 'locked');
-  });
-
 });
 
 describe('applySetPanelEnabled', () => {
@@ -340,7 +216,6 @@ describe('applySetPanelEnabled', () => {
       true,
       {
         variant: 'nuclear',
-        isPro: false,
         persist: () => { events.push('persist'); },
         trackToggle: () => { events.push('track'); },
         beforeApply: () => { events.push('beforeApply'); },
@@ -357,7 +232,6 @@ describe('applySetPanelEnabled', () => {
       true,
       {
         variant: 'nuclear',
-        isPro: false,
         persist: () => { events.push('persist'); },
         trackToggle: () => { events.push('track'); },
         beforeApply: () => { events.push('beforeApply'); },
@@ -375,7 +249,6 @@ describe('applySetPanelEnabled', () => {
       true,
       {
         variant: 'nuclear',
-        isPro: false,
         persist: () => false,
         trackToggle: () => {},
         beforeApply: () => { beforeApplyCount += 1; },
@@ -392,11 +265,9 @@ describe('applySetPanelEnabled', () => {
     let applyCount = 0;
     let toggleCount = 0;
     let fetchCount = 0;
-    let toastCount = 0;
     let refreshCount = 0;
     const deps = {
       variant: 'nuclear',
-      isPro: false,
       persist: (settings: Record<string, PanelConfig>) => {
         persistCalls.push(structuredClone(settings));
       },
@@ -405,9 +276,6 @@ describe('applySetPanelEnabled', () => {
       },
       trackToggle: () => {
         toggleCount += 1;
-      },
-      showCapToast: () => {
-        toastCount += 1;
       },
     };
     const panels = {
@@ -434,7 +302,6 @@ describe('applySetPanelEnabled', () => {
     assert.equal(toggleCount, 1);
     assert.equal(fetchCount, 1);
     assert.equal(refreshCount, 1);
-    assert.equal(toastCount, 0);
 
     const repeat = applySetPanelEnabled(
       { panelSettings, panels, unifiedSettings },
@@ -455,7 +322,6 @@ describe('applySetPanelEnabled', () => {
     let persistCount = 0;
     const deps = {
       variant: 'nuclear',
-      isPro: false,
       persist: () => {
         persistCount += 1;
       },
@@ -510,7 +376,6 @@ describe('applySetPanelEnabled', () => {
       false,
       {
         variant: 'nuclear',
-        isPro: false,
         persist: (settings) => persistCalls.push(structuredClone(settings)),
         applyPanelSettings: () => {},
         trackToggle: () => {},
@@ -532,7 +397,6 @@ describe('applySetPanelEnabled', () => {
       true,
       {
         variant: 'nuclear',
-        isPro: false,
         persist: () => false,
         applyPanelSettings: () => { applyCount += 1; },
         trackToggle: () => { toggleCount += 1; },
@@ -554,74 +418,6 @@ describe('applySetPanelEnabled', () => {
     assert.equal(toggleCount, 0);
   });
 
-  it('does not persist entitlement, cap, or unknown refusals', () => {
-    const panelSettings = settingsAtFreeCap('nuclear', 'world-clock');
-    let persistCount = 0;
-    const deps = {
-      variant: 'nuclear',
-      isPro: false,
-      persist: () => {
-        persistCount += 1;
-      },
-      applyPanelSettings: () => {},
-      trackToggle: () => {},
-      showCapToast: () => {},
-      isPanelAllowed: () => true,
-    };
-
-    const cap = applySetPanelEnabled(
-      { panelSettings },
-      'world-clock',
-      true,
-      deps,
-    );
-    assert.equal(cap.reason, 'panel_cap_exceeded');
-    assert.equal(panelSettings['world-clock']?.enabled, false);
-
-    const unknown = applySetPanelEnabled(
-      { panelSettings },
-      'not-a-real-panel',
-      true,
-      deps,
-    );
-    assert.equal(unknown.reason, 'unknown_panel');
-    assert.equal(persistCount, 0);
-
-    const unentitledSettings = settingsWithFreeSlots('nuclear');
-    const unentitled = applySetPanelEnabled(
-      { panelSettings: unentitledSettings },
-      'world-clock',
-      true,
-      {
-        ...deps,
-        isPanelAllowed: () => false,
-      },
-    );
-    assert.equal(unentitled.reason, 'panel_not_entitled');
-    assert.equal(unentitledSettings['world-clock']?.enabled, false);
-    assert.equal(persistCount, 0);
-  });
-
-  it('shows the free-tier cap toast only when the cap blocks an enable', () => {
-    const panelSettings = settingsAtFreeCap('nuclear', 'world-clock');
-    let toastCount = 0;
-    applySetPanelEnabled(
-      { panelSettings },
-      'world-clock',
-      true,
-      {
-        variant: 'nuclear',
-        isPro: false,
-        persist: () => {},
-        applyPanelSettings: () => {},
-        trackToggle: () => {},
-        showCapToast: () => {
-          toastCount += 1;
-        },
-      },
-    );
-    assert.equal(toastCount, 1);
-  });
 });
 
 describe('set_panel_enabled WebMCP adapter', () => {
@@ -695,92 +491,6 @@ describe('set_panel_enabled WebMCP adapter', () => {
     assert.equal(calls, 1);
   });
 
-  it('preserves denial reasons and maps entitlement vs validation analytics', async () => {
-    const events: Array<{ event: string; data?: { outcome?: string; reason?: string; tool?: string } }> = [];
-    const tools = buildProductionWebMcpTools({
-      openCountryBriefByCode: async () => true,
-      resolveCountryName: (code: string) => `Country ${code}`,
-      openSearch: async () => true,
-      getDashboardContext: async () => ({
-        variant: 'full',
-        map: {
-          view: 'global',
-          center: { lat: 0, lon: 0 },
-          zoom: 2,
-          timeRange: '7d',
-          enabledLayers: [],
-        },
-        panels: { mounted: ['map'], enabled: ['map'] },
-      }),
-      applyDashboardAction: async (action: { type: string }) => ({
-        ok: true,
-        status: 'applied' as const,
-        actionType: action.type as 'open_panel',
-        message: 'Applied.',
-        targets: [],
-      }),
-      searchDashboard: async (query: string) => ({
-        queryLength: query.length,
-        results: [],
-        resultCount: 0,
-        truncated: false,
-      }),
-      openSearchResult: async () => ({ ok: true, status: 'opened' as const }),
-      setPanelEnabled: async (panelId) => {
-        if (panelId === 'stock-analysis') {
-          return {
-            ok: false,
-            status: 'denied' as const,
-            panelId: 'stock-analysis',
-            requestedEnabled: true,
-            effectiveEnabled: false,
-            changed: false,
-            reason: 'panel_not_entitled' as const,
-            message: 'Panel is not available on this plan.',
-          };
-        }
-        if (panelId === 'not-a-real-panel') {
-          return {
-            ok: false,
-            status: 'denied' as const,
-            panelId: 'not-a-real-panel',
-            requestedEnabled: true,
-            effectiveEnabled: false,
-            changed: false,
-            reason: 'unknown_panel' as const,
-            message: 'Unknown panel.',
-          };
-        }
-        return {
-          ok: false,
-          status: 'denied' as const,
-          panelId: String(panelId),
-          requestedEnabled: true,
-          effectiveEnabled: false,
-          changed: false,
-          reason: 'panel_incompatible' as const,
-          message: 'Panel is not available on this monitor.',
-        };
-      },
-    }, (event, data) => events.push({ event, data }));
-    const tool = tools.find((candidate) => candidate.name === 'set_panel_enabled');
-    assert.ok(tool);
-    const signal = { signal: new AbortController().signal };
-
-    const unentitled = await tool.execute({ panelId: 'stock-analysis', enabled: true }, signal);
-    assert.equal((unentitled as { status?: string }).status, 'denied');
-    assert.equal((unentitled as { reason?: string }).reason, 'panel_not_entitled');
-    assert.equal(events.at(-1)?.data?.outcome, 'denied');
-    assert.equal(events.at(-1)?.data?.reason, 'entitlement');
-
-    const unknown = await tool.execute({ panelId: 'not-a-real-panel', enabled: true }, signal);
-    assert.equal((unknown as { reason?: string }).reason, 'unknown_panel');
-    assert.equal(events.at(-1)?.data?.reason, 'validation');
-
-    const incompatible = await tool.execute({ panelId: 'nuclear-reactor-status', enabled: true }, signal);
-    assert.equal((incompatible as { reason?: string }).reason, 'panel_incompatible');
-    assert.equal(events.at(-1)?.data?.reason, 'unavailable');
-  });
 });
 
 describe('waitUntilPanelLive', () => {

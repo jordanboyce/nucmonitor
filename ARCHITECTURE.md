@@ -64,7 +64,7 @@ NucMonitor is an all-hazards dashboard for US nuclear facilities, built as a Typ
 | Resilience Seed Bundle | Railway | Resilience/static/food seeds plus the daily five-factor scorecard cohort and read-model publisher |
 | Consumer Prices | Railway | Containerized price scrapers (Playwright, per-country baskets) + Redis publisher for the consumer-prices dataset |
 | Redis | Upstash | Cache layer with stampede protection, seed-meta freshness tracking, rate limiting |
-| Convex | Convex Cloud | Billing/entitlements (Dodo), user state and API keys, broadcast/email, contact + waitlist forms, historical intelligence memory (vector search) |
+| Convex | Convex Cloud | Partner access (invites and access requests) and signed-in user preferences |
 | Documentation | Mintlify | Public docs, proxied through Vercel at `/docs` |
 | Desktop App | Tauri 2.x | macOS (ARM64, x64), Windows (x64), Linux (x64, ARM64) with bundled Node.js sidecar |
 | Container Image | GHCR | Multi-arch Docker image (nginx serving built SPA, proxies API to upstream) |
@@ -104,7 +104,7 @@ All panels extend the `Panel` base class (109 classes across `src/components`). 
 - **Loaded news selection**: `MapContainer.onNewsClicked()` caches and forwards the callback to each renderer's `setOnNewsClick()`. The callback receives `Pick<NewsLocationMarker, 'article' | 'title'>`: optional original loaded article `{link, title, source}` and the displayed marker title. Existing markers without article metadata remain valid. The plugin uses this loaded identity to publish its latest interaction with current view context; it does not track popup visibility or fetch more data on selection.
 - **GlobeMap**: 3D interactive globe via globe.gl. Single merged `htmlElementsData` array with `_kind` discriminator. Earth texture, atmosphere shader, auto-rotate after idle.
 
-Layer definitions live in `src/config/map-layer-definitions.ts`, each specifying renderer support (flat/globe), premium status, variant filtering, and i18n keys.
+Layer definitions live in `src/config/map-layer-definitions.ts`, each specifying renderer support (flat/globe), variant filtering, and i18n keys.
 
 ### State Management
 
@@ -125,7 +125,7 @@ No external state library. `AppContext` is a central mutable object holding: map
 The `api/` directory holds two kinds of endpoints, both deployed as Vercel Edge Functions:
 
 - **Domain intelligence gateways** — generated from proto contracts and backed by handlers under `server/worldmonitor/**`. The per-domain thin entry points (`api/<domain>/v<N>/[rpc].ts`) are produced via `createDomainGateway` (`server/gateway.ts`) and esbuild-bundled, so the *deployed* artifact is self-contained even though the source composes server-side modules.
-- **Operational endpoints** — hand-written for concerns that don't fit the contract model: auth/session, checkout and customer portal, MCP, bootstrap/health, notifications, cache invalidation, and user workflows (e.g. `api/create-checkout.ts`, `api/customer-portal.ts`, `api/mcp.ts`, `api/user-prefs.ts`).
+- **Operational endpoints** — hand-written for concerns that don't fit the contract model: anonymous session, partner access, bootstrap/health, cache invalidation, and user workflows (e.g. `api/wm-session.js`, `api/request-access.ts`, `api/user-prefs.ts`).
 
 Compact health separates actionable `problems` from bounded `pending` diagnostics. Both retain the source diagnosis. Pending deadlines also bound the Redis verdict cache lifetime.
 
@@ -137,7 +137,7 @@ Edge functions are bundled per file: each deployed function may not pull in unre
 |------|---------|
 | `_cors.js` | Origin allowlist (worldmonitor.app, Vercel previews, tauri://localhost, localhost) |
 | `_rate-limit.js` | Upstash sliding window rate limiting, IP extraction |
-| `_api-key.js` | Origin-aware API key validation (desktop requires key, trusted browser exempt) |
+| `_api-key.js` | Credential validation: anonymous `wm-session` token or a `WORLDMONITOR_VALID_KEYS` key |
 | `_relay.js` | Factory for proxying requests to Railway relay service |
 
 ### Gateway Factory
@@ -249,7 +249,7 @@ Three CSP sources that must stay in sync:
 
 ### Authentication
 
-API keys are required for non-browser origins. Trusted browser origins (production domains, Vercel preview deployments, localhost) are exempt. Premium RPC paths always require a key.
+Non-public RPCs require an anonymous `wm-session` token (minted by `POST /api/wm-session`) or an operator-issued key from `WORLDMONITOR_VALID_KEYS`. There are no paid tiers or per-user API keys. In partner access mode (`docs/partner-access.md`) every request also needs an approved Clerk session.
 
 ### Bot Protection
 
@@ -341,7 +341,6 @@ Runs before every `git push`:
 | `e2e-visual.yml` | Path-filtered PR, push to main (chrome only), nightly cron, manual | Deterministic map goldens (`test:e2e:visual`) plus named harness chrome captures; evidence only — not a deploy-gate required check |
 | `publish-e2e-screenshots.yml` | After `E2E Visual` completes on main (not PRs) | Optional S3 sync of the chrome gallery when `E2E_SCREENSHOT_*` is configured; otherwise the Actions artifact is the durable copy |
 | `proto-check.yml` | PR (proto changes) | Generated code matches committed output |
-| `pro-bundle-freshness.yml` | PR (pro bundle changes) | Committed pro data bundle artifacts are fresh |
 | `feed-validation.yml` | PR (feed changes), daily cron | RSS feed reachability and validation |
 | `resilience-snapshot-refresh.yml` | Monthly cron, manual | Captures the current full-universe CRI ranking, rebuilds crawlable country metadata and the sitemap, and opens one review PR per UTC month |
 | `crawlable-pulse-refresh.yml` | Weekly Monday 04:41 UTC, manual | Re-freezes the committed crawlable live pulse (country risk, chokepoint status, crisis HAPI summaries), rebuilds the corpus, sitemap, welcome teaser strip and llms-full accuracy section, prunes superseded snapshots, and opens one review PR per ISO week. The corpus build rejects a pulse older than 10 days, so this workflow is what keeps `/countries/*`, `/chokepoints/*` and `/crises/*` buildable as well as current. A capture whose verification fails still opens as a draft PR carrying the capture, so the fix lands in that branch instead of costing a re-freeze. Opens the PR with `REVIEW_PR_TOKEN` when that secret is set (a PR opened with the Actions token gets no CI), else with the Actions token, which needs the repository setting that lets Actions create pull requests |
@@ -408,13 +407,12 @@ gates.
 ├── blog-site/              Static blog (built into public/blog/)
 ├── cli/                    Official `worldmonitor` npm CLI (zero-dep ESM, MCP-first; published via cli-v* tag)
 ├── consumer-prices-core/   Consumer-price collection service (Playwright scrapers, per-country baskets; Railway/Docker)
-├── convex/                 Convex backend (billing/entitlements, user state, broadcast, forms, intel history)
+├── convex/                 Convex backend (partner access, user preferences)
 ├── data/                   Static data (telegram channels, OREF threat translations, gamma irradiators)
 ├── deploy/                 Deployment configs (nginx)
 ├── docker/                 Dockerfile + nginx config for Railway
 ├── docs/                   Mintlify documentation site
 ├── e2e/                    Playwright E2E specs
-├── pro-test/               Standalone Pro QA app (separate package)
 ├── proto/                  Protobuf service definitions (sebuf framework)
 ├── public/                 Static assets served as-is (favicons, textures, .well-known agent-skills/MCP, llms.txt)
 ├── scripts/                Seed scripts, build helpers, relay service
@@ -435,7 +433,7 @@ gates.
 │   ├── generated/          Proto-generated client/server stubs (DO NOT EDIT)
 │   ├── locales/            i18n translation files
 │   ├── services/           Business logic organized by domain
-│   ├── shared/             Cross-cutting helpers (premium paths, registries, staleness)
+│   ├── shared/             Cross-cutting helpers (public RPC cache, registries, staleness)
 │   ├── shims/              Runtime shims (child-process for sidecar)
 │   ├── styles/             Global CSS (layers, themes, panel styles)
 │   ├── types/              TypeScript type definitions

@@ -59,9 +59,8 @@ const SECOND_LOAD_SETTLE_MS = 8_000;
 const PER_FEED_FALLBACK_CATEGORY_FEED_LIMIT = 3;
 
 // A Tech news panel customized into a `full` session: absent from FULL_FEEDS, so
-// it resolves as a CUSTOM category and direct fetch is its only path. Priority 1
-// keeps it inside the 40-panel free-tier cap (FULL_PANELS enables 39 priority-1
-// panels), and its 10 TECH_FEEDS entries are well past the per-category cap.
+// it resolves as a CUSTOM category and direct fetch is its only path. Its 10
+// TECH_FEEDS entries are well past the per-category cap.
 const CUSTOM_CATEGORY_KEY = 'startups';
 const CUSTOM_CATEGORY_FEED_COUNT = 10;
 
@@ -199,7 +198,6 @@ async function seedFreshAnonymousFullVariant(
     localStorage.setItem('worldmonitor-variant', 'full');
     // Overlays that would otherwise steal focus/paint during the load window.
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
-    localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
     // Partial panel settings: App.ts merges every other ALL_PANELS key in at its
     // variant default, so this only overrides the panels named here.

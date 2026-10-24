@@ -108,20 +108,3 @@ describe('persistent-cache prefix invalidation under a null localStorage', () =>
     expect(() => __testing__.deleteFromLocalStorageByPrefix('news')).not.toThrow();
   });
 });
-
-describe('custom widgets under a null localStorage', () => {
-  it('degrades the whole load chain to an empty list rather than throwing', async () => {
-    // NOTE what this does and does not prove. `loadFromStorage` already
-    // catches, so `materializeWidgets` never reaches its PRO side-key read on
-    // a broken store — routing that read through safeStorageGet was defence in
-    // depth and a guard requirement, NOT a live crash fix. What this pins is
-    // the chain-level resilience the module documents ("degrades those failures
-    // to [] for dashboard resilience"), which nothing else asserted.
-    stubNullStorage();
-
-    const { loadWidgets } = await import('@/services/widget-store');
-
-    expect(() => loadWidgets()).not.toThrow();
-    expect(loadWidgets()).toEqual([]);
-  });
-});

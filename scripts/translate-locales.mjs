@@ -2,7 +2,7 @@
 /**
  * Backfill missing locale strings using Claude Haiku as the translator.
  *
- * - Source of truth: src/locales/en.json (or pro-test/src/locales/en.json with --pro-test)
+ * - Source of truth: src/locales/en.json
  * - Diffs each non-English locale against EN, sends the missing AND the stale
  *   keys in batches to Claude, deep-merges the response back into the locale file.
  * - Staleness is tracked by an EN baseline snapshot (scripts/locale-baselines/).
@@ -17,7 +17,6 @@
  * Usage:
  *   ANTHROPIC_API_KEY=sk-ant-... node scripts/translate-locales.mjs
  *   ANTHROPIC_API_KEY=sk-ant-... node scripts/translate-locales.mjs --only=fr,de
- *   ANTHROPIC_API_KEY=sk-ant-... node scripts/translate-locales.mjs --pro-test
  *   node scripts/translate-locales.mjs --dry-run    # just report the gap
  *   ... --adopt-baseline   # FIRST adoption of a root only; records the current
  *                          # translations as correct without checking them
@@ -60,16 +59,15 @@ const LANG_NAMES = {
 const BATCH_SIZE = 50;
 const MODEL = 'claude-haiku-4-5-20251001';
 
-export function localesRootFor(proTest) {
-  return proTest ? 'pro-test/src/locales' : 'src/locales';
+export function localesRootFor() {
+  return 'src/locales';
 }
 
 // The baseline records the English string each committed translation was
-// produced from. It cannot live beside the locale files: pro-test's i18n
-// lazy-loads `./locales/*.json` via import.meta.glob, and the pro locale
-// registry test asserts that directory holds exactly one file per language.
-export function baselinePathFor(proTest) {
-  return `scripts/locale-baselines/${proTest ? 'pro-test' : 'app'}.json`;
+// produced from. It lives outside src/locales/ so the app's locale loader never
+// treats it as a language catalogue.
+export function baselinePathFor() {
+  return 'scripts/locale-baselines/app.json';
 }
 
 export function flatten(obj, prefix = '', out = {}) {
@@ -611,11 +609,10 @@ async function main() {
   // does not inherit the test runner's arguments.
   const args = new Set(process.argv.slice(2));
   const dryRun = args.has('--dry-run');
-  const proTest = args.has('--pro-test');
   const adoptBaseline = args.has('--adopt-baseline');
   const onlyArg = [...args].find(a => a.startsWith('--only='));
   const onlyLocales = onlyArg ? onlyArg.slice('--only='.length).split(',') : null;
-  const ROOT = localesRootFor(proTest);
+  const ROOT = localesRootFor();
 
   // An unknown locale in --only would otherwise be skipped with a note and the
   // run would still report success, so `--only=de,ff` silently does half the
@@ -646,7 +643,7 @@ async function main() {
   const pluralBases = findPluralBases(enFlat);
   console.log(`[translate] EN source: ${enPath} (${Object.keys(enFlat).length} keys, ${pluralBases.size} pluralized bases)`);
 
-  const baselinePath = baselinePathFor(proTest);
+  const baselinePath = baselinePathFor();
   const baselineFlat = readBaseline(baselinePath);
   const baselinePlurals = baselineFlat ? findPluralBases(baselineFlat) : new Map();
   if (baselineFlat) {
@@ -669,13 +666,7 @@ async function main() {
 
   for (const loc of targets) {
     const locPath = path.join(ROOT, `${loc}.json`);
-    // Skip locales that don't exist in the active root. The unified LOCALES
-    // list serves both the main app (src/locales/) and the pro-test bundle
-    // (pro-test/src/locales/), but the two roots are independent — a locale
-    // added to main may not yet have a pro-test counterpart. Skip silently
-    // so --pro-test and default modes both work without a placeholder file
-    // (placeholders trigger the pro-bundle freshness hook because they
-    // change the lazy-loaded chunk graph).
+    // Skip locales that have no catalogue file yet.
     if (!existsSync(locPath)) {
       console.log(`[${loc}] (no file at ${locPath}; skipping)`);
       continue;

@@ -35,8 +35,6 @@
  *     the application itself: the entry loads it through a dynamic
  *     `import('./App')` on every visit, so that import's JS graph is gated in a
  *     separate `deferred` section with the same tolerances.
- *   pro — every dist/pro/assets/*.js chunk emitted by `npm run build:pro`
- *     (pro-test/) and copied into dist/ by the root vite build.
  *   embed — the dist-root embed.js partner loader (public/embed.js).
  *
  * Hashed rollup chunks aggregate under their stable name; an un-hashed .js
@@ -87,16 +85,10 @@ export const TOTAL_TOLERANCE_BYTES = 16384;
 export const EMBED_TOLERANCE_BYTES = 128;
 export const EMBED_TOTAL_TOLERANCE_BYTES = 128;
 
-const SURFACES = ['dashboard', 'pro', 'embed'];
+const SURFACES = ['dashboard', 'embed'];
 const DEFAULT_SURFACE = 'dashboard';
 const SURFACE_TOLERANCES = {
   dashboard: {
-    tolerancePct: DEFAULT_TOLERANCE_PCT,
-    toleranceBytes: DEFAULT_TOLERANCE_BYTES,
-    totalTolerancePct: TOTAL_TOLERANCE_PCT,
-    totalToleranceBytes: TOTAL_TOLERANCE_BYTES,
-  },
-  pro: {
     tolerancePct: DEFAULT_TOLERANCE_PCT,
     toleranceBytes: DEFAULT_TOLERANCE_BYTES,
     totalTolerancePct: TOTAL_TOLERANCE_PCT,
@@ -110,18 +102,15 @@ const SURFACE_TOLERANCES = {
   },
 };
 const BUILD_COMMANDS = {
-  dashboard: 'npm run build:pro && VITE_VARIANT=full ./node_modules/.bin/vite build',
-  pro: 'npm run build:pro && VITE_VARIANT=full ./node_modules/.bin/vite build',
-  embed: 'npm run build:pro && VITE_VARIANT=full ./node_modules/.bin/vite build',
+  dashboard: 'VITE_VARIANT=full ./node_modules/.bin/vite build',
+  embed: 'VITE_VARIANT=full ./node_modules/.bin/vite build',
 };
 const DEFAULT_DIST_DIRS = {
   dashboard: 'dist',
-  pro: 'dist/pro',
   embed: 'dist',
 };
 const DEFAULT_BUDGET_PATHS = {
   dashboard: 'scripts/shared/bundle-budgets.json',
-  pro: 'scripts/shared/bundle-budgets-pro.json',
   embed: 'scripts/shared/bundle-budgets-embed.json',
 };
 
@@ -281,11 +270,6 @@ function measureChunkFiles(assetsDir, fileNames, missingLabel) {
   return { chunks, total };
 }
 
-export function measureProDistChunks(distDir) {
-  const assetsDir = join(distDir, 'assets');
-  return measureChunkFiles(assetsDir, listJsAssetFileNames(assetsDir), 'pro build');
-}
-
 export function measureEmbedJs(distDir) {
   const filePath = join(distDir, 'embed.js');
   let fileStat;
@@ -350,12 +334,6 @@ export function buildBudgetSnapshot(measured, surface = DEFAULT_SURFACE) {
       + 'the application graph the entry imports on every visit with the same tolerances. Tolerance fields here are '
       + 'informational — the gate enforces its own constants and rejects a snapshot that disagrees. '
       + `Regenerate after "${buildCommand}" with: ${reseedCommandForSurface(surface)}`,
-    pro:
-      '/pro subapp bundle-size budgets (#7119). Gated on raw bytes: per chunk '
-      + `±max(${tolerances.toleranceBytes} B, ${tolerances.tolerancePct}%), total `
-      + `±max(${tolerances.totalToleranceBytes} B, ${tolerances.totalTolerancePct}%). Tolerance fields here are `
-      + 'informational — the gate enforces its own constants and rejects a snapshot that disagrees. '
-      + `Regenerate after "${buildCommand}" with: ${reseedCommandForSurface(surface)}`,
     embed:
       'dist-root embed.js bundle-size budget (#7119). Gated on raw bytes: per chunk '
       + `±max(${tolerances.toleranceBytes} B, ${tolerances.tolerancePct}%), total `
@@ -363,7 +341,7 @@ export function buildBudgetSnapshot(measured, surface = DEFAULT_SURFACE) {
       + 'informational — the gate enforces its own constants and rejects a snapshot that disagrees. '
       + `Regenerate after "${buildCommand}" with: ${reseedCommandForSurface(surface)}`,
   };
-  const variants = { dashboard: 'full', pro: 'pro', embed: 'embed' };
+  const variants = { dashboard: 'full', embed: 'embed' };
   return {
     comment: comments[surface] ?? comments.dashboard,
     surface,
@@ -562,7 +540,6 @@ export function compareBundleBudgets(measured, budget, surface = budget?.surface
 }
 
 function measureSurface(surface, distDir) {
-  if (surface === 'pro') return measureProDistChunks(distDir);
   if (surface === 'embed') return measureEmbedJs(distDir);
   return measureDistChunks(distDir);
 }

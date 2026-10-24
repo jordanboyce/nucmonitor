@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PANEL_CATEGORY_MAP, VARIANT_DEFAULTS, getVariantPanelCategories, getProPanelKeys } from '../src/config/panels';
+import { PANEL_CATEGORY_MAP, VARIANT_DEFAULTS, getVariantPanelCategories } from '../src/config/panels';
 import type { PanelConfig } from '../src/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -87,27 +87,6 @@ describe('getVariantPanelCategories', () => {
     const expected = Object.keys(PANEL_CATEGORY_MAP).filter((k) => keys.includes(k));
     assert.deepEqual(keys, expected);
     assert.equal(keys.length, Object.keys(PANEL_CATEGORY_MAP).length, 'every category applies to nuclear');
-  });
-});
-
-describe('getProPanelKeys (mobile nav PRO chip)', () => {
-  // NucMonitor's catalog carries no premium panel (one partner entitlement
-  // covers the dashboard), so the PRO chip must never light up from it.
-  it('surfaces no premium panel from the nuclear catalog, enabled or not', () => {
-    const enabledDefaults = settings(
-      Object.fromEntries((VARIANT_DEFAULTS['nuclear'] ?? []).map((k: string) => [k, true])),
-    );
-    assert.deepEqual(getProPanelKeys(enabledDefaults, 'nuclear'), []);
-  });
-
-  it('drops unknown keys (custom widgets / MCP panels / retired premium panels)', () => {
-    const result = getProPanelKeys(settings({
-      'cw-abc123': true,
-      'mcp-panel-1': true,
-      'stock-analysis': true,
-      'chat-analyst': true,
-    }), 'nuclear');
-    assert.deepEqual(result, []);
   });
 });
 

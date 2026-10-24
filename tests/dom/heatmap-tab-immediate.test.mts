@@ -251,47 +251,4 @@ describe('Heatmap tab commit (#7775)', () => {
     expect(document.activeElement).toBe(probe);
   });
 
-  it('a queued refresh cannot paint over a lock, including after the timer', () => {
-    populate(true);
-    panel.renderHeatmap(
-      [
-        { symbol: 'XLK', name: 'Locked Technology', change: 2 },
-        { symbol: 'XLE', name: 'Locked Energy', change: 1 },
-      ],
-      BARS,
-    );
-    expect(internals().contentDebounceTimer).not.toBeNull();
-    panel.showLocked(['Heatmap']);
-    expect(content().querySelector('.panel-locked-state')).not.toBeNull();
-
-    vi.advanceTimersByTime(CONTENT_DEBOUNCE_MS * 3);
-
-    expect(content().querySelector('.panel-locked-state')).not.toBeNull();
-    expect(content().querySelector('.heatmap')).toBeNull();
-    expect(content().querySelector('table')).toBeNull();
-    expect(content().textContent).not.toContain('Locked Technology');
-  });
-
-  it('unlock restoration keeps the pre-lock body and ignores a later timer', () => {
-    populate(true);
-    expect(isPerformance()).toBe(true);
-    panel.renderHeatmap(
-      [
-        { symbol: 'XLK', name: 'Post-lock Technology', change: 2 },
-        { symbol: 'XLE', name: 'Post-lock Energy', change: 1 },
-      ],
-      BARS,
-    );
-    panel.showLocked(['Heatmap']);
-    panel.unlockPanel();
-
-    expect(isPerformance()).toBe(true);
-    expect(content().textContent).toContain('Technology');
-    expect(content().textContent).not.toContain('Post-lock Technology');
-
-    vi.advanceTimersByTime(CONTENT_DEBOUNCE_MS * 3);
-    expect(isPerformance()).toBe(true);
-    expect(content().querySelector('.panel-locked-state')).toBeNull();
-    expect(content().textContent).not.toContain('Post-lock Technology');
-  });
 });

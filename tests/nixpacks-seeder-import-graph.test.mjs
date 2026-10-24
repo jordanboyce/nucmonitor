@@ -64,7 +64,8 @@ const services = JSON.parse(readFileSync(join(scriptsDir, 'railway-services.json
 // Floor, not an equality: adding a service must not require touching the
 // guard, but a config/parse regression that silently empties the list must
 // fail loudly rather than vacuously passing 0 services.
-const MIN_SERVICES = 20;
+// 19 after the notification-relay service was removed with the paid tier.
+const MIN_SERVICES = 19;
 
 const scriptsPkg = JSON.parse(readFileSync(join(scriptsDir, 'package.json'), 'utf-8'));
 const installedPackages = new Set(Object.keys(scriptsPkg.dependencies ?? {}));

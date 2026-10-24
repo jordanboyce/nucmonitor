@@ -6,16 +6,9 @@
  */
 import { isMobileDevice } from '@/utils';
 import { markLcpDebug } from '@/utils/lcp-debug';
-import {
-  isLayerToggleAllowed,
-  isLayerEntitled,
-  sanitizeLockedLayers,
-  shouldSanitizeLockedLayers,
-  type RendererKind,
-} from '@/config/map-layer-definitions';
-import { isProTierResolved } from '@/services/widget-store';
+import { LAYER_REGISTRY, type RendererKind } from '@/config/map-layer-definitions';
 import { t } from '@/services/i18n';
-import type { MapComponent, MapComponentOptions } from './Map';
+import type { MapComponent } from './Map';
 import type { DeckGLMap, DeckMapView, CountryClickPayload } from './DeckGLMap';
 import type { GlobeMap } from './GlobeMap';
 import type {
@@ -36,8 +29,6 @@ import type { RadiationObservation } from '@/services/radiation';
 import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
 import type { TrafficAnomaly as ProtoTrafficAnomaly, DdosLocationHit } from '@/generated/client/worldmonitor/infrastructure/v1/service_client';
 import type { DiseaseOutbreakItem } from '@/services/disease-outbreaks';
-import { getAuthState } from '@/services/auth-state';
-import { hasPremiumAccess } from '@/services/panel-gating';
 
 export type TimeRange = '1h' | '6h' | '24h' | '48h' | '7d' | 'all';
 export type MapView = 'global' | 'america' | 'mena' | 'eu' | 'asia' | 'latam' | 'africa' | 'oceania';
@@ -87,7 +78,6 @@ export interface MapContainerOptions {
   chrome?: boolean;
   mapLibreWorkerUrl?: string;
   preferDesktopRenderer?: boolean;
-  isFreeTierFallbackActive?: () => boolean;
 }
 
 export type ViewportTransitionFailureReason =
@@ -130,8 +120,6 @@ export class MapContainer {
   private useGlobe: boolean;
   private readonly chrome: boolean;
   private readonly mapLibreWorkerUrl: string | undefined;
-  private readonly svgLayerToggleGuard: NonNullable<MapComponentOptions['canToggleLayer']>;
-  private readonly isFreeTierFallbackActive: (() => boolean) | null;
   private isResizingInternal = false;
   private resizeObserver: ResizeObserver | null = null;
   private rendererDemandCleanup: (() => void) | null = null;
@@ -187,12 +175,6 @@ export class MapContainer {
     this.initialState = initialState;
     this.chrome = options.chrome ?? true;
     this.mapLibreWorkerUrl = options.mapLibreWorkerUrl;
-    this.svgLayerToggleGuard = (layer, currentlyEnabled) => isLayerToggleAllowed(
-      layer,
-      currentlyEnabled === true,
-      hasPremiumAccess(getAuthState()),
-    );
-    this.isFreeTierFallbackActive = options.isFreeTierFallbackActive ?? null;
     this.isMobile = isMobileDevice();
     this.preferDesktopRenderer = options.preferDesktopRenderer ?? false;
     this.useGlobe = preferGlobe && this.hasGlobeSupport();
@@ -487,7 +469,6 @@ export class MapContainer {
     this.svgMap = new MapComponent(this.container, this.initialState, {
       chrome: this.chrome,
       isMobile: this.isMobile,
-      canToggleLayer: this.svgLayerToggleGuard,
     });
     // The SVG renderer takes zoom/pan literally; apply the regional preset when
     // the caller asked for a region but left the camera at its untouched default.
@@ -894,20 +875,10 @@ export class MapContainer {
     return this.svgMap?.getTimeRange() ?? this.initialState.timeRange;
   }
 
-  public setLayers(layers: MapLayers, options: { bypassEntitlementSanitization?: boolean } = {}): void {
-    // Strip locked premium layers for settled free users (#6045).
-    // Wait for isProTierResolved so Pro users don't lose premium layers during Clerk/Convex boot.
-    let sanitized = layers;
-    if (!options.bypassEntitlementSanitization && shouldSanitizeLockedLayers(
-      hasPremiumAccess(getAuthState()),
-      isProTierResolved(),
-      this.isFreeTierFallbackActive?.() === true,
-    )) {
-      sanitized = sanitizeLockedLayers(sanitized, false);
-    }
-    this.initialState = { ...this.initialState, layers: sanitized };
-    if (this.useGlobe) { this.globeMap?.setLayers(sanitized); return; }
-    if (this.useDeckGL) { this.deckGLMap?.setLayers(sanitized); } else { this.svgMap?.setLayers(sanitized); }
+  public setLayers(layers: MapLayers): void {
+    this.initialState = { ...this.initialState, layers };
+    if (this.useGlobe) { this.globeMap?.setLayers(layers); return; }
+    if (this.useDeckGL) { this.deckGLMap?.setLayers(layers); } else { this.svgMap?.setLayers(layers); }
   }
 
   public getState(): MapContainerState {
@@ -1109,8 +1080,7 @@ export class MapContainer {
 
   // Layer enable/disable and trigger methods
   public enableLayer(layer: keyof MapLayers): void {
-    // #6045 — don't stamp initialState or enable locked premium layers for free users.
-    if (!isLayerEntitled(layer, hasPremiumAccess(getAuthState()))) return;
+    if (!LAYER_REGISTRY[layer]) return;
     this.initialState = {
       ...this.initialState,
       layers: { ...this.initialState.layers, [layer]: true },

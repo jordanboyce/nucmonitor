@@ -524,9 +524,8 @@ Followed-country personalisation is a soft within-lane lift. The nominal
 `FOLLOWED_BIAS_MULTIPLIER` is `1.25` and is env-tunable between `1` and `2`,
 but the live list mechanism is a stable severity-lane sort: a followed-country
 story can move ahead of non-followed stories inside the same severity lane, and
-never promotes a lower-severity story above a higher-severity one. Free-tier
-readers can follow up to `3` countries; PRO readers can keep a larger followed
-set. If the followed-country relay is unavailable, the brief falls back to the
+never promotes a lower-severity story above a higher-severity one. If the
+followed-country relay is unavailable, the brief falls back to the
 unbiased ordering rather than treating the missing list as ground truth.
 
 The `happy` variant is intentionally different from intelligence briefs. It

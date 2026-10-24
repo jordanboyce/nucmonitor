@@ -308,24 +308,6 @@ function findCheckoutRoot(startDir) {
  * the test-runtime guard and the checkout scoping, which is exactly how #5767
  * survived in two files.
  */
-/**
- * Resolve the Convex HTTP-actions origin from an env bag.
- *
- * `CONVEX_URL` is the client/websocket origin (`*.convex.cloud`); HTTP actions
- * — every `/relay/*` route — are served from the sibling `*.convex.site`. The
- * mapping is a one-line string swap, but it is a one-line string swap that
- * three callers were each carrying their own copy of, and a caller that gets
- * it wrong silently POSTs to a host that does not route the request.
- * Returns '' when neither variable is set, so callers can report what is
- * missing rather than building a URL against `undefined`.
- *
- * @param {Record<string, string | undefined>} env
- */
-export function resolveConvexSiteUrl(env) {
-  const raw = env.CONVEX_SITE_URL || (env.CONVEX_URL ?? '').replace('.convex.cloud', '.convex.site');
-  return raw ? raw.replace(/\/+$/, '') : '';
-}
-
 // The commit a seeder was deployed from: Railway, then Vercel, then Actions.
 export function getDeployRevision(env = process.env) {
   return env.RAILWAY_GIT_COMMIT_SHA || env.VERCEL_GIT_COMMIT_SHA || env.GITHUB_SHA || '';
@@ -1000,8 +982,8 @@ export function isRetryableHttpStatus(status) {
  *     Clamping is legitimate: the server's hint may be conservative, so an
  *     earlier retry can still succeed.
  *   - `capMs` — also a ceiling, plus "when <= 0 there is no time left at all,
- *     so stop". Kept exactly as-is: scripts/_seed-history.mjs passes a fixed
- *     `RELAY_RETRY_AFTER_CAP_MS` here, so it is NOT a remaining-budget signal.
+ *     so stop". Kept exactly as-is: a caller may pass a fixed ceiling
+ *     (e.g. 10s) here, so it is NOT a remaining-budget signal.
  *   - `remainingBudgetMs` (#6110) — the wall clock the caller actually has
  *     left. This one can produce a VERDICT, not just a clamp: if the server's
  *     own hint meets or exceeds it, no retry inside this run can succeed, so

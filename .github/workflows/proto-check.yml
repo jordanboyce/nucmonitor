@@ -23,7 +23,6 @@ env:
     scripts/generate-request-validation.mjs
     scripts/lib/main-module.mjs
     scripts/lib/openapi-codegen.mjs
-    scripts/openapi-inject-billing-verification.mjs
     scripts/openapi-inject-deprecated.mjs
     scripts/openapi-inject-examples.mjs
     scripts/openapi-inject-idempotency.mjs
@@ -36,23 +35,18 @@ env:
     scripts/shared/giving-published-estimate-claims.json
     scripts/shared/iso2-to-region.json
     server/_shared/api-key-rate-limit.ts
-    server/_shared/auth-session.ts
     server/_shared/bounded-jmespath.ts
     server/_shared/bounded-json.ts
     server/_shared/cache-contract.ts
     server/_shared/client-ip.ts
     server/_shared/deprecation-policy.ts
     server/_shared/direct-llm-quota.ts
-    server/_shared/entitlement-check.ts
-    server/_shared/entitlement-coverage.ts
     server/_shared/high-usage-alarm.ts
     server/_shared/idempotency.ts
     server/_shared/internal-auth.ts
-    server/_shared/mcp-internal-hmac.ts
-    server/_shared/pro-mcp-gate.ts
-    server/_shared/pro-mcp-token.ts
     server/_shared/rate-limit.ts
     server/_shared/redis.ts
+    server/_shared/request-canonical.ts
     server/_shared/response-headers.ts
     server/_shared/response-projection.ts
     server/_shared/seed-envelope.ts
@@ -76,7 +70,6 @@ env:
     shared/decision-signal-provenance-contract.ts
     shared/decision-signal-provenance-families.ts
     shared/decision-signal-provenance.ts
-    shared/embed-access.ts
     shared/embed-panels.ts
     shared/event-triggers.json
     shared/iso2-to-iso3.json
@@ -86,8 +79,6 @@ env:
     shared/telegram-channel-trust.ts
     shared/x-account-source-tiers.json
     shared/x-account-trust.ts
-    src/shared/premium-paths.ts
-    src/shared/pro-fresh-rpc.ts
     src/shared/public-rpc-cache.ts
   GENERATED_PATHS: >-
     src/generated/

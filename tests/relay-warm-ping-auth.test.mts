@@ -92,7 +92,7 @@ describe('relay warm-ping auth wiring (source guardrail)', () => {
     );
   });
 
-  it('uses timingSafeEqual (no direct equality) and is wired into both gates', async () => {
+  it('uses timingSafeEqual (no direct equality) and is wired into the key check', async () => {
     const src = await readFile(new URL('../server/gateway.ts', import.meta.url), 'utf8');
     // verifier uses the timing-safe comparator against the env secret + header
     assert.match(src, /isRelayWarmPingRequest/);
@@ -100,8 +100,6 @@ describe('relay warm-ping auth wiring (source guardrail)', () => {
     assert.match(src, /timingSafeEqual\(candidate, expected\)/);
     assert.doesNotMatch(src, /candidate\s*===?\s*expected/, 'relay key compare must be timing-safe, not direct equality');
     // key-check bypass includes relayWarmPingVerified
-    assert.match(src, /seedRefreshVerified \|\| relayWarmPingVerified\b/);
-    // entitlement skip excludes verified relay warm-pings
-    assert.match(src, /!seedRefreshVerified && !relayWarmPingVerified/);
+    assert.match(src, /isPublicNoAuthRpc \|\| relayWarmPingVerified\b/);
   });
 });

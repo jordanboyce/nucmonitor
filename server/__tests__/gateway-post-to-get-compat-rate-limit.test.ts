@@ -13,26 +13,9 @@ vi.mock("../_shared/rate-limit", async (importOriginal) => {
   };
 });
 
-const checkEntitlementDetailed = vi.fn().mockResolvedValue({ response: null, entitlements: null });
-const getEntitlements = vi.fn().mockResolvedValue(null);
-vi.mock("../_shared/entitlement-check", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../_shared/entitlement-check")>();
-  return {
-    ...actual,
-    checkEntitlementDetailed: (...a: unknown[]) => checkEntitlementDetailed(...a),
-    getEntitlements: (...a: unknown[]) => getEntitlements(...a),
-  };
-});
-
-const resolveClerkSession = vi.fn();
-vi.mock("../_shared/auth-session", () => ({
-  resolveClerkSession: (...a: unknown[]) => resolveClerkSession(...a),
-}));
-
 const validateApiKey = vi.fn();
 vi.mock("../../api/_api-key.js", async (importOriginal) => ({
   ...await importOriginal<Record<string, unknown>>(),
-  USER_API_KEY_GATEWAY_VALIDATION_ERROR: "User API key requires gateway validation",
   validateApiKey: (...a: unknown[]) => validateApiKey(...a),
 }));
 
@@ -92,9 +75,6 @@ function lastLimitedRequest(): Request {
 beforeEach(() => {
   checkEndpointRateLimit.mockReset().mockResolvedValue(null);
   checkRateLimit.mockReset().mockResolvedValue(null);
-  checkEntitlementDetailed.mockReset().mockResolvedValue({ response: null, entitlements: null });
-  getEntitlements.mockReset().mockResolvedValue(null);
-  resolveClerkSession.mockReset().mockResolvedValue(null);
   validateApiKey.mockReset().mockResolvedValue({
     valid: true,
     required: false,

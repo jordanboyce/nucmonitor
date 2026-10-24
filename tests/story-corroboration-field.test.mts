@@ -2,15 +2,12 @@
 // the story's track row, so the digest cron renders the same verdict the
 // dashboard showed instead of recomputing it.
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { describe, it } from 'node:test';
 
 import { assessCorroboration, evidenceFromCluster } from '../server/_shared/corroboration';
 import { STORY_CORROBORATION_FIELD, storyLabel } from '../server/_shared/label-history.ts';
 import { __testing__ } from '../server/worldmonitor/news/v1/list-feed-digest';
 
-const require = createRequire(import.meta.url);
-const { parseCorroboration } = require('../scripts/lib/corroboration-text.cjs');
 
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
@@ -72,7 +69,8 @@ describe('storyCorroborationByHash', () => {
 
     for (const [hash, encoded] of byHash) {
       const label = storyLabel(servable.filter((candidate) => candidate.titleHash === hash) as never);
-      assert.deepEqual(parseCorroboration(encoded), { state: label.state, publishers: label.publishers });
+      const [state, publishers] = encoded.split('|');
+      assert.deepEqual({ state, publishers: Number(publishers) }, { state: label.state, publishers: label.publishers });
     }
   });
 

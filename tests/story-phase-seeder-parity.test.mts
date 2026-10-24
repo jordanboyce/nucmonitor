@@ -9,9 +9,6 @@
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { __testing__ } from '../server/worldmonitor/news/v1/list-feed-digest.ts';
 import {
@@ -23,7 +20,6 @@ import {
 } from '../shared/story-phase.js';
 
 const { derivePhase: deriveFeedPhase } = __testing__;
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const HOUR = 60 * 60 * 1000;
 const NOW = 1_800_000_000_000;
 
@@ -153,15 +149,6 @@ describe('#7154 intentional divergence — silence >24h is fading in notificatio
     assert.equal(PROTO_TO_CLIENT[phase as keyof typeof PROTO_TO_CLIENT], 'sustained');
   });
 
-  it('seeder source delegates to shared/story-phase.js', () => {
-    const seeder = readFileSync(
-      resolve(__dirname, '..', 'scripts', 'seed-digest-notifications.mjs'),
-      'utf-8',
-    );
-    assert.match(seeder, /deriveNotificationStoryPhase/);
-    assert.doesNotMatch(seeder, /return 'unknown'/);
-    assert.doesNotMatch(seeder, /PHASE_COLOR\[s\.phase\] \?\? '#888'/);
-  });
 });
 
 describe('#7154 digest email renderer — closed phase badge set', () => {

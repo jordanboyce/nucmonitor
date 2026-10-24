@@ -123,7 +123,7 @@ for (const url of ENDPOINTS) {
       `Vary header must include Origin so caches key on origin; got: ${resp.headers.get('vary')}`,
     );
     const acah = resp.headers.get('access-control-allow-headers') || '';
-    for (const required of ['Authorization', 'X-WorldMonitor-Key', 'X-Api-Key', 'X-Pro-Key', 'X-Widget-Key']) {
+    for (const required of ['Authorization', 'X-WorldMonitor-Key', 'X-Api-Key']) {
       assert.ok(
         acah.toLowerCase().includes(required.toLowerCase()),
         `ACAH must include ${required}; got: ${acah}`,

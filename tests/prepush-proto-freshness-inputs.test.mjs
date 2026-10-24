@@ -124,9 +124,7 @@ function makeProtoInputRepo() {
   write('docs/api/worldmonitor.openapi.yaml', 'openapi: 3.1.0\n');
   write('shared/openapi-filter-param-contracts.json', '{}\n');
   write('server/gateway.ts', 'export const PUBLIC_NO_AUTH_RPC_PATHS = new Set<string>();\n');
-  write('server/_shared/entitlement-check.ts', 'export const ENDPOINT_ENTITLEMENTS = new Map<string, number>();\n');
   write('server/_shared/idempotency.ts', 'export const IDEMPOTENCY_EXEMPT_RPC_PATHS = new Set<string>();\n');
-  write('src/shared/premium-paths.ts', 'export const PREMIUM_RPC_PATHS = new Set<string>();\n');
   git(['add', '-A']);
   git(['commit', '--quiet', '-m', 'base']);
   const cache = join(root, '.git', 'wm-prepush-gate-cache');

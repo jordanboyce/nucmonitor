@@ -726,6 +726,7 @@
     "entry": "scripts/seed-grid-alerts.mjs",
     "deployMode": "nixpacks-root-scripts",
     "service": "seed-grid-alerts",
+    "lifecycle": "planned",
     "requiredEnv": [
       "UPSTASH_REDIS_REST_URL",
       "UPSTASH_REDIS_REST_TOKEN"

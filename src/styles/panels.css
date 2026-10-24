@@ -3898,11 +3898,11 @@ a.hub-top-story {
 /* Narrow cells (mobile, single-column fallback; class set by GridAlertsPanel
    from a ResizeObserver): stack the region row into two lines. */
 .ga-narrow .ga-region-head { display: none; }
-.ga-narrow .ga-region-row { grid-template-columns: 1fr auto; grid-template-areas: 'name status' 'demand impact'; row-gap: 4px; }
-.ga-narrow .ga-region-name { grid-area: name; }
-.ga-narrow .ga-status { grid-area: status; justify-self: end; }
-.ga-narrow .ga-region-demand { grid-area: demand; }
-.ga-narrow .ga-impact { grid-area: impact; min-width: 110px; }
+.ga-narrow .ga-region-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+.ga-narrow .ga-region-name { grid-column: 1; grid-row: 1; }
+.ga-narrow .ga-status { grid-column: 2; grid-row: 1; justify-self: end; }
+.ga-narrow .ga-region-demand { grid-column: 1; grid-row: 2; }
+.ga-narrow .ga-impact { grid-column: 2; grid-row: 2; min-width: 110px; }
 .ga-narrow .ga-matrix-head { font-size: calc(8px * var(--wm-panel-effective-scale, 1)); }
 .ga-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: calc(11px * var(--wm-panel-effective-scale, 1)); color: var(--text-secondary, #9aa4b2); }
 .ga-summary-age { margin-left: auto; opacity: 0.7; }

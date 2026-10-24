@@ -103,6 +103,7 @@ const PANEL_CLUSTER: Record<string, PanelChunkName> = {
   Market: 'panels-markets',
   // News / feeds
   ClimateNews: 'panels-news',
+  CustomFeed: 'panels-news',
   News: 'panels-news',
   // Monitors
   Monitor: 'panels-intel',

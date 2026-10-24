@@ -4,6 +4,7 @@ import { checkRateLimit } from './_rate-limit.js';
 import { getRelayBaseUrl, getRelayHeaders } from './_relay.js';
 import { relayFailureLevel } from './_relay-failure-level.js';
 import { isAllowedDomain, hostMatchForms } from './_rss-allowed-domain-match.js';
+import { isPublicFeedUrl, looksLikeFeedXml } from './_public-feed-host.js';
 import { RSS_BROWSER_UA, rssFetchHeadersForHost } from './_rss-fetch-headers.js';
 import { jsonResponse } from './_json-response.js';
 import { captureSilentError } from './_sentry-edge.js';
@@ -229,8 +230,10 @@ function assertHttpProtocol(url, message = 'URL protocol not allowed', status = 
   }
 }
 
-function assertAllowedRedirect(url) {
+function assertAllowedRedirect(url, customMode = false) {
   assertHttpProtocol(url, 'Redirect protocol not allowed', 403);
+  // A custom feed may redirect to any public host, never to a private one.
+  if (customMode && isPublicFeedUrl(url)) return;
   // Apply the same www-normalization as the initial domain check so that
   // canonical redirects (e.g. apex -> www) are not incorrectly rejected when
   // only one form is in the allowlist.
@@ -281,13 +284,24 @@ export default async function handler(req, ctx) {
     return jsonResponse({ error: 'Invalid url parameter' }, 400, corsHeaders);
   }
 
+  let customMode = false;
   try {
     assertHttpProtocol(parsedUrl);
 
     // Security: Check if domain is allowed (normalize www prefix)
     const hostname = parsedUrl.hostname;
+    // `custom=1` marks a viewer-added feed (src/services/custom-feeds.ts).
+    // Those cannot be on the fixed allowlist, so they may name any public
+    // host instead; customMode then skips the relay (which only serves the
+    // allowlist) and refuses any body that is not a feed document.
+    customMode = requestUrl.searchParams.get('custom') === '1'
+      && !isAllowedDomain(hostname);
     // The allowlist names hosts, not services: only their default ports.
-    if (!isAllowedDomain(hostname) || parsedUrl.port !== '') {
+    if (customMode) {
+      if (!isPublicFeedUrl(parsedUrl)) {
+        return jsonResponse({ error: 'Host not allowed for custom feeds' }, 403, corsHeaders);
+      }
+    } else if (!isAllowedDomain(hostname) || parsedUrl.port !== '') {
       return jsonResponse({ error: 'Domain not allowed' }, 403, corsHeaders);
     }
 
@@ -295,7 +309,7 @@ export default async function handler(req, ctx) {
     // a host allowed via its apex form must still route to the relay when only
     // its www. form is registered (and vice versa), otherwise it falls through
     // to a direct Vercel-edge fetch these hosts block.
-    const isRelayOnly = hostMatchForms(hostname).some((form) => RELAY_ONLY_DOMAINS.has(form));
+    const isRelayOnly = !customMode && hostMatchForms(hostname).some((form) => RELAY_ONLY_DOMAINS.has(form));
 
     // Google News is slow - use longer timeout
     const isGoogleNews = isGoogleNewsFeedUrl(feedUrl);
@@ -324,7 +338,7 @@ export default async function handler(req, ctx) {
         }
 
         const redirectUrl = new URL(location, currentUrl.href);
-        assertAllowedRedirect(redirectUrl);
+        assertAllowedRedirect(redirectUrl, customMode);
         currentUrl = redirectUrl;
       }
     };
@@ -337,6 +351,11 @@ export default async function handler(req, ctx) {
       response = await fetchViaRailway(feedUrl, timeout);
       usedRelay = !!response;
       if (!response) throw new Error(`Railway relay unavailable for relay-only domain: ${hostname}`);
+    } else if (customMode) {
+      response = await fetchDirect();
+      if (response.ok && !looksLikeFeedXml(response.data)) {
+        return jsonResponse({ error: 'Not an RSS or Atom feed' }, 422, corsHeaders);
+      }
     } else {
       try {
         response = await fetchDirect();
@@ -424,7 +443,9 @@ export default async function handler(req, ctx) {
     // Skip Sentry capture on timeout — Sentry would drown in transient
     // upstream-feed timeouts which are routine. Only surface "real" errors.
     // Dropped connections use warning (relayFailureLevel); refuse/DNS stay error.
-    if (!isTimeout) {
+    // Viewer-added feeds fail for reasons only their owner can fix (typos,
+    // dead sites), so they never page either.
+    if (!isTimeout && !customMode) {
       captureSilentError(error, {
         tags: { route: 'api/rss-proxy', step: 'fetch', feed: feedUrl },
         fingerprint: rssProxyErrorFingerprint('fetch', error),

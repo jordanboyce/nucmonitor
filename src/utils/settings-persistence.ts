@@ -36,6 +36,8 @@ const SETTINGS_KEYS: readonly string[] = [
   'map-pinned',
   'mobile-map-collapsed',
   'positive-threshold',
+  // Custom panels and their feed URLs (src/services/custom-feeds.ts).
+  'nucmonitor-custom-feed-panels',
 ];
 
 // Dashboard tabs are stored per variant (`worldmonitor-tabs-v1:<variant>`,

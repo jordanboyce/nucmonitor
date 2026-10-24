@@ -9,6 +9,7 @@ export type UnifiedSettingsTabId =
   | 'billing'
   | 'panels'
   | 'sources'
+  | 'custom'
   | 'notifications'
   | 'api-keys'
   | 'embeds';

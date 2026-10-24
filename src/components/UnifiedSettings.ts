@@ -30,6 +30,8 @@ import { escapeHtml } from '@/utils/sanitize';
 import { safeStorageRemove, safeStorageSet } from '@/utils/safe-storage';
 import type { PanelConfig } from '@/types';
 import { renderPreferences } from '@/services/preferences-content';
+import { renderCustomFeedsSettings } from '@/components/CustomFeedsSettings';
+import { isCustomFeedPanelId } from '@/services/custom-feeds';
 import { renderNotificationsSettings, type NotificationsSettingsResult } from '@/services/notifications-settings';
 import { getAuthState, subscribeAuthState } from '@/services/auth-state';
 import { signOut } from '@/services/clerk';
@@ -673,6 +675,7 @@ export class UnifiedSettings {
     this.pendingNotifs = null;
 
     const isSignedIn = getAuthState().user !== null;
+    const customFeeds = renderCustomFeedsSettings();
     const prefs = renderPreferences({
       isDesktopApp: this.config.isDesktopApp,
       onMapProviderChange: this.config.onMapProviderChange,
@@ -694,6 +697,7 @@ export class UnifiedSettings {
       ...(isSignedIn ? ['billing' as const] : []),
       'panels',
       'sources',
+      'custom',
       ...(showNotificationsTab ? ['notifications' as const] : []),
       'api-keys',
       ...(showEmbedsTab ? ['embeds' as const] : []),
@@ -712,6 +716,7 @@ export class UnifiedSettings {
           ${isSignedIn ? `<button class="${tabClass('billing')}" tabindex="${this.activeTab === 'billing' ? 0 : -1}" data-tab="billing" role="tab" aria-selected="${this.activeTab === 'billing'}" id="us-tab-billing" aria-controls="us-tab-panel-billing">Account</button>` : ''}
           <button class="${tabClass('panels')}" tabindex="${this.activeTab === 'panels' ? 0 : -1}" data-tab="panels" role="tab" aria-selected="${this.activeTab === 'panels'}" id="us-tab-panels" aria-controls="us-tab-panel-panels">${t('header.tabPanels')}</button>
           <button class="${tabClass('sources')}" tabindex="${this.activeTab === 'sources' ? 0 : -1}" data-tab="sources" role="tab" aria-selected="${this.activeTab === 'sources'}" id="us-tab-sources" aria-controls="us-tab-panel-sources">${t('header.tabSources')}</button>
+          <button class="${tabClass('custom')}" tabindex="${this.activeTab === 'custom' ? 0 : -1}" data-tab="custom" role="tab" aria-selected="${this.activeTab === 'custom'}" id="us-tab-custom" aria-controls="us-tab-panel-custom">${t('header.tabCustom')}</button>
           ${showNotificationsTab ? `<button class="${tabClass('notifications')}" tabindex="${this.activeTab === 'notifications' ? 0 : -1}" data-tab="notifications" role="tab" aria-selected="${this.activeTab === 'notifications'}" id="us-tab-notifications" aria-controls="us-tab-panel-notifications">${t('header.tabNotifications')}</button>` : ''}
           <button class="${tabClass('api-keys')}" tabindex="${this.activeTab === 'api-keys' ? 0 : -1}" data-tab="api-keys" role="tab" aria-selected="${this.activeTab === 'api-keys'}" id="us-tab-api-keys" aria-controls="us-tab-panel-api-keys">API Keys <span class="panel-pro-badge">PRO</span></button>
           ${showEmbedsTab ? `<button class="${tabClass('embeds')}" tabindex="${this.activeTab === 'embeds' ? 0 : -1}" data-tab="embeds" role="tab" aria-selected="${this.activeTab === 'embeds'}" id="us-tab-embeds" aria-controls="us-tab-panel-embeds">Embeds <span class="panel-pro-badge">PRO</span></button>` : ''}
@@ -757,6 +762,9 @@ export class UnifiedSettings {
             <button class="sources-select-none">${t('common.selectNone')}</button>
           </div>
         </div>
+        <div class="unified-settings-tab-panel${this.activeTab === 'custom' ? ' active' : ''}" data-panel-id="custom" id="us-tab-panel-custom" role="tabpanel" aria-labelledby="us-tab-custom">
+          ${customFeeds.html}
+        </div>
         ${notifs ? `
         <div class="unified-settings-tab-panel${this.activeTab === 'notifications' ? ' active' : ''}" data-panel-id="notifications" id="us-tab-panel-notifications" role="tabpanel" aria-labelledby="us-tab-notifications">
           ${notifs.html}
@@ -775,9 +783,14 @@ export class UnifiedSettings {
     `, "legacy direct innerHTML migration"));
 
     const settingsPanel = this.overlay.querySelector('#us-tab-panel-settings');
-    if (settingsPanel) {
-      this.prefsCleanup = prefs.attach(settingsPanel as HTMLElement);
-    }
+    const detachPrefs = settingsPanel ? prefs.attach(settingsPanel as HTMLElement) : null;
+    const customPanel = this.overlay.querySelector<HTMLElement>('#us-tab-panel-custom');
+    const detachCustomFeeds = customPanel ? customFeeds.attach(customPanel) : null;
+    // One cleanup slot for both: every teardown path already clears it.
+    this.prefsCleanup = () => {
+      detachPrefs?.();
+      detachCustomFeeds?.();
+    };
 
     // Defer notifications attach until the tab is first activated —
     // otherwise Pro users pay a getChannelsData() fetch on every modal
@@ -1041,7 +1054,9 @@ export class UnifiedSettings {
     const panelSettings = this.draftPanelSettings;
     let entries = Object.entries(panelSettings)
       .filter(([key]) => key !== 'runtime-config' || this.config.isDesktopApp)
-      .filter(([key]) => !key.startsWith('cw-'));
+      // Custom feed panels (Settings → Custom) stay listed so a closed one can
+      // be shown again; other runtime cw-* entries are hidden.
+      .filter(([key]) => !key.startsWith('cw-') || isCustomFeedPanelId(key));
 
     if (this.activePanelCategory !== 'all') {
       const catDef = PANEL_CATEGORY_MAP[this.activePanelCategory];

@@ -100,6 +100,13 @@ import { loadPanelCollapsed, loadPanelColSpans, loadPanelSpans } from '@/utils/p
 import { registerSettingsExportFlush } from '@/utils/settings-persistence';
 import { measure, mutate } from '@/utils/layout-batch';
 import { applyPanelFontScale } from '@/services/font-scale-settings';
+import {
+  isCustomFeedPanelId,
+  loadCustomFeedPanels,
+  onCustomFeedPanelsChanged,
+  type CustomFeedPanelSpec,
+} from '@/services/custom-feeds';
+import type { UnifiedSettingsTabId } from '@/components/settings-types';
 import { movePanelToKeyboardZone } from '@/app/panel-keyboard-reorder';
 
 /**
@@ -328,6 +335,11 @@ export class PanelLayoutManager implements AppModule {
   private observedHydrationPanels = new WeakSet<Panel>();
   private initiallyMountedEnabledPanelCount = 0;
   private resolvedPanelOrder: string[] = [];
+  private unsubscribeCustomFeeds: (() => void) | null = null;
+  private readonly onOpenSettingsRequest = (event: Event): void => {
+    const tab = (event as CustomEvent<{ tab?: UnifiedSettingsTabId }>).detail?.tab;
+    this.ctx.unifiedSettings?.open(tab);
+  };
   private bottomSetMemory: Set<string> = new Set();
   private mobilePanelNav: MobilePanelNav | null = null;
   private mobileMapCollapseBtn: HTMLButtonElement | null = null;
@@ -403,6 +415,10 @@ export class PanelLayoutManager implements AppModule {
       this.updatePanelGating(getAuthState());
     });
 
+    // Custom panels (Settings → Custom) appear, rename and disappear live.
+    this.unsubscribeCustomFeeds = onCustomFeedPanelsChanged(() => this.syncCustomFeedPanels());
+    window.addEventListener('nucmonitor:open-settings', this.onOpenSettingsRequest);
+
     // Passkey offer: subscribes to auth and evaluates on a genuine sign-in.
     // Registered after the Pro controller so the activation interstitial —
     // which is a focus trap — wins the crowded post-sign-in moment; the offer
@@ -412,6 +428,9 @@ export class PanelLayoutManager implements AppModule {
 
   destroy(): void {
     clearAllPendingCalls();
+    this.unsubscribeCustomFeeds?.();
+    this.unsubscribeCustomFeeds = null;
+    window.removeEventListener('nucmonitor:open-settings', this.onOpenSettingsRequest);
     this.applyTimeRangeFilterDebounced.cancel();
     this.unsubscribeRuntimeConfig?.();
     this.unsubscribeRuntimeConfig = null;
@@ -2097,6 +2116,11 @@ export class PanelLayoutManager implements AppModule {
       this.lazyImportedPanel('runtime-config', () => import('@/components/RuntimeConfigPanel'), 'RuntimeConfigPanel', (RuntimeConfigPanel) => new RuntimeConfigPanel({ mode: 'alert' }));
     }
 
+    for (const spec of loadCustomFeedPanels()) {
+      this.ensureCustomFeedPanelSetting(spec);
+      this.registerCustomFeedPanel(spec);
+    }
+
     const variantOrder = (VARIANT_DEFAULTS[SITE_VARIANT] ?? []).filter(k => k !== 'map');
     const activePanelSet = new Set(Object.keys(this.ctx.panelSettings));
     const crossVariantKeys = Object.keys(this.ctx.panelSettings).filter(k => !variantOrder.includes(k) && k !== 'map');
@@ -2579,6 +2603,81 @@ export class PanelLayoutManager implements AppModule {
     const mapSection = document.getElementById('mapSection');
     const mapEnabled = !mapSection?.classList.contains('hidden');
     return window.innerWidth >= this.getUltraWideMinWidth() && mapEnabled;
+  }
+
+  private ensureCustomFeedPanelSetting(spec: CustomFeedPanelSpec): boolean {
+    const existing = this.ctx.panelSettings[spec.id];
+    if (existing && existing.name === spec.title) return false;
+    this.ctx.panelSettings[spec.id] = existing
+      ? { ...existing, name: spec.title }
+      : { name: spec.title, enabled: true, priority: 3 };
+    return true;
+  }
+
+  private registerCustomFeedPanel(spec: CustomFeedPanelSpec): void {
+    this.lazyPanel(spec.id, () =>
+      this.importPanel(
+        spec.id,
+        () => import('@/components/CustomFeedPanel'),
+        'CustomFeedPanel',
+        (CustomFeedPanel) => new CustomFeedPanel(spec),
+      ),
+    );
+  }
+
+  private removeCustomFeedPanel(key: string): void {
+    const deferred = this.deferredPanelMounts.get(key);
+    if (deferred) {
+      deferred.observer?.disconnect();
+      if (deferred.retryTimer !== null) clearTimeout(deferred.retryTimer);
+      deferred.placeholder?.remove();
+      this.deferredPanelMounts.delete(key);
+    }
+    this.lazyPanelRegistrations.delete(key);
+    const panel = this.ctx.panels[key];
+    if (panel) {
+      panel.getElement().remove();
+      try {
+        panel.destroy();
+      } catch (err) {
+        console.error('[panel] destroy() threw while removing a custom panel', err);
+      }
+      delete this.ctx.panels[key];
+    }
+    delete this.ctx.panelSettings[key];
+    this.resolvedPanelOrder = this.resolvedPanelOrder.filter((k) => k !== key);
+  }
+
+  /** Reconcile the dashboard with the stored custom panels after an edit. */
+  private syncCustomFeedPanels(): void {
+    if (this.ctx.isDestroyed) return;
+    const specs = loadCustomFeedPanels();
+    const ids = new Set(specs.map((spec) => spec.id));
+    let changed = false;
+    for (const key of Object.keys(this.ctx.panelSettings)) {
+      if (isCustomFeedPanelId(key) && !ids.has(key)) {
+        this.removeCustomFeedPanel(key);
+        changed = true;
+      }
+    }
+    const grid = document.getElementById('panelsGrid');
+    for (const spec of specs) {
+      const isNew = !this.ctx.panelSettings[spec.id];
+      if (this.ensureCustomFeedPanelSetting(spec)) changed = true;
+      if (!isNew || !grid) continue;
+      this.registerCustomFeedPanel(spec);
+      this.resolvedPanelOrder.push(spec.id);
+      this.insertInitialPanelByKey(grid, spec.id);
+      this.mountDeferredPanel(spec.id);
+      // Keep the "+ Add panel" tile last.
+      const addBlock = grid.querySelector('.add-panel-block');
+      if (addBlock) grid.appendChild(addBlock);
+    }
+    if (!changed) return;
+    saveToStorage(STORAGE_KEYS.panels, this.ctx.panelSettings);
+    this.savePanelOrder();
+    this.mobilePanelNav?.refresh();
+    this.ctx.unifiedSettings?.refreshPanelToggles();
   }
 
   private insertByOrder(grid: HTMLElement, el: HTMLElement, key: string): void {

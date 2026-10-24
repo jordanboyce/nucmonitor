@@ -9,7 +9,7 @@
  */
 import { loadFromStorage, saveToStorage } from '@/utils';
 import { fetchWithProxy } from '@/utils/proxy';
-import { parseFeedDate } from './feed-date';
+import { effectivePubDateMs, parseFeedDate } from './feed-date';
 import type { NewsItem } from '@/types';
 
 export const CUSTOM_FEED_PANELS_STORAGE_KEY = 'nucmonitor-custom-feed-panels';
@@ -323,9 +323,7 @@ export async function fetchCustomFeedPanelItems(spec: CustomFeedPanelSpec, signa
     if (result.status === 'fulfilled') items.push(...result.value);
     else failed.push(spec.sources[index]!);
   });
-  items.sort((a, b) => {
-    if (Boolean(a.pubDateMissing) !== Boolean(b.pubDateMissing)) return a.pubDateMissing ? 1 : -1;
-    return b.pubDate.getTime() - a.pubDate.getTime();
-  });
+  // Undated items rank as 0 and sink below every dated one.
+  items.sort((a, b) => effectivePubDateMs(b) - effectivePubDateMs(a));
   return { items: items.slice(0, CUSTOM_FEED_ITEMS_PER_PANEL), failed };
 }

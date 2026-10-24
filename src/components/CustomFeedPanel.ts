@@ -8,13 +8,15 @@ import {
   onCustomFeedPanelsChanged,
   type CustomFeedPanelSpec,
 } from '@/services/custom-feeds';
+import { effectivePubDateMs } from '@/services/feed-date';
 import type { NewsItem } from '@/types';
 
 const REFRESH_INTERVAL_MS = 10 * 60_000;
 
 function formatTimeAgo(item: NewsItem): string {
-  if (item.pubDateMissing) return '';
-  const minutes = Math.floor((Date.now() - item.pubDate.getTime()) / 60_000);
+  const published = effectivePubDateMs(item);
+  if (published === 0) return '';
+  const minutes = Math.floor((Date.now() - published) / 60_000);
   if (minutes < 1) return t('components.customFeeds.justNow');
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);

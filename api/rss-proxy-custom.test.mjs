@@ -123,7 +123,7 @@ describe('rss-proxy custom mode', () => {
   });
 
   test('follows a redirect to another public host but not to a private one', async () => {
-    spyFetch((url) => url.startsWith('https://old.example.net')
+    spyFetch((url) => new URL(url).hostname === 'old.example.net'
       ? new Response(null, { status: 301, headers: { Location: 'https://new.example.org/feed.xml' } })
       : new Response(RSS));
     const ok = await handler(makeRequest('https://old.example.net/feed'));
@@ -139,6 +139,6 @@ describe('rss-proxy custom mode', () => {
     const calls = spyFetch(() => { throw new TypeError('fetch failed'); });
     const response = await handler(makeRequest('https://my-reactor-blog.example.net/feed'));
     assert.equal(response.status, 502);
-    assert.ok(calls.every((url) => !url.includes('relay.example.com')), calls.join(', '));
+    assert.ok(calls.every((url) => new URL(url).hostname !== 'relay.example.com'), calls.join(', '));
   });
 });

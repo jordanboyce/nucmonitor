@@ -136,8 +136,10 @@ describe('custom feed fetching', () => {
 
   it('merges a panel’s sources newest first and reports the ones that failed', async () => {
     mockedFetch.mockImplementation(async (url: string) => {
-      if (url.includes('blog.example.net')) return textResponse(RSS);
-      if (url.includes('atom.example.org')) return textResponse(ATOM);
+      // The proxy URL carries the feed URL in its `url` parameter.
+      const feedHost = new URL(new URL(url, 'http://localhost').searchParams.get('url') ?? '').hostname;
+      if (feedHost === 'blog.example.net') return textResponse(RSS);
+      if (feedHost === 'atom.example.org') return textResponse(ATOM);
       return textResponse('nope', 500);
     });
     const result = await fetchCustomFeedPanelItems({

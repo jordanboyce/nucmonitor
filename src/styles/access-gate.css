@@ -85,6 +85,12 @@
   text-align: center;
 }
 
+html.has-access-demo-banner #app {
+  top: var(--access-demo-banner-height, 0px);
+  height: auto;
+  min-height: 0;
+}
+
 .access-demo-banner strong {
   color: var(--accent, #4fb3ff);
 }

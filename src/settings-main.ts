@@ -239,18 +239,6 @@ function renderOverview(area: HTMLElement): void {
           <span class="wm-badge ${wmStatusClass}">${wmStatusText}</span>
         </div>
       </section>
-
-      <div class="wm-divider"><span>${t('modals.settingsWindow.worldMonitor.dividerOr')}</span></div>
-
-      <section class="wm-section">
-        <h2 class="wm-section-title">${t('modals.settingsWindow.worldMonitor.register.title')}</h2>
-        <p class="wm-section-desc">${t('modals.settingsWindow.worldMonitor.register.description')}</p>
-        <div class="wm-register-row">
-          <button type="button" class="wm-submit-btn" data-wm-open-pro>
-            ${t('modals.settingsWindow.worldMonitor.register.submitBtn')}
-          </button>
-        </div>
-      </section>
     </div>
   `, "legacy direct innerHTML migration"));
 
@@ -268,11 +256,6 @@ function initOverviewListeners(area: HTMLElement): void {
     if (input.value.startsWith(MASKED_SENTINEL)) {
       input.value = input.value.slice(MASKED_SENTINEL.length);
     }
-  });
-
-  area.querySelector('[data-wm-open-pro]')?.addEventListener('click', () => {
-    const url = 'https://github.com/jordanboyce/nucmonitor#readme';
-    void openExternalUrl(url);
   });
 
   area.querySelectorAll<HTMLButtonElement>('.settings-ov-cat[data-section]').forEach(btn => {

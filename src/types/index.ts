@@ -668,17 +668,8 @@ export interface PanelConfig {
   name: string;
   enabled: boolean;
   priority?: number;
-  premium?: 'locked' | 'enhanced';
   /** Absolute panel text scale. When absent, the panel follows the global scale. */
   fontScale?: 0.9 | 1 | 1.1 | 1.25 | 1.5 | 2;
-  /**
-   * Set by `enforceFreePanelLimit` when the free-tier pro gate — not the user —
-   * is what turned this panel off. Distinguishes "hidden because you aren't Pro"
-   * from "you hid it in settings", so the gate can be reversed on upgrade
-   * without overriding a deliberate choice. Used for both `cw-*` panels and
-   * ordinary panels disabled by the free panel-count cap.
-   */
-  proGated?: boolean;
 }
 
 export interface MapLayers {

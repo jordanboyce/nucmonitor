@@ -191,7 +191,8 @@ describe('redis-rest-proxy command gate', () => {
     // the moment either extraction stops matching.
     assert.ok(gate.ALLOWED_COMMANDS.size > 40,
       `expected a populated allowlist, got ${gate.ALLOWED_COMMANDS.size}`);
-    assert.ok(emitted.size >= 30,
+    // 29 after the paid-tier notification and digest code was removed.
+    assert.ok(emitted.size >= 25,
       `expected to find the platform's Redis commands, got ${emitted.size}`);
     for (const anchor of ['HSET', 'HSETNX', 'HINCRBY', 'ZADD', 'ZREMRANGEBYSCORE', 'EVAL']) {
       assert.ok(emitted.has(anchor), `scan lost a known-emitted command: ${anchor}`);

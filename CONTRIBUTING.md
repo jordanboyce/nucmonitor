@@ -36,7 +36,7 @@ World Monitor is a real-time OSINT dashboard built with **Vanilla TypeScript** (
 | **d3** | Charts, sparklines, and data visualization |
 | **Vercel Edge Functions** | Serverless API gateway |
 | **Tauri v2** | Desktop app (Windows, macOS, Linux) |
-| **Convex** | Billing, entitlements, user state, forms, and intelligence history |
+| **Convex** | Partner access and signed-in user preferences |
 | **Playwright** | End-to-end and visual regression testing |
 
 ### Variant System
@@ -297,7 +297,7 @@ or middleware configuration and may return source text or an error.
 
 - A deterministic browser test can stub HTTP responses while exercising real application assets, request construction, hydration, rendering, URL state, and reload behavior. State which responses are controlled.
 - A local unmocked RPC request exercises the Node dev router and registered handler. It needs the handler's credentials and dependencies to prove useful data. An empty response alone does not prove a provider or cache works.
-- Vite does not prove deployed Edge middleware, authentication, entitlements, or deployment assets. Use an authorized preview or production observation when the acceptance criterion requires those paths.
+- Vite does not prove deployed Edge middleware, authentication, or deployment assets. Use an authorized preview or production observation when the acceptance criterion requires those paths.
 - Worker and freshness changes require producer-to-reader checks and, when needed, source-specific natural-run evidence. A parent bundle success is insufficient. Do not run production seeders or deploy without authorization.
 
 Before handoff, run `git diff --check` and `git status --short`. Report the exercised

@@ -273,7 +273,7 @@ export async function handleSeedHealth(req, options = {}) {
   if (req.method === 'OPTIONS')
     return new Response(null, { status: 204, headers: cors });
 
-  const apiKeyResult = await validateApiKey(req, { forceKey: true });
+  const apiKeyResult = await validateApiKey(req);
   if (!apiKeyResult.valid || apiKeyResult.kind !== 'enterprise')
     return jsonResponse({ error: 'Operator API key required' }, 401, cors);
 

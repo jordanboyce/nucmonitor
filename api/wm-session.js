@@ -1,10 +1,8 @@
-// POST /api/wm-session — issues short-lived HttpOnly session cookies for
-// browser access. Anonymous sessions get an HMAC-signed wms_ token cookie; if a
-// caller submits legacy tester keys during migration, those keys are moved into
-// short-lived HttpOnly cookies so they stop living in JS-readable storage.
+// POST /api/wm-session — issues a short-lived HttpOnly session cookie for
+// browser access: an HMAC-signed wms_ token. In partner mode it is minted only
+// for a signed-in partner (docs/partner-access.md).
 
 import { getCorsHeaders, getOriginDeniedCorsHeaders, isDisallowedOrigin } from './_cors.js';
-import { timingSafeEqualSecret, timingSafeIncludes } from './_crypto.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { issueSessionToken, validateSessionToken } from './_session.js';
 import { isPartnerMode, verifyPartnerRequest } from './_partner-access.js';
@@ -13,10 +11,7 @@ import { emitWmSessionUsage } from './_usage-telemetry.js';
 export const config = { runtime: 'edge' };
 
 const SESSION_COOKIE = 'wm-session';
-const WIDGET_KEY_COOKIE = '__Host-wm-widget-key';
-const PRO_KEY_COOKIE = '__Host-wm-pro-key';
 const COOKIE_MAX_AGE_SECONDS = 12 * 60 * 60;
-const LEGACY_KEY_MAX_LEN = 512;
 const SESSION_RATE_LIMIT_SCOPE = 'wm-session';
 const SESSION_RATE_LIMIT_PER_MINUTE = 30;
 const SESSION_RATE_LIMIT_WINDOW = '60 s';
@@ -87,7 +82,7 @@ function cookieDomainAttribute(req) {
 }
 
 function sessionCookie(req, name, value) {
-  return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}${name === SESSION_COOKIE ? cookieDomainAttribute(req) : ''}; HttpOnly; Secure; SameSite=Lax`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}${cookieDomainAttribute(req)}; HttpOnly; Secure; SameSite=Lax`;
 }
 
 /**
@@ -98,66 +93,6 @@ function sessionCookie(req, name, value) {
  */
 function hostOnlySessionTombstone() {
   return `${SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
-}
-
-function clearReadableCookie(name) {
-  return `${name}=; Domain=.worldmonitor.app; Path=/; Max-Age=0; Secure; SameSite=Lax`;
-}
-
-function normalizeLegacyKey(value) {
-  if (typeof value !== 'string') return '';
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > LEGACY_KEY_MAX_LEN) return '';
-  return trimmed;
-}
-
-function submittedLegacyKey(value) {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function envList(name) {
-  return (process.env[name] || '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
-async function matchesEnvSecret(key, name) {
-  const secret = process.env[name] || '';
-  return timingSafeEqualSecret(key, secret);
-}
-
-async function isValidEnterpriseKey(key) {
-  return timingSafeIncludes(key, envList('WORLDMONITOR_VALID_KEYS'));
-}
-
-async function isValidWidgetKey(key) {
-  return (await matchesEnvSecret(key, 'WIDGET_AGENT_KEY')) || await isValidEnterpriseKey(key);
-}
-
-async function isValidProKey(key) {
-  return (await matchesEnvSecret(key, 'PRO_WIDGET_KEY')) || await isValidEnterpriseKey(key);
-}
-
-const BODY_READ_TIMEOUT_MS = Number(process.env.WM_SESSION_BODY_TIMEOUT_MS) || 5_000;
-
-async function readBody(req) {
-  const contentType = req.headers.get('content-type') || '';
-  if (!contentType.toLowerCase().includes('application/json')) return {};
-  try {
-    // Adversarial DoS guard: a request body stream that never ends must not
-    // hold the edge function open forever. Race json() against a tight budget.
-    const parsed = await Promise.race([
-      req.json(),
-      new Promise((_, reject) => setTimeout(
-        () => reject(new Error('request body read timeout')),
-        BODY_READ_TIMEOUT_MS,
-      )),
-    ]);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
 }
 
 export default async function handler(req, ctx) {
@@ -235,19 +170,6 @@ export default async function handler(req, ctx) {
     return respond({ error: 'Session service not configured' }, 503, cors, 'auth_unavailable');
   }
 
-  const body = await readBody(req);
-  const widgetKey = normalizeLegacyKey(body.widgetKey);
-  const proKey = normalizeLegacyKey(body.proKey);
-
-  if (
-    (submittedLegacyKey(body.widgetKey) && !(await isValidWidgetKey(widgetKey))) ||
-    (submittedLegacyKey(body.proKey) && !(await isValidProKey(proKey)))
-  ) {
-    // The browser matches this exact body (src/services/wm-session.ts,
-    // KEY_REJECTED_ERROR) to decide a legacy key is revoked and clear it.
-    return respond({ error: 'Invalid session key' }, 401, cors, 'auth_401');
-  }
-
   let headers = cors;
   if (shouldUseSharedCookieDomain(req)) {
     // Tombstone first so the subsequent Domain cookie is the only live wm-session.
@@ -255,30 +177,10 @@ export default async function handler(req, ctx) {
   }
   headers = appendHeader(headers, 'Set-Cookie', sessionCookie(req, SESSION_COOKIE, issued.token));
 
-  // Retire both old scopes on every refresh. Never consume these names: a
-  // parent-domain cookie cannot prove which sibling issued it. __Host- also
-  // prevents siblings from planting a Domain cookie under the replacement name.
-  for (const name of ['wm-widget-key', 'wm-pro-key']) {
-    headers = appendHeader(headers, 'Set-Cookie', clearReadableCookie(name));
-    headers = appendHeader(headers, 'Set-Cookie', `${name}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
-  }
-  for (const [field, name, key] of [
-    ['widgetKey', WIDGET_KEY_COOKIE, widgetKey],
-    ['proKey', PRO_KEY_COOKIE, proKey],
-  ]) {
-    if (key) {
-      headers = appendHeader(headers, 'Set-Cookie', sessionCookie(req, name, key));
-    } else if (typeof body[field] === 'string' && !body[field].trim()) {
-      // Explicit empty string clears; an omitted field preserves the session.
-      headers = appendHeader(headers, 'Set-Cookie', `${name}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
-    }
-  }
-
   // The HttpOnly cookie remains the primary transport. The anonymous token is
   // also returned so browsers that demonstrably refuse the shared-domain
   // cookie can use the existing X-WorldMonitor-Key validation path. This does
-  // not expose user or premium authority: wms_ tokens are freely mintable,
-  // anonymous-only, and forceKey routes reject them.
+  // not expose user authority: wms_ tokens carry no identity.
   return respond({
     ok: true,
     exp: issued.exp,

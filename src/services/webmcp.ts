@@ -3,45 +3,42 @@
 // Registers a small set of tools via `document.modelContext.registerTool`
 // so browsers implementing the current WebMCP API can drive the site the same
 // way a human does. Tools MUST route through existing UI code paths so agents
-// inherit every auth/entitlement gate a browser user is subject to — they are
-// not a backdoor around the paywall.
+// inherit every auth gate a browser user is subject to — they are not a
+// backdoor around the UI.
 //
 // Current tools mirror the static Agent Skills set (#3310) and add bounded
 // live-dashboard context/actions through the existing agent-bus seam (#6211):
-//   2. openSearch()               — opens the global command palette.
-//   3. get_dashboard_context()    — reads bounded visible dashboard state.
-//   4. list_map_layers()          — pages the canonical map-layer catalog.
-//   5. list_dashboard_panels()    — pages the canonical panel catalog.
-//   7. open_settings()            — opens the settings overlay.
-//   8. open_alerts()              — opens the alerts/notifications tab.
-//   9. open_dashboard_panel()     — opens an already-live panel.
-//  10. set_panel_enabled()        — enables or disables a catalog panel.
-//  11. get_panel_layout()         — reads region order, collapse, fullscreen.
-//  12. set_panel_collapsed()      — collapses or expands a collapsible panel.
-//  13. move_panel()               — moves a panel by region and index.
-//  14. set_panel_fullscreen()     — toggles panel fullscreen when supported.
-//  15. set_map_view()             — moves the visible map.
-//  16. set_map_layers()           — changes allowed visible map layers.
-//  17. set_time_range()           — sets the visible map time range.
-//  18. focus_country()            — focuses a country bbox without a briefing.
-//  19. set_map_mode()             — switches the visible 2D/3D map renderer.
-//  20. search_dashboard()         — searches the live dashboard index.
-//  21. open_search_result()       — selects an opaque, revalidated result.
-//  22. list_dashboard_tabs()      — enumerates persistent workspace tabs.
-//  23. select_dashboard_tab()     — switches the active workspace tab.
-//  24. create_dashboard_tab()     — creates a workspace, or returns one by name.
-//  25. rename_dashboard_tab()     — renames a workspace tab by stable ID.
-//  26. delete_dashboard_tab()     — deletes a workspace tab after confirm=true.
-//  27. list_mission_presets()     — lists bundled mission presets for this monitor.
-//  28. apply_mission_preset()     — applies a bundled preset atomically.
-//  29. open_mission_picker()      — opens the mission preset picker.
-//  30. list_followed_countries()  — reads the current followed-country list.
-//  31. set_country_followed()     — follows or unfollows one country.
-//  32. get_access_context()       — reads signed-out / loading / signed-in access.
-//  33. open_sign_in()             — opens the existing Clerk sign-in dialog.
+//   1. openSearch()               — opens the global command palette.
+//   2. get_dashboard_context()    — reads bounded visible dashboard state.
+//   3. list_map_layers()          — pages the canonical map-layer catalog.
+//   4. list_dashboard_panels()    — pages the canonical panel catalog.
+//   5. open_settings()            — opens the settings overlay.
+//   6. open_dashboard_panel()     — opens an already-live panel.
+//   7. set_panel_enabled()        — enables or disables a catalog panel.
+//   8. get_panel_layout()         — reads region order, collapse, fullscreen.
+//   9. set_panel_collapsed()      — collapses or expands a collapsible panel.
+//  10. move_panel()               — moves a panel by region and index.
+//  11. set_panel_fullscreen()     — toggles panel fullscreen when supported.
+//  12. set_map_view()             — moves the visible map.
+//  13. set_map_layers()           — changes allowed visible map layers.
+//  14. set_time_range()           — sets the visible map time range.
+//  15. focus_country()            — focuses a country bbox without a briefing.
+//  16. set_map_mode()             — switches the visible 2D/3D map renderer.
+//  17. search_dashboard()         — searches the live dashboard index.
+//  18. open_search_result()       — selects an opaque, revalidated result.
+//  19. list_dashboard_tabs()      — enumerates persistent workspace tabs.
+//  20. select_dashboard_tab()     — switches the active workspace tab.
+//  21. create_dashboard_tab()     — creates a workspace, or returns one by name.
+//  22. rename_dashboard_tab()     — renames a workspace tab by stable ID.
+//  23. delete_dashboard_tab()     — deletes a workspace tab after confirm=true.
+//  24. list_mission_presets()     — lists bundled mission presets for this monitor.
+//  25. apply_mission_preset()     — applies a bundled preset atomically.
+//  26. open_mission_picker()      — opens the mission preset picker.
+//  27. get_access_context()       — reads signed-out / loading / signed-in access.
+//  28. open_sign_in()             — opens the existing Clerk sign-in dialog.
 //
-// No tool is conditionally registered. Live controls re-check auth and
-// entitlement through the agent-bus applier on every invocation, so a single
+// No tool is conditionally registered. Live controls re-check auth through
+// the agent-bus applier on every invocation, so a single
 // registration remains correct across sign-in/sign-out.
 //
 // Scanner compatibility: WebMCP scanners probe for
@@ -143,9 +140,6 @@ export interface WebMcpAppBindings {
   openSettings(
     options?: WebMcpExecutionOptions,
   ): WebMcpNavigationResult | Promise<WebMcpNavigationResult>;
-  openAlerts(
-    options?: WebMcpExecutionOptions,
-  ): WebMcpNavigationResult | Promise<WebMcpNavigationResult>;
   applyDashboardAction(
     action: unknown,
     options?: WebMcpExecutionOptions,
@@ -185,14 +179,6 @@ export interface WebMcpAppBindings {
   openMissionPicker(
     options?: WebMcpExecutionOptions,
   ): WebMcpNavigationResult | Promise<WebMcpNavigationResult>;
-  listFollowedCountries(
-    options?: WebMcpExecutionOptions,
-  ): FollowedCountryListResult | Promise<FollowedCountryListResult>;
-  setCountryFollowed(
-    iso2: unknown,
-    followed: unknown,
-    options?: WebMcpExecutionOptions,
-  ): FollowedCountryMutationResult | Promise<FollowedCountryMutationResult>;
   getPanelLayout(
     options?: WebMcpExecutionOptions,
   ): PanelLayoutSnapshot | Promise<PanelLayoutSnapshot>;
@@ -237,37 +223,6 @@ export interface ApplyMissionPresetResult {
     enabled: string[];
   };
   reason?: MissionPresetApplyDenyReason;
-  message: string;
-}
-
-export interface FollowedCountryListResult {
-  ok: true;
-  enabled: boolean;
-  countries: string[];
-  count: number;
-  access: 'free' | 'pro' | 'loading';
-  limit: number | null;
-}
-
-export const FOLLOWED_COUNTRY_MUTATION_REASONS = [
-  'malformed_arguments',
-  'disabled',
-  'invalid_country',
-  'free_cap',
-  'entitlement_loading',
-  'handoff_pending',
-  'storage_full',
-] as const;
-
-export type FollowedCountryMutationReason = typeof FOLLOWED_COUNTRY_MUTATION_REASONS[number];
-
-export interface FollowedCountryMutationResult {
-  ok: boolean;
-  status: 'accepted' | 'unchanged' | 'denied' | 'invalid';
-  iso2?: string;
-  followed?: boolean;
-  reason?: FollowedCountryMutationReason;
-  limit?: number;
   message: string;
 }
 
@@ -336,7 +291,7 @@ export interface PanelTabSelectionResult {
 }
 
 
-export type WebMcpNavDestination = 'settings' | 'alerts' | 'mission_picker';
+export type WebMcpNavDestination = 'settings' | 'mission_picker';
 export type WebMcpMonitorNavigation = 'none' | 'reload' | 'assign';
 
 export interface WebMcpNavigationResult {
@@ -353,21 +308,12 @@ export interface WebMcpNavigationResult {
 
 export type WebMcpAccountState = 'signed_out' | 'loading' | 'signed_in';
 export type WebMcpClerkState = 'unavailable' | 'loading' | 'ready';
-export type WebMcpProductTier = 'anonymous' | 'free' | 'pro' | 'unknown';
-
 export interface AccessContextSnapshot {
   accountState: WebMcpAccountState;
   clerk: WebMcpClerkState;
-  productTier: WebMcpProductTier;
-  capabilities: {
-    premiumAccess: boolean;
-    apiAccess: boolean;
-    mcpAccess: boolean;
-    dataExport: boolean;
-  };
-  limits: {
-    enabledPanels: { used: number; cap: number | null };
-    dashboardTabs: { used: number; cap: number | null; canCreate: boolean };
+  usage: {
+    enabledPanels: number;
+    dashboardTabs: number;
   };
 }
 
@@ -433,7 +379,6 @@ type WebMcpInvocationOutcome = 'success' | 'denied' | 'failure';
 type WebMcpInvocationReason =
   | 'completed'
   | 'validation'
-  | 'entitlement'
   | 'unavailable'
   | 'stale'
   | 'cancelled'
@@ -527,7 +472,6 @@ export const WEBMCP_TOOL_CANCELLATION_POLICY: Readonly<
   [WEBMCP_SPA_TOOL.getPanelLayout]: 'read-only',
   [WEBMCP_SPA_TOOL.openSearch]: 'view-state',
   [WEBMCP_SPA_TOOL.openSettings]: 'view-state',
-  [WEBMCP_SPA_TOOL.openAlerts]: 'view-state',
   [WEBMCP_SPA_TOOL.openSignIn]: 'view-state',
   [WEBMCP_SPA_TOOL.openDashboardPanel]: 'view-state',
   [WEBMCP_SPA_TOOL.setPanelEnabled]: 'cancellation-required',
@@ -548,8 +492,6 @@ export const WEBMCP_TOOL_CANCELLATION_POLICY: Readonly<
   [WEBMCP_SPA_TOOL.listMissionPresets]: 'read-only',
   [WEBMCP_SPA_TOOL.applyMissionPreset]: 'cancellation-required',
   [WEBMCP_SPA_TOOL.openMissionPicker]: 'view-state',
-  [WEBMCP_SPA_TOOL.listFollowedCountries]: 'read-only',
-  [WEBMCP_SPA_TOOL.setCountryFollowed]: 'cancellation-required',
 });
 
 /** Tools the page refuses to run without a target-side AbortSignal. */
@@ -590,7 +532,6 @@ const TOOL_FAILURE_MESSAGES: Record<WebMcpSpaToolName, string> = {
   list_map_layers: 'NucMonitor could not list map layers.',
   list_dashboard_panels: 'NucMonitor could not list dashboard panels.',
   open_settings: 'NucMonitor could not open settings.',
-  open_alerts: 'NucMonitor could not open alerts.',
   open_dashboard_panel: 'NucMonitor could not open that dashboard panel.',
   set_panel_enabled: 'NucMonitor could not update that dashboard panel.',
   get_panel_layout: 'NucMonitor could not read the panel layout.',
@@ -612,8 +553,6 @@ const TOOL_FAILURE_MESSAGES: Record<WebMcpSpaToolName, string> = {
   list_mission_presets: 'NucMonitor could not list mission presets.',
   apply_mission_preset: 'NucMonitor could not apply that mission preset.',
   open_mission_picker: 'NucMonitor could not open the mission picker.',
-  list_followed_countries: 'NucMonitor could not list followed countries.',
-  set_country_followed: 'NucMonitor could not update that followed country.',
   get_access_context: 'NucMonitor could not read access context.',
   open_sign_in: 'NucMonitor could not open sign-in.',
 };
@@ -846,14 +785,6 @@ const VALIDATION_DENIAL_REASONS = new Set([
   'unknown_country',
   'invalid_country',
 ]);
-const ENTITLEMENT_DENIAL_REASONS = new Set([
-  'panel_not_entitled',
-  'panel_cap_exceeded',
-  'layer_not_entitled',
-  'tab_cap',
-  'preset_not_entitled',
-  'free_cap',
-]);
 const STALE_DENIAL_REASONS = new Set([
   'invalid_or_expired_key',
   'search_state_changed',
@@ -866,7 +797,6 @@ function classifyStructuredDenial(result: Record<string, unknown>): WebMcpInvoca
   if (result.status === 'invalid') return 'validation';
   const reasons = structuredResultReasons(result);
   if (reasons.some((reason) => VALIDATION_DENIAL_REASONS.has(reason))) return 'validation';
-  if (reasons.some((reason) => ENTITLEMENT_DENIAL_REASONS.has(reason))) return 'entitlement';
   if (reasons.some((reason) => STALE_DENIAL_REASONS.has(reason))) return 'stale';
   return 'unavailable';
 }
@@ -976,7 +906,7 @@ function boundDashboardContext(
 }
 
 function boundUnavailableReason(value: unknown): DashboardPanelUnavailableReason | undefined {
-  if (value === 'panel_not_entitled' || value === 'panel_disabled' || value === 'panel_not_live') {
+  if (value === 'panel_disabled' || value === 'panel_not_live') {
     return value;
   }
   return undefined;
@@ -997,7 +927,6 @@ function boundDashboardPanelCatalog(result: DashboardPanelCatalogPage): Dashboar
         : [],
       enabled: panel?.enabled === true,
       mounted: panel?.mounted === true,
-      entitled: panel?.entitled === true,
       available,
       ...(unavailableReason ? { unavailableReason } : {}),
     };
@@ -1067,45 +996,21 @@ function boundDashboardCompatibility(
 
 const ACCOUNT_STATES = new Set<WebMcpAccountState>(['signed_out', 'loading', 'signed_in']);
 const CLERK_STATES = new Set<WebMcpClerkState>(['unavailable', 'loading', 'ready']);
-const PRODUCT_TIERS = new Set<WebMcpProductTier>(['anonymous', 'free', 'pro', 'unknown']);
 
 function oneOf<T extends string>(value: unknown, allowed: ReadonlySet<T>, fallback: T): T {
   return typeof value === 'string' && allowed.has(value as T) ? value as T : fallback;
-}
-
-function optionalCap(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0
-    ? Math.floor(value)
-    : null;
 }
 
 export function boundWebMcpAccessContext(
   snapshot: AccessContextSnapshot,
   targetCancellationSupported: boolean,
 ): Record<string, unknown> {
-  const enabledPanels = snapshot.limits?.enabledPanels;
-  const dashboardTabs = snapshot.limits?.dashboardTabs;
   return {
     accountState: oneOf(snapshot.accountState, ACCOUNT_STATES, 'loading'),
     clerk: oneOf(snapshot.clerk, CLERK_STATES, 'unavailable'),
-    productTier: oneOf(snapshot.productTier, PRODUCT_TIERS, 'unknown'),
-    capabilities: {
-      premiumAccess: snapshot.capabilities?.premiumAccess === true,
-      apiAccess: snapshot.capabilities?.apiAccess === true,
-      mcpAccess: snapshot.capabilities?.mcpAccess === true,
-      dataExport: snapshot.capabilities?.dataExport === true,
-    },
-    limits: {
-      enabledPanels: {
-        used: Math.max(0, Math.floor(boundedNumber(enabledPanels?.used))),
-        cap: optionalCap(enabledPanels?.cap),
-      },
-      dashboardTabs: {
-        used: Math.max(0, Math.floor(boundedNumber(dashboardTabs?.used))),
-        cap: optionalCap(dashboardTabs?.cap),
-        canCreate: dashboardTabs?.canCreate === true,
-      },
+    usage: {
+      enabledPanels: Math.max(0, Math.floor(boundedNumber(snapshot.usage?.enabledPanels))),
+      dashboardTabs: Math.max(0, Math.floor(boundedNumber(snapshot.usage?.dashboardTabs))),
     },
     targetCancellationSupported: targetCancellationSupported === true,
   };
@@ -1211,8 +1116,6 @@ const SET_PANEL_ENABLED_REASONS = new Set([
   'malformed_arguments',
   'unknown_panel',
   'panel_incompatible',
-  'panel_not_entitled',
-  'panel_cap_exceeded',
   'panel_required',
   'persist_failed',
 ]);
@@ -1261,7 +1164,6 @@ function boundMissionPresetCatalog(result: MissionPresetCatalogResult): MissionP
       layerCount: Math.max(0, Math.floor(boundedNumber(preset.layerCount))),
       active: preset.active === true,
       monitorCompatible: preset.monitorCompatible === true,
-      entitled: preset.entitled === true,
       available,
       ...(preset.unavailableReason
         ? { unavailableReason: preset.unavailableReason }
@@ -1313,55 +1215,6 @@ function boundApplyMissionPresetResult(result: ApplyMissionPresetResult): ApplyM
     ...(!ok && reason ? { reason } : {}),
     message: boundedText(result.message, 160)
       || (ok ? 'Mission preset applied.' : 'Mission preset change denied.'),
-  };
-}
-
-const FOLLOWED_COUNTRY_MUTATION_REASON_SET = new Set(FOLLOWED_COUNTRY_MUTATION_REASONS);
-
-function boundFollowedCountryList(result: FollowedCountryListResult): FollowedCountryListResult {
-  const countries = normalizeIdentifiers(result.countries, 2)
-    .filter((country) => /^[A-Z]{2}$/.test(country))
-    .slice(0, 249);
-  const access = result.access === 'pro' || result.access === 'loading'
-    ? result.access
-    : 'free';
-  return {
-    ok: true,
-    enabled: result.enabled === true,
-    countries,
-    count: countries.length,
-    access,
-    limit: typeof result.limit === 'number'
-      ? Math.max(0, Math.floor(boundedNumber(result.limit)))
-      : null,
-  };
-}
-
-function boundFollowedCountryMutation(
-  result: FollowedCountryMutationResult,
-): FollowedCountryMutationResult {
-  const status = result.status === 'accepted'
-    || result.status === 'unchanged'
-    || result.status === 'invalid'
-    ? result.status
-    : 'denied';
-  const ok = result.ok === true && (status === 'accepted' || status === 'unchanged');
-  const reason = result.reason && FOLLOWED_COUNTRY_MUTATION_REASON_SET.has(result.reason)
-    ? result.reason
-    : undefined;
-  return {
-    ok,
-    status: ok ? status : status === 'invalid' ? 'invalid' : 'denied',
-    ...(typeof result.iso2 === 'string' && /^[A-Z]{2}$/.test(result.iso2)
-      ? { iso2: result.iso2 }
-      : {}),
-    ...(typeof result.followed === 'boolean' ? { followed: result.followed } : {}),
-    ...(!ok && reason ? { reason } : {}),
-    ...(!ok && typeof result.limit === 'number'
-      ? { limit: Math.max(0, Math.floor(boundedNumber(result.limit))) }
-      : {}),
-    message: boundedText(result.message, 200)
-      || (ok ? 'Followed-country preference accepted.' : 'Followed-country change denied.'),
   };
 }
 
@@ -1539,11 +1392,6 @@ function boundDashboardTabList(
     tabs.length,
   );
   const activeTabId = boundedText(snapshot.activeTabId, 64);
-  const canCreate = snapshot.canCreate === true;
-  const cap = snapshot.cap === null || typeof snapshot.cap === 'number' ? snapshot.cap : null;
-  const createBlockReason = snapshot.createBlockReason
-    ? boundedText(snapshot.createBlockReason, 32) as DashboardTabListSnapshot['createBlockReason']
-    : undefined;
 
   let startIndex = 0;
   if (cursor !== undefined) {
@@ -1572,9 +1420,6 @@ function boundDashboardTabList(
     tabs: pageTabs,
     tabCount,
     tabsTruncated: nextCursor !== undefined || snapshot.tabsTruncated === true,
-    canCreate,
-    cap,
-    ...(createBlockReason ? { createBlockReason } : {}),
     ...(nextCursor ? { nextCursor: boundedText(nextCursor, 64) } : {}),
   });
 
@@ -1615,9 +1460,6 @@ function boundDashboardTabMutation(result: DashboardTabMutationResult): Dashboar
     ...(result.alreadyExisted === true ? { alreadyExisted: true } : {}),
     ...(typeof result.persisted === 'boolean' ? { persisted: result.persisted } : {}),
     ...(typeof result.tabCount === 'number' ? { tabCount: Math.max(0, Math.floor(result.tabCount)) } : {}),
-    ...(typeof result.canCreate === 'boolean' ? { canCreate: result.canCreate } : {}),
-    ...(result.cap === null || typeof result.cap === 'number' ? { cap: result.cap } : {}),
-    ...(result.lockReason ? { lockReason: boundedText(result.lockReason, 32) as DashboardTabMutationResult['lockReason'] } : {}),
   };
   if (JSON.stringify(bounded).length > MAX_OUTPUT_CHARS) {
     throw new SafeWebMcpError('Dashboard tab result exceeded the safe output limit.');
@@ -1836,7 +1678,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.listMapLayers,
       title: 'List Map Layers',
       description:
-        'Page the canonical map-layer catalog, including disabled layers. Omit monitor for every registered layer; world lists only that variant. Each result has the stable ID, label, enabled state, monitor availability, renderer compatibility, entitlement, and a reason when the current page cannot enable it with set_map_layers. Does not load map datasets.',
+        'Page the canonical map-layer catalog, including disabled layers. Omit monitor for every registered layer; world lists only that variant. Each result has the stable ID, label, enabled state, monitor availability, renderer compatibility, and a reason when the current page cannot enable it with set_map_layers. Does not load map datasets.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -1980,34 +1822,10 @@ export function buildWebMcpTools(
       }, trackEvent),
     },
     {
-      name: WEBMCP_SPA_TOOL.openAlerts,
-      title: 'Open Alerts',
-      description:
-        'Open the alerts notifications tab through the same settings path the visible UI uses. Opening alerts does not change their contents. Unavailable dashboards return a stable reason without account details.',
-      inputSchema: {
-        type: 'object',
-        properties: {},
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: false },
-      execute: withBindings(WEBMCP_SPA_TOOL.openAlerts, async (args, extra) => {
-        if (!hasOnlyOwnKeys(args, [])) {
-          return boundDashboardNavigationResult({
-            ok: false,
-            status: 'invalid',
-            reason: 'malformed_arguments',
-            message: 'open_alerts does not accept arguments.',
-            context: await currentNavigationContext(app, extra),
-          });
-        }
-        return boundDashboardNavigationResult(await app.openAlerts(extra));
-      }, trackEvent),
-    },
-    {
       name: WEBMCP_SPA_TOOL.openDashboardPanel,
       title: 'Open Dashboard Panel',
       description:
-        'Open and scroll to an already-live, currently enabled dashboard panel through the same entitlement-aware control path used by NucMonitor. For the commodities panel, tab can also select commodities, physical, fx, or xau through the same tab path used by a person. Disabled panels return panel_disabled. Use set_panel_enabled to change whether a catalog panel is enabled; this tool does not enable panels itself.',
+        'Open and scroll to an already-live, currently enabled dashboard panel through the same control path used by NucMonitor. For the commodities panel, tab can also select commodities, physical, fx, or xau through the same tab path used by a person. Disabled panels return panel_disabled. Use set_panel_enabled to change whether a catalog panel is enabled; this tool does not enable panels itself.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2068,7 +1886,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.setPanelEnabled,
       title: 'Set Panel Enabled',
       description:
-        'Enable or disable a dashboard panel by its stable ID through the same settings path a person uses. Returns the requested state, effective state, and whether anything changed. Enabling unknown, incompatible, unentitled, or free-tier-capped panels is denied; disabling a live catalog panel still succeeds. Requires target-side cancellation because it persists dashboard settings.',
+        'Enable or disable a dashboard panel by its stable ID through the same settings path a person uses. Returns the requested state, effective state, and whether anything changed. Enabling unknown or incompatible panels is denied; disabling a live catalog panel still succeeds. Requires target-side cancellation because it persists dashboard settings.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2348,7 +2166,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.setMapLayers,
       title: 'Set Map Layers',
       description:
-        'Enable or disable explicit visible map layers through NucMonitor’s variant, renderer, and entitlement-aware control path.',
+        'Enable or disable explicit visible map layers through NucMonitor’s variant- and renderer-aware control path.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2548,7 +2366,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.openSearchResult,
       title: 'Open Search Result',
       description:
-        'Open one result previously issued by search_dashboard after rechecking that it is still live, allowed, compatible, and entitled. Cancellation uses the bound effect class, which callers cannot supply or downgrade. View-state results run without a target-side AbortSignal; persistent, quota-consuming, and external-navigation results require one and may return target_cancellation_unsupported.',
+        'Open one result previously issued by search_dashboard after rechecking that it is still live, allowed, and compatible. Cancellation uses the bound effect class, which callers cannot supply or downgrade. View-state results run without a target-side AbortSignal; persistent, quota-consuming, and external-navigation results require one and may return target_cancellation_unsupported.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2662,7 +2480,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.createDashboardTab,
       title: 'Create Dashboard Tab',
       description:
-        'Create a dashboard tab as a named persistent panel workspace, then activate it. Omit name to use the dashboard default. Creating a tab whose trimmed name already exists returns that tab without duplicating it. Honors the same tab cap and entitlement lock as the dashboard tab bar. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as set_map_layers).',
+        'Create a dashboard tab as a named persistent panel workspace, then activate it. Omit name to use the dashboard default. Creating a tab whose trimmed name already exists returns that tab without duplicating it. Unavailable without target-side cancellation because tab changes persist to worldmonitor-tabs-v1 and the live panel workspace (same class as set_map_layers).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2787,7 +2605,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.listMissionPresets,
       title: 'List Mission Presets',
       description:
-        'List every bundled mission preset for the current monitor. Each item uses a stable preset ID and panel/layer counts without premium payloads. Available rows include intended view and time range. Includes active, monitorCompatible, entitled, and available flags with a stable unavailableReason when gated.',
+        'List every bundled mission preset for the current monitor. Each item uses a stable preset ID and panel/layer counts. Available rows include intended view and time range. Includes active, monitorCompatible, and available flags with a stable unavailableReason when gated.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2820,7 +2638,7 @@ export function buildWebMcpTools(
       name: WEBMCP_SPA_TOOL.applyMissionPreset,
       title: 'Apply Mission Preset',
       description:
-        'Apply a bundled mission preset by stable ID through the same mission-control path a person uses. Reports entitlement and monitor compatibility before writing. Requires target-side cancellation because it persists panels, layers, map view, and time range. On failure, restores the prior dashboard state.',
+        'Apply a bundled mission preset by stable ID through the same mission-control path a person uses. Reports monitor compatibility before writing. Requires target-side cancellation because it persists panels, layers, map view, and time range. On failure, restores the prior dashboard state.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -2875,71 +2693,10 @@ export function buildWebMcpTools(
       }, trackEvent),
     },
     {
-      name: WEBMCP_SPA_TOOL.listFollowedCountries,
-      title: 'List Followed Countries',
-      description:
-        'Read the current followed-country list through the same anonymous or signed-in state used by the dashboard. Returns only ISO 3166-1 alpha-2 codes, access state, and the free-tier limit.',
-      inputSchema: {
-        type: 'object',
-        properties: {},
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: true },
-      execute: withBindings(WEBMCP_SPA_TOOL.listFollowedCountries, async (args, extra) => {
-        if (!hasOnlyOwnKeys(args, [])) {
-          throw new SafeWebMcpError(
-            'list_followed_countries does not accept arguments.',
-            'validation',
-          );
-        }
-        return boundFollowedCountryList(await app.listFollowedCountries(extra));
-      }, trackEvent, {
-        successMetadata: (_args, value) => ({
-          resultCount: (value as FollowedCountryListResult).countries.length,
-        }),
-      }),
-    },
-    {
-      name: WEBMCP_SPA_TOOL.setCountryFollowed,
-      title: 'Set Country Followed',
-      description:
-        'Follow or unfollow one country through the dashboard service that owns ISO validation, access state, the free-tier cap, sign-in handoff, and storage. Idempotent for the requested state. Requires target-side cancellation because it persists state or writes to the signed-in account.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          iso2: {
-            type: 'string',
-            pattern: '^[A-Z]{2}$',
-            description: 'ISO 3166-1 alpha-2 country code, uppercase.',
-          },
-          followed: {
-            type: 'boolean',
-            description: 'True to follow the country; false to unfollow it.',
-          },
-        },
-        required: ['iso2', 'followed'],
-        additionalProperties: false,
-      },
-      annotations: { readOnlyHint: false },
-      execute: withBindings(WEBMCP_SPA_TOOL.setCountryFollowed, async (args, extra) => {
-        if (!hasOnlyOwnKeys(args, ['iso2', 'followed'])) {
-          return boundFollowedCountryMutation({
-            ok: false,
-            status: 'invalid',
-            reason: 'malformed_arguments',
-            message: 'set_country_followed accepts only iso2 and followed.',
-          });
-        }
-        return boundFollowedCountryMutation(
-          await app.setCountryFollowed(args.iso2, args.followed, extra),
-        );
-      }, trackEvent),
-    },
-    {
       name: WEBMCP_SPA_TOOL.getAccessContext,
       title: 'Get Access Context',
       description:
-        'Read whether this tab is signed out, still loading account state, or signed in. Returns product tier, capability flags, panel and dashboard-tab limits, and whether the host can cancel tools. Contains no names, emails, account IDs, tokens, or session details.',
+        'Read whether this tab is signed out, still loading account state, or signed in. Returns enabled-panel and dashboard-tab counts, and whether the host can cancel tools. Contains no names, emails, account IDs, tokens, or session details.',
       inputSchema: {
         type: 'object',
         properties: {},

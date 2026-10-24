@@ -1,6 +1,4 @@
 import type { AuthSession } from '@/services/auth-state';
-import type { EntitlementState } from '@/services/entitlements';
-import type { TabCapVerdict } from '@/services/gates/export-resolver';
 import type { AccessContextSnapshot } from '@/services/webmcp';
 
 /** Keys that must never appear on a WebMCP access snapshot or bounded result. */
@@ -19,15 +17,8 @@ export interface WebMcpAccessContextInput {
   auth: AuthSession;
   clerkEnabled: boolean;
   clerkReady: boolean;
-  premiumAccess: boolean;
-  entitlement: EntitlementState | null;
-  tabCap: TabCapVerdict;
   enabledPanelUsed: number;
   dashboardTabCount: number;
-  freePanelCap: number;
-  /** True after FreeTierGate's AUTH_SETTLE_GRACE_MS backstop has fired. */
-  freeTierFallbackActive: boolean;
-  dataExport: boolean;
 }
 
 export interface OpenSignInDecisionInput {
@@ -47,11 +38,7 @@ function nonNegativeCount(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 }
 
-/**
- * Bounded, PII-free access snapshot for WebMCP. apiAccess/mcpAccess stay
- * fail-closed on the entitlement feature flags. dataExport is supplied by the
- * live export-gate reader so it matches the dashboard export lock.
- */
+/** Bounded, PII-free access snapshot for WebMCP. */
 export function buildWebMcpAccessContext(
   input: WebMcpAccessContextInput,
 ): AccessContextSnapshot {
@@ -67,48 +54,12 @@ export function buildWebMcpAccessContext(
   else if (input.auth.isPending) clerk = 'loading';
   else clerk = 'unavailable';
 
-  const entitlementUnknown = accountState === 'signed_in' && input.entitlement == null;
-
-  let productTier: AccessContextSnapshot['productTier'];
-  if (accountState === 'loading' || (entitlementUnknown && !input.premiumAccess)) {
-    productTier = 'unknown';
-  } else if (input.premiumAccess) {
-    productTier = 'pro';
-  } else if (accountState === 'signed_in') {
-    productTier = 'free';
-  } else {
-    productTier = 'anonymous';
-  }
-
-  const features = input.entitlement?.features;
-  const deferLimits = accountState === 'loading' || entitlementUnknown;
-  // Panel enforcement stops deferring at the 8s backstop even when the
-  // Convex snapshot never arrives. Tab caps stay deferred: evaluateTabCap
-  // remains uncapped while features are still null.
-  const deferPanelCap = deferLimits && !input.freeTierFallbackActive;
-  const panelCap = deferPanelCap || input.premiumAccess ? null : input.freePanelCap;
-  const tabCap = deferLimits ? null : input.tabCap.cap;
-
   return {
     accountState,
     clerk,
-    productTier,
-    capabilities: {
-      premiumAccess: input.premiumAccess === true,
-      apiAccess: features?.apiAccess === true,
-      mcpAccess: features?.mcpAccess === true,
-      dataExport: input.dataExport === true,
-    },
-    limits: {
-      enabledPanels: {
-        used: nonNegativeCount(input.enabledPanelUsed),
-        cap: panelCap,
-      },
-      dashboardTabs: {
-        used: nonNegativeCount(input.dashboardTabCount),
-        cap: tabCap,
-        canCreate: deferLimits || input.tabCap.allowed,
-      },
+    usage: {
+      enabledPanels: nonNegativeCount(input.enabledPanelUsed),
+      dashboardTabs: nonNegativeCount(input.dashboardTabCount),
     },
   };
 }

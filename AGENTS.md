@@ -53,7 +53,7 @@ Grep the named symbol. Do not scan these files top to bottom.
 |---|---|
 | Health keys and seed staleness | `api/health.js`: `BOOTSTRAP_KEYS`, `STANDALONE_KEYS`, `SEED_META`, `ON_DEMAND_KEYS`, `readSeedMeta`, `classifyKey` |
 | Shared seeder helpers | `scripts/_seed-utils.mjs`: `loadEnvFile`, `resolveSeedMetaKey`, `writeSeedMeta`, `writeExtraKeyWithMetaAtomically`, `withRetry` |
-| RPC access control | Split by design: `PREMIUM_RPC_PATHS` in `src/shared/premium-paths.ts`, `PUBLIC_NO_AUTH_RPC_PATHS` in `server/gateway.ts`, `validateApiKey` in `api/_api-key.js`, `isPublicSharedRpcRequest` in `src/shared/public-rpc-cache.ts` |
+| RPC access control | `PUBLIC_NO_AUTH_RPC_PATHS` in `server/gateway.ts`, `validateApiKey` in `api/_api-key.js` (anonymous `wm-session` or `WORLDMONITOR_VALID_KEYS`), `verifyPartnerRequest` in `api/_partner-access.js`, `isPublicSharedRpcRequest` in `src/shared/public-rpc-cache.ts` |
 | A shared term | `CONCEPTS.md`, one `###` heading per term; grep the term itself |
 
 Test path, command, and owning CI job. Read this instead of `.github/workflows/test.yml`.

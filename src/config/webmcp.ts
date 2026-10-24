@@ -19,7 +19,6 @@ export const WEBMCP_SPA_TOOL = Object.freeze({
   listMapLayers: 'list_map_layers',
   listDashboardPanels: 'list_dashboard_panels',
   openSettings: 'open_settings',
-  openAlerts: 'open_alerts',
   openDashboardPanel: 'open_dashboard_panel',
   setPanelEnabled: 'set_panel_enabled',
   getPanelLayout: 'get_panel_layout',
@@ -41,8 +40,6 @@ export const WEBMCP_SPA_TOOL = Object.freeze({
   listMissionPresets: 'list_mission_presets',
   applyMissionPreset: 'apply_mission_preset',
   openMissionPicker: 'open_mission_picker',
-  listFollowedCountries: 'list_followed_countries',
-  setCountryFollowed: 'set_country_followed',
   getAccessContext: 'get_access_context',
   openSignIn: 'open_sign_in',
 } as const);
@@ -53,7 +50,6 @@ export const WEBMCP_SPA_TOOL_NAMES = [
   WEBMCP_SPA_TOOL.listMapLayers,
   WEBMCP_SPA_TOOL.listDashboardPanels,
   WEBMCP_SPA_TOOL.openSettings,
-  WEBMCP_SPA_TOOL.openAlerts,
   WEBMCP_SPA_TOOL.openDashboardPanel,
   WEBMCP_SPA_TOOL.setPanelEnabled,
   WEBMCP_SPA_TOOL.getPanelLayout,
@@ -75,8 +71,6 @@ export const WEBMCP_SPA_TOOL_NAMES = [
   WEBMCP_SPA_TOOL.listMissionPresets,
   WEBMCP_SPA_TOOL.applyMissionPreset,
   WEBMCP_SPA_TOOL.openMissionPicker,
-  WEBMCP_SPA_TOOL.listFollowedCountries,
-  WEBMCP_SPA_TOOL.setCountryFollowed,
   WEBMCP_SPA_TOOL.getAccessContext,
   WEBMCP_SPA_TOOL.openSignIn,
 ] as const;

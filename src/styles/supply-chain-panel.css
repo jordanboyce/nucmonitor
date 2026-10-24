@@ -19,7 +19,6 @@
 .sc-bypass-table th { color: #64748b; font-weight: 500; padding: 4px 6px; text-align: left; border-bottom: 1px solid rgba(100,116,139,0.15); }
 .sc-bypass-table td { padding: 4px 6px; border-bottom: 1px solid rgba(100,116,139,0.08); }
 .sc-bypass-loading, .sc-bypass-error { font-size: calc(12px * var(--wm-panel-effective-scale, 1)); color: #64748b; padding: 8px 0; text-align: center; }
-.sc-bypass-gate { display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(100,116,139,0.06); border-radius: 6px; margin-top: 8px; font-size: calc(12px * var(--wm-panel-effective-scale, 1)); color: #94a3b8; }
 
 .sc-scenario-banner {
   container-type: inline-size;

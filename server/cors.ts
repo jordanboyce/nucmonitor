@@ -67,8 +67,6 @@ const ALLOWED_HEADERS = [
   'Authorization',
   'X-WorldMonitor-Key',
   'X-Api-Key',
-  'X-Widget-Key',
-  'X-Pro-Key',
   'X-WorldMonitor-Desktop-Timestamp',
   'X-WorldMonitor-Desktop-Signature',
   'Idempotency-Key',

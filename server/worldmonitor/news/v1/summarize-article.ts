@@ -16,15 +16,7 @@ import {
 import { CHROME_UA } from '../../../_shared/constants';
 import { isModelUsable, isProviderAvailable, recordModelFailure, recordModelSuccess } from '../../../_shared/llm-health';
 import { sanitizeHeadlinesLight, sanitizeForPrompt, sanitizeForPromptLine } from '../../../_shared/llm-sanitize.js';
-import {
-  getPremiumRpcBillingErrorType,
-  resolvePremiumCallerIdentity,
-} from '../../../_shared/premium-check';
-import {
-  markRetryableResponse,
-  markUnservedLlmResponse,
-  setResponseHeader,
-} from '../../../_shared/response-headers';
+import { markUnservedLlmResponse } from '../../../_shared/response-headers';
 import { stripThinkingTags } from '../../../_shared/llm';
 import { buildLlmCallEvent, deliverUsageEvents } from '../../../_shared/usage';
 import { NEWS_LANGUAGES } from '../../../../src/shared/public-rpc-cache';
@@ -66,7 +58,7 @@ export function hasReasoningPreamble(text: string): boolean {
   return TASK_NARRATION.test(trimmed) || PROMPT_ECHO.test(trimmed);
 }
 
-// Translate mode is free and skips the gateway's direct-LLM quota, and its
+// Translate mode skips the gateway's direct-LLM quota, and its
 // `variant` is the target language interpolated into the prompt. Accept only
 // the dashboard's UI languages (the digest set plus Traditional Chinese, which
 // the digest folds into `zh`) so an anonymous caller cannot turn translate into
@@ -82,52 +74,15 @@ export async function summarizeArticle(
   ctx: ServerContext,
   req: SummarizeArticleRequest,
 ): Promise<SummarizeArticleResponse> {
-  const premiumIdentity = await resolvePremiumCallerIdentity(ctx.request);
-  const isPremium = premiumIdentity.isPremium;
   const { provider, mode = 'brief', geoContext = '', variant = 'full', lang = 'en' } = req;
-  const systemAppend = isPremium && typeof req.systemAppend === 'string' ? req.systemAppend : '';
-  const requiresPremium = mode !== 'translate';
-  // Every empty-summary envelope below (denied, skipped, rejected, failed)
-  // serves no LLM output; the gateway reserved a daily-quota slot for this
-  // call and releases it on this marker. The served and cached paths do not
-  // go through here and stay charged.
+  // Every empty-summary envelope below (skipped, rejected, failed) serves no
+  // LLM output; the gateway reserved a daily-quota slot for this call and
+  // releases it on this marker. The served and cached paths do not go through
+  // here and stay charged.
   const unserved = (payload: SummarizeArticleResponse): SummarizeArticleResponse => {
     markUnservedLlmResponse(ctx.request);
     return payload;
   };
-
-  if (requiresPremium && !isPremium) {
-    const billingDenial = premiumIdentity.billingDenial;
-    if (billingDenial) {
-      if (billingDenial.retryable) {
-        markRetryableResponse(ctx.request);
-        setResponseHeader(ctx.request, 'Retry-After', String(billingDenial.retryAfterSeconds));
-        setResponseHeader(ctx.request, 'X-Billing-Verification', billingDenial.code);
-      }
-      return unserved({
-        summary: '',
-        model: '',
-        provider,
-        tokens: 0,
-        fallback: true,
-        error: billingDenial.message,
-        errorType: getPremiumRpcBillingErrorType(billingDenial),
-        status: 'SUMMARIZE_STATUS_ERROR',
-        statusDetail: billingDenial.code,
-      });
-    }
-    return unserved({
-      summary: '',
-      model: '',
-      provider: provider,
-      tokens: 0,
-      fallback: true,
-      error: 'Pro subscription required',
-      errorType: 'AuthError',
-      status: 'SUMMARIZE_STATUS_ERROR',
-      statusDetail: 'Pro subscription required',
-    });
-  }
 
   if (mode === 'translate' && !TRANSLATE_TARGET_LANGUAGES.has(variant)) {
     return unserved({
@@ -222,7 +177,7 @@ export async function summarizeArticle(
   }
 
   try {
-    const cacheKey = await getCacheKey(headlines, mode, sanitizedGeoContext, variant, lang, systemAppend || undefined, bodies);
+    const cacheKey = await getCacheKey(headlines, mode, sanitizedGeoContext, variant, lang, undefined, bodies);
 
     // Single atomic call — source tracking happens inside cachedFetchJsonWithMeta,
     // eliminating the TOCTOU race between a separate getCachedJson and cachedFetchJson.
@@ -299,10 +254,7 @@ export async function summarizeArticle(
           bodies: uniqueBodies,
         });
 
-        const sanitizedAppend = systemAppend ? sanitizeForPrompt(systemAppend) : '';
-        const effectiveSystemPrompt = sanitizedAppend
-          ? `${systemPrompt}\n\n---\n\n${sanitizedAppend}`
-          : systemPrompt;
+        const effectiveSystemPrompt = systemPrompt;
 
         const llmStartMs = Date.now();
         const llmPromptChars = effectiveSystemPrompt.length + userPrompt.length;

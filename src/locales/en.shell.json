@@ -31,7 +31,6 @@
     "tabSettings": "Settings",
     "tabPanels": "Panels",
     "tabSources": "Sources",
-    "tabNotifications": "Notifications",
     "languageLabel": "Language",
     "sourceRegionAll": "All",
     "sourceRegionWorldwide": "Worldwide",
@@ -272,22 +271,6 @@
     "offlineUnavailable": "Offline — live data is currently unavailable.",
     "cachedFallback": "Live data unavailable — showing cached data from {{freshness}}."
   },
-  "premium": {
-    "pro": "PRO",
-    "lockedDesc": "Requires a NucMonitor license key",
-    "signInToUnlock": "Sign in to unlock premium features",
-    "signIn": "Sign In to Unlock",
-    "upgradeDesc": "Upgrade to Pro for full access to premium analytics",
-    "upgradeToPro": "Upgrade to Pro",
-    "features": {
-      "orefSirens1": "Real-time Israel missile & rocket alerts",
-      "orefSirens2": "Siren zone mapping with threat classification",
-      "telegramIntel1": "Curated Telegram open-source intelligence channels",
-      "telegramIntel2": "Near-real-time conflict & geopolitical updates",
-      "xIntel1": "Curated X news accounts",
-      "xIntel2": "API-fresh posts and permalinks"
-    }
-  },
   "auth": {
     "signIn": "Sign In",
     "createAccount": "Create account",
@@ -299,8 +282,6 @@
     "serverUrl": "Server URL",
     "authHeader": "Auth Header",
     "optional": "optional",
-    "apiKey": "API Key",
-    "apiKeyPlaceholder": "Paste your API key",
     "useCustomHeaders": "Advanced: use custom headers ↓",
     "useApiKey": "← Use API key",
     "connectBtn": "Connect & List Tools",
@@ -367,22 +348,11 @@
     "previewComposingCopy": "The preview is rendering with the latest live data and dashboard styling.",
     "previewErrorCopy": "Fix the issue, then retry. Your existing widgets are unaffected.",
     "createInteractive": "Create Interactive Widget",
-    "proBadge": "PRO",
-    "preflightProUnavailable": "PRO widget agent unavailable. Check PRO_WIDGET_KEY on the server.",
-    "preflightInvalidProKey": "PRO key rejected. Update wm-pro-key and reload.",
-    "preflightProSubscriptionRequired": "Pro subscription required. If you just upgraded, refresh the page; otherwise contact support.",
-    "preflightProRequired": "Pro subscription required to use the Widget Builder. Upgrade to unlock.",
     "examples": {
       "oilGold": "Show me today's crude oil price versus gold",
       "cryptoMovers": "Create a widget for the top crypto movers in the last 24 hours",
       "flightDelays": "Summarize the worst international flight delays right now",
       "conflictHotspots": "Map the latest UCDP conflict hotspots with short labels"
-    },
-    "proExamples": {
-      "interactiveChart": "Interactive Chart.js chart comparing oil and gold prices",
-      "sortableTable": "Sortable crypto price table with search filter",
-      "animatedCounters": "Animated counters for key economic indicators",
-      "tabbedComparison": "Tabbed comparison of conflict events by region"
     }
   },
   "countryBrief": {
@@ -513,13 +483,6 @@
       "expandPanel": "Expand panel",
       "openSettings": "Open Settings",
       "showMethodologyInfo": "Show methodology info"
-    },
-    "proBanner": {
-      "badge": "PRO",
-      "headline": "Pro is launched",
-      "tagline": "More Signal, Less Noise. More AI Briefings. A Geopolitical & Equity Researcher just for you.",
-      "cta": "Upgrade to Pro →",
-      "dismiss": "Dismiss"
     },
     "settings": {
       "exportSettings": "Export Settings",
@@ -880,16 +843,9 @@
         "apiKey": {
           "title": "License / API Key",
           "placeholder": "wm_xxxxxxxxxxxxxxxxxxxxxxxx",
-          "description": "API Starter and API Business subscribers create this key on the web dashboard under Settings → API Keys. If a full key is lost, revoke it and create a replacement."
-        },
-        "dividerOr": "OR",
-        "register": {
-          "title": "Need an API key?",
-          "description": "Partner API keys are issued per organisation; see docs/partner-access.md in the repository.",
-          "submitBtn": "View API plans"
+          "description": "Paste the API key your NucMonitor administrator issued for this desktop app. If a key is lost, ask for a replacement."
         }
-      },
-      "freePanelLimit": "Free plan: max {{max}} panels. Upgrade to PRO for unlimited."
+      }
     },
     "mobileWarning": {
       "title": "Mobile View"

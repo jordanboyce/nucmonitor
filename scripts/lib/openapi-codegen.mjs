@@ -1,6 +1,6 @@
 // Shared helpers for the OpenAPI post-generation injectors
 // (scripts/openapi-inject-*.mjs) and their contract tests. Single-sourcing the
-// byte-faithful serializer, the gateway/entitlement source-of-truth parsers, and
+// byte-faithful serializer, the gateway source-of-truth parsers, and
 // the public-gate registry here removes the copy-paste drift between injectors
 // and — crucially — lets the tests import the SAME constants the injectors use
 // instead of re-scraping the injector source with duplicate regexes (which could
@@ -440,66 +440,6 @@ export function readPublicNoAuthPaths() {
   const paths = quotedLiterals(block[1]);
   if (paths.length === 0) throw new Error('PUBLIC_NO_AUTH_RPC_PATHS parsed as empty — refusing to run');
   return new Set(paths);
-}
-
-export function readEndpointEntitlements() {
-  const src = readFileSync(resolve(root, 'server/_shared/entitlement-check.ts'), 'utf8');
-  const block = src.match(/ENDPOINT_ENTITLEMENTS\s*:\s*Record<string,\s*number>\s*=\s*\{([\s\S]*?)\};/);
-  if (!block) throw new Error('could not locate ENDPOINT_ENTITLEMENTS in server/_shared/entitlement-check.ts');
-  const entries = [...block[1].matchAll(/'([^']+)'\s*:\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]);
-  if (entries.length === 0) throw new Error('ENDPOINT_ENTITLEMENTS parsed as empty — refusing to run');
-  return new Map(entries);
-}
-
-export function readPremiumRpcPaths() {
-  const src = readFileSync(resolve(root, 'src/shared/premium-paths.ts'), 'utf8');
-  const block = src.match(/PREMIUM_RPC_PATHS\s*=\s*new Set<string>\(\[([\s\S]*?)\]\)/);
-  if (!block) throw new Error('could not locate PREMIUM_RPC_PATHS in src/shared/premium-paths.ts');
-  return quotedLiterals(block[1]);
-}
-
-// ── Billing-verification wire contract (#5447) ──────────────────────────────
-// The gateway and entitlement gates answer paid-access checks with a shared
-// billing-verification contract: a retryable 503 (Retry-After 1-60s +
-// X-Billing-Verification header + {error, code} body) while a renewal is being
-// re-confirmed or the entitlement backend is unreachable, and a hard 403 whose
-// body carries code `subscription_lapsed` once the lapse is provider-confirmed.
-// The status union is parsed from the exported BillingVerificationStatus type
-// so the published enum can never drift from runtime (fail-closed like the
-// parsers above).
-export function readBillingVerificationStatuses() {
-  const src = readFileSync(resolve(root, 'server/_shared/entitlement-check.ts'), 'utf8');
-  const block = src.match(/export type BillingVerificationStatus\s*=([\s\S]*?);/);
-  if (!block) throw new Error('could not locate BillingVerificationStatus in server/_shared/entitlement-check.ts');
-  const statuses = [...block[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  if (statuses.length === 0) throw new Error('BillingVerificationStatus parsed as empty — refusing to run');
-  return statuses;
-}
-
-// The provider-confirmed lapse is the one union member answered with a 403
-// instead of the retryable 503 (entitlement-check.ts getBillingVerificationDenial).
-export const LAPSED_BILLING_STATUS = 'subscription_lapsed';
-
-// Transient backend-unreachable denials reuse the same wire shape but their
-// code is not part of the persisted status union — assert it still exists in
-// the gateway sources so a rename cannot silently orphan the published enum.
-export function readEntitlementUnavailableCode() {
-  for (const file of ['server/_shared/entitlement-check.ts', 'server/gateway.ts']) {
-    const src = readFileSync(resolve(root, file), 'utf8');
-    const match = src.match(/code:\s*'(entitlement_verification_unavailable)'/);
-    if (match) return match[1];
-  }
-  throw new Error('could not locate the entitlement_verification_unavailable code in gateway sources — refusing to run');
-}
-
-// Retryable-503 code enum, derived: every union status except the hard-403
-// lapse, plus the transient backend-unreachable code.
-export function readRetryableBillingCodes() {
-  const statuses = readBillingVerificationStatuses();
-  if (!statuses.includes(LAPSED_BILLING_STATUS)) {
-    throw new Error(`BillingVerificationStatus no longer contains ${LAPSED_BILLING_STATUS} — the 403/503 split needs review`);
-  }
-  return [...statuses.filter((s) => s !== LAPSED_BILLING_STATUS), readEntitlementUnavailableCode()];
 }
 
 /**

@@ -209,77 +209,6 @@ const STORY_ALIAS_PUBLISH_SCRIPT = [
   'return 1',
 ].join('\n');
 
-// PINNED COPY of shared/mcp-quota-reserve-script.mjs. The script atomically
-// reserves a Pro MCP daily-quota slot, rolls back only the rejecting request,
-// and — when the caller enables the clamp via ARGV[4] — clamps failed-rollback
-// residue without dropping below a higher successful same-day allowance.
-// Regenerate this block from the source array literal; do not hand-edit it.
-const MCP_QUOTA_RESERVE_SCRIPT = [
-  'local ttl = tonumber(ARGV[2])',
-  'local weight = tonumber(ARGV[3])',
-  'if weight == nil or weight < 1 then weight = 1 end',
-  'local clamp_enabled = tonumber(ARGV[4]) ~= 0',
-  "local n = redis.call('INCRBY', KEYS[1], weight)",
-  'if ttl ~= nil and ttl > 0 then',
-  "  redis.call('EXPIRE', KEYS[1], ttl)",
-  'end',
-  '',
-  'local function read_floor()',
-  "  local raw = redis.call('GET', KEYS[2])",
-  "  if raw == false or raw == nil or raw == '' then return nil end",
-  '  return tonumber(raw)',
-  'end',
-  '',
-  'local function write_floor(value)',
-  "  redis.call('SET', KEYS[2], value)",
-  '  if ttl ~= nil and ttl > 0 then',
-  "    redis.call('EXPIRE', KEYS[2], ttl)",
-  '  end',
-  'end',
-  '',
-  'local function remember_success(limit)',
-  '  local seen = read_floor()',
-  '  if seen == -1 then return end',
-  '  if seen == nil or limit > seen then',
-  '    write_floor(limit)',
-  '  end',
-  'end',
-  '',
-  'local limit_raw = ARGV[1]',
-  "if limit_raw == nil or limit_raw == false or limit_raw == '' then",
-  '  write_floor(-1)',
-  '  return {1, n}',
-  'end',
-  '',
-  'local limit = tonumber(limit_raw)',
-  'if limit == nil or limit < 0 then',
-  "  redis.call('DECRBY', KEYS[1], weight)",
-  '  return {-1, 0}',
-  'end',
-  '',
-  'if n <= limit then',
-  '  remember_success(limit)',
-  '  return {1, n}',
-  'end',
-  '',
-  "n = redis.call('DECRBY', KEYS[1], weight)",
-  'if clamp_enabled then',
-  '  local seen = read_floor()',
-  '  if seen ~= -1 then',
-  '    local clamp_to = limit',
-  '    if seen ~= nil and seen > clamp_to then clamp_to = seen end',
-  '    if n > clamp_to then',
-  "      redis.call('SET', KEYS[1], clamp_to)",
-  '      if ttl ~= nil and ttl > 0 then',
-  "        redis.call('EXPIRE', KEYS[1], ttl)",
-  '      end',
-  '      n = clamp_to',
-  '    end',
-  '  end',
-  'end',
-  'return {0, n}',
-].join('\n');
-
 // The proxy allowlists EVAL by exact script text, so this must match scripts/lib/x-post-budget.cjs.
 const X_POST_BUDGET_RESERVE_SCRIPT = [
   'local requested = tonumber(ARGV[1])',
@@ -560,65 +489,6 @@ const CABLE_HEALTH_REPAIR_SCRIPT = [
 const WEBHOOK_OWNER_INDEX_REMOVE_EXPIRED_SCRIPT = [
   "if redis.call('EXISTS', KEYS[2]) == 0 then return redis.call('SREM', KEYS[1], ARGV[1]) else return 0 end",
 ].join('\n');
-// PINNED COPY of shared/free-account-allowance-scripts.mjs
-// RESERVE_FREE_ACCOUNT_ALLOWANCE_SCRIPT. Regenerate this block from the source
-// array literal; do not hand-edit it.
-const RESERVE_FREE_ACCOUNT_ALLOWANCE_SCRIPT = [
-  'local function non_negative_integer(raw)',
-  '  if raw == false or raw == nil then return 0 end',
-  '  local value = tonumber(raw)',
-  '  if value == nil or value < 0 or value ~= math.floor(value) then return nil end',
-  '  return value',
-  'end',
-  '',
-  "local calls_raw = redis.call('GET', KEYS[1])",
-  "local requests_raw = redis.call('GET', KEYS[2])",
-  "local last_raw = redis.call('GET', KEYS[3])",
-  'local calls = non_negative_integer(calls_raw)',
-  'local requests = non_negative_integer(requests_raw)',
-  'local last = nil',
-  'if last_raw ~= false and last_raw ~= nil then',
-  '  last = non_negative_integer(last_raw)',
-  'end',
-  'local calls_missing = calls_raw == false or calls_raw == nil',
-  'local requests_missing = requests_raw == false or requests_raw == nil',
-  'local last_present = last_raw ~= false and last_raw ~= nil',
-  'if calls == nil or requests == nil or (last_present and last == nil) then',
-  '  return {-1}',
-  'end',
-  'if calls_missing ~= requests_missing or requests > calls or (last_present and calls == 0) then',
-  '  return {-1}',
-  'end',
-  '',
-  'local now_ms = tonumber(ARGV[1])',
-  'local idle_gap_ms = tonumber(ARGV[2])',
-  'local calls_limit = tonumber(ARGV[3])',
-  'local requests_limit = tonumber(ARGV[4])',
-  'local opens_window = last == nil or now_ms - last >= idle_gap_ms',
-  'local activity_value = ARGV[1]',
-  'if last ~= nil and last > now_ms then activity_value = last_raw end',
-  '',
-  'if calls >= calls_limit then return {0} end',
-  'if opens_window and requests >= requests_limit then return {0} end',
-  '',
-  'calls = calls + 1',
-  'if opens_window then requests = requests + 1 end',
-  "redis.call('SET', KEYS[1], tostring(calls), 'EX', ARGV[5])",
-  'if opens_window then',
-  "  redis.call('SET', KEYS[2], tostring(requests), 'EX', ARGV[5])",
-  'end',
-  "redis.call('SET', KEYS[3], activity_value, 'PX', ARGV[2])",
-  'return {1}',
-].join('\n');
-// PINNED COPY of shared/free-account-allowance-scripts.mjs
-// READ_FREE_ACCOUNT_ALLOWANCE_SCRIPT. Read-only GET/PTTL snapshot; same pin
-// contract as the reserve script above.
-const READ_FREE_ACCOUNT_ALLOWANCE_SCRIPT = [
-  "local calls = redis.call('GET', KEYS[1])",
-  "local requests = redis.call('GET', KEYS[2])",
-  "local activityPttl = redis.call('PTTL', KEYS[3])",
-  'return {calls or false, requests or false, activityPttl}',
-].join('\n');
 // Pinned to shared/compare-and-delete-script.cjs. Kept inline: this file
 // connects to Redis at import time, and the command-gate tests eval the
 // source instead of importing it.
@@ -695,28 +565,6 @@ const PIZZINT_HISTORY_WRITE_SCRIPT = [
 ].join('\n');
 
 
-const PANEL_REQUEST_RESERVE_SCRIPT = [
-  "local current = tonumber(redis.call('GET', KEYS[3]))",
-  "local expires = current or tonumber(redis.call('GET', KEYS[4]))",
-  'if expires ~= nil then',
-  "  local n = tonumber(redis.call('GET', KEYS[1]))",
-  '  if n == nil or n < 0 then return {-1, 0} end',
-  '  return {current and 2 or 3, n, expires}',
-  'end',
-  MCP_QUOTA_RESERVE_SCRIPT.replaceAll('return {1, n}', "redis.call('SET', KEYS[3], ARGV[6], 'EX', ARGV[5])\n  return {1, n, tonumber(ARGV[6])}"),
-].join('\n');
-
-const PANEL_REQUEST_READ_SCRIPT = [
-  "if redis.call('GET', KEYS[1]) ~= ARGV[3] then return {-1, 0} end",
-  "local n = redis.call('INCRBY', KEYS[2], 1)",
-  "redis.call('EXPIRE', KEYS[2], ARGV[2])",
-  'if n > tonumber(ARGV[1]) then',
-  "  redis.call('DECRBY', KEYS[2], 1)",
-  '  return {0, n - 1}',
-  'end',
-  'return {1, n}',
-].join('\n');
-
 // Pinned copy of CII_DAILY_WRITE_LUA in server/worldmonitor/intelligence/v1/get-risk-scores.ts.
 const CII_DAILY_HISTORY_WRITE_SCRIPT = [
   "",
@@ -746,8 +594,6 @@ const CII_DAILY_HISTORY_WRITE_SCRIPT = [
 
 const ALLOWED_EVAL_SCRIPTS = new Set([
   CII_DAILY_HISTORY_WRITE_SCRIPT,
-  PANEL_REQUEST_RESERVE_SCRIPT,
-  PANEL_REQUEST_READ_SCRIPT,
   PIZZINT_HISTORY_WRITE_SCRIPT,
   COMPARE_AND_DELETE_SCRIPT,
   LEGACY_COMPARE_AND_DELETE_SCRIPT,
@@ -756,9 +602,6 @@ const ALLOWED_EVAL_SCRIPTS = new Set([
   SOURCE_RETRY_CLAIM_SCRIPT,
   DIGEST_LASTGOOD_PUBLISH_SCRIPT,
   STORY_ALIAS_PUBLISH_SCRIPT,
-  MCP_QUOTA_RESERVE_SCRIPT,
-  RESERVE_FREE_ACCOUNT_ALLOWANCE_SCRIPT,
-  READ_FREE_ACCOUNT_ALLOWANCE_SCRIPT,
   X_POST_BUDGET_RESERVE_SCRIPT,
   X_POST_BUDGET_SETTLE_SCRIPT,
   X_POST_BUDGET_ACK_RECEIPTS_SCRIPT,

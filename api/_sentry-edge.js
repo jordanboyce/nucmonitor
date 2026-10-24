@@ -21,9 +21,8 @@
  *       });
  *
  *   - `captureEdgeException(err, context, ctx?, fingerprint?)` — legacy
- *     alias for the original (pre-sweep) shape. Existing callers in
- *     `notification-channels.ts` keep working unchanged; new callers
- *     should use `captureSilentError`.
+ *     alias for the original (pre-sweep) shape; new callers should use
+ *     `captureSilentError`.
  *
  * Sentry project: same DSN as the frontend (`VITE_SENTRY_DSN`). Events
  * are tagged `surface: api`, `runtime: edge` for filtering. The DSN is

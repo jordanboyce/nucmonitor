@@ -2,11 +2,6 @@ node_modules/
 .idea/
 dist/
 public/blog/
-# Built by `npm run build:pro` during the deploy build (#6898). Committing it
-# produced a rename/delete conflict on every pair of PRs touching /pro (the
-# filename carries a content hash) and a staleness class when someone changed
-# pro-test/src without rebuilding.
-public/pro/
 public/es/
 public/pt/
 public/ru/
@@ -25,13 +20,10 @@ public/compare/
 public/sources/
 public/accuracy/
 public/crawlable-corpus.json
-# Volatile inventory metrics are derived during install/build. Stable product
-# lifecycle, pricing, and catalog artifacts remain committed.
-public/product-facts.json
+# Volatile inventory metrics are derived during install/build.
 api/_inventory-facts.generated.js
 scripts/shared/inventory-facts.generated.json
 docs/generated/stats.json
-docs/generated/entitlement-crosswalk.json
 .DS_Store
 *.log
 .env

@@ -16,7 +16,6 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { __testing__ } from '../server/worldmonitor/news/v1/list-feed-digest';
 import { rssFeedCacheKey } from '../server/worldmonitor/news/v1/_rss-cache';
-import { shouldDropOpinionTrack } from '../scripts/lib/digest-opinion-track-filter.mjs';
 
 const {
   buildStoryTrackHsetFields,
@@ -130,14 +129,9 @@ describe('buildStoryTrackHsetFields — story:track:v1 HSET contract', () => {
     assert.strictEqual(item.isOpinion, true);
     const persisted = fieldsToMap(buildStoryTrackHsetFields(item, '1784030400000', 42));
     assert.strictEqual(persisted.get('isOpinion'), '1');
-    assert.strictEqual(
-      shouldDropOpinionTrack(Object.fromEntries(persisted)),
-      true,
-      'the stamped RSS record must be excluded by the digest read-path policy',
-    );
   });
 
-  it('carries the Al Jazeera duration-led retrospective verdict from RSS into the digest filter', () => {
+  it('carries the Al Jazeera duration-led retrospective verdict from RSS into the HSET shape', () => {
     const result = parseRssXml(
       `<?xml version="1.0"?><rss><channel><item>
         <title>10 years on from Turkiye’s failed coup attempt on Erdogan</title>
@@ -154,11 +148,6 @@ describe('buildStoryTrackHsetFields — story:track:v1 HSET contract', () => {
     assert.strictEqual(item.isOpinion, true);
     const persisted = fieldsToMap(buildStoryTrackHsetFields(item, '1784147709000', 42));
     assert.strictEqual(persisted.get('isOpinion'), '1');
-    assert.strictEqual(
-      shouldDropOpinionTrack(Object.fromEntries(persisted)),
-      true,
-      'the stamped anniversary retrospective must be excluded before severity bucketing',
-    );
   });
 
   it('writes isFeelGood as "1" / "0" — stamps the feel-good verdict on the row (Veterans-warplanes anchor)', () => {
@@ -512,8 +501,7 @@ describe('buildStoryTrackHsetFields — story:track:v1 HSET contract', () => {
   });
 
   it('persists publishedAt as a stringified epoch ms (READ-time freshness contract)', () => {
-    // The READ-time freshness floor in scripts/seed-digest-notifications.mjs
-    // (buildDigest) parses track.publishedAt as int and drops rows older
+    // The READ-time freshness floor (buildDigest) parses track.publishedAt as int and drops rows older
     // than DIGEST_READ_MAX_AGE_HOURS. The HSET helper MUST emit it as a
     // numeric string for that parse to succeed. Skipping this would make
     // the read-time gate silently inert.

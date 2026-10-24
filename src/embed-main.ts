@@ -1,32 +1,8 @@
 import './styles/base-layer.css';
 import './styles/embed.css';
 import { initI18n } from '@/services/i18n';
-import { getEmbedPanelFreeTier } from '../shared/embed-panels';
 import { parseEmbedParams } from '@/embed/embed-url';
-import { waitForEmbeddingApiKey } from '@/embed/embed-credential';
-import { fetchEmbedEntitlement } from '@/embed/embed-fetch';
 import { mountEmbedMapPanel } from '@/embed/panels/map';
-
-/**
- * Tell the partner's own console that the credential in their page HTML does
- * more than embed.
- *
- * The frame is inside an iframe on somebody else's site, so this warning lands
- * in the console of the person who can actually fix it. It names the risk
- * rather than the deadline: the `wm_` and enterprise paths still work, and
- * when they stop is a commercial decision nobody has made yet.
- */
-function warnOnDeprecatedCredential(kind: string | undefined): void {
-  if (!kind) return;
-  const what = kind === 'enterprise_key'
-    ? 'an enterprise key, which bypasses entitlement checks entirely'
-    : 'a NucMonitor user API key (wm_…), which unlocks your whole paid REST allowance';
-  console.warn(
-    `[worldmonitor-embed] This embed authenticates with ${what}. It sits in your page's public HTML, `
-    + 'where anyone can read and reuse it. Replace it with a scoped embed key (wme_…): '
-    + 'NucMonitor dashboard → Settings → Embeds.',
-  );
-}
 
 function mountError(root: HTMLElement, message: string): void {
   root.textContent = '';
@@ -47,12 +23,6 @@ async function bootEmbed(): Promise<void> {
     document.body.dataset.embedPanel = params.panel ?? 'unknown';
     document.body.dataset.embedReady = 'false';
 
-    // Listen before any await so the parent's iframe `load` postMessage is not
-    // dropped while initI18n() fetches locale bundles. Started for EVERY panel
-    // now, not just the paid-only ones: a tiered panel renders keylessly but
-    // upgrades in place when a credential arrives, so it must be listening too.
-    const apiKeyPromise = waitForEmbeddingApiKey();
-
     await initI18n();
 
     if (!params.panel) {
@@ -61,31 +31,9 @@ async function bootEmbed(): Promise<void> {
       return;
     }
 
-    let apiKey: string | null = null;
-    if (getEmbedPanelFreeTier(params.panel) === null) {
-      apiKey = await apiKeyPromise;
-      if (!apiKey) {
-        mountError(root, 'This NucMonitor panel requires an embedding API key from the partner account.');
-        document.body.dataset.embedReady = 'error';
-        return;
-      }
-      const entitlement = await fetchEmbedEntitlement(params.panel, apiKey);
-      if (!entitlement.ok) {
-        const denied = entitlement.status === 403
-          ? 'The embedding account is not entitled to this NucMonitor panel.'
-          : 'NucMonitor could not verify the embedding API key for this panel.';
-        mountError(root, denied);
-        document.body.dataset.embedReady = 'error';
-        return;
-      }
-      warnOnDeprecatedCredential(entitlement.body.deprecatedCredential);
-    }
-
     let destroy: (() => void) | undefined;
     if (params.panel === 'map') {
-      // Mounts free-tier first and upgrades if `apiKeyPromise` resolves, so a
-      // keyless embed never waits out the credential handshake.
-      destroy = await mountEmbedMapPanel(root, params, apiKeyPromise);
+      destroy = await mountEmbedMapPanel(root, params);
     }
 
     document.title = params.panel === 'map'

@@ -5,9 +5,6 @@ import { type DomChild, h, replaceChildren, safeHtml as sanitizeHtmlFragment, se
 import { safeHtmlToString, type SafeHtml } from '@/utils/sanitize';
 import { trackLayoutCustomized } from '@/services/analytics';
 import { getAiFlowSettings } from '@/services/ai-flow-settings';
-import { getSecretState } from '@/services/runtime-config';
-import { PanelGateReason } from '@/services/panel-gating';
-import { lockSvg, upgradeSvg } from '@/components/gate-icons';
 import { dataFreshness, type PanelFreshnessSummary } from '@/services/data-freshness';
 import { formatPanelFreshnessDisplay } from '@/services/panel-freshness-display';
 import {
@@ -38,7 +35,6 @@ export interface PanelOptions {
   className?: string;
   trackActivity?: boolean;
   infoTooltip?: string;
-  premium?: 'locked' | 'enhanced';
   closable?: boolean;
   collapsible?: boolean;
   defaultRowSpan?: number;
@@ -142,7 +138,7 @@ export class Panel {
   private pendingContentHtml: string | null = null;
   /**
    * The exact string last written by `setContentImmediate`, or `null` when the
-   * content was replaced by any other path (loading/error/locked states, clear,
+   * content was replaced by any other path (loading/error states, clear,
    * saved-content restore) and is therefore no longer a known string.
    *
    * Exists to keep the two content dirty-checks off `this.content.innerHTML`:
@@ -160,33 +156,6 @@ export class Panel {
   private retryCountdownTimer: ReturnType<typeof setInterval> | null = null;
   private retryAttempt = 0;
   private _fetching = false;
-  private _locked = false;
-  // Lock-awareness for subclasses that write positionally (insertBefore /
-  // appendChild into this.content) instead of through the setContent* helpers.
-  // #6678's GdeltIntelPanel previously proxied this via
-  // element.classList.contains('panel-is-locked') — a string-keyed mirror of
-  // private state that belongs once on the base class (#6714).
-  protected get isLocked(): boolean {
-    return this._locked;
-  }
-  // Last reason rendered by showGatedCta, so repeat gating passes with an
-  // unchanged verdict skip the DOM teardown/rebuild (#4771 re-runs gating on
-  // every subscription-row change, including fields irrelevant to gating).
-  private _lastGateReason: PanelGateReason | null = null;
-  // Snapshot of this.content's children at the moment showLocked /
-  // showGatedCta replaces them with a lock CTA. unlockPanel re-attaches
-  // these nodes so subclasses whose UI is constructed once (typically in
-  // the ctor — chips, input rows, static chrome) don't end up with a
-  // permanently empty body after a FREE→PRO auth-state cycle. The cache
-  // holds the actual DOM nodes; reattaching preserves any listeners and
-  // any subclass references like `this.inputEl`.
-  private _savedContent: ChildNode[] | null = null;
-  // User id bound by updatePanelGating. unlock compares this to snapshotPrincipal.
-  private contentPrincipal: string | null = null;
-  // Principal that owned the panel when the snapshot was taken. null means
-  // unowned constructor chrome (safe to restore). A non-null id must match
-  // the current principal or unlock refuses the snapshot.
-  private snapshotPrincipal: string | null = null;
   private _collapsed = false;
   private _collapseBtn: HTMLButtonElement | null = null;
   private viewportObserver: IntersectionObserver | null = null;
@@ -262,11 +231,6 @@ export class Panel {
       this.newBadgeEl.className = 'panel-new-badge';
       this.newBadgeEl.style.display = 'none';
       headerLeft.appendChild(this.newBadgeEl);
-    }
-
-    if (options.premium && !getSecretState('WORLDMONITOR_API_KEY').present) {
-      const proBadge = h('span', { className: 'panel-pro-badge' }, t('premium.pro'));
-      headerLeft.appendChild(proBadge);
     }
 
     this.header.appendChild(headerLeft);
@@ -1019,7 +983,6 @@ export class Panel {
   }
 
   public showLoading(message = t('common.loading')): void {
-    if (this._locked) return;
     this.setErrorState(false);
     this.clearRetryCountdown();
     this.replaceContent(
@@ -1034,7 +997,6 @@ export class Panel {
   }
 
   public showError(message?: string, onRetry?: () => void, autoRetrySeconds?: number): void {
-    if (this._locked) return;
     this.clearRetryCountdown();
     this.setErrorState(true);
     if (onRetry !== undefined) this.retryCallback = onRetry;
@@ -1109,178 +1071,6 @@ export class Panel {
     this.retryAttempt = 0;
   }
 
-  public showLocked(features: string[] = []): void {
-    this._locked = true;
-    this.clearRetryCountdown();
-    this._snapshotContentForRestore();
-
-    for (let child = this.header.nextElementSibling; child && child !== this.content; child = child.nextElementSibling) {
-      (child as HTMLElement).style.display = 'none';
-    }
-    this.element.classList.add('panel-is-locked');
-
-    const iconEl = h('div', { className: 'panel-locked-icon' });
-    setTrustedHtml(iconEl, trustedHtml(lockSvg, 'legacy direct innerHTML migration'));
-
-    const lockedChildren: (HTMLElement | string)[] = [
-      iconEl,
-      h('div', { className: 'panel-locked-desc' }, t('premium.lockedDesc')),
-    ];
-
-    if (features.length > 0) {
-      const featureList = h('ul', { className: 'panel-locked-features' });
-      for (const feat of features) {
-        featureList.appendChild(h('li', {}, feat));
-      }
-      lockedChildren.push(featureList);
-    }
-
-
-    this.replaceContent(h('div', { className: 'panel-locked-state' }, ...lockedChildren));
-  }
-
-  /**
-   * CTA copy per gate reason, resolved lazily so each call translates only
-   * the two strings it renders. #4771 billing-aware states: the user has
-   * (or had) paid evidence, so the CTA must never read as a fresh upsell
-   * (duplicate-checkout risk). Their keys live under components.billingState
-   * (NOT premium.*): premium. is a first-paint shell namespace and these
-   * CTAs only render after the Convex entitlement round-trip, well past
-   * full-locale load.
-   */
-  private static gatedCtaEntry(
-    reason: PanelGateReason,
-  ): { icon: string; desc: string; cta: string } | null {
-    switch (reason) {
-      case PanelGateReason.ANONYMOUS:
-        return {
-          icon: lockSvg,
-          desc: t('premium.signInToUnlock'),
-          cta: t('premium.signIn'),
-        };
-      case PanelGateReason.FREE_TIER:
-        return {
-          icon: upgradeSvg,
-          desc: t('premium.upgradeDesc'),
-          cta: t('premium.upgradeToPro'),
-        };
-      case PanelGateReason.PAYMENT_ON_HOLD:
-        return {
-          icon: lockSvg,
-          desc: t('components.billingState.onHoldDesc'),
-          cta: t('components.billingState.updatePayment'),
-        };
-      case PanelGateReason.RENEWAL_PENDING:
-        return {
-          icon: lockSvg,
-          desc: t('components.billingState.renewalPendingDesc'),
-          cta: t('components.billingState.refreshStatus'),
-        };
-      case PanelGateReason.RENEWAL_FAILED:
-        return {
-          icon: lockSvg,
-          desc: t('components.billingState.renewalFailedDesc'),
-          cta: t('components.billingState.manageBilling'),
-        };
-      case PanelGateReason.LAPSED:
-        return {
-          icon: upgradeSvg,
-          desc: t('components.billingState.lapsedDesc'),
-          cta: t('components.billingState.resubscribe'),
-        };
-      default:
-        return null;
-    }
-  }
-
-  public showGatedCta(reason: PanelGateReason, onAction: () => void): void {
-    const entry = Panel.gatedCtaEntry(reason);
-    if (!entry) return; // PanelGateReason.NONE should never reach here
-
-    // Same verdict already rendered — skip the DOM teardown/rebuild.
-    // Gating re-runs on every subscription-row change (#4771), including
-    // Convex updates to fields irrelevant to the gate verdict.
-    if (this._locked && this._lastGateReason === reason) return;
-    this._lastGateReason = reason;
-
-    // Bail-out done — now commit to the locked state. Doing this AFTER the
-    // guard avoids a half-locked DOM (header siblings hidden, panel-is-locked
-    // class set, _savedContent populated) on the acknowledged-impossible
-    // NONE-reason path. PR #3814 review (Greptile P2).
-    this._locked = true;
-    this.clearRetryCountdown();
-    this._snapshotContentForRestore();
-
-    // Hide elements between header and content (same as showLocked)
-    for (let child = this.header.nextElementSibling; child && child !== this.content; child = child.nextElementSibling) {
-      (child as HTMLElement).style.display = 'none';
-    }
-    this.element.classList.add('panel-is-locked');
-
-    const iconEl = h('div', { className: 'panel-locked-icon' });
-    setTrustedHtml(iconEl, trustedHtml(entry.icon, 'legacy direct innerHTML migration'));
-
-    const descEl = h('div', { className: 'panel-locked-desc' }, entry.desc);
-
-    const ctaBtn = h('button', { type: 'button', className: 'panel-locked-cta' }, entry.cta);
-    ctaBtn.addEventListener('click', onAction);
-
-    this.replaceContent(h('div', { className: 'panel-locked-state' }, iconEl, descEl, ctaBtn));
-  }
-
-  public unlockPanel(): void {
-    if (!this._locked) return;
-    this._locked = false;
-    this._lastGateReason = null;
-    this.element.classList.remove('panel-is-locked');
-    // Re-show hidden elements
-    for (let child = this.header.nextElementSibling; child && child !== this.content; child = child.nextElementSibling) {
-      (child as HTMLElement).style.display = '';
-    }
-    // Restore the pre-lock content if we have it. The saved nodes are the
-    // ORIGINAL DOM nodes the subclass built — reattaching preserves event
-    // listeners and any references the subclass holds (this.inputEl etc.),
-    // and fixes constructor-only subclasses (DeductionPanel,
-    // ChatAnalystPanel, …) that would otherwise end up with an empty body.
-    // Fall back to the legacy empty-content behaviour if nothing was saved.
-    const saved = this._savedContent;
-    const ownedBySomeoneElse = this.snapshotPrincipal !== null
-      && this.snapshotPrincipal !== this.contentPrincipal;
-    this._savedContent = null;
-    this.snapshotPrincipal = null;
-    if (saved !== null && !ownedBySomeoneElse) {
-      this.replaceContent(...saved);
-    } else {
-      this.replaceContent();
-    }
-  }
-
-  /**
-   * Record which authenticated user owns the content about to be snapshotted
-   * or restored. updatePanelGating calls this before lock/unlock so a later
-   * account cannot receive the previous principal's DOM.
-   */
-  public bindContentPrincipal(userId: string | null): void {
-    this.contentPrincipal = userId;
-  }
-
-  /**
-   * Remove sensitive panel payloads from both the visible DOM and the
-   * pre-lock restoration snapshot. Pro panels call this on sign-out or
-   * downgrade so unlockPanel() cannot resurrect data captured before the
-   * entitlement changed.
-   */
-  public clearSensitiveContent(): void {
-    this.dropContentSnapshot();
-    if (!this._locked) this.replaceContent();
-  }
-
-  protected dropContentSnapshot(): void {
-    this._savedContent = null;
-    this.snapshotPrincipal = null;
-    this.cancelPendingContentWrite();
-  }
-
   /**
    * Drop a debounced `setContentHtml` write that has not committed yet.
    *
@@ -1298,18 +1088,7 @@ export class Panel {
     }
   }
 
-  // Capture this.content's current child nodes so unlockPanel can put them
-  // back. Only snapshots on the FIRST transition into a lock state — a
-  // re-entrant showLocked / showGatedCta must not overwrite the cache with
-  // the locked-state CTA. The cache is cleared by unlockPanel on restore.
-  private _snapshotContentForRestore(): void {
-    if (this._savedContent !== null) return;
-    this._savedContent = Array.from(this.content.childNodes);
-    this.snapshotPrincipal = this.contentPrincipal;
-  }
-
   public showRetrying(message?: string, countdownSeconds?: number): void {
-    if (this._locked) return;
     this.clearRetryCountdown();
     this.setErrorState(true);
 
@@ -1413,8 +1192,7 @@ export class Panel {
   private replaceContent(...children: DomChild[]): void {
     // Structural, for the same reason `invalidateCommittedHtml` is: EVERY
     // immediate write must drop a queued one, and `showError` / `showRetrying` /
-    // `showLoading` / `showLocked` / `showGatedCta` / `showConfigError` /
-    // `unlockPanel` all land content through here. Without it a `setSafeContent`
+    // `showLoading` / `showConfigError` all land content through here. Without it a `setSafeContent`
     // queued moments earlier commits `contentDebounceMs` later and paints over
     // the render that just replaced it — under a chip nothing then clears, which
     // is #6557 reached from the other direction.
@@ -1436,7 +1214,7 @@ export class Panel {
 
   /**
    * Commit a render as the panel's authoritative content — the `setSafeContent`
-   * of the DOM-node path, and a true twin of it: same lock bail, same
+   * of the DOM-node path, and a true twin of it: same
    * error-state clear.
    *
    * `setContentHtml` drops the error badge, the pending auto-retry countdown and
@@ -1452,13 +1230,7 @@ export class Panel {
    * resetting the backoff on every loading paint would flatten it to its floor.
    */
   protected setContentNodes(...children: DomChild[]): void {
-    // #6714: the error-state clear runs BEFORE the lock bail. Clearing the
-    // chip and the backoff rung paints nothing, so it cannot reopen the
-    // paywall hole the bail exists to close — but bailing first meant a
-    // locked panel's success render cleared neither, leaving a red header
-    // over the lock CTA and a stale retryAttempt rung after unlock.
     this.clearErrorState();
-    if (this._locked) return;
     this.cancelPendingContentWrite();
     this.replaceContent(...children);
   }
@@ -1468,9 +1240,7 @@ export class Panel {
    * markup string and cannot go through the debounced `setSafeContent` path.
    */
   protected setTrustedContent(html: TrustedHtml): void {
-    // #6714: clear error state before the lock bail — see setContentNodes.
     this.clearErrorState();
-    if (this._locked) return;
     this.cancelPendingContentWrite();
     setTrustedHtml(this.content, html);
     this.invalidateCommittedHtml();
@@ -1481,7 +1251,7 @@ export class Panel {
   }
 
   /**
-   * User-action twin of `setSafeContent`. Same safe-HTML boundary, lock bail,
+   * User-action twin of `setSafeContent`. Same safe-HTML boundary,
    * error/retry clear, dirty-check, and `setContentImmediate` commit — without
    * the 150 ms background coalescing timer. A pending coalesced write and its
    * callback are cancelled so they cannot paint over this interaction.
@@ -1491,9 +1261,7 @@ export class Panel {
   }
 
   private setContentHtml(html: string, afterUpdate?: () => void, immediate = false): void {
-    // #6714: clear error state before the lock bail — see setContentNodes.
     this.clearErrorState();
-    if (this._locked) return;
     if (!immediate && this.pendingContentHtml === html) {
       if (afterUpdate) this.pendingContentCallback = afterUpdate;
       return;
@@ -1528,15 +1296,6 @@ export class Panel {
   }
 
   private setContentImmediate(html: string): void {
-    // The lock is re-checked HERE, not only at schedule time in `setContentHtml`.
-    // A panel locked during the debounce window (showGatedCta / showLocked fire
-    // from the async entitlement pass) would otherwise have this timer paint the
-    // premium payload over the upgrade CTA, and no later writer repaints it
-    // because every other write path bails on `_locked`.
-    if (this._locked) {
-      this.cancelPendingContentWrite();
-      return;
-    }
     if (this.contentDebounceTimer) {
       clearTimeout(this.contentDebounceTimer);
       this.contentDebounceTimer = null;
@@ -1679,10 +1438,6 @@ export class Panel {
     }
     this.pendingContentHtml = null;
     this.pendingContentCallback = null;
-    // Drop the snapshot of pre-lock children so a panel destroyed while
-    // still in the locked state doesn't retain the detached DOM subtree
-    // for the lifetime of the Panel instance. PR #3814 review (Greptile P2).
-    this._savedContent = null;
 
     if (this.tooltipCloseHandler) {
       document.removeEventListener('click', this.tooltipCloseHandler);

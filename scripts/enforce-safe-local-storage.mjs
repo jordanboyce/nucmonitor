@@ -212,9 +212,7 @@ function isStoragePrototypeCall(node) {
  * which is the point.
  *
  * Nothing else is exempt. The remaining "safe storage" implementations
- * (`loadFromStorage`/`saveToStorage` in `src/utils/index.ts`, the file-private
- * helpers in `browser-key-session.ts`, and `safeLocalStorage()` in
- * `passkey-offer-state.ts`) are counted in the inventory below rather than
+ * (`loadFromStorage`/`saveToStorage` in `src/utils/index.ts`) are counted in the inventory below rather than
  * waved through, so the duplication stays visible and a further implementation
  * cannot land quietly. #7833 review caught this file's own author adding one:
  * cloud-prefs-sync grew a private rawGet/rawSet/rawRemove trio justified by a
@@ -267,10 +265,10 @@ export const GUARD_EXEMPT_FILES = new Set(['src/utils/safe-storage.ts']);
  * registry; do not duplicate those shrinking counts in this comment.
  */
 export const LEGACY_RAW_LOCAL_STORAGE = [
-  'src/App.ts :: localStorage.<member> x51',
+  'src/App.ts :: localStorage.<member> x36',
   'src/app/event-handlers.ts :: localStorage.<member> x5',
   'src/app/map-dimension-control.ts :: localStorage.<member> x1',
-  'src/app/panel-layout.ts :: localStorage.<member> x9',
+  'src/app/panel-layout.ts :: localStorage.<member> x7',
   'src/bootstrap/sw-update.ts :: localStorage.<member> x1',
   'src/components/GlobeMap.ts :: localStorage.<member> x2',
   'src/components/NewsPanel.ts :: localStorage.<member> x6',
@@ -282,8 +280,6 @@ export const LEGACY_RAW_LOCAL_STORAGE = [
   'src/services/ai-flow-settings.ts :: localStorage.<member> x4',
   'src/services/analytics.ts :: <global>.localStorage x3',
   'src/services/breaking-news-alerts.ts :: localStorage.<member> x4',
-  'src/services/browser-key-session.ts :: localStorage.<member> x2',
-  'src/services/followed-countries.ts :: localStorage.<member> x3',
   'src/services/font-scale-settings.ts :: localStorage.<member> x2',
   'src/services/font-settings.ts :: localStorage.<member> x2',
   'src/services/globe-render-settings.ts :: localStorage.<member> x6',
@@ -298,7 +294,6 @@ export const LEGACY_RAW_LOCAL_STORAGE = [
   'src/services/trending-keywords.ts :: <global>.localStorage x1',
   'src/services/trending-keywords.ts :: localStorage.<member> x2',
   'src/services/webcams/pinned-store.ts :: localStorage.<member> x2',
-  'src/services/widget-store.ts :: localStorage.<member> x4',
   'src/utils/index.ts :: localStorage.<member> x2',
   'src/utils/panel-storage.ts :: localStorage.<member> x3',
   'src/utils/theme-manager.ts :: localStorage.<member> x3',

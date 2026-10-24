@@ -7,8 +7,6 @@ import { LAYER_KEY_MAP, LAYER_PRESETS } from '@/config/commands';
 import { STORAGE_KEYS } from '@/config';
 import {
   getAllowedLayerKeys,
-  isLayerCommandAllowed,
-  isLayerEntitled,
   isLayerExecutable,
   type MapVariant,
   type RendererKind,
@@ -24,7 +22,6 @@ import { GAMMA_IRRADIATORS } from '@/config/irradiators';
 export interface SearchSelectionDispatcherBindings {
   ctx: AppContext;
   getVariant(): string;
-  hasPremiumAccess(): boolean;
   enablePanel(panelId: string, options?: { trackDetailedAnalytics?: boolean }): boolean;
   trackSearchResultSelected(type: string, options?: { includeAttribution?: boolean }): void;
   runWithAgentAnalyticsSuppressed<T>(callback: () => T): T;
@@ -300,8 +297,7 @@ export class SearchSelectionDispatcher {
           ? 'globe'
           : (ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
         const executable = (key: keyof MapLayers): boolean => allowed.has(key)
-          && isLayerExecutable(key, renderer)
-          && isLayerEntitled(key, this.bindings.hasPremiumAccess());
+          && isLayerExecutable(key, renderer);
         if (action === 'all') {
           for (const key of Object.keys(ctx.mapLayers)) {
             ctx.mapLayers[key as keyof MapLayers] = executable(key as keyof MapLayers);
@@ -326,7 +322,7 @@ export class SearchSelectionDispatcher {
           ? 'globe'
           : (ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
         const current = ctx.mapLayers[layer];
-        if (!isLayerCommandAllowed(layer, current, renderer, this.bindings.hasPremiumAccess())) {
+        if (!isLayerExecutable(layer, renderer)) {
           return false;
         }
         const next = !current;

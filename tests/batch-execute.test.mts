@@ -673,71 +673,16 @@ describe('batch gateway access', () => {
     assert.equal(response.headers.get('Retry-After'), '5');
   });
 
-  it('charges one endpoint admission and one account meter per real batch operation', async () => {
-    const [{ createDomainGateway, serverOptions }, generated] = await Promise.all([
-      import('../server/gateway.ts'),
-      import('../src/generated/server/worldmonitor/batch/v1/service_server.ts'),
-    ]);
-    process.env.API_RATE_LIMIT_ENFORCE = 'true';
-    process.env.CONVEX_SITE_URL = 'https://batch-test.convex.site';
-    process.env.CONVEX_SERVER_SHARED_SECRET = 'batch-test-secret';
-    process.env.WORLDMONITOR_VALID_KEYS = 'operator-key';
-    const redis = installRedis({});
-    __resetRateLimitForTest();
-    const key = `wm_${'d'.repeat(40)}`;
-    const userId = 'user_batch_meter_review';
-    const path = '/api/market/v1/list-market-quotes';
-    const keys: string[] = [];
-    let daily = 0;
-    let handlers = 0;
-    const inner = createDomainGateway([{
-      method: 'GET', path,
-      handler: async () => { handlers += 1; return Response.json({ quotes: [] }); },
-    }]);
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (url.includes('/api/internal-validate-api-key')) return Response.json({ userId });
-      if (url.includes('/api/internal-entitlements')) return Response.json({
-        planKey: 'api_starter', validUntil: Date.now() + 86_400_000,
-        features: { tier: 2, apiAccess: true, apiRateLimit: 60, apiDailyAllowance: 2 },
-      });
-      if (url.startsWith(`${ORIGIN}${path}`)) return inner(new Request(url, init));
-      const body = typeof init?.body === 'string' ? init.body : '';
-      for (const match of body.matchAll(/"(rl:[^"]+)"/g)) keys.push(match[1]!);
-      const commands = body ? JSON.parse(body) : [];
-      if (Array.isArray(commands[0])) {
-        daily += commands.filter((cmd: unknown[]) => cmd[0] === 'INCR' && String(cmd[1]).includes('rl:apikey:day:')).length;
-      }
-      return redis.fetchImpl(input, init);
-    }) as typeof fetch;
-    const executeBatch = createExecuteBatch();
-    const outer = createDomainGateway(generated.createBatchServiceRoutes({ executeBatch }, serverOptions));
-    const response = await outer(new Request(`${ORIGIN}/api/batch/v1/execute`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WorldMonitor-Key': key, 'x-real-ip': CALLER_IP },
-      body: JSON.stringify({ operations: [{ id: 'a', path }, { id: 'b', path }] }),
-    }));
-    assert.equal(response.status, 200, await response.clone().text());
-    const result = await response.json();
-    assert.deepEqual(result.results.map((op: { status: number }) => op.status).sort(), [200, 429]);
-    assert.equal(handlers, 1, 'outer account admission leaves room for only one operation');
-    assert.equal(daily, 3, 'outer call and both attempted operations use the daily meter');
-    const endpointKeys = keys.filter(k => k.includes(`rl:ep:${path}:apikey-user:${userId}:`));
-    // Upstash touches two sliding windows per admission.
-    assert.equal(endpointKeys.length, 4, 'two operations must have only two endpoint admissions');
-  });
-
-  it('is NOT public and not premium: anonymous POST gets 401 before any fan-out', async () => {
-    const [{ createDomainGateway, PUBLIC_NO_AUTH_RPC_PATHS, serverOptions }, generated, { batchHandler }, { PREMIUM_RPC_PATHS }] = await Promise.all([
+  it('is NOT public: anonymous POST gets 401 before any fan-out', async () => {
+    const [{ createDomainGateway, PUBLIC_NO_AUTH_RPC_PATHS, serverOptions }, generated, { batchHandler }] = await Promise.all([
       import('../server/gateway.ts'),
       import('../src/generated/server/worldmonitor/batch/v1/service_server.ts'),
       import('../server/worldmonitor/batch/v1/handler.ts'),
-      import('../src/shared/premium-paths.ts'),
     ]);
     delete process.env.WORLDMONITOR_VALID_KEYS;
     installRedis({});
 
     assert.equal(PUBLIC_NO_AUTH_RPC_PATHS.has('/api/batch/v1/execute'), false);
-    assert.equal(PREMIUM_RPC_PATHS.has('/api/batch/v1/execute'), false);
 
     const gateway = createDomainGateway(generated.createBatchServiceRoutes(batchHandler, serverOptions));
     const res = await gateway(

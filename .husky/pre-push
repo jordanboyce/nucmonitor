@@ -57,10 +57,9 @@ done
 unset _git_env
 
 # Absolute worktree root, captured while cwd-based discovery still works.
-# Later gates must not re-discover from cwd: the pro-test block symlinks
-# `pro-test/node_modules/.vite` into `$common/wm-vite-cache/`, and a git
-# invocation whose cwd resolves through that link is physically inside .git
-# (`fatal: this operation must be run in a work tree`, exit 128). #7445.
+# Later gates must not re-discover from cwd: a git invocation whose cwd
+# resolves through a symlink into .git fails with
+# `fatal: this operation must be run in a work tree` (exit 128). #7445.
 WM_PREPUSH_ROOT=$(git rev-parse --show-toplevel) || {
   echo "ERROR: could not resolve the work tree for pre-push."
   exit 1
@@ -318,8 +317,7 @@ fi
 
 # Everything below runs against the WORKTREE, git pushes HEAD, and the cache at
 # the end stamps HEAD^{tree}. Those are the same bytes only when the worktree
-# matches HEAD, so measure that NOW — before `make generate` and the pro-test
-# build touch anything.
+# matches HEAD, so measure that NOW — before `make generate` touches anything.
 #
 # Two tiers, because they cost differently. Drift INSIDE the branch diff is the
 # dangerous one and blocks the push: an unstaged fix makes the suite pass over
@@ -420,8 +418,8 @@ gate_mark_green() {
 # Declared inputs per gate, as git pathspecs. SUPERSETS of what a gate reads
 # are sound (worst case a spurious re-run); subsets are not (a false skip) —
 # when in doubt, widen. Only side-effect-free gates are cacheable; the proto
-# and pro-test gates regenerate their own CHECKED outputs in place (byte-
-# identical on a green run), so those outputs are part of their keys — a
+# gate regenerates its own CHECKED outputs in place (byte-identical on a
+# green run), so those outputs are part of its key — a
 # hand-edit to src/generated must change the key and re-run the gate.
 TYPECHECK_INPUTS=(src shared tests e2e types scripts middleware.ts index.html vite.config.ts 'tsconfig*.json' package.json package-lock.json)
 TYPECHECK_API_INPUTS=(api server shared src/generated scripts middleware.ts 'tsconfig*.json' package.json package-lock.json)
@@ -446,7 +444,6 @@ PROTO_INPUTS=(
   scripts/generate-request-validation.mjs
   scripts/lib/main-module.mjs
   scripts/lib/openapi-codegen.mjs
-  scripts/openapi-inject-billing-verification.mjs
   scripts/openapi-inject-deprecated.mjs
   scripts/openapi-inject-examples.mjs
   scripts/openapi-inject-idempotency.mjs
@@ -459,23 +456,18 @@ PROTO_INPUTS=(
   scripts/shared/giving-published-estimate-claims.json
   scripts/shared/iso2-to-region.json
   server/_shared/api-key-rate-limit.ts
-  server/_shared/auth-session.ts
   server/_shared/bounded-jmespath.ts
   server/_shared/bounded-json.ts
   server/_shared/cache-contract.ts
   server/_shared/client-ip.ts
   server/_shared/deprecation-policy.ts
   server/_shared/direct-llm-quota.ts
-  server/_shared/entitlement-check.ts
-  server/_shared/entitlement-coverage.ts
   server/_shared/high-usage-alarm.ts
   server/_shared/idempotency.ts
   server/_shared/internal-auth.ts
-  server/_shared/mcp-internal-hmac.ts
-  server/_shared/pro-mcp-gate.ts
-  server/_shared/pro-mcp-token.ts
   server/_shared/rate-limit.ts
   server/_shared/redis.ts
+  server/_shared/request-canonical.ts
   server/_shared/response-headers.ts
   server/_shared/response-projection.ts
   server/_shared/seed-envelope.ts
@@ -499,7 +491,6 @@ PROTO_INPUTS=(
   shared/decision-signal-provenance-contract.ts
   shared/decision-signal-provenance-families.ts
   shared/decision-signal-provenance.ts
-  shared/embed-access.ts
   shared/embed-panels.ts
   shared/event-triggers.json
   shared/iso2-to-iso3.json
@@ -509,13 +500,10 @@ PROTO_INPUTS=(
   shared/telegram-channel-trust.ts
   shared/x-account-source-tiers.json
   shared/x-account-trust.ts
-  src/shared/premium-paths.ts
-  src/shared/pro-fresh-rpc.ts
   src/shared/public-rpc-cache.ts
   src/generated
   docs/api
 )
-PRO_TEST_INPUTS=(pro-test convex/config/productCatalog.ts scripts/generate-product-config.mjs src/config/products.generated.ts src/config/product-ids.generated.ts)
 
 # A fresh worktree's install is part of the expensive phase too. Keep it under
 # the shared lease so several new worktrees cannot all run npm ci at once.
@@ -646,11 +634,6 @@ fi
 if changed '^(api/|server/|scripts/enforce-rate-limit-policies\.mjs$)'; then
   echo "Running rate-limit policy coverage check..."
   npm run lint:rate-limit-policies || exit 1
-fi
-
-if changed '^(src/|api/|scripts/enforce-premium-fetch\.mjs$)'; then
-  echo "Running premium-fetch parity check..."
-  npm run lint:premium-fetch || exit 1
 fi
 
 if changed '^(api/|server/|src/generated/|scripts/check-edge-function-bundles\.mjs$)'; then
@@ -819,44 +802,6 @@ if [ "$RUN_ALL" != true ]; then
   fi
 fi
 
-# A /pro built-output suite skips EVERY assertion when public/pro/ is absent,
-# which is now the default state of a fresh checkout (#6898 gitignored it). This
-# dispatch runs ~90 lines BEFORE the pro build gate below, and that gate keys on
-# ^pro-test/ paths, not tests/ -- so a push that changes only such a suite would
-# run it, skip all of it, and report the changed test as passing. Build the
-# artifact first so the assertions actually execute.
-#
-# Deliberately does NOT set WM_EXPECT_BUILT_OUTPUT: that marker is shared with
-# the dist/dashboard.html guards, and exporting it here would red those suites
-# in a checkout that has no dashboard build. Building the artifact is what makes
-# the /pro assertions run; the marker is CI's separate "I built it" assertion.
-# An EXISTING public/pro/ is not necessarily a CURRENT one: the directory is
-# ignored, so output from another branch can survive a checkout. First find an
-# affected changed test, then always rebuild once before dispatching it.
-PRO_BUILT_OUTPUT_TEST=""
-for candidate in "${TESTS_CHANGED[@]}"; do
-  if grep -q "_lib/pro-built-output" "$candidate" 2>/dev/null; then
-    PRO_BUILT_OUTPUT_TEST="$candidate"
-    break
-  fi
-done
-
-if [ -n "$PRO_BUILT_OUTPUT_TEST" ]; then
-  echo "Building /pro ($PRO_BUILT_OUTPUT_TEST reads its built output)..."
-  if [ -L pro-test/node_modules ]; then
-    echo "ERROR: pro-test/node_modules is a symlink. Copy, hardlink, or npm ci — never symlink."
-    exit 1
-  fi
-  # Marker, not directory — see the root node_modules check above.
-  if [ ! -f pro-test/node_modules/.package-lock.json ]; then
-    (cd pro-test && npm ci --cache "$npm_config_cache" --prefer-offline) || exit 1
-  fi
-  (cd pro-test && npm run build >/dev/null) || {
-    echo "ERROR: pro-test build failed, so $PRO_BUILT_OUTPUT_TEST cannot run its assertions."
-    exit 1
-  }
-fi
-
 # Both dispatches are UNCONDITIONAL: the "is this list empty" test and the
 # choice of runner live in the script, where a test can execute them against
 # stubbed runners. Held inline here, they could only be guarded by grepping
@@ -961,112 +906,6 @@ if git diff --name-only origin/main -- "${PROTO_INPUTS[@]}" | grep -q .; then
   fi
 else
   echo "No proto-related changes, skipping."
-fi
-
-echo "Running pro-test build + generated config freshness check..."
-# public/pro/ IS built by Vercel since #6898 (build:full chains build:pro), so
-# the committed-bytes staleness class this block was written for is gone. What
-# survives is still worth gating: the /pro app must BUILD at all — a broken
-# pro-test build now fails the deploy instead of shipping stale bytes — and the
-# generated config it compiles against (products.generated.ts, tiers.json, pro
-# locales) is still committed and can still go stale.
-#
-# Scope to the BRANCH delta ($CHANGED_PATHS, computed earlier from
-# `git diff origin/main...HEAD`), not the worktree, so unstaged local
-# pro-test/ scratch edits don't trigger a slow rebuild on unrelated
-# branches. RUN_ALL forces the check when the branch delta couldn't be
-# computed (matches the safety fallback used by the test runners above).
-#
-# Trigger on pro-test/ or the catalog/generator that feeds
-# pro-test/src/generated/tiers.json. public/pro/ is gitignored since #6898 and
-# can never appear in a branch delta, so it is no longer a trigger path.
-if [ "$RUN_ALL" = true ] || path_matches '^pro-test/|^convex/config/productCatalog\.ts$|^scripts/generate-product-config\.mjs$'; then
-  if gate_cached pro-test-build "${PRO_TEST_INPUTS[@]}"; then
-    echo "  Skipped (pro-test inputs unchanged since last green run; rm $GATE_INPUT_CACHE/pro-test-build to force)."
-  else
-    npx tsx scripts/generate-product-config.mjs >/dev/null || {
-      echo "ERROR: product config generation failed"
-      exit 1
-    }
-    if [ -L pro-test/node_modules ]; then
-      echo "ERROR: pro-test/node_modules is a symlink. Copy, hardlink, or npm ci — never symlink."
-      exit 1
-    fi
-    # Marker, not directory — see the root node_modules check above.
-    if [ ! -f pro-test/node_modules/.package-lock.json ]; then
-      echo "  Installing pro-test deps..."
-      (cd pro-test && npm ci --cache "$npm_config_cache" --prefer-offline) || exit 1
-    fi
-    # Point Vite's default cacheDir (pro-test/node_modules/.vite) at a
-    # lockfile-sharded directory under the shared git-common-dir. Do not
-    # edit pro-test/vite.config.ts here: that path trips this gate. The
-    # .vite link is a cache dir, not a node_modules symlink. Serialize
-    # concurrent writes with flock.
-    if [ -n "$PREPUSH_COMMON_DIR" ]; then
-      _lock_hash=$(sha256sum < pro-test/package-lock.json 2>/dev/null | cut -c1-12)
-      [ -n "$_lock_hash" ] || _lock_hash=nolock
-      _vite_cache="$PREPUSH_COMMON_DIR/wm-vite-cache/pro-test-${_lock_hash}"
-      mkdir -p "$_vite_cache"
-      if [ -d pro-test/node_modules ] && [ ! -e pro-test/node_modules/.vite ]; then
-        ln -s "$_vite_cache" pro-test/node_modules/.vite
-      fi
-      if command -v flock >/dev/null 2>&1; then
-        exec 9>"$PREPUSH_COMMON_DIR/wm-vite-cache/pro-test.build.lock"
-        if ! flock -w 180 9; then
-          echo "ERROR: could not lock shared pro-test vite cache"
-          exit 1
-        fi
-      fi
-    fi
-    (cd pro-test && npm run build >/dev/null) || {
-      echo "ERROR: pro-test build failed"
-      exit 1
-    }
-    # `git diff --exit-code` is three-valued: 0 clean, 1 real diff, anything
-    # else (typically 128) could not run. `if !` used to collapse 1 and 128,
-    # so a work-tree-resolution failure was printed as a stale catalog and
-    # the regenerate-config recipe was a no-op (#7445). worktree-diff maps
-    # those onto 0 / 3 / 1. Paths must still all exist: an unknown path is
-    # 128, which is now a distinct error rather than "always stale". #5672
-    # removed `api/_product-fallback-prices.js` and left it listed here.
-    # Keep this list in step with what scripts/generate-product-config.mjs
-    # actually writes. Pin the worktree captured at hook start: the vite
-    # cache symlink below lives inside the git common dir.
-    _diff_status=0
-    bash "$ATTEST" worktree-diff "$WM_PREPUSH_ROOT" -- \
-      src/config/products.generated.ts \
-      src/config/product-ids.generated.ts \
-      pro-test/src/generated/tiers.json \
-      pro-test/src/locales/ || _diff_status=$?
-    case "$_diff_status" in
-      0) ;;
-      3)
-        echo ""
-        echo "============================================================"
-        echo "ERROR: product catalog, generated config, or pro locales is stale."
-        echo "public/pro/ itself is built on deploy (#6898) and is not checked here,"
-        echo "but the generated config it compiles against is still committed."
-        echo "Fix:"
-        echo "  npx tsx scripts/generate-product-config.mjs"
-        echo "  git add src/config/products.generated.ts src/config/product-ids.generated.ts pro-test/src/generated/tiers.json pro-test/src/locales/"
-        echo "  git commit --amend --no-edit"
-        echo "============================================================"
-        exit 1
-        ;;
-      *)
-        echo ""
-        echo "============================================================"
-        echo "ERROR: freshness check could not run (status $_diff_status)."
-        echo "This is a gate failure, not a stale catalog — do not run the regenerate steps."
-        echo "============================================================"
-        exit 1
-        ;;
-    esac
-    echo "  pro-test builds and its generated config is up to date."
-    gate_mark_green pro-test-build "${PRO_TEST_INPUTS[@]}"
-  fi
-else
-  echo "  Skipped (no pro-test/, product catalog, or product-config generator changes in branch)."
 fi
 
 echo "Running version sync check..."

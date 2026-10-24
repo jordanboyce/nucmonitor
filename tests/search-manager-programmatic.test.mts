@@ -15,8 +15,6 @@ import ts from 'typescript';
 import {
   LAYER_REGISTRY,
   getAllowedLayerKeys,
-  isLayerCommandAllowed,
-  isLayerEntitled,
   isLayerExecutable,
 } from '../src/config/map-layer-definitions.ts';
 import {
@@ -87,15 +85,10 @@ const webMcpSearchControllerClassJs = extractClassJs(
 
 interface Runtime {
   auth: { user?: { id: string; role?: string } };
-  premium: boolean;
-  pro: boolean;
-  panelEntitled: boolean;
   selectedResultTypes: string[];
   detailedCountryAnalytics: Array<[string, string, string]>;
   authListeners: Set<() => void>;
-  entitlementListeners: Set<() => void>;
   runtimeConfigListeners: Set<() => void>;
-  widgetAccessListeners: Set<() => void>;
   liveFlightQueries: string[];
   liveFlightSignals: Array<AbortSignal | undefined>;
   liveFlightError: Error | null;
@@ -179,22 +172,12 @@ function createHarness(
     'DASHBOARD_SEARCH_SUBTITLE_MAX_CHARS',
     'searchMatchIdentity',
     'getAuthState',
-    'hasPremiumAccess',
     'subscribeAuthState',
-    'onEntitlementChange',
     'subscribeRuntimeConfig',
-    'subscribeWidgetAccess',
     'ALL_PANELS',
     'getEffectivePanelConfig',
-    'isPanelEntitled',
-    'isProUser',
-    'isFreePanelCapCounted',
-    'countFreePanelCapUsage',
-    'FREE_MAX_PANELS',
     'getAllowedLayerKeys',
-    'isLayerCommandAllowed',
     'isLayerExecutable',
-    'isLayerEntitled',
     'LAYER_PRESETS',
     'LAYER_KEY_MAP',
     'trackSearchResultSelected',
@@ -259,34 +242,18 @@ function createHarness(
     320,
     searchMatchIdentity,
     () => runtime.auth,
-    () => runtime.premium,
     (listener: () => void) => {
       runtime.authListeners.add(listener);
       return () => runtime.authListeners.delete(listener);
     },
     (listener: () => void) => {
-      runtime.entitlementListeners.add(listener);
-      return () => runtime.entitlementListeners.delete(listener);
-    },
-    (listener: () => void) => {
       runtime.runtimeConfigListeners.add(listener);
       return () => runtime.runtimeConfigListeners.delete(listener);
     },
-    (listener: () => void) => {
-      runtime.widgetAccessListeners.add(listener);
-      return () => runtime.widgetAccessListeners.delete(listener);
-    },
     { 'test-panel': { id: 'test-panel' } },
     (panelId: string) => panelId === 'test-panel' ? { id: panelId } : undefined,
-    () => runtime.panelEntitled,
-    () => runtime.pro,
-    () => true,
-    () => 0,
-    6,
     allowedLayerKeys,
-    isLayerCommandAllowed,
     isLayerExecutable,
-    isLayerEntitled,
     {
       hazards: ['radiationWatch', 'natural', 'weather'],
       infra: ['cables', 'pipelines', 'datacenters'],
@@ -380,16 +347,11 @@ function makeScenario(
   options: { allowedLayerKeys?: AllowedLayerKeysFn } = {},
 ): Scenario {
   const runtime: Runtime = {
-    auth: { user: { id: 'user-a', role: 'pro' } },
-    premium: true,
-    pro: true,
-    panelEntitled: true,
+    auth: { user: { id: 'user-a' } },
     selectedResultTypes: [],
     detailedCountryAnalytics: [],
     authListeners: new Set(),
-    entitlementListeners: new Set(),
     runtimeConfigListeners: new Set(),
-    widgetAccessListeners: new Set(),
     liveFlightQueries: [],
     liveFlightSignals: [],
     liveFlightError: null,
@@ -751,7 +713,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
 
       if (cause === 'security') {
         scenario.runtime.auth = {};
-        scenario.runtime.premium = false;
         for (const listener of scenario.runtime.authListeners) listener();
       } else {
         scenario.manager.destroy();
@@ -1349,31 +1310,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
     assert.deepEqual(scenario.calls.nuclearIds, []);
   });
 
-  it('invalidates capabilities across a same-user entitlement downgrade and restoration', async () => {
-    const scenario = makeScenario([
-      resultMatch('earthquake', 'eq-1', 'Needle earthquake', { id: 'eq-1' }),
-    ]);
-    scenario.manager.observeSecurityContext();
-    const response = await scenario.manager.searchDashboard('needle', 'all', 10);
-    const key = response.results[0]?.key;
-    assert.ok(key);
-
-    scenario.runtime.premium = false;
-    scenario.runtime.pro = false;
-    for (const listener of scenario.runtime.entitlementListeners) listener();
-    scenario.runtime.premium = true;
-    scenario.runtime.pro = true;
-    for (const listener of scenario.runtime.entitlementListeners) listener();
-
-    assert.deepEqual(await scenario.manager.openSearchResult(key), {
-      ok: false,
-      status: 'denied',
-      reason: 'invalid_or_expired_key',
-    });
-    assert.deepEqual(scenario.calls.views, []);
-    scenario.manager.destroy();
-  });
-
   it('revalidates executability after a renderer flip', async () => {
     const scenario = makeScenario([
       resultMatch('irradiator', 'irr-1', 'Needle irradiator', { id: 'irr-1' }),
@@ -1652,19 +1588,6 @@ describe('SearchManager programmatic dashboard search (#6212)', () => {
       type: 'nuclear',
     });
     assert.deepEqual(scenario.calls.nuclearIds, ['np-7']);
-  });
-
-  it('uses the same premium policy for panel entitlement and free-cap bypass', () => {
-    const scenario = makeScenario([
-      commandMatch('panel:test-panel', 'panels', 'Needle panel'),
-    ]);
-    scenario.runtime.pro = false;
-    scenario.runtime.premium = true;
-    scenario.runtime.panelEntitled = true;
-
-    assert.equal(scenario.manager.isCommandExecutable(
-      commandMatch('panel:test-panel', 'panels').command,
-    ), true);
   });
 
   it('enforces the nuclear entity visibility matrix without leaking retired domains', () => {

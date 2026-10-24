@@ -827,7 +827,8 @@ describe('public OpenAPI dedupe (real bundle)', () => {
       deduped.components.responses.E429,
       'the per-op 429 rate-limit block must dedupe into components.responses.E429',
     );
-    assert.ok(stats.replacedRefs >= 500, `expected wide dedup, got ${stats.replacedRefs} refs`);
+    // Re-derived after the paid-tier 403/503 docs were removed from every op.
+    assert.ok(stats.replacedRefs >= 300, `expected wide dedup, got ${stats.replacedRefs} refs`);
   });
 
   it('actually engages on repeated response-header documentation', () => {
@@ -836,7 +837,7 @@ describe('public OpenAPI dedupe (real bundle)', () => {
 
   it('engages the exact repeated headers and generated int64 schemas', () => {
     // Re-derived for the trimmed (91-operation) bundle.
-    assert.deepEqual(headerStats, { hoisted: 4, replacedRefs: 14 });
+    assert.deepEqual(headerStats, { hoisted: 3, replacedRefs: 12 });
     assert.equal(int64Stats.replacedRefs, 15);
     // Described int64 fields (own comment + generated warning) keep their
     // comment beside the shared $ref; a regression to zero would silently give
@@ -1048,7 +1049,7 @@ describe('build-openapi-json wiring', () => {
     } = buildBundle({
       spec: loadUnifiedOpenApiSpec(),
     });
-    assert.ok(stats.replacedRefs >= 500, `error-response dedup: ${stats.replacedRefs} refs`);
+    assert.ok(stats.replacedRefs >= 300, `error-response dedup: ${stats.replacedRefs} refs`);
     // Floors re-derived for the trimmed 91-operation bundle; each sits below
     // today's count but far above zero, the silent-disengagement case.
     assert.ok(paramStats.replacedRefs >= 100, `parameter dedup: ${paramStats.replacedRefs} refs`);

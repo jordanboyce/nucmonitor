@@ -3,7 +3,6 @@
 import { loadEnvFile, CHROME_UA, runSeed, httpsProxyFetchRaw } from './_seed-utils.mjs';
 import { resolveProxyStringConnect } from './_proxy-utils.cjs';
 import { decodeHtmlEntities } from './_html-entities.mjs';
-import { makeSeedHistoryAfterPublish } from './_seed-history.mjs';
 
 loadEnvFile(import.meta.url);
 
@@ -191,29 +190,6 @@ export function declareRecords(data) {
   return Array.isArray(data?.items) ? data.items.length : 0;
 }
 
-// Project published energy news items into intel-history records (#5694).
-// Items already carry a stable id (`source-hash(url)-publishedAt`), a headline,
-// and a cleaned summary, so this is a direct field mapping.
-export function buildEnergyHistoryRecords(data) {
-  return (data?.items ?? []).map((item) => {
-    if (!item?.id || !item?.title || !Number.isFinite(item?.publishedAt)) return null;
-    return {
-      dedupeKey: `energy:intelligence:${item.id}`,
-      category: 'news',
-      title: item.title,
-      summary: item.summary || undefined,
-      sourceUrl: item.url || undefined,
-      occurredAt: item.publishedAt,
-    };
-  }).filter(Boolean);
-}
-
-export const energyIntelAfterPublish = makeSeedHistoryAfterPublish({
-  domain: 'energy',
-  resource: 'intelligence',
-  buildRecords: buildEnergyHistoryRecords,
-});
-
 if (process.argv[1]?.endsWith('seed-energy-intelligence.mjs')) {
   runSeed('energy', 'intelligence', CANONICAL_KEY, fetchEnergyIntelligence, {
     validateFn: validate,
@@ -224,7 +200,6 @@ if (process.argv[1]?.endsWith('seed-energy-intelligence.mjs')) {
     declareRecords,
     schemaVersion: 1,
     maxStaleMin: 720,
-    afterPublish: energyIntelAfterPublish,
   }).catch((err) => {
     const _cause = err.cause ? ` (cause: ${err.cause.message || err.cause.code || err.cause})` : '';
     console.error('FATAL:', (err.message || err) + _cause);

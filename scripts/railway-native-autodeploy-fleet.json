@@ -9,14 +9,6 @@
       "name": "ais-relay"
     },
     {
-      "id": "01d644b8-057f-4040-a50e-500bd684daa8",
-      "name": "digest-notifications"
-    },
-    {
-      "id": "aa37bd8e-c28d-4e9b-9d1e-0961f1b63d97",
-      "name": "notification-relay"
-    },
-    {
       "id": "0afd5faf-1f52-4688-9183-f106d46eaeb6",
       "name": "publish-bootstrap-tiers"
     },

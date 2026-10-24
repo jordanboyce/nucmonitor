@@ -24,8 +24,6 @@ declare global {
   }
 }
 
-const PRO_BANNER_DISMISS_KEY = 'wm-pro-banner-launched-dismissed';
-const LEGACY_PRO_BANNER_DISMISS_KEY = 'wm-pro-banner-dismissed';
 const { defaultBrowserType: mobileDefaultBrowserType, ...mobileDevice } = devices['iPhone 14 Pro Max'];
 void mobileDefaultBrowserType;
 
@@ -89,11 +87,9 @@ const installDashboardClsObserver = async (
   page: Page,
   { seedDeferredFootprint = false }: DashboardClsObserverOptions = {},
 ): Promise<void> => {
-  await page.addInitScript(({ dismissKey, legacyDismissKey, seedDeferredFootprint, panelId, panelOrder }) => {
+  await page.addInitScript(({ seedDeferredFootprint, panelId, panelOrder }) => {
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
-    localStorage.removeItem(dismissKey);
-    localStorage.removeItem(legacyDismissKey);
     if (seedDeferredFootprint) {
       localStorage.setItem('worldmonitor-layout-reset-v2.5', 'done');
       localStorage.setItem('panel-order', JSON.stringify(panelOrder));
@@ -145,8 +141,6 @@ const installDashboardClsObserver = async (
       // Engines without layout-shift support still exercise rect stability below.
     }
   }, {
-    dismissKey: PRO_BANNER_DISMISS_KEY,
-    legacyDismissKey: LEGACY_PRO_BANNER_DISMISS_KEY,
     seedDeferredFootprint,
     panelId: seededDeferredPanelId,
     panelOrder: seededDeferredPanelOrder,
@@ -292,7 +286,6 @@ const assertDashboardCls = async (page: Page): Promise<void> => {
         || selector === '.main-content'
         || selector === '#mapSection'
         || selector === '#panelsGrid'
-        || selector.includes('pro-banner')
         || selector.includes('panel-wide')
         || selector.includes('span-2')
         || selector.includes('span-3')
@@ -317,7 +310,6 @@ const exerciseDashboardBoot = async (
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.locator('.header').waitFor();
-  await page.locator('.pro-banner').waitFor({ timeout: 15000 });
   await page.locator('.main-content').waitFor();
   await page.locator('#panelsGrid').waitFor();
 

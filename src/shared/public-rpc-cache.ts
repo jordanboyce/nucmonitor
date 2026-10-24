@@ -1,14 +1,6 @@
 // Membership here is an ANONYMOUS-ACCESS decision, not a caching one: the
-// gateway consults isPublicSharedRpcRequest() before the tier gate, so a path
-// listed here is reachable with no credential whatever ENDPOINT_ENTITLEMENTS
-// says. Never add a path that is (or may become) tier-gated —
-// tests/public-shared-rpc-not-tier-gated.test.mts fails the build if the two
-// sets ever intersect.
-//
-// `/api/military/v1/get-defense-industrial-base` was removed when the arms-
-// supplier data became Pro (#6438): its `public=1` shape was a standing
-// bypass of the new gate. The CDN shield it bought is gone with it, which is
-// the accepted cost of the paywall.
+// gateway consults isPublicSharedRpcRequest() before the API-key check, so a
+// path listed here is reachable with no credential.
 //
 // Readings published on the /tools/<slug>/ live data pages
 // (scripts/live-pages/index.mjs). Each takes no request fields and is already
@@ -53,7 +45,7 @@ function hasSingleValue(params: URLSearchParams, key: string): boolean {
  * echoes the matched segment back as `?rpc=<lastPathSegment>`. The function therefore
  * sees a query the caller never sent, which fails the exhaustive shape checks below
  * and silently 401'd every public RPC in production (#5285). `server/_shared/
- * mcp-internal-hmac.ts` strips the same echo before signing, for the same reason.
+ * request-canonical.ts` strips the same echo, for the same reason.
  *
  * Returns the RAW search string (no leading `?`) with the echo removed. Raw, not a
  * re-serialised URLSearchParams, because the displacement contract is an exact-string

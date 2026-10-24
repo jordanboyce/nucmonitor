@@ -8,7 +8,24 @@
  * the TARGET schema version (so MIGRATIONS[N] runs when going from N-1 → N).
  */
 
-import { findFullyDisabledCategories, type FeedsByCategory } from '@/services/source-cap';
+export interface FeedsByCategory {
+  [category: string]: ReadonlyArray<{ name: string }> | undefined;
+}
+
+/** Every source name in a category whose sources are all disabled. */
+export function findFullyDisabledCategories(
+  feedsByCategory: FeedsByCategory,
+  disabled: ReadonlySet<string>,
+): string[] {
+  const recoverable: string[] = [];
+  for (const feeds of Object.values(feedsByCategory)) {
+    if (!feeds || feeds.length === 0) continue;
+    if (feeds.every((f) => disabled.has(f.name))) {
+      for (const f of feeds) recoverable.push(f.name);
+    }
+  }
+  return recoverable;
+}
 
 /** One exact historical source state the schema-5 migration may rewrite. */
 export interface RegionalFeedRolloutMigrationTarget {

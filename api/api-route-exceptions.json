@@ -38,41 +38,6 @@
       "removal_issue": null
     },
     {
-      "path": "api/channel-oauth-bind.ts",
-      "category": "external-protocol",
-      "reason": "OAuth popup form target. Sets the browser binding after a one-time secret check and returns an HTML navigation to Slack or Discord.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/discord/oauth/callback.ts",
-      "category": "external-protocol",
-      "reason": "Discord OAuth redirect target \u2014 response is an HTML popup-closer page, query-param shape fixed by Discord.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/discord/oauth/start.ts",
-      "category": "external-protocol",
-      "reason": "Discord OAuth initiator \u2014 issues 302 to Discord's authorize URL. Not a JSON API.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/slack/oauth/callback.ts",
-      "category": "external-protocol",
-      "reason": "Slack OAuth redirect target \u2014 HTML response with postMessage + window.close, query-param shape fixed by Slack.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/slack/oauth/start.ts",
-      "category": "external-protocol",
-      "reason": "Slack OAuth initiator \u2014 302 to Slack's authorize URL. Not a JSON API.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
       "path": "api/download.js",
       "category": "non-json",
       "reason": "Binary file download (zip/csv/xlsx). Content-Type is not application/json.",
@@ -164,30 +129,9 @@
       "removal_issue": null
     },
     {
-      "path": "api/invalidate-user-api-key-cache.ts",
-      "category": "ops-admin",
-      "reason": "Admin-gated cache bust for user API key lookups. Internal operator action.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
       "path": "api/fwdstart.js",
       "category": "non-json",
       "reason": "Scrapes the fwdstart.me newsletter archive for the dashboard feed panel and serves an RSS/XML response with HTTP Content-Type application/xml, not JSON.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/notify.ts",
-      "category": "internal-helper",
-      "reason": "Authenticated PRO event-publish endpoint that validates Clerk bearer auth, rejects relay-internal control events, and enqueues accepted events outside sebuf because it is queue plumbing rather than a typed domain RPC.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/notification-suppressions.js",
-      "category": "internal-helper",
-      "reason": "Anonymous operator incident-control read for the service worker: serves the Redis notification link-suppression set (blocked URLs/hosts) so already-delivered push payloads stop navigating on click. Kept outside sebuf because the SW consults it via a plain GET with no auth context at click time, and the shape is an unversioned incident snapshot rather than a typed domain RPC.",
       "owner": "@SebastienMelki",
       "removal_issue": null
     },
@@ -220,46 +164,11 @@
       "removal_issue": null
     },
     {
-      "path": "api/me/entitlement.ts",
-      "category": "internal-helper",
-      "reason": "Thin wrapper over the canonical server/_shared/premium-check.ts isCallerPremium helper \u2014 returns { isPro: boolean } for the /pro marketing bundle so it can swap upgrade CTAs for a dashboard link when the visitor is already a paying Pro user. Not a product data API: the authoritative gates live in panel-gating.ts (frontend), isCallerPremium (per-handler), and gateway.ts PREMIUM_RPC_PATHS (Bearer gate). This endpoint exists purely to let the separate pro-test bundle (no Convex client, no gateway client) ask the same question without reimplementing the two-signal check. Shape is unversioned by design \u2014 flip a boolean and ship.",
-      "owner": "@SebastienMelki",
-      "removal_issue": null
-    },
-    {
-      "path": "api/embed/entitlement.ts",
-      "category": "internal-helper",
-      "reason": "Auth bootstrap for the partner /embed iframe (#6599). Returns whether an embedding account's API key (X-WorldMonitor-Key) may render an allowlisted panel. Not a product data API: panel payloads stay on existing sebuf RPCs. Cookie and viewer session tokens are stripped/rejected so entitlement is keyed to the partner account, not the page visitor. Shape is unversioned by design \u2014 allowed boolean plus panel id.",
-      "owner": "@koala73",
-      "removal_issue": null
-    },
-    {
       "path": "api/embed/map-frame.ts",
       "category": "internal-helper",
-      "reason": "The single composed read the partner /embed map frame polls, replacing four separate anonymous RPC calls. Not a product data API: it accepts one parameter (`layers`) and returns the verbatim payloads of handlers already published as sebuf RPCs \u2014 no bbox, page size, or time window, because every knob is a knob a stolen embed credential could turn. Deliberately NOT a sebuf RPC of its own: the free and keyed tiers need different Cache-Control on one path, and CACHE_TIER_BY_PATH in the domain gateway is per-path, so routing it there would let a keyless response be cached and served to a keyed caller. Shareability is decided from the URL alone, before any credential is read (a CDN hit answers before the origin sees a header \u2014 #5386): only the exact raw query `layers=<canonical free subset>&public=1` is shared-cacheable, bounding the CDN key space to the free tier's seven non-empty subsets. Every other shape, credentialed or not, is served `private, no-store`, so a near-miss degrades to correct-but-uncached rather than to a shared entry that could answer the wrong caller. Builder and validator are one module (shared/embed-map-frame.ts) so an emitted URL and a cacheable URL cannot drift.",
+      "reason": "The single composed read the /embed map frame polls, replacing four separate anonymous RPC calls. Not a product data API: it accepts one parameter (`layers`) and returns the verbatim payloads of handlers already published as sebuf RPCs, with no bbox, page size, or time window. Deliberately NOT a sebuf RPC of its own: shareability is decided from the URL alone (a CDN hit answers before the origin sees a header, #5386), so only the exact raw query `layers=<canonical subset>&public=1` is shared-cacheable, bounding the CDN key space to the canonical layer subsets. Every other shape is served `private, no-store`, so a near-miss degrades to correct-but-uncached. Builder and validator are one module (shared/embed-map-frame.ts) so an emitted URL and a cacheable URL cannot drift.",
       "owner": "@koala73",
       "removal_issue": null
-    },
-    {
-      "path": "api/embed/session.ts",
-      "category": "internal-helper",
-      "reason": "Credential exchange for the partner /embed iframe: trades the account's wme_ embed key for a short-lived, panel-scoped wmg_ grant that the frame then polls with. Not a product data API \u2014 it returns only a bearer token and its expiry. Deliberately NOT a sebuf RPC: a domain gateway route accepts only wms_ sessions, wm_ keys, or PUBLIC_NO_AUTH_RPC_PATHS membership, and teaching the shared auth cascade a third credential family would widen the very blast radius this exchange exists to narrow. Response is private, no-store because the body IS a credential.",
-      "owner": "@koala73",
-      "removal_issue": null
-    },
-    {
-      "path": "api/user/passkey-offer.ts",
-      "category": "internal-helper",
-      "reason": "Passkey-offer controller reservation endpoint. Clerk-authenticated; claims one of three account slots with Redis HSETNX so concurrent or stale browsers cannot lower or bypass the lifetime prompt cap. Clerk unsafe metadata remains a migration source and browser-readable terminal mirror. The unversioned response is private UI coordination state, not a product data API.",
-      "owner": "@koala73",
-      "removal_issue": null
-    },
-    {
-      "path": "api/notification-channels.ts",
-      "category": "deferred",
-      "reason": "Lists / configures user notification channels. Auth-gated; migrating requires user/v1 or notifications/v1 service. Deferred until Clerk migration settles.",
-      "owner": "@SebastienMelki",
-      "removal_issue": "TBD"
     },
     {
       "path": "api/user-prefs.ts",

@@ -1545,131 +1545,6 @@
 @media (max-width: 520px) { .cdp-vulnerability-components { grid-template-columns: 1fr; } }
 .cdp-card-footer { font-size: calc(10px * var(--wm-panel-effective-scale, 1)); color: #475569; margin-top: 6px; }
 
-.cdp-pro-locked {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 16px;
-  color: var(--text-dim);
-  font-size: calc(11px * var(--wm-panel-effective-scale, 1));
-}
-
-.cdp-pro-lock-icon {
-  font-size: calc(20px * var(--wm-panel-effective-scale, 1));
-  opacity: 0.5;
-}
-
-.cdp-pro-lock-text {
-  text-align: center;
-}
-
-.cdp-pro-section-group {
-  margin-top: 8px;
-  border-top: 1px solid var(--border-subtle, var(--border));
-  padding-top: 8px;
-}
-
-.cdp-pro-section-label {
-  font-size: calc(10px * var(--wm-panel-effective-scale, 1));
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.cdp-pro-metric-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.cdp-pro-metric-box {
-  padding: 8px;
-  border-radius: 6px;
-  background: var(--surface, var(--panel-bg));
-  border: 1px solid var(--border);
-}
-
-.cdp-pro-metric-label {
-  font-size: calc(10px * var(--wm-panel-effective-scale, 1));
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.cdp-pro-metric-value {
-  font-size: calc(14px * var(--wm-panel-effective-scale, 1));
-  font-weight: 600;
-  color: var(--text);
-}
-
-.cdp-pro-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: calc(10px * var(--wm-panel-effective-scale, 1));
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.cdp-pro-badge-normal { background: color-mix(in srgb, var(--semantic-normal) 20%, transparent); color: var(--semantic-normal); }
-.cdp-pro-badge-elevated { background: color-mix(in srgb, var(--semantic-elevated) 20%, transparent); color: var(--semantic-elevated); }
-.cdp-pro-badge-high { background: color-mix(in srgb, var(--semantic-high) 20%, transparent); color: var(--semantic-high); }
-.cdp-pro-badge-critical { background: color-mix(in srgb, var(--semantic-critical) 20%, transparent); color: var(--semantic-critical); }
-
-.cdp-pro-flow-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: calc(11px * var(--wm-panel-effective-scale, 1));
-}
-
-.cdp-pro-flow-table th {
-  text-align: left;
-  font-weight: 600;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: calc(10px * var(--wm-panel-effective-scale, 1));
-  text-transform: uppercase;
-}
-
-.cdp-pro-flow-table td {
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-}
-
-.cdp-pro-trend-up { color: var(--semantic-normal); }
-.cdp-pro-trend-down { color: var(--semantic-critical); }
-
-.cdp-pro-exposure-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  font-size: calc(11px * var(--wm-panel-effective-scale, 1));
-  border-bottom: 1px solid var(--border);
-}
-
-.cdp-pro-exposure-item:last-child {
-  border-bottom: none;
-}
-
-.cdp-pro-exposure-name {
-  color: var(--text);
-}
-
-.cdp-pro-exposure-score {
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: calc(10px * var(--wm-panel-effective-scale, 1));
-}
-
 .cdp-trade-exposure-table tbody tr.cdp-sector-row {
   cursor: pointer;
   transition: background 0.15s;
@@ -2087,7 +1962,7 @@
 .cdp-card-help { min-width: 24px; min-height: 24px; margin-inline-start: 8px; }
 .cdp-card-body { overflow-x: auto; }
 .cdp-table-scroll { overflow-x: auto; min-width: 0; }
-.cdp-card-body :is(table, .cdp-pro-flow-table) { width: 100%; border-collapse: collapse; font-size: calc(12px * var(--wm-panel-effective-scale, 1)); }
+
 .cdp-card-body :is(td, th) { padding: 11px 9px; border-bottom: 1px solid var(--border-subtle); line-height: 1.5; }
 .cdp-card-body thead th { text-align: left; font-size: 10px; letter-spacing: .4px; color: var(--text-muted); }
 .cdp-card-body :is(td, th):first-child { padding-inline-start: 0; }
@@ -2113,9 +1988,7 @@
 .cdp-tariff-trend { border-inline-start: 1px solid var(--border); padding-inline-start: 28px; }
 .cdp-tariff-trend p { margin-top: 10px; }
 .cdp-tariff-history { font-size: 12px; color: var(--text-muted); }
-.cdp-pro-metric-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
-.cdp-pro-metric-box { padding: 14px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; }
-.cdp-pro-metric-value { font-size: 24px; font-variant-numeric: tabular-nums; }
+
 .cdp-scorecard-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
 .cdp-scorecard-tabs .cdp-scorecard-pillar { display: flex; flex-direction: column; min-width: 0; border: 0; border-inline-end: 1px solid var(--border); border-radius: 0; background: none; padding: 20px 16px; text-align: left; cursor: pointer; gap: 12px; }
 .cdp-scorecard-tabs .cdp-scorecard-pillar:last-child { border-inline-end: 0; }

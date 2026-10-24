@@ -26,7 +26,6 @@ jobs:
       - uses: ./.github/actions/install-root-deps
       - run: npm run typecheck
       - run: npm run typecheck:api
-      - run: npm run typecheck:contract-tests
       - run: npm run typecheck:dom-tests
 
   lint:
@@ -45,10 +44,8 @@ jobs:
       - run: npm run lint:safe-local-storage
       - run: npm run lint:api-contract
       - run: npm run lint:rate-limit-policies
-      - run: npm run lint:premium-fetch
       - run: npm run lint:unicode
       - run: npm run lint:md
-      - run: npm run entitlement:crosswalk:check
 
   # test:data shards by measured duration; the denominator in --shard must
   # match the matrix length.

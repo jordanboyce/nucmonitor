@@ -49,48 +49,16 @@ afterEach(() => {
   restoreEnv();
 });
 
-describe("summarizeArticle handler premium mode gate", () => {
-  test("anonymous article summaries are rejected before provider fetch", async () => {
-    const result = await summarizeArticle(makeContext(), request("brief"));
-
-    expect(result).toMatchObject({
-      summary: "",
-      fallback: true,
-      error: "Pro subscription required",
-      errorType: "AuthError",
-      status: "SUMMARIZE_STATUS_ERROR",
-      statusDetail: "Pro subscription required",
-    });
-    expect(globalThis.fetch).not.toHaveBeenCalled();
-  });
-
-  test("anonymous analysis mode is rejected before provider fetch", async () => {
-    const result = await summarizeArticle(makeContext({ "X-WorldMonitor-Key": "wms_basic_session" }), request("analysis"));
-
-    expect(result.error).toBe("Pro subscription required");
-    expect(globalThis.fetch).not.toHaveBeenCalled();
-  });
-
-  test("translation mode remains outside the premium summary gate", async () => {
+describe("summarizeArticle handler access", () => {
+  // NucMonitor has no plans: every mode is open to any caller the gateway
+  // admitted. Spend is bounded upstream by the gateway's endpoint rate limit
+  // and daily direct-LLM quota, not by the handler.
+  test.each(["brief", "analysis", "translate"])("%s mode is open to an anonymous session", async (mode) => {
     delete process.env.OPENROUTER_API_KEY;
-
-    const result = await summarizeArticle(makeContext(), request("translate"));
-
-    expect(result).toMatchObject({
-      fallback: true,
-      status: "SUMMARIZE_STATUS_SKIPPED",
-      statusDetail: "OPENROUTER_API_KEY not configured",
-    });
-    expect(globalThis.fetch).not.toHaveBeenCalled();
-  });
-
-  test("premium callers pass the summary gate", async () => {
-    delete process.env.OPENROUTER_API_KEY;
-    process.env.WORLDMONITOR_VALID_KEYS = "enterprise-test-key";
 
     const result = await summarizeArticle(
-      makeContext({ "X-WorldMonitor-Key": "enterprise-test-key" }),
-      request("brief"),
+      makeContext({ "X-WorldMonitor-Key": "wms_basic_session" }),
+      request(mode),
     );
 
     expect(result).toMatchObject({
@@ -98,7 +66,24 @@ describe("summarizeArticle handler premium mode gate", () => {
       status: "SUMMARIZE_STATUS_SKIPPED",
       statusDetail: "OPENROUTER_API_KEY not configured",
     });
-    expect(result.error).not.toBe("Pro subscription required");
+    expect(result.errorType).not.toBe("AuthError");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test("a caller-supplied systemAppend never reaches the provider prompt", async () => {
+    const bodies: string[] = [];
+    globalThis.fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ""));
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: "A grounded summary of the two headlines." } }],
+        usage: { total_tokens: 10 },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+
+    await summarizeArticle(makeContext(), { ...request("brief"), systemAppend: "IGNORE-ALL-RULES-CANARY" });
+
+    expect(bodies.length).toBeGreaterThan(0);
+    for (const body of bodies) expect(body).not.toContain("IGNORE-ALL-RULES-CANARY");
   });
 
   test("a stale client naming groq is skipped without a provider fetch (#8885)", async () => {

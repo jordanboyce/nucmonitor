@@ -53,7 +53,7 @@ before(async () => {
   const lifecycleOnlyStubs: Plugin = {
     name: 'map-viewport-lifecycle-stubs',
     setup(buildApi) {
-      buildApi.onResolve({ filter: /^@\/(utils|config\/map-layer-definitions|services\/widget-store|services\/auth-state|services\/panel-gating|services\/analytics|services\/i18n|utils\/lcp-debug)$/ }, (args) => ({
+      buildApi.onResolve({ filter: /^@\/(utils|config\/map-layer-definitions|services\/auth-state|services\/analytics|services\/i18n|utils\/lcp-debug)$/ }, (args) => ({
         path: args.path,
         namespace: 'viewport-stub',
       }));
@@ -68,10 +68,7 @@ before(async () => {
           `,
           '@/utils/lcp-debug': 'export const markLcpDebug = () => {};',
           '@/config/map-layer-definitions': `
-            export const isLayerToggleAllowed = () => true;
-            export const isLayerEntitled = () => true;
-            export const sanitizeLockedLayers = (layers) => layers;
-            export const shouldSanitizeLockedLayers = () => false;
+            export const LAYER_REGISTRY = new Proxy({}, { get: () => ({}) });
             export const getLayersForVariant = () => [];
             export const sanitizeResilienceScoreForRenderer = (layers, isDeckGLActive) =>
               layers.resilienceScore && !isDeckGLActive
@@ -82,13 +79,11 @@ before(async () => {
             export const getLayerExplanation = () => null;
             export const hasCuratedLayerExplanation = () => false;
           `,
-          '@/services/widget-store': 'export const isProTierResolved = () => true;',
           '@/services/auth-state': `
             export const getAuthState = () => ({});
             export const subscribeAuthState = () => () => {};
           `,
-          '@/services/panel-gating': 'export const hasPremiumAccess = () => false;',
-          '@/services/analytics': 'export const trackGateHit = () => {};',
+          '@/services/analytics': '',
           '@/services/i18n': `
             export const t = (key) => key;
             export const getCurrentLanguage = () => 'en';

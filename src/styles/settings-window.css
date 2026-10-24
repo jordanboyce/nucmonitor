@@ -908,24 +908,6 @@ tr.diag-err td { color: var(--settings-red); }
   max-width: 480px;
 }
 
-.wm-divider {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 14px 0;
-  color: var(--settings-text-secondary);
-  font-size: calc(13px * var(--wm-panel-effective-scale, 1));
-  font-weight: 500;
-}
-
-.wm-divider::before,
-.wm-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--settings-border);
-}
-
 .wm-byok {
   margin-top: 14px;
   padding: 12px 16px;
@@ -1037,45 +1019,6 @@ tr.diag-err td { color: var(--settings-red); }
   background: rgba(251, 191, 36, 0.12);
 }
 
-.wm-register-row {
-  display: flex;
-  gap: 10px;
-}
-
-.wm-email { flex: 1; }
-
-.wm-submit-btn {
-  background: var(--settings-accent);
-  border: 1px solid var(--settings-accent);
-  color: #fff;
-  font: inherit;
-  font-size: calc(13px * var(--wm-panel-effective-scale, 1));
-  font-weight: 600;
-  padding: 8px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-
-.wm-submit-btn:hover {
-  background: color-mix(in srgb, var(--settings-accent) 85%, white);
-}
-
-.wm-submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.wm-reg-status {
-  margin: 8px 0 0;
-  font-size: calc(13px * var(--wm-panel-effective-scale, 1));
-  min-height: 20px;
-}
-
-.wm-reg-status.ok { color: var(--settings-green); }
-.wm-reg-status.error { color: var(--settings-red); }
-
 /* ── Content area fade transition ── */
 .settings-content.fade-out { opacity: 0; transition: opacity 0.1s ease; }
 .settings-content.fade-in { opacity: 1; transition: opacity 0.15s ease; }
@@ -1098,7 +1041,6 @@ tr.diag-err td { color: var(--settings-red); }
 .settings-search-empty p {
   font-size: calc(14px * var(--wm-panel-effective-scale, 1));
 }
-
 
 /* ── Responsive ── */
 @media (max-width: 860px) {

@@ -367,8 +367,7 @@ describe("userPreferences.setPreferences write rate limit", () => {
   test("preserves rolling-deployment fields omitted by an older writer", async () => {
     vi.spyOn(Date, "now").mockReturnValue(TEST_NOW);
     const t = makeT();
-    const sourceOwnership = "worldmonitor-free-tier-source-ownership";
-    const layerOwnership = "worldmonitor-free-tier-layer-ownership";
+    const liveMediaIdleStop = "wm-live-media-idle-stop";
     const fontScale = "wm-font-scale";
 
     await expect(
@@ -376,8 +375,7 @@ describe("userPreferences.setPreferences write rate limit", () => {
         variant: "full",
         data: {
           theme: "dark",
-          [sourceOwnership]: '["source-a"]',
-          [layerOwnership]: '["resilienceScore"]',
+          [liveMediaIdleStop]: "1",
           [fontScale]: "2",
         },
         expectedSyncVersion: 0,
@@ -399,8 +397,7 @@ describe("userPreferences.setPreferences write rate limit", () => {
     });
     expect(preserved?.data).toEqual({
       theme: "light",
-      [sourceOwnership]: '["source-a"]',
-      [layerOwnership]: '["resilienceScore"]',
+      [liveMediaIdleStop]: "1",
       [fontScale]: "2",
     });
 
@@ -409,8 +406,7 @@ describe("userPreferences.setPreferences write rate limit", () => {
         variant: "full",
         data: {
           theme: "light",
-          [sourceOwnership]: "[]",
-          [layerOwnership]: "[]",
+          [liveMediaIdleStop]: "0",
           [fontScale]: "1",
         },
         expectedSyncVersion: 2,
@@ -422,8 +418,7 @@ describe("userPreferences.setPreferences write rate limit", () => {
       variant: "full",
     });
     expect(cleared?.data).toMatchObject({
-      [sourceOwnership]: "[]",
-      [layerOwnership]: "[]",
+      [liveMediaIdleStop]: "0",
       [fontScale]: "1",
     });
   });

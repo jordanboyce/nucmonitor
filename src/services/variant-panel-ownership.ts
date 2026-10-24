@@ -3,56 +3,6 @@ import { userSetPanelEnabled } from '@/config/panels';
 import { STORAGE_KEYS } from '@/config/variants/base';
 
 type StorageWriter = (key: string, value: string) => boolean | void;
-type PersistenceStep = () => boolean | void;
-
-export interface GateOwnershipPersistenceResult {
-  preferencePersisted: boolean;
-  ownershipPersisted: boolean;
-  complete: boolean;
-}
-
-function runPersistenceStep(step: PersistenceStep): boolean {
-  try {
-    return step() !== false;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Persist a preference and its gate-ownership sidecar in the only safe order.
- * Free enforcement records ownership before a destructive preference write;
- * Pro restoration records the restored preference before consuming ownership.
- */
-export function persistGateOwnershipTransition(
-  mode: 'free' | 'pro',
-  persistPreference: PersistenceStep,
-  persistOwnership: PersistenceStep,
-): GateOwnershipPersistenceResult {
-  if (mode === 'free') {
-    const ownershipPersisted = runPersistenceStep(persistOwnership);
-    if (!ownershipPersisted) {
-      return { preferencePersisted: false, ownershipPersisted, complete: false };
-    }
-    const preferencePersisted = runPersistenceStep(persistPreference);
-    return {
-      preferencePersisted,
-      ownershipPersisted,
-      complete: preferencePersisted,
-    };
-  }
-
-  const preferencePersisted = runPersistenceStep(persistPreference);
-  if (!preferencePersisted) {
-    return { preferencePersisted, ownershipPersisted: false, complete: false };
-  }
-  const ownershipPersisted = runPersistenceStep(persistOwnership);
-  return {
-    preferencePersisted,
-    ownershipPersisted,
-    complete: ownershipPersisted,
-  };
-}
 
 interface ResolveAppliedPanelLayoutVariantOptions {
   appliedVariant: string | null;

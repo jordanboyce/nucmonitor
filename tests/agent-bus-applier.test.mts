@@ -58,10 +58,8 @@ function makeCtx(overrides: Partial<AppContext> = {}): AppContext {
   } as unknown as AppContext;
 }
 
-const entitled = {
+const options = {
   getPanelConfig: (panelId: string): PanelConfig => ({ name: panelId, enabled: true }),
-  isPanelAllowed: () => true,
-  hasPremiumAccess: () => false,
   applyLayerChange: () => {},
   // NucMonitor's only map variant: its allowlist excludes the retired upstream
   // layers (cables, pipelines, datacenters) that stay in the registry.
@@ -69,13 +67,13 @@ const entitled = {
 };
 
 describe('agent bus applier', () => {
-  it('opens only live, enabled, entitled panels', () => {
+  it('opens only live, enabled panels', () => {
     const panel = makePanel();
     const ctx = makeCtx({
       panels: { forecast: panel.panel as never },
       panelSettings: { forecast: { name: 'Forecasts', enabled: true, premium: 'locked' } },
     });
-    const result = applyAgentBusAction(ctx, { type: 'open_panel', panelId: 'forecast' }, entitled);
+    const result = applyAgentBusAction(ctx, { type: 'open_panel', panelId: 'forecast' }, options);
 
     assert.equal(result.ok, true);
     assert.equal(result.status, 'applied');
@@ -90,7 +88,7 @@ describe('agent bus applier', () => {
       panels: {},
       panelSettings: { forecast: { name: 'Forecasts', enabled: false } },
     });
-    const result = applyAgentBusAction(ctx, { type: 'open_panel', panelId: 'forecast' }, entitled);
+    const result = applyAgentBusAction(ctx, { type: 'open_panel', panelId: 'forecast' }, options);
 
     assert.equal(result.ok, false);
     assert.equal(result.status, 'denied');
@@ -111,12 +109,12 @@ describe('agent bus applier', () => {
     const lazyResult = applyAgentBusAction(
       lazyCtx,
       { type: 'open_panel', panelId: 'forecast' },
-      entitled,
+      options,
     );
     const unknownResult = applyAgentBusAction(
       makeCtx({ panels: {}, panelSettings: {} }),
       { type: 'open_panel', panelId: 'not-known' },
-      entitled,
+      options,
     );
 
     assert.equal(lazyResult.ok, false);
@@ -125,96 +123,11 @@ describe('agent bus applier', () => {
     assert.equal(unknownResult.reason, 'panel_not_live');
   });
 
-  it('enforces premium panel entitlement in the applier', () => {
-    const panel = makePanel();
-    const ctx = makeCtx({
-      panels: { forecast: panel.panel as never },
-      panelSettings: { forecast: { name: 'Forecasts', enabled: true, premium: 'locked' } },
-    });
-    const result = applyAgentBusAction(ctx, { type: 'open_panel', panelId: 'forecast' }, {
-      ...entitled,
-      isPanelAllowed: () => false,
-    });
-
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, 'panel_not_entitled');
-    assert.equal(panel.showCalls, 0);
-  });
-
-  it('uses canonical security metadata instead of stale saved panel config', () => {
-    const panel = makePanel();
-    const ctx = makeCtx({
-      panels: { forecast: panel.panel as never },
-      panelSettings: { forecast: { name: 'Saved Forecasts', enabled: true } },
-    });
-    let checkedConfig: PanelConfig | undefined;
-    const result = applyAgentBusAction(ctx, { type: 'open_panel', panelId: 'forecast' }, {
-      ...entitled,
-      getPanelConfig: () => ({
-        name: 'AI Forecasts',
-        enabled: true,
-        premium: 'locked',
-      }),
-      isPanelAllowed: (_panelId, config) => {
-        checkedConfig = config;
-        return config.premium !== 'locked';
-      },
-    });
-
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, 'panel_not_entitled');
-    assert.equal(checkedConfig?.premium, 'locked');
-    assert.equal(panel.showCalls, 0);
-    assert.equal(panel.scrollCalls, 0);
-  });
-
-  it('keeps dynamic custom-widget and MCP panels Pro-only without canonical metadata', () => {
-    for (const panelId of ['cw-risk-chart', 'mcp-risk-feed']) {
-      const deniedPanel = makePanel();
-      const freeCtx = makeCtx({
-        panels: { [panelId]: deniedPanel.panel as never },
-        panelSettings: { [panelId]: { name: 'Dynamic panel', enabled: true } },
-      });
-      const deniedResult = applyAgentBusAction(
-        freeCtx,
-        { type: 'open_panel', panelId },
-        {
-          ...entitled,
-          getPanelConfig: (id) => ({ name: id, enabled: false }),
-          isPanelAllowed: () => true,
-          hasPremiumAccess: () => false,
-        },
-      );
-
-      assert.equal(deniedResult.ok, false, panelId);
-      assert.equal(deniedResult.reason, 'panel_not_entitled', panelId);
-      assert.equal(deniedPanel.showCalls, 0, panelId);
-    }
-
-    const allowedPanel = makePanel();
-    const proCtx = makeCtx({
-      panels: { 'cw-risk-chart': allowedPanel.panel as never },
-      panelSettings: { 'cw-risk-chart': { name: 'Risk chart', enabled: true } },
-    });
-    const allowedResult = applyAgentBusAction(
-      proCtx,
-      { type: 'open_panel', panelId: 'cw-risk-chart' },
-      {
-        ...entitled,
-        getPanelConfig: (panelId) => ({ name: panelId, enabled: false }),
-        hasPremiumAccess: () => true,
-      },
-    );
-
-    assert.equal(allowedResult.ok, true);
-    assert.equal(allowedPanel.showCalls, 1);
-  });
-
   it('moves the map only after action validation', () => {
     const ctx = makeCtx();
     const viewChanges: Array<[string | undefined, 'programmatic']> = [];
     const result = applyAgentBusAction(ctx, { type: 'set_view', view: 'mena', zoom: 4 }, {
-      ...entitled,
+      ...options,
       applyViewChange: (action, source) => { viewChanges.push([action.view, source]); },
     });
     const mapCalls = (ctx.map as never as { _calls: { setViewCalls: Array<[string, number | undefined]> } })._calls;
@@ -222,12 +135,12 @@ describe('agent bus applier', () => {
     assert.equal(result.ok, true);
     assert.deepEqual(mapCalls.setViewCalls, [['mena', 4]]);
     assert.deepEqual(viewChanges, [['mena', 'programmatic']]);
-    assert.equal(applyAgentBusAction(ctx, { type: 'set_view', lat: 91, lon: 0 }, entitled).status, 'invalid');
+    assert.equal(applyAgentBusAction(ctx, { type: 'set_view', lat: 91, lon: 0 }, options).status, 'invalid');
   });
 
   it('treats missing map as a denied no-op', () => {
     const ctx = makeCtx({ map: null });
-    const result = applyAgentBusAction(ctx, { type: 'set_view', view: 'eu' }, entitled);
+    const result = applyAgentBusAction(ctx, { type: 'set_view', view: 'eu' }, options);
 
     assert.equal(result.ok, false);
     assert.equal(result.reason, 'map_unavailable');
@@ -244,7 +157,7 @@ describe('agent bus applier', () => {
         notARealLayer: true,
       },
     }, {
-      ...entitled,
+      ...options,
       // The globe has no paint path for the facility registry.
       getRenderer: () => 'globe',
     });
@@ -274,7 +187,7 @@ describe('agent bus applier', () => {
       type: 'set_layers',
       layers: { usNuclearFacilities: true, weather: false },
     }, {
-      ...entitled,
+      ...options,
       applyLayerChange: (layer, enabled, source) => { layerChanges.push([layer, enabled, source]); },
     });
 
@@ -293,10 +206,8 @@ describe('agent bus applier', () => {
       type: 'set_layers',
       layers: { weather: true },
     }, {
-      getPanelConfig: entitled.getPanelConfig,
-      isPanelAllowed: entitled.isPanelAllowed,
-      hasPremiumAccess: entitled.hasPremiumAccess,
-      getVariant: entitled.getVariant,
+      getPanelConfig: options.getPanelConfig,
+      getVariant: options.getVariant,
     });
     const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
 
@@ -314,7 +225,7 @@ describe('agent bus applier', () => {
     const result = applyAgentBusAction(ctx, {
       type: 'set_layers',
       layers: { cables: true, diseaseOutbreaks: true },
-    }, entitled);
+    }, options);
     const mapCalls = (ctx.map as never as { _calls: { setLayersCalls: MapLayers[] } })._calls;
 
     assert.equal(result.ok, false);
@@ -359,7 +270,7 @@ describe('agent bus applier', () => {
     const ctx = makeCtx();
     const briefCalls: string[] = [];
     const result = applyAgentBusAction(ctx, { type: 'focus_country', iso2: 'DE' }, {
-      ...entitled,
+      ...options,
       getCountryMapFocus: (iso2) => iso2 === 'DE'
         ? { iso2: 'DE', lat: 51.1, lon: 10.4, zoom: 5, bbox: [5.8, 47.2, 15.0, 55.0] }
         : null,
@@ -384,7 +295,7 @@ describe('agent bus applier', () => {
   it('denies focus_country as geometry_unavailable when country GeoJSON is not loaded', () => {
     const ctx = makeCtx();
     const result = applyAgentBusAction(ctx, { type: 'focus_country', iso2: 'DE' }, {
-      ...entitled,
+      ...options,
       isCountryGeometryLoaded: () => false,
       getCountryMapFocus: () => ({
         iso2: 'DE', lat: 51.1, lon: 10.4, zoom: 5, bbox: [5.8, 47.2, 15.0, 55.0],
@@ -404,7 +315,7 @@ describe('agent bus applier', () => {
   it('denies unknown country codes with a structured unknown_country result', () => {
     const ctx = makeCtx();
     const result = applyAgentBusAction(ctx, { type: 'focus_country', iso2: 'XX' }, {
-      ...entitled,
+      ...options,
       isCountryGeometryLoaded: () => true,
       getCountryMapFocus: () => null,
     });

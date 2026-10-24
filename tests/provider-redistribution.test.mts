@@ -8,10 +8,6 @@ import {
   hasRedistributableProviderAttribution,
   isOpenSkyProvider,
 } from '../shared/provider-redistribution';
-import {
-  INTERNAL_MCP_VERIFIED_HEADER,
-  getInternalMcpVerifiedNonce,
-} from '../server/_shared/mcp-internal-hmac';
 
 function requestWith(headers: Record<string, string> = {}): Request {
   return new Request('https://worldmonitor.app/api/aviation/v1/track-aircraft', { headers });
@@ -26,22 +22,13 @@ describe('provider redistribution boundary', () => {
     })), false);
   });
 
-  it('requires redistributable providers for API keys and verified MCP calls', () => {
+  it('requires redistributable providers for API keys', () => {
     assert.equal(requiresRedistributableProviders(requestWith({
-      'X-WorldMonitor-Key': 'wm_user-api-key',
+      'X-WorldMonitor-Key': 'wm_operator-api-key',
     })), true);
     assert.equal(requiresRedistributableProviders(requestWith({
       'X-Api-Key': 'enterprise-api-key',
     })), true);
-    assert.equal(requiresRedistributableProviders(requestWith({
-      [INTERNAL_MCP_VERIFIED_HEADER]: getInternalMcpVerifiedNonce(),
-    })), true);
-  });
-
-  it('does not trust a caller-supplied MCP marker', () => {
-    assert.equal(requiresRedistributableProviders(requestWith({
-      [INTERNAL_MCP_VERIFIED_HEADER]: '1',
-    })), false);
   });
 
   it('recognizes OpenSky provider labels without matching other providers', () => {

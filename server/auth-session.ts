@@ -10,13 +10,7 @@
  */
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-// @ts-expect-error — JS module, no declaration file
-import { captureSilentError } from '../api/_sentry-edge.js';
 import { isAllowedOrigin } from './cors.js';
-
-// Clerk Backend API secret -- used to look up user metadata when the JWT
-// does not include a `plan` claim (i.e. standard session token, no template).
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY ?? '';
 
 // Absorb minor issuer/edge clock skew without turning expiration into a broad
 // grace period. jose's operators are asymmetric at the bound: `exp` is accepted
@@ -47,8 +41,8 @@ export function getClerkJwtVerifyBaseOptions() {
 
 // Module-scope JWKS resolver -- cached across warm invocations.
 // jose handles key rotation and caching internally.
-// Exported so server/_shared/auth-session.ts can reuse the same singleton
-// (avoids duplicate JWKS HTTP fetches on cold start).
+// Exported so callers can reuse the same singleton (avoids duplicate JWKS
+// HTTP fetches on cold start).
 // Reads CLERK_JWT_ISSUER_DOMAIN lazily (not from module-scope const) so that
 // tests that set the env var after import still get a valid JWKS.
 let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -77,7 +71,6 @@ export interface SessionResult {
   valid: boolean;
   userId?: string;
   orgId?: string | null;
-  role?: 'free' | 'pro';
   email?: string;
   name?: string;
   /**
@@ -171,76 +164,9 @@ function extractOrgId(payload: Record<string, unknown>): string | null {
   );
 }
 
-// Short-lived in-memory cache for plan lookups (userId → { role, expiresAt }).
-// Avoids hammering the Clerk API on every premium request. TTL = 5 min.
-const _planCache = new Map<string, { role: 'free' | 'pro'; expiresAt: number }>();
-const PLAN_CACHE_TTL_MS = 5 * 60 * 1_000;
-
-// Matches the 3s budget used for the other external auth lookup
-// — an inline AbortSignal.timeout(3_000) in server/_shared/user-api-key.ts, and
-// the VALIDATION_TIMEOUT_MS constant in api/_user-api-key.js.
-const DEFAULT_PLAN_LOOKUP_TIMEOUT_MS = 3_000;
-const MAX_ABORT_SIGNAL_TIMEOUT_MS = 2_147_483_647;
-
-export function parsePlanLookupTimeoutMs(value: string | undefined): number {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= MAX_ABORT_SIGNAL_TIMEOUT_MS
-    ? parsed
-    : DEFAULT_PLAN_LOOKUP_TIMEOUT_MS;
-}
-
-const PLAN_LOOKUP_TIMEOUT_MS = parsePlanLookupTimeoutMs(process.env.CLERK_PLAN_LOOKUP_TIMEOUT_MS);
-
-export type ClerkPlanLookupResult = 'free' | 'pro' | 'unavailable';
-
-export async function lookupClerkPlan(userId: string): Promise<ClerkPlanLookupResult> {
-  const cached = _planCache.get(userId);
-  if (cached && Date.now() < cached.expiresAt) return cached.role;
-
-  if (!CLERK_SECRET_KEY) return 'unavailable';
-  try {
-    // Adversarial DoS guard: validateBearerToken awaits this on every standard
-    // (non-template) session token, so a Clerk API stall would otherwise let an
-    // authenticated caller pin gateway invocations open indefinitely.
-    const resp = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${CLERK_SECRET_KEY}`,
-        // AGENTS.md: always set User-Agent on server-side fetches. Matches the
-        // sibling auth lookups (entitlement-check.ts, _shared/user-api-key.ts).
-        'User-Agent': 'worldmonitor-gateway/1.0',
-      },
-      signal: AbortSignal.timeout(PLAN_LOOKUP_TIMEOUT_MS),
-    });
-    if (resp.status === 404) return 'free';
-    if (!resp.ok) {
-      console.warn(`[auth-session] Clerk plan lookup unavailable: http-${resp.status}`);
-      return 'unavailable';
-    }
-    const user = (await resp.json()) as { public_metadata?: Record<string, unknown> };
-    const role: 'free' | 'pro' = user.public_metadata?.plan === 'pro' ? 'pro' : 'free';
-    _planCache.set(userId, { role, expiresAt: Date.now() + PLAN_CACHE_TTL_MS });
-    return role;
-  } catch (err) {
-    void captureSilentError(err, {
-      tags: { route: 'server/auth-session', step: 'clerk-plan-lookup' },
-    });
-    console.warn(
-      '[auth-session] Clerk plan lookup unavailable:',
-      err instanceof Error ? err.message : String(err),
-    );
-    return 'unavailable';
-  }
-}
-
-async function lookupPlanFromClerk(userId: string): Promise<'free' | 'pro'> {
-  const result = await lookupClerkPlan(userId);
-  return result === 'unavailable' ? 'free' : result;
-}
-
 /**
  * Validate a Clerk-issued bearer token using local JWKS verification.
- * Accepts both custom-template tokens (with `plan` claim) and standard
- * session tokens (plan looked up via Clerk Backend API).
+ * Accepts both custom-template (`convex`) tokens and standard session tokens.
  * Fails closed: invalid/expired/unverifiable tokens return { valid: false }.
  * When a browser session token carries `azp`, it must be an authorized party
  * (app hosts seeded from TRUSTED_RETURN_URL_ORIGINS via the CORS allowlist,
@@ -281,16 +207,6 @@ export async function validateBearerToken(token: string): Promise<SessionResult>
       return { valid: false, reason: 'invalid' };
     }
 
-    // `plan` claim is present only in 'convex' template tokens. For standard
-    // session tokens we fall back to a cached Clerk API lookup.
-    const rawPlan = (payload as Record<string, unknown>).plan;
-    const role: 'free' | 'pro' =
-      rawPlan !== undefined
-        ? rawPlan === 'pro'
-          ? 'pro'
-          : 'free'
-        : await lookupPlanFromClerk(userId);
-
     const email = typeof payload.email === 'string' ? payload.email : undefined;
     const givenName = typeof payload.given_name === 'string' ? payload.given_name : undefined;
     const familyName = typeof payload.family_name === 'string' ? payload.family_name : undefined;
@@ -306,7 +222,6 @@ export async function validateBearerToken(token: string): Promise<SessionResult>
       valid: true,
       userId,
       orgId,
-      role,
       email,
       name,
       ...(withinTolerance ? { acceptedWithinClockTolerance: true as const } : {}),

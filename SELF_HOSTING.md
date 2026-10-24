@@ -52,13 +52,11 @@ These must be set before `docker compose up -d`, or one of the containers will e
 
 ## Self-hosted API authentication
 
-Docker mode (`LOCAL_API_MODE=docker`) has no Clerk or Convex entitlement backend. The dashboard still mints an anonymous `wms_` session signed with `WM_SESSION_SECRET`.
+Docker mode (`LOCAL_API_MODE=docker`) needs no Clerk or Convex backend. The dashboard mints an anonymous `wms_` session signed with `WM_SESSION_SECRET`, and that session opens every data route: NucMonitor has no paid tiers or per-user API keys. Operator-issued `WORLDMONITOR_VALID_KEYS` keys work as well.
 
 Native administration routes under `/api/local-` return `403` in Docker mode, including configuration updates, secret validation, and local status/debug controls. The internal sidecar token does not grant administrator access through nginx. Change operator settings through Compose environment variables or Docker secrets, then recreate the app container. Desktop administration remains available through the native app.
 
-- Only `GET /api/intelligence/v1/get-country-intel-brief` accepts that session as the authentication boundary. The handler still returns the shared (non-premium) brief.
-- Direct-LLM spend on that route is capped at 50 calls per UTC day per client IP. nginx stamps `X-Real-IP` from `$remote_addr`, so a caller cannot rotate the header to reset the cap. Rotating the session token also does not reset spend.
-- Every other premium route still requires an API key or a Clerk entitlement. Cloud deployments do not set `LOCAL_API_MODE=docker` and keep key plus entitlement enforcement on this route too.
+nginx stamps `X-Real-IP` from `$remote_addr`, so a caller cannot spoof its client IP (which per-IP limits key on) with that header.
 
 If another reverse proxy sits in front of the NucMonitor container, set
 `WM_TRUSTED_PROXY_CIDRS` to that proxy's IP address or network. Separate multiple
@@ -171,8 +169,8 @@ node scripts/seed-military-flights.mjs
 
 > **`redis-rest` command allowlist**: the bundled proxy (`docker/redis-rest-proxy.mjs`) only
 > forwards a fixed allowlist of Redis commands. It permits byte-pinned `EVAL` scripts for
-> the news digest's atomic last-good publication, fenced story-alias publication, and Pro MCP
-> quota reservation; all caller-selected Lua plus `EVALSHA` and `SCRIPT` remain rejected.
+> the news digest's atomic last-good publication and fenced story-alias publication; all
+> caller-selected Lua plus `EVALSHA` and `SCRIPT` remain rejected.
 > Two consequences for a self-hosted stack:
 >
 > - `@upstash/ratelimit`'s Lua-based sliding-window limiter (`server/_shared/rate-limit.ts`,

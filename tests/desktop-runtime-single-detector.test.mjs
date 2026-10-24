@@ -35,7 +35,6 @@ const ALLOWED_RAW_GLOBAL_READERS = new Set([
 const CONVERGED_CALL_SITES = [
   'src/config/basemap.ts',
   'src/main.ts',
-  'src/services/push-notifications.ts',
   'src/utils/circuit-breaker.ts',
   'src/bootstrap/sentry-init.ts',
 ];

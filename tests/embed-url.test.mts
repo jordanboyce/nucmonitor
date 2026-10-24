@@ -2,9 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildEmbedIframeSnippet,
-  buildEmbedLoaderSnippet,
   buildEmbedMapUrl,
-  EMBED_KEY_PLACEHOLDER,
   buildEmbedPanelUrl,
   createBlankMapLayers,
   EMBEDDABLE_LAYERS,
@@ -126,7 +124,7 @@ describe('embed URL contract', () => {
     assert.ok(!snippet.includes('"><script>'));
   });
 
-  it('builds panel URLs and a script-tag loader snippet without putting the API key in the iframe URL', () => {
+  it('builds panel URLs without putting any key in the iframe URL', () => {
     const url = buildEmbedPanelUrl('https://www.worldmonitor.app/embed', {
       panel: 'map',
       theme: 'light',
@@ -136,62 +134,5 @@ describe('embed URL contract', () => {
     assert.equal(parsed.searchParams.has('panel'), false);
     assert.equal(parsed.searchParams.get('theme'), 'light');
     assert.equal(parsed.searchParams.has('key'), false);
-
-    const snippet = buildEmbedLoaderSnippet({
-      src: 'https://www.worldmonitor.app/embed.js',
-      panel: 'map',
-      theme: 'dark',
-      height: '360',
-    });
-    assert.ok(snippet.includes('src="https://www.worldmonitor.app/embed.js"'));
-    assert.ok(snippet.includes('data-panel="map"'));
-    assert.ok(snippet.includes(`data-key="${EMBED_KEY_PLACEHOLDER}"`));
-    assert.equal(EMBED_KEY_PLACEHOLDER, 'YOUR_WME_EMBED_KEY');
-    assert.ok(!/wm_[a-f0-9]/.test(snippet), 'documented snippet must use a placeholder, not a real key');
-  });
-
-  it('carries the map view on the keyed loader snippet', () => {
-    // Without these the keyed snippet would render the DEFAULT layers
-    // while the free iframe snippet beside it rendered the user's real view —
-    // the paid form looking worse than the free one.
-    const snippet = buildEmbedLoaderSnippet({
-      src: 'https://www.worldmonitor.app/embed.js',
-      panel: 'map',
-      layerIds: ['weather', 'pipelines', 'cables', 'weather'],
-      center: { lat: 25.2048, lon: 55.2708 },
-      zoom: 4.5,
-      theme: 'light',
-      variant: 'nuclear',
-    });
-    assert.ok(snippet.includes('data-layers="weather,pipelines,cables"'), snippet);
-    assert.ok(snippet.includes('data-center="25.205,55.271"'), snippet);
-    assert.ok(snippet.includes('data-zoom="4.5"'), snippet);
-    assert.ok(snippet.includes('data-variant="nuclear"'), snippet);
-    assert.ok(snippet.includes('data-theme="light"'), snippet);
-  });
-
-  it('clamps and escapes everything the loader snippet interpolates', () => {
-    const snippet = buildEmbedLoaderSnippet({
-      src: 'https://www.worldmonitor.app/embed.js',
-      panel: 'map',
-      center: { lat: 999, lon: -999 },
-      zoom: 99,
-      key: '"><script>alert(1)</script>',
-    });
-    assert.ok(snippet.includes('data-center="90,-180"'), snippet);
-    assert.ok(snippet.includes('data-zoom="10"'), snippet);
-    assert.ok(!snippet.includes('"><script>alert(1)'), snippet);
-    assert.ok(snippet.includes('&quot;&gt;&lt;script&gt;'), snippet);
-  });
-
-  it('falls back to the placeholder for a blank key', () => {
-    // A plaintext embed key is shown once at mint time and unrecoverable
-    // afterwards, so a snippet built later can only say where to paste one.
-    const snippet = buildEmbedLoaderSnippet({
-      src: 'https://www.worldmonitor.app/embed.js',
-      panel: 'map',
-      key: '   ',
-    });
-    assert.ok(snippet.includes(`data-key="${EMBED_KEY_PLACEHOLDER}"`));
   });
 });

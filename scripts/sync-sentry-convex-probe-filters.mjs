@@ -74,12 +74,6 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export const PROTECTED_ERROR_MESSAGE_FILTERS = Object.freeze([
   '*Your request timed out performing too many system operations*',
   'Error: Client disconnected',
-  // The account write fence (convex/accountDeletion/guard.ts). A tab still
-  // syncing preferences during deletion hits it once; the edge handler already
-  // answers a terminal 403, and Convex's auto-Sentry reported every throw at
-  // error level as WORLDMONITOR-14D. Convex events carry sdk.name = "convex",
-  // so the browser filters never see them — server-side is the only layer.
-  '*ACCOUNT_DELETION_IN_PROGRESS*',
 ]);
 
 /**

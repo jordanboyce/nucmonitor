@@ -252,7 +252,6 @@ test.describe('monitor panel reload', () => {
       localStorage.setItem('worldmonitor-variant', variant);
       localStorage.setItem('worldmonitor-happy-panel-fix-v1', 'done');
       localStorage.setItem('wm-layer-warning-dismissed', 'true');
-      localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
       localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
       localStorage.setItem('worldmonitor-panel-order-v1.9', 'done');
       localStorage.setItem('worldmonitor-layout-reset-v2.5', 'done');

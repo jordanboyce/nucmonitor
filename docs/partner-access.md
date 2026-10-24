@@ -46,7 +46,8 @@ Domains must match exactly: `utility.com` admits `ops@utility.com`, but not
   Partner mode also turns off the anonymous paths:
   - the `&public=1` bootstrap and RPC shapes;
   - the anonymous weather read;
-  - the keyless embed map frame.
+  - the keyless embed map frame (`/api/embed/map-frame` answers `403
+    partner_access_required`, so embeds do not render in partner mode).
 - **Gateway.** A Clerk bearer replaces an API key only when its account is a
   partner.
 - **Status codes.** Responses carry `401 sign_in_required`, `403
@@ -74,21 +75,9 @@ Invites match the caller's verified Clerk email, and are case-insensitive.
 
 ## API keys for partners
 
-There are two ways to give a partner API access:
-
-- **Organisation key, no Convex involved.** Generate a random secret and add it
-  to `WORLDMONITOR_VALID_KEYS` (comma-separated). Callers send it as
-  `X-Api-Key`.
-- **Per-user keys.** A partner creates keys under Settings → API Keys. The
-  gateway accepts a user key only when its owner's entitlement carries API
-  access, so grant that once per account:
-
-  ```sh
-  npx convex run partnerAccess:grantApiAccess '{"userId":"user_2abc..."}'
-  ```
-
-  The Clerk user id appears in the Clerk dashboard. Grants last 365 days by
-  default; pass `"days"` to change that.
+To give a partner API access, generate a random secret and add it to
+`WORLDMONITOR_VALID_KEYS` (comma-separated). Callers send it as `X-Api-Key`.
+There are no per-user API keys.
 
 ## Not covered yet
 

@@ -1,16 +1,12 @@
 /**
- * Wire contract for `GET /api/embed/map-frame` — the one endpoint the partner
- * map frame polls, replacing four separate anonymous RPC calls.
- *
- * One endpoint rather than four because a credential published in partner HTML
- * has a blast radius equal to the set of paths that accept it. Keep this module
- * free of browser and server imports: the edge composes the response and the
- * embed entry consumes it.
+ * Wire contract for `GET /api/embed/map-frame` — the one endpoint the embed
+ * map frame polls, replacing four separate anonymous RPC calls. Keep this
+ * module free of browser and server imports: the edge composes the response
+ * and the embed entry consumes it.
  */
 
 import {
   EMBED_LAYER_IDS,
-  getEmbedPanelFreeTier,
   isEmbedLayerId,
   type EmbedLayerId,
 } from './embed-panels';
@@ -24,7 +20,7 @@ export const EMBED_MAP_FRAME_PATH = '/api/embed/map-frame';
  * (seismic events and natural events); reporting it as `ok` would claim data
  * the frame did not receive, and as `unavailable` would hide data it did.
  */
-export type EmbedMapFrameLayerState = 'ok' | 'partial' | 'unavailable' | 'not-entitled';
+export type EmbedMapFrameLayerState = 'ok' | 'partial' | 'unavailable';
 
 /**
  * Upstream payloads, verbatim.
@@ -43,13 +39,11 @@ export interface EmbedMapFrameData {
 }
 
 export interface EmbedMapFrameResponse {
-  /** Which policy produced this body — the client does not infer it. */
-  tier: 'free' | 'keyed';
-  /** Poll interval for this tier, so the cadence is server-owned. */
+  /** Poll interval, so the cadence is server-owned. */
   refreshMs: number;
   generatedAt: number;
   /**
-   * State for every layer the caller asked for, entitled or not. A partial
+   * State for every layer the caller asked for. A partial
    * upstream failure ships here as data rather than failing the whole frame:
    * a wall display showing three of four layers beats a blank one.
    */
@@ -60,10 +54,9 @@ export interface EmbedMapFrameResponse {
 // ---------------------------------------------------------------------------
 // Shared-cache contract
 //
-// Two bodies on one path is a shared-cache correctness problem, and #5386 is
-// the incident: a warm edge entry can answer a request before the origin ever
-// sees its headers, so `Vary` on a credential header is not a boundary. The
-// marker therefore lives in the URL, and the accepted public query is an EXACT
+// A warm edge entry can answer a request before the origin ever sees its
+// headers (#5386), so the shared-cacheable shape is decided by the URL alone.
+// The marker therefore lives in the URL, and the accepted public query is an EXACT
 // raw-string match rather than a permissive parse — the CDN key space has to
 // be an enumerable set, not "whatever a caller happened to send".
 //
@@ -86,11 +79,11 @@ export function canonicalizeEmbedLayers(
 }
 
 /**
- * The one shared-cacheable query for a given free-layer set (no leading `?`).
+ * The one shared-cacheable query for a given layer set (no leading `?`).
  *
  * Throws rather than emitting a URL the validator would reject — a silent
- * mismatch here is an uncached free tier, which is the cost this whole
- * contract exists to avoid.
+ * mismatch here is an uncached embed, which is the cost this whole contract
+ * exists to avoid.
  */
 export function buildPublicEmbedFrameSearch(ids: readonly EmbedLayerId[]): string {
   const canonical = canonicalizeEmbedLayers(ids);
@@ -102,23 +95,21 @@ export function buildPublicEmbedFrameSearch(ids: readonly EmbedLayerId[]): strin
 }
 
 /**
- * Exact-match the public query shape. Returns the requested free layers, or
- * null when this is not the shared-cacheable shape.
+ * Exact-match the public query shape. Returns the requested layers, or null
+ * when this is not the shared-cacheable shape.
  *
  * Order- and encoding-sensitive on purpose: comparing a re-serialised
  * `URLSearchParams` would normalise `layers=conflicts%2Cweather` into
  * `layers=conflicts,weather` and quietly widen the accepted set — the same
  * reason `public-rpc-cache.ts` compares raw strings.
  *
- * The free tier has three layers, so the accepted set is its seven non-empty
- * subsets: a bounded, enumerable CDN key space.
+ * The accepted set is the non-empty canonical subsets of `EMBED_LAYER_IDS`:
+ * a bounded, enumerable CDN key space.
  */
 export function classifyPublicEmbedFrameSearch(
   rawSearch: string,
 ): EmbedLayerId[] | null {
   const search = rawSearch.startsWith('?') ? rawSearch.slice(1) : rawSearch;
-  const free = getEmbedPanelFreeTier('map');
-  if (!free) return null;
 
   const parts = search.split('&');
   if (parts.length !== 2 || parts[1] !== 'public=1') return null;
@@ -129,12 +120,9 @@ export function classifyPublicEmbedFrameSearch(
   if (!value) return null;
 
   const requested = value.split(',');
-  const freeSet = new Set<string>(free.layers);
   const seen = new Set<string>();
   for (const id of requested) {
-    // Free-tier membership, not merely a valid layer id: a keyless URL naming
-    // a paid layer must not become a shared-cache entry at all.
-    if (!isEmbedLayerId(id) || !freeSet.has(id) || seen.has(id)) return null;
+    if (!isEmbedLayerId(id) || seen.has(id)) return null;
     seen.add(id);
   }
 

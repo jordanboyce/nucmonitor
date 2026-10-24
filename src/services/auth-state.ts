@@ -12,7 +12,6 @@ export interface AuthUser {
   name: string;
   email: string;
   image?: string | null;
-  role: 'free' | 'pro';
 }
 
 /** Simplified auth session state for UI consumption. */
@@ -36,7 +35,6 @@ function snapshotSession(): AuthSession {
       name: cu.name,
       email: cu.email,
       image: cu.image,
-      role: cu.plan,
     },
     isPending: false,
   };

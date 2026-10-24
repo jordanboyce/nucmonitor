@@ -130,10 +130,25 @@ export function showDemoBanner(): void {
     )
     : h('div', { className: 'access-demo-banner', role: 'note' },
       h('strong', {}, 'Demo'),
-      ' — public data only, no account needed. Partner deployments add private instances, alerts and API access.',
+      ' — public data only, no account needed. Partner deployments add private instances and API access.',
     );
   const close = h('button', { type: 'button', className: 'access-demo-banner-close', 'aria-label': 'Dismiss demo notice' }, '×');
-  close.addEventListener('click', () => banner.remove());
+  // #app is absolutely positioned at the top of the viewport, so the banner
+  // must push it down explicitly or it covers the header.
+  const root = document.documentElement;
+  const syncOffset = () => root.style.setProperty('--access-demo-banner-height', `${banner.offsetHeight}px`);
+  const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(syncOffset) : null;
+  close.addEventListener('click', () => {
+    resize?.disconnect();
+    banner.remove();
+    root.classList.remove('has-access-demo-banner');
+    root.style.removeProperty('--access-demo-banner-height');
+    window.dispatchEvent(new Event('resize'));
+  });
   banner.appendChild(close);
   document.body.prepend(banner);
+  root.classList.add('has-access-demo-banner');
+  syncOffset();
+  resize?.observe(banner);
+  window.dispatchEvent(new Event('resize'));
 }

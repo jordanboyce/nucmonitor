@@ -3,30 +3,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAccountMenuItems } from '@/services/clerk';
 
 describe('account menu', () => {
-  it('keeps profile, billing, settings, and sign-out actions in Clerk’s user menu', () => {
-    const openBilling = vi.fn();
+  it('keeps the settings action in Clerk’s user menu', () => {
     const openSettings = vi.fn();
-    const items = createAccountMenuItems({
-      onBillingClick: openBilling,
-      onSettingsClick: openSettings,
-    });
+    const items = createAccountMenuItems({ onSettingsClick: openSettings });
 
-    expect(items.map((item) => item.label)).toEqual([
-      'Plan & billing',
-      'Settings',
-    ]);
+    expect(items.map((item) => item.label)).toEqual(['Settings']);
 
     items[0]?.onClick?.();
-    items[1]?.onClick?.();
-    expect(openBilling).toHaveBeenCalledOnce();
     expect(openSettings).toHaveBeenCalledOnce();
   });
 
   it('mounts quiet decorative icons without exposing them to assistive technology', () => {
-    const items = createAccountMenuItems({
-      onBillingClick: () => {},
-      onSettingsClick: () => {},
-    });
+    const items = createAccountMenuItems({ onSettingsClick: () => {} });
 
     for (const item of items) {
       const iconMount = document.createElement('div');

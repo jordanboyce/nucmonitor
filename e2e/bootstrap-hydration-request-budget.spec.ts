@@ -353,9 +353,8 @@ async function installHydrationRequestAccounting(
   return log;
 }
 
-/** The `full` variant enables 39 priority-1 panels and free tier caps at 40, so
- * a fixture may promote exactly ONE priority-2 panel into range. Promoting two
- * pushes the set over the cap and enforceFreePanelLimit silently drops one. */
+/** Each fixture promotes exactly ONE priority-2 panel into range, so every arm
+ * demands exactly one registry. */
 const SANCTIONS_PANEL_PROMOTION = {
   'sanctions-pressure': { name: 'Sanctions Pressure', enabled: true, priority: 1 },
 };
@@ -714,10 +713,7 @@ test.describe('bootstrap tier failure and rolling-deploy budgets (#7045 U5)', ()
   // always does. Energy-variant startup demand races the tier instead and can
   // legitimately miss it, which is why that path is the #7046 spec's job.
   //
-  // ONE arm per registry, each promoting its own consumer panel, because the
-  // free-tier cap has exactly zero headroom: FULL_PANELS already enables 40
-  // priority-1 panels (39 cap-counted plus `map`, which enforceFreePanelLimit
-  // excludes), so promoting a second panel would silently drop one. A single
+  // ONE arm per registry, each promoting its own consumer panel. A single
   // arm looping all three keys would assert `toBe(0)` for a registry nothing on
   // the page ever demanded — true no matter what the store does.
   for (const { arm, panel, promotion, rowSelector, rowCount, renders, keys } of [

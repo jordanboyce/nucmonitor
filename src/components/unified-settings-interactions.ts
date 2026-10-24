@@ -55,20 +55,3 @@ export function restoreSettingsToggleFocus(
     }
   }
 }
-
-export function getPanelToggleA11yState(
-  locked: boolean,
-  enabled: boolean,
-  displayName: string,
-): { ariaPressed: string | null; ariaLabel: string | null } {
-  if (locked) {
-    return {
-      ariaPressed: null,
-      ariaLabel: `Upgrade to Pro to use ${displayName}`,
-    };
-  }
-  return {
-    ariaPressed: String(enabled),
-    ariaLabel: null,
-  };
-}

@@ -9,7 +9,7 @@ import test from 'node:test';
 import { createTempDir, removeTempDir } from './helpers/temp-dir.mjs';
 
 const root = resolve(import.meta.dirname, '..');
-const routes = ['/api/data', '/api/oauth/authorize', '/api/oauth/authorize-pro', '/api/youtube/embed'];
+const routes = ['/api/data', '/api/oauth/authorize', '/api/youtube/embed'];
 
 test('frontend nginx rejects untrusted and wrong-host TLS upstreams before forwarding credentials', {
   skip: !process.env.WM_TEST_NGINX,

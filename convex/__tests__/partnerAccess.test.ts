@@ -53,16 +53,6 @@ describe("partnerAccess", () => {
     await expect(t.mutation(internal.partnerAccess.invite, { domain: "localhost" })).rejects.toThrow();
   });
 
-  test("grantApiAccess writes an entitlement that carries apiAccess", async () => {
-    const t = convexTest(schema, modules);
-    await t.mutation(internal.partnerAccess.grantApiAccess, { userId: "user-partner" });
-    await t.mutation(internal.partnerAccess.grantApiAccess, { userId: "user-partner", days: 30 });
-    const rows = await t.run((ctx) => ctx.db.query("entitlements").collect());
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.features.apiAccess).toBe(true);
-    expect(rows[0]!.validUntil).toBeGreaterThan(Date.now() + 29 * 86_400_000);
-  });
-
   test("access requests are recorded once per email and refreshed on repeat", async () => {
     const t = convexTest(schema, modules);
     const first = await t.mutation(api.partnerAccess.requestAccess, {

@@ -1,11 +1,10 @@
 // @ts-check
-// Per-account REST rate-limit layer for #3199 (Phase 1). Two limit types:
+// Per-key REST rate-limit layer for enterprise env keys (#3199). Two limit types:
 //
 //   1. Per-minute burst  — infra/abuse protection. Hard limit; the gateway
-//      returns 429 on violation (in enforce mode). Value from the catalog
-//      `apiRateLimit` (user keys) or a hardcoded constant (enterprise).
-//   2. Daily usage meter — the commercial "included allowance". Hard-rejects
-//      (429 in enforce mode) at the sold allowance (#4635; was a 10× ceiling).
+//      returns 429 on violation (in enforce mode).
+//   2. Daily usage meter — a circuit-breaker ceiling (high-usage-alarm.ts).
+//      Hard-rejects (429 in enforce mode) at the ceiling.
 //
 // This module is decision-only: it never builds a Response and never reads the
 // enforce flag — callers own enforce-vs-shadow and Response construction. That keeps
@@ -14,19 +13,17 @@
 //
 // Patterns cloned: api/mcp/quota.ts (INCR-first meter + DECR rollback),
 // api/_rate-limit.js (lazy Upstash singleton, NODE_TEST_CONTEXT retry skip,
-// X-RateLimit-* header shape), server/_shared/pro-mcp-token.ts UTC helpers.
+// X-RateLimit-* header shape).
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { getKeyPrefix } from './_upstash-json.js';
 
-/** Hardcoded per-minute burst for enterprise env keys — they carry no Convex
- *  entitlement (gateway.ts:1006-1007 skips checkEntitlement), so this cannot
- *  be sourced from `features.apiRateLimit`. Mirrors ENTERPRISE_FEATURES. */
+/** Hardcoded per-minute burst for enterprise env keys (WORLDMONITOR_VALID_KEYS). */
 export const ENTERPRISE_API_RATE_LIMIT = 1000;
 // One Redis client shared across every per-minute Ratelimit instance; one
-// Ratelimit per distinct numeric limit (60, 300, 1000) cached in the Map so two
-// Starter accounts share a limiter *config* but get separate buckets via the
-// per-account identifier passed to `.limit()`.
+// Ratelimit per distinct numeric limit cached in the Map so two keys share a
+// limiter *config* but get separate buckets via the identifier passed to
+// `.limit()`.
 /** @type {Redis | null} */
 let redisSingleton = null;
 /** @type {Map<number, Ratelimit>} */
@@ -121,12 +118,11 @@ export function apiKeyDailyKey(userId, date) {
   const dd = String(d.getUTCDate()).padStart(2, '0');
   return `rl:apikey:day:${userId}:${yyyy}-${mm}-${dd}`;
 }
-/** 48h TTL: covers UTC-midnight rollover + an inspection window. Mirrors
- *  PRO_DAILY_QUOTA_TTL_SECONDS. */
+/** 48h TTL: covers UTC-midnight rollover + an inspection window. */
 export const API_DAILY_TTL_SECONDS = 172_800;
 /**
- * Increment the per-account daily meter and report whether the sold daily
- * allowance is now exceeded. INCR-first (atomic; no check-then-incr race), mirroring
+ * Increment the per-key daily meter and report whether the daily allowance is
+ * now exceeded. INCR-first (atomic; no check-then-incr race), mirroring
  * api/mcp/quota.ts::reserveQuota.
  *
  * - `allowance < 0` (unlimited, e.g. enterprise) → no Redis call; never metered.
@@ -183,8 +179,6 @@ export async function reserveDailyMeter(opts) {
       // cost-protection-correct direction.
     }
   };
-  // Enforce at the SOLD allowance (#4635): the customer's plan limit is the
-  // limit. (Was a 10× safety ceiling; dropped so the sold cap is authoritative.)
   return { count, overLimit: count > allowance, metered: true, retryAfterSec, rollback };
 }
 /**

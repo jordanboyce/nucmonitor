@@ -1,18 +1,13 @@
 /**
- * Daily ceilings and the early-warning alarm for the two credential classes
- * that used to have no daily cap at all: operator keys (`WORLDMONITOR_VALID_KEYS`,
- * which the gateway labels `enterprise`) and the catalog Enterprise plan.
+ * Daily ceilings and the early-warning alarm for operator keys
+ * (`WORLDMONITOR_VALID_KEYS`, which the gateway labels `enterprise`).
  *
- * Both were sold or issued as "unlimited", so one leaked key meant unbounded
+ * They used to have no daily cap at all, so one leaked key meant unbounded
  * provider spend. The ceilings below are circuit breakers, not plan limits:
  * each sits far above observed use (operator keys, 2026-07-20 → 2026-10-18:
  * peak 1,911 requests/day per key, peak 162 direct-LLM calls/day). The alarm
  * fires well before a ceiling, once per principal per meter per UTC day, so a
  * leak pages someone while the key still works.
- *
- * The catalog Enterprise ceilings live in `convex/config/productCatalog.ts`
- * (the Convex config graph cannot be imported here); `planLimits` carries them
- * to these call sites like any other plan's.
  */
 
 // @ts-expect-error — JS module, no declaration file
@@ -22,9 +17,7 @@ import { captureSilentError } from '../../api/_sentry-edge.js';
 export const OPERATOR_KEY_DAILY_CEILINGS = {
   /** REST requests. Recorded only while `API_RATE_LIMIT_ENFORCE` is off. */
   restRequests: 100_000,
-  /** MCP tool calls: one unit per call, as on Pro's dedicated counter. */
-  mcpUnits: 10_000,
-  /** Direct-LLM calls, one counter shared by the gateway, chat-analyst and widget-agent. */
+  /** Direct-LLM calls, one counter shared by the gateway and chat-analyst. */
   directLlmCalls: 5_000,
 } as const;
 
@@ -73,7 +66,7 @@ export function __resetHighUsageAlarmForTests(): void {
  */
 export function reportHighUsageIfCrossed(opts: {
   meter: HighUsageMeter;
-  credential: 'operator-key' | 'enterprise-plan';
+  credential: 'operator-key';
   principal: string;
   newCount: number;
   weight?: number;
@@ -108,9 +101,8 @@ export function reportHighUsageIfCrossed(opts: {
 
 /**
  * The direct-LLM quota principal for an operator key: `wm:` plus the first 32
- * hex chars of its SHA-256. This is the bucket `api/widget-agent.ts` already
- * charged, so moving the gateway and chat-analyst onto it adds their calls to
- * the existing counter rather than starting a second one.
+ * hex chars of its SHA-256, shared by the gateway and chat-analyst so their calls
+ * land on one counter.
  */
 export async function operatorKeyQuotaPrincipal(key: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));

@@ -128,17 +128,6 @@ describe('Panel content dirty-check', () => {
     expect(content().querySelector('.probe-a')).not.toBeNull();
   });
 
-  it('re-renders identical content after clearSensitiveContent emptied it', () => {
-    setBody(BODY_A);
-    // Protected: it is the entitlement-change path, and it is one of the
-    // writers that must invalidate the cache.
-    (panel as unknown as { clearSensitiveContent: () => void }).clearSensitiveContent();
-    expect(content().querySelector('.probe-a')).toBeNull();
-
-    setBody(BODY_A);
-
-    expect(content().querySelector('.probe-a')).not.toBeNull();
-  });
 });
 
 interface ImmediateWriter {
@@ -221,14 +210,6 @@ describe('Panel immediate safe content commit (#7775)', () => {
     expect(content().querySelector('.probe-b')).toBeNull();
     vi.advanceTimersByTime(1);
     expect(content().querySelector('.probe-b')).not.toBeNull();
-  });
-
-  it('bails on a locked panel at schedule time', () => {
-    panel.showLocked(['probe feature']);
-    setBodyImmediate('<div class="premium-payload">paid</div>');
-
-    expect(content().querySelector('.premium-payload')).toBeNull();
-    expect(content().querySelector('.panel-locked-state')).not.toBeNull();
   });
 
   it('clears error/retry state on an immediate commit', () => {

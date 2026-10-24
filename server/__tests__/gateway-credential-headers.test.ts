@@ -7,8 +7,8 @@
  * Failure mode this pins: a GET authenticated by a missing header resolves
  * `hasCredentialedNonPublicGet` to false and the gateway emits a per-principal
  * response under a public cache tier — a cached body served to the wrong
- * principal. The drift vector is concrete: X-Widget-Key / X-Pro-Key were both
- * introduced (api/widget-agent.ts) after the function was written.
+ * principal. The drift vector is concrete: header credentials have been
+ * introduced on sibling auth paths after the function was written.
  *
  * Two layers, matching the repo's two-list-sync precedent (premium-paths-guard):
  *   1. Behavioural: every header in CREDENTIAL_BEARING_HEADERS classifies a
@@ -92,8 +92,6 @@ describe('credential-bearing headers force a private tier (#8400)', () => {
       'Authorization',
       'X-WorldMonitor-Key',
       'X-Api-Key',
-      'X-Widget-Key',
-      'X-Pro-Key',
       'Cookie',
     ]);
   });
@@ -102,9 +100,7 @@ describe('credential-bearing headers force a private tier (#8400)', () => {
     ['Authorization', 'Bearer test-token'],
     ['X-WorldMonitor-Key', KEY],
     ['X-Api-Key', KEY],
-    ['X-Widget-Key', 'widget-key'],
-    ['X-Pro-Key', 'pro-key'],
-    ['Cookie', 'wm-pro-key=some-key'],
+    ['Cookie', 'wm-session=some-token'],
   ])('%s classifies a GET as credential-bearing', async (header, value) => {
     const req = get(PRIVATE_PATH, { [header]: value });
     // Unit layer: the header alone trips the guard, independent of auth.
@@ -152,21 +148,14 @@ describe('credential-bearing headers force a private tier (#8400)', () => {
     // Every headers.get('X-…') a sibling auth path treats as a credential.
     // Route-scoped verifications are deliberately NOT credentials here (see
     // the CREDENTIAL_BEARING_HEADERS comment): the desktop HMAC pair
-    // (register-interest.ts, POST-only single RPC) and the internal-MCP
-    // HMAC trio (mcp-internal-hmac.ts, consumed by the pre-check and
-    // stripped before handlers) never act as bearers on an auth path.
+    // (register-interest.ts, POST-only single RPC) never acts as a bearer on
+    // an auth path.
     // Inbound-only plumbing (Vary echo, CORS allowlist membership, the
     // per-process verified-marker nonce, relay-to-upstream relay headers the
     // client never sends) is likewise excluded.
     const credentialReads: Array<{ file: string; header: string }> = [
       { file: 'api/_api-key.js', header: 'X-WorldMonitor-Key' },
       { file: 'api/_api-key.js', header: 'X-Api-Key' },
-      // api/embed/{entitlement,session}.ts resolve through this helper;
-      // tests/embed-session.test.mts pins that delegation.
-      { file: 'server/_shared/embed-key.ts', header: 'X-WorldMonitor-Key' },
-      { file: 'server/_shared/embed-key.ts', header: 'X-Api-Key' },
-      { file: 'server/_shared/premium-check.ts', header: 'X-WorldMonitor-Key' },
-      { file: 'server/_shared/premium-check.ts', header: 'X-Api-Key' },
     ];
 
     // Auth paths that resolve the same credentials through the shared

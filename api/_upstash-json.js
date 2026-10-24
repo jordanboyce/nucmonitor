@@ -16,8 +16,7 @@ import { unwrapEnvelope } from './_seed-envelope.js';
  *     scheme — pass `raw = true` so preview reads the real production rows
  *     instead of a namespace no seeder populates. The same rule already
  *     applies to the server helpers (`getCachedJson(key, true)` for
- *     seeder-owned keys) and to deliberately cross-deployment user state
- *     (`entitlements:*`, see server/_shared/entitlement-check.ts P2-3).
+ *     seeder-owned keys).
  * Production is unaffected either way: the prefix is '' there, so a wrong
  * classification can only fail visibly on a preview deployment.
  */
@@ -34,9 +33,8 @@ export function getKeyPrefix() {
  * (api/health.js sweep) and then pass `raw = true` so the pipeline helpers do
  * not prefix again.
  *
- * Computed per call, NOT memoized — mirrors server/_shared/pro-mcp-token.ts's
- * envPrefix: tests may mutate VERCEL_ENV between calls, and the cost is one
- * trivial string read.
+ * Computed per call, NOT memoized: tests may mutate VERCEL_ENV between calls,
+ * and the cost is one trivial string read.
  */
 export function applyRedisKeyPrefix(key) {
   const prefix = getKeyPrefix();

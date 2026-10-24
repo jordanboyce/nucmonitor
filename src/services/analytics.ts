@@ -8,30 +8,16 @@ export { bucketPanelKeyForAnalytics } from '@/utils/analytics-panel-key';
  */
 
 import { scheduleAfterFirstPaint } from '@/utils/after-paint';
-import { safeStorageGet, safeStorageRemove, safeStorageSet } from '@/utils/safe-storage';
 import { subscribeAuthState, type AuthSession } from './auth-state';
-/** Former billing subscription shape; NucMonitor has no subscriptions. */
-type SubscriptionInfo = { status: string; planKey?: string | null };
 import { getClerkUserCreatedAt } from './clerk';
-import { SITE_VARIANT, isSiteVariant } from '@/config/variant';
-import { isAgentPanelViewSuppressed } from './agent-analytics-privacy';
-type ActivationEventName =
-  | 'pro-activation-entered'
-  | 'pro-activation-step-confirmed'
-  | 'pro-activation-step-skipped'
-  | 'pro-activation-step-blocked'
-  | 'pro-activation-step-failed'
-  | 'pro-activation-exit';
-type ActivationStepId = string;
+import { SITE_VARIANT } from '@/config/variant';
 import {
   collectorFailureFromError,
   configureCollectorTransport,
   installCollectorFetchGate,
-  isRetryableCollectorFailure,
   isRetryableIdentityFailure,
   observeCollectorDelivery,
   resetCollectorTransportForTesting,
-  type CollectorOutcome,
 } from './analytics-collector-transport';
 import {
   getContentAttributionAnalyticsFields,
@@ -40,21 +26,6 @@ import {
 } from '../../shared/content-attribution';
 import { MISSION_PRESET_IDS } from '../../shared/mission-domain';
 import { redactSensitiveUrl } from '../../shared/sensitive-url-params';
-import {
-  isCheckoutSurface,
-  parseCheckoutContext,
-  resolveCheckoutContext,
-  type CheckoutAttribution,
-  type CheckoutContext,
-  type CheckoutSurface,
-} from '../../shared/checkout-attribution';
-
-export type {
-  CheckoutAttribution,
-  CheckoutContext,
-  CheckoutSurface,
-} from '../../shared/checkout-attribution';
-
 // Umami is opt-in: a deployment sets VITE_UMAMI_SCRIPT_URL (the tracker
 // script on its own Umami host) and VITE_UMAMI_WEBSITE_ID. Without both, no
 // analytics script is ever loaded and track() calls are dropped on the floor.
@@ -84,8 +55,7 @@ export const ANALYTICS_CONFIGURED = Boolean(UMAMI_SCRIPT_SRC && UMAMI_WEBSITE_ID
 // finance re-added 2026-09-04 (option 2, mission-funnel measurement): the
 // finance-only nq-day-trader mission was invisible to the funnel with the
 // tracker self-disabled there. Upstream #4183 still drops 4-8% of /api/send
-// on affected hosts — accepted noise; durable checkout markers already
-// tolerate collector failures. tech/commodity stay out until #4183 ships.
+// on affected hosts — accepted noise. tech/commodity stay out until #4183 ships.
 // Optional exact-hostname list the tracker self-limits to (VITE_UMAMI_DOMAINS,
 // comma-separated). Empty means the tracker runs on whatever host serves it.
 const UMAMI_DOMAINS = String(ANALYTICS_ENV.VITE_UMAMI_DOMAINS ?? '').trim();
@@ -113,16 +83,8 @@ const UMAMI_LOAD_ATTEMPT_LIMIT = 2;
 const UMAMI_LOAD_RETRY_DELAY_MS = 5_000;
 const UMAMI_IDENTIFY_RETRY_LIMIT = 2;
 const UMAMI_IDENTIFY_RETRY_BASE_DELAY_MS = 1_000;
-const UMAMI_TRACK_RETRY_LIMIT = 2;
-const CRITICAL_TRACK_EVENTS = new Set<UmamiEvent>([
-  'checkout-start',
-  'checkout-success',
-  'checkout-failed',
-  'mission-returned-after-purchase',
-]);
-
 type QueuedUmamiCall =
-  | { kind: 'track'; event: UmamiEvent; data?: Record<string, unknown>; retryAttempt?: number }
+  | { kind: 'track'; event: UmamiEvent; data?: Record<string, unknown> }
   | {
       kind: 'identify';
       data: Record<string, unknown>;
@@ -140,7 +102,6 @@ let identifyRetryTimer: ReturnType<typeof setTimeout> | null = null;
 let identifyInFlight = false;
 let pendingIdentityCall: IdentifyCall | null = null;
 let identifyDeliveryGeneration = 0;
-let trackRetryGeneration = 0;
 
 // ---------------------------------------------------------------------------
 // Type-safe event catalog — every event name lives here.
@@ -207,169 +168,31 @@ const EVENTS = {
   // Auth (wired in PR #1812 — do not remove)
   'sign-in': true,
   'sign-up': true,
-  // Sign-up resume funnel (#8577): started once per attempt, resumed after a
-  // reload, dismissed by the user; `sign-up` carries `resumed`.
-  'sign-up-started': true,
-  'sign-up-resumed': true,
-  'sign-up-resume-dismissed': true,
   'sign-out': true,
-  'gate-hit': true,
-  // Conversion funnel (#4931) — pageview → gate-hit → checkout-start →
-  // checkout-success is the end-to-end funnel; the /pro page fires its own
-  // checkout-start via the raw tracker (separate build, same event name).
-  'checkout-start': true,
-  'checkout-success': true,
-  'checkout-failed': true,
   'content-handoff': true,
-  // API outcome telemetry — closed-vocabulary key lifecycle actions only;
-  // never include key names, ids, prompts, or request/user data.
-  'api-action': true,
-  // Premium entitlement health — a client that believes it is Pro received a
-  // server-side denial. This is trend telemetry, never an authorization signal.
-  'entitlement-desync': true,
   // Brief — open-rate lift measurement for U10's followed-country bias
   // (followed-countries plan U11). Fired from the dashboard cover card
   // and from the hosted magazine source-link clicks. `followed` flags
   // whether the click target maps to a country the user follows;
   // correlate with non-followed threads to size the bias's effect.
   'brief-thread-open': true,
-  // Pro Activation Onboarding funnel (#4771) — day-0 activation interstitial:
-  // entered → per-step confirmed/skipped/blocked/failed → exit (with completion
-  // state). Names mirror ACTIVATION_EVENTS in @/services/pro-activation-state
-  // (the single naming source); this catalog matches those literals.
-  // `blocked` is a platform refusal, not a user choice (#5609); `failed`
-  // (#5600) is our own write erroring. Both used to land as `skipped`, which is
-  // how a day of broken day-0 activations read as user disinterest.
-  'pro-activation-entered': true,
-  'pro-activation-step-confirmed': true,
-  'pro-activation-step-skipped': true,
-  'pro-activation-step-blocked': true,
-  'pro-activation-step-failed': true,
-  'pro-activation-exit': true,
-  // Passkey offer funnel. Five events, and the boundaries are load-bearing:
-  // `accepted` fires once per MOUNTED offer (not per tap), so a cancel-then-
-  // retry does not read as two accepts against one creation and fabricate an
-  // abandonment rate. `failed` is terminal-only — retryable outcomes
-  // (cancellation, transient/config errors) emit nothing, because they are not
-  // outcomes, they are the user still deciding. `dismissed` means a voluntary
-  // rejection ONLY; letting a technical failure also emit it would inflate the
-  // dismissal guardrail with our own bugs.
-  'passkey-offer-shown': true,
-  'passkey-offer-accepted': true,
-  'passkey-offer-created': true,
-  'passkey-offer-failed': true,
-  'passkey-offer-dismissed': true,
-  // Mission conversion funnel (ONBOARDING_STRATEGY.md, plan 2026-08-30-001).
-  // Picker -> selection -> panel views -> preview -> attributed checkout.
-  // `panel-viewed` is global (the funnel needs a denominator) but deduped per
-  // panel per tab session inside trackPanelView, so volume stays bounded.
-  // The pro-preview-* and mission-returned-after-purchase names are pinned
-  // here from Release 0 so dashboards can be built before Release 1 emits
-  // them; their emission sites land with the preview component.
+  // Mission funnel (ONBOARDING_STRATEGY.md, plan 2026-08-30-001).
+  // Picker -> selection -> panel views. `panel-viewed` is global (the funnel
+  // needs a denominator) but deduped per panel per tab session inside
+  // trackPanelView, so volume stays bounded.
   'mission-picker-shown': true,
   'mission-selected': true,
   'panel-viewed': true,
-  'pro-preview-viewed': true,
-  'pro-preview-cta': true,
-  'pro-preview-dismissed': true,
-  'mission-returned-after-purchase': true,
 } as const;
 
 export type UmamiEvent = keyof typeof EVENTS;
 
-/**
- * Durable-delivery contract for the terminal funnel events.
- *
- * #4934 round-2 F2: the marker written by trackCheckoutSuccess clears only once
- * the event actually reached the collector, so a page reload that races the
- * deferred queue replays instead of dropping it.
- * #4934 round-6: the /pro handoff marker clears only for a REPLAYED
- * checkout-start — a live dashboard checkout-start proves nothing about queued
- * replays.
- *
- * Both invariants now key off a confirmed collector receipt rather than "track()
- * returned without throwing".
- */
-/**
- * Whether a completed write settles a durable checkout marker.
- *
- * The question is only ever "could this have committed a row?", because that is
- * what makes a boot replay a DUPLICATE rather than a recovery:
- *
- * - delivered (no failure)        -> settled.
- * - an HTTP failure we will not retry (500/502/504, and #4183's P2002) -> the
- *   origin engaged the request and may have written the event row before
- *   failing. The in-page retry already refuses to re-send it for exactly that
- *   reason; leaving the marker armed would let the next boot re-send it anyway.
- * - a RACED failure -> the transport ignored our abort, so the collector
- *   transport released its serialized slot while the request was still on the
- *   wire (#6288). It may commit at any moment. `isRetryableCollectorFailure`
- *   already refuses to re-send it in-page for that reason, and the boot replay
- *   is the second door onto the same duplicate — so it settles too.
- * - queue-overflow / missing-receipt / network / timeout -> no row can exist
- *   (never dispatched, or accepted-and-discarded, or answered by nothing after
- *   a cancellation the transport honored), so the marker must survive and
- *   replay. These are recoveries, not duplicates.
- */
-function isDurableMarkerResolved(failure: CollectorOutcome['failure']): boolean {
-  if (failure === null) return true;
-  // Checked BEFORE the `kind` gate: a raced failure is a `timeout`, which the
-  // rule below would otherwise treat as "never answered, safe to replay".
-  if (failure.raced) return true;
-  if (failure.kind !== 'http') return false;
-  return !isRetryableCollectorFailure(failure);
-}
-
-function handleCollectorOutcome(outcome: CollectorOutcome): void {
-  if (outcome.requestType !== 'event') return;
-
-  // A session_data uniqueness conflict is NOT a lost event. Umami writes the
-  // event row in saveEvent() and only then upserts session_data, so #4183's
-  // P2002 means the event committed and the follow-up metadata write lost a
-  // race. Treating it as undelivered would replay the conversion on every boot
-  // for the life of the tab — the duplicate the no-retry policy exists to stop.
-  //
-  // The same reasoning generalises to the rest of the HTTP failures the retry
-  // policy refuses to re-send in-page: a 502/504 (or a 500 whose body carried no
-  // Prisma metadata to recognise) reached the origin and may have committed the
-  // row, so leaving the marker armed would let the boot replay smuggle the event
-  // back in and duplicate the conversion isRetryableCollectorFailure declined to
-  // risk.
-  //
-  // It does NOT generalise past that, which is why isDurableMarkerResolved keys
-  // off `kind === 'http'` and not off retryability. A queue-overflow, a network
-  // error, a timeout, and a receiptless 200 (including a bot-filtered one) all
-  // leave no row behind — never dispatched, never answered, or accepted and
-  // discarded — so for those the marker must SURVIVE and replay. That replay is
-  // a recovery, not a duplicate.
-  if (!isDurableMarkerResolved(outcome.failure)) return;
-
-  if (outcome.eventName === 'checkout-success') clearPendingCheckoutSuccessMarker();
-  if (outcome.eventName === 'checkout-start' && isReplayedCheckoutStart(outcome.requestBody)) {
-    noteProFunnelReplayDelivered();
-  }
-  if (outcome.eventName === 'checkout-start' || outcome.eventName === 'checkout-failed') {
-    forgetPendingConversion(outcome.eventName);
-  }
-}
-
 configureCollectorTransport({
   endpoint: UMAMI_COLLECTOR_ENDPOINT,
   healthEndpoint: '/api/analytics-health',
-  isCriticalEvent: (name) => CRITICAL_TRACK_EVENTS.has(name as UmamiEvent),
-  onOutcome: handleCollectorOutcome,
+  isCriticalEvent: () => false,
+  onOutcome: () => {},
 });
-
-function isReplayedCheckoutStart(requestBody: string | undefined): boolean {
-  if (typeof requestBody !== 'string') return false;
-  try {
-    const body = JSON.parse(requestBody) as { payload?: { data?: { replayed?: unknown } } };
-    return body?.payload?.data?.replayed === true;
-  } catch {
-    // A malformed tracker body cannot be a confirmed replay.
-    return false;
-  }
-}
 
 function queueUmamiCall(call: QueuedUmamiCall): void {
   // Identity is a latest-snapshot write, not an append-only event. Auth and
@@ -498,39 +321,6 @@ function sendIdentityCall(
   return true;
 }
 
-function scheduleTrackRetry(call: Extract<QueuedUmamiCall, { kind: 'track' }>, error: unknown): void {
-  const failure = collectorFailureFromError(error);
-  if (!isRetryableCollectorFailure(failure)) return;
-  const retryAttempt = call.retryAttempt ?? 0;
-  if (retryAttempt >= UMAMI_TRACK_RETRY_LIMIT) return;
-
-  const generation = trackRetryGeneration;
-  const retryCall = { ...call, retryAttempt: retryAttempt + 1 };
-  const delay = UMAMI_IDENTIFY_RETRY_BASE_DELAY_MS * (2 ** retryAttempt);
-  setTimeout(() => {
-    if (generation !== trackRetryGeneration) return;
-    if (!sendUmamiCall(retryCall)) queueUmamiCall(retryCall);
-  }, delay);
-}
-
-/**
- * Fallback for when no delivery signal exists for a critical event — the gate
- * could not be installed (non-writable `window.fetch`), or a test double /
- * alternate tracker issued no observable beacon. Without this the durable
- * marker would never clear and the conversion would replay on every reload for
- * the life of the tab.
- *
- * This deliberately preserves the pre-gate contract rather than claiming a
- * richer one: #4934 round-6's rule that only a REPLAYED checkout-start clears
- * the /pro handoff still holds here.
- */
-function clearUnobservableCriticalMarker(call: Extract<QueuedUmamiCall, { kind: 'track' }>): void {
-  if (call.event === 'checkout-success') clearPendingCheckoutSuccessMarker();
-  if (call.event === 'checkout-start' && call.data?.replayed === true) {
-    noteProFunnelReplayDelivered();
-  }
-}
-
 function sendUmamiCall(call: QueuedUmamiCall): boolean {
   if (typeof window === 'undefined') return false;
   const umami = window.umami;
@@ -540,34 +330,10 @@ function sendUmamiCall(call: QueuedUmamiCall): boolean {
     return sendIdentityCall(call, umami);
   }
   try {
-    const critical = CRITICAL_TRACK_EVENTS.has(call.event);
-    if (!critical) {
-      const result: unknown = umami.track(call.event, call.data);
-      if (result && typeof (result as { catch?: unknown }).catch === 'function') {
-        void (result as Promise<unknown>).catch(() => {});
-      }
-      return true;
-    }
-
-    const { observed, result } = invokeWithDelivery(
-      () => umami.track(call.event, call.data),
-      'event',
-    );
-    if (observed) {
-      // The gate owns marker clearing for observed writes (handleCollectorOutcome).
-      void Promise.resolve(result).then(
-        () => {},
-        (error) => scheduleTrackRetry(call, error),
-      );
-      return true;
-    }
-
-    // No delivery signal for a critical event. Drain any tracker promise so it
-    // cannot surface as an unhandled rejection, then fall back.
+    const result: unknown = umami.track(call.event, call.data);
     if (result && typeof (result as { catch?: unknown }).catch === 'function') {
       void (result as Promise<unknown>).catch(() => {});
     }
-    clearUnobservableCriticalMarker(call);
     return true;
   } catch {
     return false;
@@ -663,22 +429,11 @@ export function initAnalytics(): void {
 
 // ---------------------------------------------------------------------------
 // User identity — call after auth state resolves so Umami can segment events
-// by user/plan. Safe to call before Umami script loads.
+// by user. Safe to call before Umami script loads.
 // ---------------------------------------------------------------------------
 
-export function identifyUser(
-  userId: string,
-  plan: string,
-  subStatus?: SubscriptionInfo['status'] | null,
-  planKey?: string | null,
-): void {
-  const data = {
-    userId,
-    plan,
-    ...(subStatus != null && { subStatus }),
-    ...(planKey != null && { planKey }),
-  };
-  const call = createIdentifyCall(data);
+export function identifyUser(userId: string): void {
+  const call = createIdentifyCall({ userId });
   if (!sendUmamiCall(call)) {
     queueUmamiCall(call);
   }
@@ -693,23 +448,20 @@ export function clearIdentity(): void {
 
 let _unsubAuth: (() => void) | null = null;
 
-// Cached latest values so either subscription firing can re-identify with full data
 let _lastAuth: AuthSession | null = null;
-let _lastSub: SubscriptionInfo | null = null;
 
 function _syncIdentity(): void {
   const user = _lastAuth?.user;
   if (user) {
-    identifyUser(user.id, user.role, _lastSub?.status ?? null, _lastSub?.planKey ?? null);
+    identifyUser(user.id);
   } else {
-    _lastSub = null;
     clearIdentity();
   }
 }
 
 /**
  * Call once after initAuthState() to keep Umami identity in sync with
- * the authenticated user and their subscription status.
+ * the authenticated user.
  * Re-entrant safe: subsequent calls are no-ops.
  */
 export function initAuthAnalytics(): void {
@@ -719,7 +471,6 @@ export function initAuthAnalytics(): void {
     const prevUserId = _lastAuth?.user?.id ?? null;
     const nextUserId = state.user?.id ?? null;
     if (prevUserId !== nextUserId) {
-      _lastSub = null;
       // Detect a genuine sign-UP (not a sign-in). Null→non-null id transition
       // plus a createdAt within FRESH_SIGNUP_WINDOW_MS of now means Clerk
       // just created this account. Firing trackSignUp on the button click
@@ -740,7 +491,7 @@ export function initAuthAnalytics(): void {
         !hasTrackedSignupInSession(nextUserId) &&
         isLikelyFreshSignup(prevUserId, nextUserId, getClerkUserCreatedAt(), Date.now())
       ) {
-        trackSignUp('clerk', { resumed: consumeSignUpResumed() });
+        trackSignUp('clerk');
         markSignupTrackedInSession(nextUserId);
       }
     }
@@ -749,12 +500,11 @@ export function initAuthAnalytics(): void {
   });
 }
 
-/** Tear down auth + billing listeners. Symmetric with initAuthAnalytics(). */
+/** Tear down the auth listener. Symmetric with initAuthAnalytics(). */
 export function destroyAuthAnalytics(): void {
   _unsubAuth?.();
   _unsubAuth = null;
   _lastAuth = null;
-  _lastSub = null;
   clearIdentity();
 }
 
@@ -766,43 +516,8 @@ export function trackSignIn(method: string): void {
   track('sign-in', { method });
 }
 
-export function trackSignUp(method: string, opts?: { resumed?: boolean }): void {
-  track('sign-up', { method, resumed: opts?.resumed === true });
-}
-
-/**
- * Sign-up funnel: started -> (resumed) -> sign-up. Abandonment is
- * started minus sign-up; resume effectiveness is sign-up{resumed} over resumed.
- * `started` fires once per attempt id (the resume service keeps the marker),
- * so a reload mid-attempt does not count a second start.
- */
-export function trackSignUpStarted(): void {
-  track('sign-up-started');
-}
-
-export function trackSignUpResumed(props: { trigger: 'hydration' | 'user'; code: 'live' | 'expired'; sinceBootMs: number }): void {
-  track('sign-up-resumed', { trigger: props.trigger, code: props.code, since_boot_ms: props.sinceBootMs });
-}
-
-export function trackSignUpResumeDismissed(): void {
-  track('sign-up-resume-dismissed');
-}
-
-/**
- * Set when the resumed verify card mounts; read and cleared by the completion
- * `sign-up` event on the next page load. localStorage rather than session
- * scope for the same cross-tab reason as `wm-signup-tracked:`.
- */
-const SIGNUP_RESUMED_KEY = 'wm-signup-resumed';
-
-export function markSignUpResumed(): void {
-  safeStorageSet(SIGNUP_RESUMED_KEY, '1');
-}
-
-export function consumeSignUpResumed(): boolean {
-  const resumed = safeStorageGet(SIGNUP_RESUMED_KEY) === '1';
-  if (resumed) safeStorageRemove(SIGNUP_RESUMED_KEY);
-  return resumed;
+export function trackSignUp(method: string): void {
+  track('sign-up', { method });
 }
 
 export function trackAnalystControlAction(actionType: string, status: string, reason?: string): void {
@@ -896,40 +611,6 @@ export function trackSignOut(): void {
 }
 
 /**
- * Passkey offer funnel.
- *
- * Plain `track()`, deliberately — the same path `trackSignIn`/`trackSignUp`
- * use. These are steps in the same auth lifecycle, so splitting them onto a
- * different tracker would make passkey telemetry inconsistent with the sign-in
- * telemetry beside it for no privacy gain.
- *
- * No user id, email, credential material, or passkey identifier in any payload.
- * That is not a claim of anonymity: `identifyUser()` already attributes every
- * Umami event to the Clerk id, so these are per-user records of a
- * security-posture change and should be treated as such.
- */
-export function trackPasskeyOfferShown(): void {
-  track('passkey-offer-shown');
-}
-
-export function trackPasskeyOfferAccepted(): void {
-  track('passkey-offer-accepted');
-}
-
-export function trackPasskeyOfferCreated(): void {
-  track('passkey-offer-created');
-}
-
-/** `reason` is a coarse closed vocabulary — never a raw Clerk error string. */
-export function trackPasskeyOfferFailed(reason: string): void {
-  track('passkey-offer-failed', { reason });
-}
-
-export function trackPasskeyOfferDismissed(): void {
-  track('passkey-offer-dismissed');
-}
-
-/**
  * Test-only: reset module-level deferred-load state so each test starts from
  * a clean slate. The queue and load guards are module singletons that persist
  * across the shared module import in tests/secondary-startup.test.mts.
@@ -938,7 +619,6 @@ export function resetAnalyticsForTesting(): void {
   resetCollectorTransportForTesting();
   clearScheduledIdentityRetry();
   identifyDeliveryGeneration += 1;
-  trackRetryGeneration += 1;
   identifyInFlight = false;
   pendingIdentityCall = null;
   pendingUmamiCalls.length = 0;
@@ -946,457 +626,7 @@ export function resetAnalyticsForTesting(): void {
   umamiLoadStarted = false;
   umamiLoadAttempts = 0;
   latestIdentityRevision = 0;
-  proFunnelReplaysAwaitingDelivery = 0;
   layoutCustomizationsSent.clear();
-}
-
-export function trackGateHit(feature: string): void {
-  track('gate-hit', { feature });
-}
-
-// ---------------------------------------------------------------------------
-// Conversion funnel (#4931)
-// ---------------------------------------------------------------------------
-
-/**
- * Closed product-id vocabulary for analytics (#4934 round-4 F2): the
- * dashboard resume path replays a productId that originally travelled
- * through URL/sessionStorage, so a crafted value must not inject unbounded
- * cardinality into Umami. Unknown ids collapse to 'unknown'; the checkout
- * flow itself still passes the raw id through (backend validates).
- * Auto-fresh: DODO_PRODUCT_IDS is generated from the catalog. Keeping this
- * small allowlist separate means analytics does not pull the checkout config
- * into the post-hydration module graph. (#5165)
- */
-const KNOWN_PRODUCT_IDS: ReadonlySet<string> = new Set<string>();
-
-export function bucketProductIdForAnalytics(productId: string): string {
-  return KNOWN_PRODUCT_IDS.has(productId) ? productId : 'unknown';
-}
-
-/**
- * Fired when a checkout is initiated from the dashboard (any locked-panel
- * CTA, settings upgrade card, banner, etc. — all route through
- * `startCheckout`). `authed: false` marks intent clicks from signed-out
- * users that detour through sign-in before a Dodo session exists;
- * `surface: 'dashboard-resume'` marks the post-sign-in auto-resume
- * re-entry so a signed-out conversion (two events: dashboard/authed:false,
- * then dashboard-resume/authed:true) isn't double-counted as two attempts.
- * The /pro page mirrors this with 'pro-page' / 'pro-resume'.
- */
-/**
- * Durable marker for the dashboard conversion events that are NOT covered by
- * the /pro handoff marker.
- *
- * `startCheckout` calls trackCheckoutStart and then immediately
- * `window.location.assign(hostedCheckoutUrl)`, so a bounded in-page retry is
- * destroyed by the very redirect it needs to survive. checkout-failed has the
- * same exposure on a navigation. Entries are dropped once the collector
- * confirms the write, and replayed on the next boot otherwise.
- */
-const CONVERSION_PENDING_KEY = 'wm-conversion-pending';
-const CONVERSION_PENDING_LIMIT = 5;
-
-type PendingConversion = {
-  event: 'checkout-start' | 'checkout-failed';
-  data: Record<string, unknown>;
-};
-
-function readPendingConversions(): PendingConversion[] {
-  let raw: string | null = null;
-  try {
-    raw = window.sessionStorage.getItem(CONVERSION_PENDING_KEY);
-  } catch {
-    return [];
-  }
-  if (!raw) return [];
-  try {
-    const items: unknown = JSON.parse(raw);
-    if (!Array.isArray(items)) return [];
-    return items.filter((item): item is PendingConversion => {
-      if (!item || typeof item !== 'object') return false;
-      const { event, data } = item as { event?: unknown; data?: unknown };
-      return (event === 'checkout-start' || event === 'checkout-failed')
-        && Boolean(data) && typeof data === 'object';
-    }).slice(0, CONVERSION_PENDING_LIMIT);
-  } catch {
-    return [];
-  }
-}
-
-function writePendingConversions(items: PendingConversion[]): void {
-  try {
-    if (items.length === 0) window.sessionStorage.removeItem(CONVERSION_PENDING_KEY);
-    else window.sessionStorage.setItem(CONVERSION_PENDING_KEY, JSON.stringify(items));
-  } catch {
-    // Storage denied — fall back to fire-and-hope, matching every other event.
-  }
-}
-
-function rememberPendingConversion(event: PendingConversion['event'], data: Record<string, unknown>): void {
-  const items = readPendingConversions();
-  items.push({ event, data });
-  writePendingConversions(items.slice(-CONVERSION_PENDING_LIMIT));
-}
-
-/** Drop one stored entry for this event once the collector confirms it. */
-function forgetPendingConversion(event: PendingConversion['event']): void {
-  const items = readPendingConversions();
-  const index = items.findIndex((item) => item.event === event);
-  if (index < 0) return;
-  items.splice(index, 1);
-  writePendingConversions(items);
-}
-
-/**
- * Re-queue dashboard conversion events whose delivery was cut off by the Dodo
- * redirect. Entries stay durable until the collector confirms them, so this is
- * a no-op on ordinary boots.
- */
-/**
- * Rebuild a stored pending-conversion payload from an allowlist before
- * replaying it. Write-time bucketing does not protect this path — the entry
- * sat in sessionStorage, which a crafted value can reach directly — so the
- * replay re-derives every field: ids through their bucketers, surface
- * restricted to the known union, authed coerced, unknown keys dropped.
- * Mirrors the sanitize-on-read rule the /pro funnel replay already follows.
- */
-function sanitizePendingConversionData(
-  event: PendingConversion['event'],
-  data: Record<string, unknown>,
-): Record<string, unknown> {
-  if (event === 'checkout-failed') {
-    const status = data.status;
-    return {
-      status: typeof status === 'string' && CHECKOUT_FAILED_STATUSES.has(status) ? status : 'other',
-    };
-  }
-  const out: Record<string, unknown> = {
-    productId: bucketProductIdForAnalytics(typeof data.productId === 'string' ? data.productId : ''),
-    surface: isCheckoutSurface(data.surface)
-      ? data.surface
-      : 'dashboard',
-    authed: data.authed === true,
-  };
-  if (typeof data.missionId === 'string') out.missionId = bucketMissionIdForAnalytics(data.missionId);
-  if (typeof data.panelKey === 'string') out.panelKey = bucketPanelKeyForAnalytics(data.panelKey);
-  if (typeof data.variant === 'string' && isSiteVariant(data.variant)) out.variant = data.variant;
-  if (data.deviceClass === 'mobile' || data.deviceClass === 'desktop') out.deviceClass = data.deviceClass;
-  return out;
-}
-
-/**
- * Return-leg reader (plan U4): the originating mission/panel of the checkout
- * that just completed, straight from the durable pending-conversion entry —
- * read BEFORE the boot replay's collector confirmation can clear it. Values
- * were bucketed at write time and are re-validated by the caller's tracker.
- */
-export function peekPendingMissionAttribution(): {
-  missionId: string;
-  panelKey?: string;
-  surface?: string;
-} | null {
-  // Positional: only the NEWEST checkout-start counts — falling through to
-  // older entries would attribute this purchase to an earlier abandoned
-  // attempt. Values are re-bucketed on read: this store is attacker-writable
-  // (same sanitize-on-read rule as sanitizePendingConversionData).
-  const newest = readPendingConversions().reverse().find((item) => item.event === 'checkout-start');
-  if (!newest) return null;
-  const rawMission = newest.data.missionId;
-  if (typeof rawMission !== 'string') return null;
-  const missionId = bucketMissionIdForAnalytics(rawMission);
-  if (missionId === 'unknown') return null;
-  const rawPanel = newest.data.panelKey;
-  const panelKey = typeof rawPanel === 'string' ? bucketPanelKeyForAnalytics(rawPanel) : 'unknown';
-  const rawSurface = newest.data.surface;
-  return {
-    missionId,
-    ...(panelKey !== 'unknown' ? { panelKey } : {}),
-    ...(isCheckoutSurface(rawSurface) ? { surface: rawSurface } : {}),
-  };
-}
-
-export function replayPendingConversionEvents(): void {
-  for (const item of readPendingConversions()) {
-    track(item.event, { ...sanitizePendingConversionData(item.event, item.data), replayed: true });
-  }
-}
-
-export function trackCheckoutStart(
-  productId: string,
-  authed: boolean,
-  surface: CheckoutSurface = 'dashboard',
-  attribution?: CheckoutAttribution,
-  existingContext?: CheckoutContext,
-): CheckoutContext {
-  // Seeded with the shared funnel context (variant, deviceClass, ambient
-  // missionId) so the baseline read can segment checkout-starts. Semantics of
-  // missionId on this event: ambient mission context when the surface is a
-  // generic one ('dashboard'), preview-attributed when explicit attribution
-  // overrides it below (surface 'mission-preview').
-  const funnelFields = missionFunnelFields();
-  const parsedContext = parseCheckoutContext(existingContext);
-  const context = parsedContext
-    ? { ...parsedContext, eventSurface: surface }
-    : resolveCheckoutContext({
-      surface,
-      attribution,
-      ambientMissionId: funnelFields.missionId,
-    });
-  const data: Record<string, unknown> = {
-    ...funnelFields,
-    productId: bucketProductIdForAnalytics(productId),
-    surface: context.eventSurface,
-    authed,
-  };
-  if (context.origin.missionId) {
-    data.missionId = context.origin.missionId;
-  }
-  if (context.origin.kind === 'mission-preview') {
-    data.panelKey = context.origin.panelKey;
-  }
-  rememberPendingConversion('checkout-start', data);
-  track('checkout-start', data);
-  return context;
-}
-
-/**
- * The one funnel event that races a reload: checkout-success is tracked on
- * the post-checkout dashboard load, but the entitlement watcher reloads the
- * page the moment Pro lands — often before the deferred Umami queue flushes
- * (#4934 round-2 F2). A sessionStorage marker written at track time and
- * cleared only on actual delivery (see sendUmamiCall) lets the next boot
- * replay the event instead of dropping it. sessionStorage is per-tab, so
- * the replay can't leak across tabs or users.
- */
-const CHECKOUT_SUCCESS_PENDING_KEY = 'wm-checkout-success-pending';
-
-function clearPendingCheckoutSuccessMarker(): void {
-  try {
-    window.sessionStorage.removeItem(CHECKOUT_SUCCESS_PENDING_KEY);
-  } catch {
-    // Storage unavailable — replay just won't be possible, same as before.
-  }
-}
-
-/**
- * Fired on the dashboard when a checkout return reconciles as success.
- * `source` distinguishes the full-page return-URL path from the legacy
- * overlay session-flag path (see panel-layout.ts checkout-return wiring).
- */
-export function trackCheckoutSuccess(source: 'url-return' | 'overlay-flag'): void {
-  try {
-    window.sessionStorage.setItem(CHECKOUT_SUCCESS_PENDING_KEY, source);
-  } catch {
-    // Storage denied — fall back to fire-and-hope, matching every other event.
-  }
-  track('checkout-success', { source });
-}
-
-/**
- * Re-queue a checkout-success whose delivery was cut off by the entitlement
- * reload. Called on every non-checkout-return boot (panel-layout); a no-op
- * unless the durable marker survived. Deliberately does NOT rewrite the
- * marker: it stays until sendUmamiCall confirms delivery, so repeated
- * reloads keep replaying rather than dropping.
- */
-export function replayPendingCheckoutSuccess(): void {
-  let source: string | null = null;
-  try {
-    source = window.sessionStorage.getItem(CHECKOUT_SUCCESS_PENDING_KEY);
-  } catch {
-    return;
-  }
-  if (!source) return;
-  track('checkout-success', { source, replayed: true });
-}
-
-/**
- * Replay /pro checkout-start events that died with the redirect (#4934
- * round-5): the /pro page mirrors undelivered checkout-start events into
- * sessionStorage (see pro-test/src/services/checkout.ts) because the fast
- * signed-in/resume path top-level-redirects to Dodo before its flush poll
- * runs. The buyer returns to the dashboard in the same tab, so this boot
- * hook replays them here. Every field is re-validated against closed
- * vocabularies — sessionStorage is tab-local but still client-writable,
- * and replayed junk must not become analytics cardinality.
- *
- * Delivery contract (round-6): the marker is NOT cleared here. Replays
- * enter the deferred queue, and the entitlement watcher can reload the
- * page before it flushes — clearing at read time would drop the event
- * permanently in exactly the race round-2 fixed for checkout-success.
- * Instead the key is REWRITTEN with only the sanitized survivors (so
- * junk can't loop forever) and removed in sendUmamiCall once a replayed
- * event actually reaches the tracker.
- */
-const PRO_FUNNEL_PENDING_KEY = 'wm-pro-funnel-pending';
-
-function clearPendingProFunnelMarker(): void {
-  proFunnelReplaysAwaitingDelivery = 0;
-  try {
-    window.sessionStorage.removeItem(PRO_FUNNEL_PENDING_KEY);
-  } catch {
-    // Storage unavailable — worst case is a duplicate replayed:true event
-    // on the next boot, the side we deliberately err on.
-  }
-}
-
-/**
- * How many replayed checkout-start events from the current batch have not yet
- * been confirmed by the collector.
- *
- * Before the write gate existed, all replays flushed in one synchronous loop,
- * so clearing the marker on the first delivery was safe. Writes are now
- * serialized: only replay #1 is in flight when it lands, and #2..n are still
- * queued. Clearing on the first receipt would drop the remainder on a reload,
- * so the marker shrinks to the undelivered tail instead and clears only when
- * the batch is fully acknowledged.
- */
-let proFunnelReplaysAwaitingDelivery = 0;
-
-function noteProFunnelReplayDelivered(): void {
-  if (proFunnelReplaysAwaitingDelivery <= 0) {
-    clearPendingProFunnelMarker();
-    return;
-  }
-  proFunnelReplaysAwaitingDelivery -= 1;
-  if (proFunnelReplaysAwaitingDelivery === 0) {
-    clearPendingProFunnelMarker();
-    return;
-  }
-  try {
-    const raw = window.sessionStorage.getItem(PRO_FUNNEL_PENDING_KEY);
-    if (!raw) return;
-    const items: unknown = JSON.parse(raw);
-    if (!Array.isArray(items)) return;
-    window.sessionStorage.setItem(
-      PRO_FUNNEL_PENDING_KEY,
-      JSON.stringify(items.slice(items.length - proFunnelReplaysAwaitingDelivery)),
-    );
-  } catch {
-    // Rewrite failed — the full batch stays durable, so the worst case is a
-    // duplicate replay next boot rather than a dropped one.
-  }
-}
-
-export function replayPendingProFunnelEvents(): void {
-  let raw: string | null = null;
-  try {
-    raw = window.sessionStorage.getItem(PRO_FUNNEL_PENDING_KEY);
-  } catch {
-    return;
-  }
-  if (!raw) return;
-
-  const sanitized: Array<{ productId: string; surface: 'pro-page' | 'pro-resume'; authed: boolean }> = [];
-  try {
-    const items: unknown = JSON.parse(raw);
-    if (Array.isArray(items)) {
-      for (const item of items.slice(0, 10)) {
-        if (!item || typeof item !== 'object') continue;
-        const { event, data } = item as { event?: unknown; data?: unknown };
-        if (event !== 'checkout-start' || !data || typeof data !== 'object') continue;
-        const d = data as Record<string, unknown>;
-        sanitized.push({
-          productId: bucketProductIdForAnalytics(String(d.productId ?? '')),
-          surface: d.surface === 'pro-resume' ? 'pro-resume' : 'pro-page',
-          authed: Boolean(d.authed),
-        });
-      }
-    }
-  } catch {
-    // Malformed JSON — nothing replayable.
-  }
-
-  if (sanitized.length === 0) {
-    clearPendingProFunnelMarker();
-    return;
-  }
-
-  // Persist the sanitized survivors so a pre-delivery reload retries
-  // exactly these (bounded, closed-vocabulary), then queue the replays.
-  try {
-    window.sessionStorage.setItem(
-      PRO_FUNNEL_PENDING_KEY,
-      JSON.stringify(sanitized.map((data) => ({ event: 'checkout-start', data }))),
-    );
-  } catch {
-    // Rewrite failed — the original payload stays; sanitization re-runs
-    // on the next boot. Still safe to queue this boot's replays.
-  }
-  proFunnelReplaysAwaitingDelivery = sanitized.length;
-  for (const data of sanitized) {
-    track('checkout-start', { ...data, replayed: true });
-  }
-}
-
-/**
- * Closed status vocabulary for checkout-failed (#4934 round-2 F3). The raw
- * value is URL-derived (Dodo return params — and checkout-return.ts:117
- * forwards ANY unknown status when Dodo ID params are present), so a
- * crafted or novel URL must not inject unbounded cardinality into
- * analytics. Unknowns collapse to 'other'.
- */
-const CHECKOUT_FAILED_STATUSES = new Set(['failed', 'declined', 'cancelled', 'canceled']);
-
-/** Fired when a checkout return reconciles as failed/declined/cancelled. */
-export function trackCheckoutFailed(rawStatus: string): void {
-  const status = CHECKOUT_FAILED_STATUSES.has(rawStatus) ? rawStatus : 'other';
-  rememberPendingConversion('checkout-failed', { status });
-  track('checkout-failed', { status });
-}
-
-const API_ACTIONS = ['key-created', 'key-revoked'] as const;
-export type ApiActionName = (typeof API_ACTIONS)[number];
-
-/** Track a successful, bounded API product action without leaking key data. */
-export function trackApiAction(action: ApiActionName): void {
-  if (!API_ACTIONS.includes(action)) return;
-  track('api-action', { action });
-}
-
-// ---------------------------------------------------------------------------
-// Pro Activation Onboarding funnel (#4771)
-// ---------------------------------------------------------------------------
-
-/** The activation funnel events — the leaf's ACTIVATION_EVENTS is the naming source. */
-export type ProActivationEvent = ActivationEventName;
-
-/**
- * The ONLY fields allowed on an activation event payload. Deliberately narrow:
- * the plan tier, the step id (step events), and the aggregate exit counts
- * (exit event). NEVER the subscription id or any billing identifier — cohort
- * joins key on the userId Umami already receives via identifyUser(). Mirrors
- * the closed-vocabulary minimization of bucketProductIdForAnalytics above.
- */
-export interface ProActivationEventFields {
-  planKey?: string | null;
-  step?: ActivationStepId;
-  completion?: 'complete' | 'partial' | 'none';
-  verified?: number;
-  pending?: number;
-  failed?: number;
-  total?: number;
-}
-
-/**
- * Track a Pro-activation funnel event with a minimized payload. Every field is
- * whitelisted here, so a caller cannot widen the payload into billing identity:
- * only planKey / step / the aggregate exit counts ever reach Umami.
- */
-export function trackProActivation(
-  event: ProActivationEvent,
-  fields: ProActivationEventFields = {},
-): void {
-  const data: Record<string, unknown> = {};
-  if (fields.planKey != null) data.planKey = fields.planKey;
-  if (fields.step != null) data.step = fields.step;
-  if (fields.completion != null) data.completion = fields.completion;
-  if (fields.verified != null) data.verified = fields.verified;
-  if (fields.pending != null) data.pending = fields.pending;
-  if (fields.failed != null) data.failed = fields.failed;
-  if (fields.total != null) data.total = fields.total;
-  track(event, data);
 }
 
 // ---------------------------------------------------------------------------
@@ -1541,128 +771,6 @@ export function trackMissionSelected(missionId: string, source: 'user' | 'agent'
   });
 }
 
-function trackProPreviewEvent(
-  event: 'pro-preview-viewed' | 'pro-preview-cta' | 'pro-preview-dismissed' | 'mission-returned-after-purchase',
-  missionId: string,
-  panelKey: string,
-): void {
-  track(event, {
-    ...missionFunnelFields(),
-    missionId: bucketMissionIdForAnalytics(missionId),
-    panelKey: bucketPanelKeyForAnalytics(panelKey),
-  });
-}
-
-/**
- * Guardrail-denominator integrity (review findings on the pre-registered
- * dismissal-rate rollback): viewed is once per preview per tab session — a
- * render is not a view, and mission flapping or per-country widget re-creates
- * must not multiply the denominator — and agent-driven mounts (WebMCP mission
- * applies / set_panel_enabled) are suppressed via the same per-panel window
- * panel-viewed uses, so the human funnel reads clean. Centralized here so the
- * component, ResilienceWidget's crisis-desk surface, and any future caller
- * share one contract.
- */
-const PRO_PREVIEW_VIEWED_SESSION_KEY = 'wm-pro-preview-viewed-v1';
-const PRO_PREVIEW_DISMISSED_SESSION_KEY = 'wm-pro-preview-dismissed-v1';
-let proPreviewViewedMemory = new Set<string>();
-let proPreviewDismissedMemory = new Set<string>();
-
-export function resetProPreviewViewedForTesting(): void {
-  proPreviewViewedMemory = new Set();
-  proPreviewDismissedMemory = new Set();
-  try {
-    window.sessionStorage.removeItem(PRO_PREVIEW_VIEWED_SESSION_KEY);
-    window.sessionStorage.removeItem(PRO_PREVIEW_DISMISSED_SESSION_KEY);
-  } catch {
-    // ignore
-  }
-}
-
-function hasTrackedProPreviewDismissed(id: string): boolean {
-  if (proPreviewDismissedMemory.has(id)) return true;
-  try {
-    const raw = window.sessionStorage.getItem(PRO_PREVIEW_DISMISSED_SESSION_KEY);
-    const items: unknown = raw ? JSON.parse(raw) : null;
-    return Array.isArray(items) && items.includes(id);
-  } catch {
-    return false;
-  }
-}
-
-function rememberProPreviewDismissed(id: string): void {
-  proPreviewDismissedMemory.add(id);
-  try {
-    const raw = window.sessionStorage.getItem(PRO_PREVIEW_DISMISSED_SESSION_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    const items = Array.isArray(parsed) ? parsed.filter((i): i is string => typeof i === 'string') : [];
-    items.push(id);
-    window.sessionStorage.setItem(PRO_PREVIEW_DISMISSED_SESSION_KEY, JSON.stringify(items.slice(-100)));
-  } catch {}
-}
-
-function hasTrackedProPreviewViewed(id: string): boolean {
-  if (proPreviewViewedMemory.has(id)) return true;
-  try {
-    const raw = window.sessionStorage.getItem(PRO_PREVIEW_VIEWED_SESSION_KEY);
-    const items: unknown = raw ? JSON.parse(raw) : null;
-    return Array.isArray(items) && items.includes(id);
-  } catch {
-    return false;
-  }
-}
-
-function rememberProPreviewViewed(id: string): void {
-  proPreviewViewedMemory.add(id);
-  try {
-    const raw = window.sessionStorage.getItem(PRO_PREVIEW_VIEWED_SESSION_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    const items = Array.isArray(parsed) ? parsed.filter((i): i is string => typeof i === 'string') : [];
-    items.push(id);
-    window.sessionStorage.setItem(PRO_PREVIEW_VIEWED_SESSION_KEY, JSON.stringify(items.slice(-100)));
-  } catch {
-    // Storage denied — the in-memory set still dedupes this page.
-  }
-}
-
-export function trackProPreviewViewed(missionId: string, panelKey: string): void {
-  if (isAgentPanelViewSuppressed(panelKey)) return;
-  const id = `${bucketMissionIdForAnalytics(missionId)}:${bucketPanelKeyForAnalytics(panelKey)}`;
-  if (hasTrackedProPreviewViewed(id)) return;
-  rememberProPreviewViewed(id);
-  trackProPreviewEvent('pro-preview-viewed', missionId, panelKey);
-}
-
-export function trackProPreviewCta(missionId: string, panelKey: string): void {
-  trackProPreviewEvent('pro-preview-cta', missionId, panelKey);
-}
-
-export function trackProPreviewDismissed(missionId: string, panelKey: string): void {
-  const id = `${bucketMissionIdForAnalytics(missionId)}:${bucketPanelKeyForAnalytics(panelKey)}`;
-  if (hasTrackedProPreviewDismissed(id)) return;
-  rememberProPreviewDismissed(id);
-  trackProPreviewEvent('pro-preview-dismissed', missionId, panelKey);
-}
-
-export function trackMissionReturnedAfterPurchase(
-  missionId: string,
-  panelKey: string,
-  surface?: string,
-): void {
-  track('mission-returned-after-purchase', {
-    ...missionFunnelFields(),
-    missionId: bucketMissionIdForAnalytics(missionId),
-    panelKey: bucketPanelKeyForAnalytics(panelKey),
-    // Distinguishes a preview-originated purchase from an ambient-context
-    // one — day-30 completion reads split on this.
-    ...(surface ? { surface } : {}),
-  });
-}
-
-/** No-op: there is no checkout to return from. Kept for existing callers. */
-export function replayPendingMissionReturn(): void {}
-
-export function trackApiKeysSnapshot(): void {}
 export function trackUpdateShown(_current: string, _remote: string): void {}
 export function trackUpdateClicked(_version: string): void {}
 export function trackUpdateDismissed(_version: string): void {}

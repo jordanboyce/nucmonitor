@@ -41,9 +41,8 @@ const PUBLISHABLE_KEY = readPublishableKey();
 
 /**
  * True when a Clerk publishable key is configured. Used by surfaces that must
- * distinguish "auth still hydrating" from "Clerk will never load" (e.g. the
- * Pro banner deferral in #5728 — without this, `isPending` stays sticky when
- * the key is absent and free users would never see the upsell).
+ * distinguish "auth still hydrating" from "Clerk will never load" (without
+ * this, `isPending` stays sticky when the key is absent).
  */
 export function isClerkAuthEnabled(): boolean {
   return Boolean(PUBLISHABLE_KEY);
@@ -71,7 +70,7 @@ function getAppearance() {
   // legacy names stay for clerk-js's own legacy components. Unknown keys
   // are ignored by either parser, so the union is safe.
 
-  // Sign-up carries the same assent as checkout (#6976): with these set, Clerk
+  // Sign-up carries the legal assent (#6976): with these set, Clerk
   // renders Terms/Privacy links in the auth card footer, so a user creating an
   // account is shown the documents rather than only bound by a browsewrap.
   // Absolute because the desktop WebView origin has no /docs (#5911).
@@ -293,7 +292,7 @@ export async function initClerk(): Promise<void> {
       loadPromise = null; // allow retry on next call
       // Flip auth isPending → false for queued subscribers even though
       // clerkInstance stays null. Without this, surfaces that defer while
-      // auth is pending (Pro banner #5728, AuthHeaderWidget skeletons)
+      // auth is pending (AuthHeaderWidget skeletons)
       // hang forever on permanent load failures (blocked CDN, CN in-app
       // browsers). Leave the queue intact so a later successful retry can
       // still attachListener + re-fire with a real session.
@@ -734,8 +733,8 @@ export function clearClerkTokenCache(): void {
 }
 
 /**
- * Get a bearer token for premium API requests.
- * Uses the 'convex' JWT template which includes the `plan` claim.
+ * Get a bearer token for authenticated API requests (partner sign-in, cloud
+ * preferences). Uses the 'convex' JWT template.
  * Returns null if no active session.
  *
  * Tokens are cached with in-flight deduplication to prevent concurrent panels
@@ -1042,16 +1041,14 @@ export function __setClerkInstanceForTests(instance: ClerkInstance | null): void
 
 
 /** Get current Clerk user metadata. Returns null if signed out. */
-export function getCurrentClerkUser(): { id: string; name: string; email: string; image: string | null; plan: 'free' | 'pro' } | null {
+export function getCurrentClerkUser(): { id: string; name: string; email: string; image: string | null } | null {
   const user = clerkInstance?.user;
   if (!user) return null;
-  const plan = (user.publicMetadata as Record<string, unknown>)?.plan;
   return {
     id: user.id,
     name: user.fullName ?? user.firstName ?? 'User',
     email: user.primaryEmailAddress?.emailAddress ?? '',
     image: user.imageUrl ?? null,
-    plan: plan === 'pro' ? 'pro' : 'free',
   };
 }
 
@@ -1086,15 +1083,12 @@ export function subscribeClerk(callback: () => void): () => void {
  * Returns an unmount function.
  */
 export interface UserButtonMenuActions {
-  onBillingClick?: () => void;
   onSettingsClick?: () => void;
 }
 
 type UserButtonProps = NonNullable<Parameters<ClerkInstance['mountUserButton']>[1]>;
 type CustomMenuItem = NonNullable<UserButtonProps['customMenuItems']>[number];
-type MenuIconKind = 'billing' | 'settings';
-
-function mountMenuIcon(el: HTMLDivElement, kind: MenuIconKind): void {
+function mountSettingsMenuIcon(el: HTMLDivElement): void {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', '16');
   svg.setAttribute('height', '16');
@@ -1106,16 +1100,10 @@ function mountMenuIcon(el: HTMLDivElement, kind: MenuIconKind): void {
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
 
-  const paths = kind === 'billing'
-    ? [
-        'M3 6h18v12H3z',
-        'M3 10h18',
-        'M7 15h3',
-      ]
-    : [
-        'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
-        'M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z',
-      ];
+  const paths = [
+    'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+    'M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z',
+  ];
   for (const d of paths) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', d);
@@ -1126,19 +1114,11 @@ function mountMenuIcon(el: HTMLDivElement, kind: MenuIconKind): void {
 
 export function createAccountMenuItems(actions: UserButtonMenuActions): CustomMenuItem[] {
   const items: CustomMenuItem[] = [];
-  if (actions.onBillingClick) {
-    items.push({
-      label: 'Plan & billing',
-      onClick: actions.onBillingClick,
-      mountIcon: (el) => mountMenuIcon(el, 'billing'),
-      unmountIcon: (el) => el?.replaceChildren(),
-    });
-  }
   if (actions.onSettingsClick) {
     items.push({
       label: 'Settings',
       onClick: actions.onSettingsClick,
-      mountIcon: (el) => mountMenuIcon(el, 'settings'),
+      mountIcon: (el) => mountSettingsMenuIcon(el),
       unmountIcon: (el) => el?.replaceChildren(),
     });
   }

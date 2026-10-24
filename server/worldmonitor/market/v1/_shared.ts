@@ -15,6 +15,9 @@ export { parseStringArray } from '../../../_shared/parse-string-array';
 
 export const UPSTREAM_TIMEOUT_MS = 10_000;
 
+/** Most symbols one stored stock-analysis or backtest read may name (the watchlist storage cap). */
+export const MAX_STORED_STOCK_SYMBOLS = 50;
+
 export function sanitizeSymbol(raw: string): string {
   return normalizeStockSymbol(raw);
 }

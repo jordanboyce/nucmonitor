@@ -59,7 +59,6 @@ export const DASHBOARD_PANEL_CATALOG_CATEGORY_KEYS = Object.freeze(
 );
 
 export type DashboardPanelUnavailableReason =
-  | 'panel_not_entitled'
   | 'panel_disabled'
   | 'panel_not_live';
 
@@ -77,7 +76,6 @@ export interface DashboardPanelCatalogItem {
   variants: readonly string[];
   enabled: boolean;
   mounted: boolean;
-  entitled: boolean;
   available: boolean;
   unavailableReason?: DashboardPanelUnavailableReason;
 }
@@ -103,7 +101,6 @@ export interface DashboardPanelCatalogLiveState {
   currentVariant: string;
   panelSettings: Record<string, PanelConfig>;
   mountedIds: ReadonlySet<string>;
-  isPanelAllowed: (panelId: string, config: PanelConfig) => boolean;
 }
 
 export class DashboardPanelCatalogError extends Error {
@@ -233,14 +230,10 @@ function describePanel(
   catalogVariant: string,
 ): DashboardPanelCatalogItem {
   const saved = live.panelSettings[panelId];
-  const liveConfig = getEffectivePanelConfig(panelId, live.currentVariant);
-  const catalogConfig = catalogVariant === live.currentVariant
-    ? liveConfig
-    : getEffectivePanelConfig(panelId, catalogVariant);
+  const catalogConfig = getEffectivePanelConfig(panelId, catalogVariant);
   const enabled = saved?.enabled === true;
   const mounted = live.mountedIds.has(panelId);
-  const entitled = live.isPanelAllowed(panelId, liveConfig);
-  const available = enabled && mounted && entitled;
+  const available = enabled && mounted;
   const item: DashboardPanelCatalogItem = {
     id: panelId,
     label: catalogConfig.name.slice(0, DASHBOARD_PANEL_LABEL_MAX_CHARS),
@@ -248,15 +241,10 @@ function describePanel(
     variants: PANEL_VARIANT_AVAILABILITY[panelId] ?? [],
     enabled,
     mounted,
-    entitled,
     available,
   };
   if (!available) {
-    item.unavailableReason = !entitled
-      ? 'panel_not_entitled'
-      : !enabled
-        ? 'panel_disabled'
-        : 'panel_not_live';
+    item.unavailableReason = !enabled ? 'panel_disabled' : 'panel_not_live';
   }
   return item;
 }
@@ -322,7 +310,6 @@ function serializeCatalogItem(item: DashboardPanelCatalogItem): DashboardPanelCa
     variants: [...item.variants],
     enabled: item.enabled === true,
     mounted: item.mounted === true,
-    entitled: item.entitled === true,
     available: item.available === true,
   };
   if (!serialized.available && item.unavailableReason) {

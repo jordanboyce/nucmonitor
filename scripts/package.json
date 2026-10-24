@@ -5,7 +5,6 @@
   "main": "ais-relay.cjs",
   "scripts": {
     "start": "node ais-relay.cjs",
-    "notification-relay": "node notification-relay.cjs",
     "telegram:session": "node telegram/session-auth.mjs",
     "seed-bundle-regional": "node seed-bundle-regional.mjs"
   },

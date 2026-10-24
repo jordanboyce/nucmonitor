@@ -51,7 +51,6 @@ function translateRequest(variant: string) {
 
 describe('summarize-article translate target language', () => {
   for (const [mode, variant, errorType] of [
-    ['brief', 'full', 'AuthError'],
     ['translate', 'unsupported', 'ValidationError'],
   ] as const) {
     it(`rejects ${mode}/${variant} before processing prompt inputs`, async () => {
@@ -72,7 +71,7 @@ describe('summarize-article translate target language', () => {
       return new Response('unexpected', { status: 500 });
     };
 
-    // Translate mode is free and skips the gateway's direct-LLM quota. Pre-fix,
+    // Translate mode skips the gateway's direct-LLM quota. Pre-fix,
     // `variant` went straight into the system prompt, so an anonymous caller
     // could send arbitrary instructions and bust the cache on every request.
     const response = await summarizeArticle(

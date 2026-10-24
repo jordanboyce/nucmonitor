@@ -682,7 +682,6 @@ export class NewsPanel extends Panel {
     // Use windowed rendering for large lists, direct render for small
     if (this.useVirtualScroll && sorted.length > VIRTUAL_SCROLL_THRESHOLD && this.windowedList) {
       this.setContentNodes();
-      if (this.isLocked) return;
       this.windowedList.setItems(prepared);
       this.revealSearchItem();
     } else {
@@ -957,7 +956,7 @@ export class NewsPanel extends Panel {
 
   private revealSearchItem(): void {
     const selection = this.searchReveal;
-    if (!selection || selection.renderRequestId !== this.renderRequestId || this.isLocked) return;
+    if (!selection || selection.renderRequestId !== this.renderRequestId) return;
     if (Date.now() >= selection.expiresAt) {
       this.clearSearchReveal();
       return;

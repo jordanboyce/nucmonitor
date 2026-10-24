@@ -1,4 +1,3 @@
-import { assertAccountWritable } from "./accountDeletion/guard";
 import { ConvexError, v } from "convex/values";
 import {
   internalMutation,
@@ -244,7 +243,6 @@ export const setPreferences = mutation({
     // string-data wire-strip bug.)
     if (!identity) throw new ConvexError({ kind: "UNAUTHENTICATED" });
     const userId = identity.subject;
-    await assertAccountWritable(ctx, userId);
 
     // Run before the CAS read so stale expectedSyncVersion requests cannot
     // bypass the authoritative direct-Convex backstop by intentionally

@@ -22,10 +22,6 @@
 			"linter": { "enabled": false }
 		},
 		{
-			"includes": ["pro-test/**"],
-			"linter": { "enabled": false }
-		},
-		{
 			"includes": ["*.html", "**/*.html"],
 			"linter": {
 				"rules": {

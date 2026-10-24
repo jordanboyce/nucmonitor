@@ -18,13 +18,11 @@ const DASHBOARD_TOOL_NAMES = [
   'get_panel_layout',
   'list_dashboard_panels',
   'list_dashboard_tabs',
-  'list_followed_countries',
   'list_map_layers',
   'list_mission_presets',
   'move_panel',
   'openCountryBrief',
   'openSearch',
-  'open_alerts',
   'open_dashboard_panel',
   'open_mission_picker',
   'open_search_result',
@@ -33,7 +31,6 @@ const DASHBOARD_TOOL_NAMES = [
   'rename_dashboard_tab',
   'search_dashboard',
   'select_dashboard_tab',
-  'set_country_followed',
   'set_map_layers',
   'set_map_mode',
   'set_map_view',
@@ -972,7 +969,6 @@ test.describe('top-level WebMCP dashboard contract', () => {
           'get_dashboard_context',
           'get_panel_layout',
           'list_dashboard_tabs',
-          'list_followed_countries',
           'list_map_layers',
           'list_dashboard_panels',
           'list_mission_presets',
@@ -1437,7 +1433,7 @@ test.describe('top-level WebMCP dashboard contract', () => {
     });
   });
 
-  test('validates monitor switches and opens settings and alerts through existing UI', async ({ page }, testInfo) => {
+  test('validates monitor switches and opens settings through existing UI', async ({ page }, testInfo) => {
     test.skip(productionSmoke, 'Must not execute switch_monitor against a production origin.');
     testInfo.setTimeout(120_000);
     await installReadinessRecorder(page);
@@ -1466,15 +1462,6 @@ test.describe('top-level WebMCP dashboard contract', () => {
     await expect(page.locator('#unifiedSettingsModal.active')).toBeVisible();
     await expect(page.locator('#unifiedSettingsModal [data-tab="settings"][aria-selected="true"]')).toBeVisible();
 
-    const alerts = await executeDashboardTool(page, 'open_alerts', {});
-    expect(alerts).toMatchObject({
-      ok: true,
-      destination: 'alerts',
-      overlay: 'open',
-      tab: 'notifications',
-    });
-    await expect(page.locator('#unifiedSettingsModal.active')).toBeVisible();
-    await expect(page.locator('#unifiedSettingsModal [data-tab="notifications"][aria-selected="true"]')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('#unifiedSettingsModal.active')).toHaveCount(0);
 
@@ -1529,7 +1516,6 @@ test.describe('top-level WebMCP dashboard contract', () => {
     await attachJsonEvidence(testInfo, 'webmcp-navigation.json', {
       invalid,
       settings,
-      alerts,
       switchResult,
       context,
       targetCancellationSupported,
@@ -1577,8 +1563,8 @@ test.describe('top-level WebMCP dashboard contract', () => {
           { signal: controller.signal },
         ));
       };
-      // Default full layouts already sit at the free-tier counted cap, so
-      // enabling a disabled catalog panel first needs a counted slot freed.
+      // Free a slot in the default layout before enabling a disabled catalog
+      // panel, so the assertion exercises a real state change.
       const disableMarkets = await execute({ panelId: 'markets', enabled: false });
       if (
         disableMarkets

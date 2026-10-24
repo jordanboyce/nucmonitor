@@ -612,45 +612,20 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // detection is retired) and keep their own fail-closed gateway budget.
   // Interactive fare searches use one provider request on a cache miss.
   // 30/min leaves headroom under the provider's 300-600/min shared quota.
-  // LLM article summarization is Pro-gated, but still needs a scoped,
+  // LLM article summarization is open to every session, and needs a scoped,
   // fail-closed budget so Redis degradation cannot silently lift the
   // per-endpoint spend control.
   '/api/news/v1/list-feed-digest': { limit: 30, window: '60 s' },
   '/api/news/v1/summarize-article': { limit: 30, window: '60 s' },
   '/api/news/v1/summarize-article-cache': { limit: 3000, window: '60 s' },
   // Full Telegram bodies match the first-party feed's 60/min ceiling. Anonymous
-  // sessions remain IP-scoped; verified paid principals retain user identity.
+  // sessions remain IP-scoped; verified partner accounts retain user identity.
   // The endpoint registry fails closed so outages cannot lift this cap.
   // LLM-backed situational deduction (imports callLlmReasoning) can drive
   // provider spend on cache misses, so it must fail closed on Redis outage
   // rather than inherit the global fail-open fallback. Mirror the sibling
   // classify-event budget (same limit/window) — both are AI-backed Intelligence
   // RPCs. (#4676)
-  // Historical intelligence memory (#5694): both semantic routes embed the
-  // caller's free text through the OpenRouter embeddings API on every cache
-  // miss, so they are provider-backed spend, not pure reads. They are also
-  // premium-gated, which means the gateway serves them with no CDN cache — a
-  // The three intel-history reads. All are Pro-gated and reach the function on
-  // every request, but they spend two different budgets, so they are sized
-  // against two different ceilings.
-  //
-  // search + similar-events each embed their input on a paid provider. They
-  // share ONE budget while the registry is keyed per PATH, so a caller
-  // alternating them gets the sum, not the cap — 30/min each holds the
-  // combined worst case at the 60/min per-principal embeddings bill this is
-  // sized for. Still generous for interactive use (a search plus follow-ups),
-  // and far under the LLM routes' 600/min because nothing here runs in a
-  // page-load fan-out.
-  //
-  // timeline embeds nothing, which is why it originally carried no policy at
-  // all. That reasoning was right about money and wrong about the resource
-  // that actually scales with retention: Convex reads whole documents, and
-  // every intelHistory row carries a 512-float embedding the projection
-  // immediately discards. One limit=200 call scoped by both domain and
-  // country scans TIMELINE_MAX_SCAN=800 rows (4x over-fetch for the
-  // post-filter) — roughly 3MB of Convex read budget, which the 600/min
-  // availability-first fallback did not bound. 120/min keeps a timeline read
-  // comfortable while capping that worst case.
   // Batch humanitarian-summary fans out to the external HAPI (humdata) provider
   // on cache miss — up to 25 countries per request, 5 concurrent upstream
   // fetches. Batch aircraft-details fans out to the external Wingbits provider —
@@ -684,13 +659,10 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // indicators, and year ranges create unbounded cache-key cardinality; the
   // country-index and price-history routes are bounded to their tracked
   // symbol sets but still proxy Yahoo Finance on a cache miss. None may inherit the global
-  // fail-open budget. The dashboard can legitimately fan out across 50 Pro
+  // fail-open budget. The dashboard can legitimately fan out across 50
   // watchlist symbols, so those three per-symbol routes admit one full load
   // plus headroom. analyze-stock remains separately constrained by the
-  // fail-closed per-user daily direct-LLM quota. backtest-stock is technical
-  // only, so its cache-miss Yahoo fetches use a separate per-user daily
-  // provider-work budget (`provider:backtest-yahoo:*`) instead of
-  // `llm:direct-usage`.
+  // fail-closed daily direct-LLM quota.
   '/api/market/v1/analyze-stock': { limit: 60, window: '60 s' },
   '/api/market/v1/backtest-stock': { limit: 60, window: '60 s' },
   '/api/market/v1/get-insider-transactions': { limit: 60, window: '60 s' },
@@ -776,16 +748,7 @@ export const ENDPOINT_RATE_POLICIES: Record<string, EndpointRatePolicy> = {
   // before Nominatim. Redis outage therefore 503s instead of inheriting a
   // fail-open path that could expose the provider to unbounded aggregate load.
   '/api/infrastructure/v1/reverse-geocode': { limit: 60, window: '60 s' },
-  // Partner embed entitlement (#6599): keyed panels look up wm_ keys in Convex.
-  // Cap per-IP so a stolen snippet cannot amplify validation traffic.
-  '/api/embed/entitlement': { limit: 60, window: '60 s' },
-  // Grant exchange: validates a wme_ key in Convex, so it amplifies the same
-  // way the entitlement lookup does. A frame mints once per 30-minute grant,
-  // which leaves this budget almost entirely as headroom for shared egress IPs.
-  '/api/embed/session': { limit: 60, window: '60 s' },
-  // Partner map frame. Public traffic uses the client IP; a verified grant uses
-  // its account owner so every display for one partner shares the same budget.
-  // The CDN absorbs most canonical public requests before this policy runs.
+  // Embed map frame, metered by client IP. The CDN absorbs most canonical public requests before this policy runs.
   '/api/embed/map-frame': { limit: 120, window: '60 s' },
 };
 
@@ -851,12 +814,6 @@ export const FAIL_CLOSED_ENDPOINT_RATE_POLICY_REQUIRED: Record<string, RateLimit
   },
   '/api/infrastructure/v1/reverse-geocode': {
     reason: 'Proxies Nominatim (egress-IP ban enforcement), same provider and egress IPs as the legacy edge route. Must fail closed on a Redis outage rather than inherit the fail-open 600/min fallback.',
-  },
-  '/api/embed/entitlement': {
-    reason: 'Keyed-panel entitlement lookups amplify into Convex user-key validation; fail closed so a Redis outage cannot lift the per-IP budget.',
-  },
-  '/api/embed/session': {
-    reason: 'Grant minting amplifies into Convex embed-key validation and hands back a bearer credential; fail closed so a Redis outage cannot lift the per-IP budget on a credential-issuing path.',
   },
   '/api/embed/map-frame': {
     reason: 'The keyless map frame is fully anonymous and fans out across four seed reads. Fail closed rather than inherit the availability-first global fallback: those reads come from the same Redis that would be degraded, so a fail-open origin would serve empty layers at unbounded volume while the CDN copy keeps real data on screen for the stale-while-revalidate window.',

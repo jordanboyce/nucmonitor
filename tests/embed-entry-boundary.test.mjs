@@ -8,13 +8,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
 describe('embed entry boundary', () => {
-  it('starts the credential waiter before awaiting initI18n so load-time postMessage is not dropped', () => {
+  it('never waits for an embedding credential', () => {
     const source = readFileSync(resolve(root, 'src/embed-main.ts'), 'utf-8');
-    const waitIdx = source.indexOf('waitForEmbeddingApiKey()');
-    const i18nIdx = source.indexOf('await initI18n()');
-    assert.ok(waitIdx !== -1, 'keyed boot must call waitForEmbeddingApiKey()');
-    assert.ok(i18nIdx !== -1, 'boot must await initI18n()');
-    assert.ok(waitIdx < i18nIdx, 'waitForEmbeddingApiKey() must start before await initI18n()');
+    assert.ok(!source.includes('waitForEmbeddingApiKey'), 'embeds are keyless');
+    assert.ok(source.includes('await initI18n()'), 'boot must await initI18n()');
   });
 
   it('reaches the network only through the single composed map-frame endpoint', () => {
@@ -23,9 +20,8 @@ describe('embed entry boundary', () => {
     assert.ok(loaderSource.includes('this.map.setEarthquakes'), 'the earthquakes layer should push events into the map');
     assert.ok(loaderSource.includes('this.map.setWeatherAlerts'), 'the weather layer should push alerts into the map');
 
-    // The point of the composed endpoint is that a credential published in
-    // partner HTML reaches ONE path. A per-layer fetch reintroduced here would
-    // reopen the surface PR3 then removes from the anonymous RPC allowlist.
+    // The composed endpoint is the embed's ONE network path. A per-layer fetch
+    // reintroduced here would reopen the anonymous RPC surface.
     for (const forbidden of [
       'ConflictServiceClient',
       'listAcledEvents',
@@ -44,26 +40,20 @@ describe('embed entry boundary', () => {
     assert.ok(!loaderSource.includes('@/services/conflict'), 'embed loader must not import the full conflict service because it pulls runtime app helpers');
   });
 
-  it('renders the attribution link before any tier is known', () => {
+  it('renders the attribution link before the data loader starts', () => {
     const mapPanel = readFileSync(resolve(root, 'src/embed/panels/map.ts'), 'utf-8');
     const attributionIdx = mapPanel.indexOf('buildWorldMonitorAttributionUrl');
     const loaderIdx = mapPanel.indexOf('new EmbedDataLoader');
-    const requestGrantIdx = mapPanel.indexOf('loader.requestGrant');
     assert.ok(attributionIdx !== -1, 'the map panel must render an attribution link');
-    assert.ok(
-      attributionIdx < loaderIdx && attributionIdx < requestGrantIdx,
-      'attribution is appended before any tier decision, so free and keyed embeds both carry it',
-    );
+    assert.ok(attributionIdx < loaderIdx, 'attribution is appended before the first data poll');
   });
 
-  it('never sends the embedding key on a data poll', () => {
+  it('sends no credential on a data poll', () => {
     const fetchSource = readFileSync(resolve(root, 'src/embed/embed-fetch.ts'), 'utf-8');
     const frameFn = fetchSource.slice(fetchSource.indexOf('export async function fetchEmbedMapFrame'));
-    assert.ok(frameFn.includes('X-WorldMonitor-Grant'), 'map-frame polls carry the short-lived grant');
-    assert.ok(
-      !frameFn.includes('X-WorldMonitor-Key'),
-      'the wme_ key must stay on the mint path so polls never enter the per-account meter',
-    );
+    assert.ok(!frameFn.includes('X-WorldMonitor-Grant'), 'map-frame polls carry no grant');
+    assert.ok(!frameFn.includes('X-WorldMonitor-Key'), 'map-frame polls carry no key');
+    assert.ok(frameFn.includes("credentials: 'omit'"), 'map-frame polls omit cookies');
   });
 
   it('keeps the shared SVG map independent of runtime/auth imports used by the app shell', () => {

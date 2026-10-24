@@ -8,7 +8,6 @@ import { formatChange, formatPrice, getChangeClass } from '@/utils';
 import { escapeHtml, sanitizeUrl } from '@/utils/sanitize';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 import { terminalChart } from '@/utils/terminal-chart';
-import { hasPremiumAccess } from '@/services/panel-gating';
 import {
   tapeClaimForMarketSource,
   tapeClaimLabel,
@@ -16,7 +15,6 @@ import {
   type TapeClaim,
 } from '@/services/market-tape-claim';
 import { getRpcBaseUrl } from '@/services/rpc-client';
-import { premiumFetch } from '@/services/premium-fetch';
 import { MarketServiceClient } from '@/services/generated-rpc-clients';
 import {
   createMarketChartFocusController,
@@ -142,11 +140,10 @@ export async function openStockResearchOverlay(rawSymbol: string, stock?: Market
   overlayEl.className = 'stock-research-overlay';
   overlayEl.setAttribute('role', 'dialog');
   overlayEl.setAttribute('aria-modal', 'true');
-  // A reload aborts an in-flight premium RPC the user would have to re-spend.
+  // A reload aborts an in-flight analysis RPC the user would have to re-run.
   declareOverlay(overlayEl, { reload: 'blocking' });
   overlayEl.setAttribute('aria-label', `${symbol} research`);
 
-  const entitled = hasPremiumAccess();
   const tape = tapeNote();
   const plottable = stock && hasPlottableMarketSeries(stock) ? stock : null;
 
@@ -167,8 +164,8 @@ export async function openStockResearchOverlay(rawSymbol: string, stock?: Market
           </div>
         </header>
         <div class="stock-research-chart">${plottable ? '' : '<p>No plottable Yahoo series for this symbol yet.</p>'}</div>
-        <section class="stock-research-analyze" data-analyze-state="${entitled ? 'loading' : 'locked'}">
-          ${entitled ? '<p>Loading analysis…</p>' : '<p>Premium stock analysis and backtest stay locked.</p>'}
+        <section class="stock-research-analyze" data-analyze-state="loading">
+          <p>Loading analysis…</p>
         </section>
       </div>
     `, 'Stock research overlay values are escaped before rendering'),
@@ -199,14 +196,13 @@ export async function openStockResearchOverlay(rawSymbol: string, stock?: Market
   const closeButton = overlayEl.querySelector('.stock-research-close');
   focusController.activate(closeButton instanceof HTMLElement ? closeButton : null);
 
-  if (!entitled) return;
   const analyzeHost = overlayEl.querySelector('.stock-research-analyze');
   if (!(analyzeHost instanceof HTMLElement)) return;
   const teardown = new AbortController();
   analyzeAbort = teardown;
   const signal = AbortSignal.any([teardown.signal, AbortSignal.timeout(ANALYZE_TIMEOUT_MS)]);
   try {
-    const client = new MarketServiceClient(getRpcBaseUrl(), { fetch: premiumFetch });
+    const client = new MarketServiceClient(getRpcBaseUrl(), { fetch: (...args) => globalThis.fetch(...args) });
     const analysis = await client.analyzeStock(
       { symbol, name: stock?.name || symbol, includeNews: true },
       { signal },
@@ -260,7 +256,6 @@ export async function openStockResearchOverlay(rawSymbol: string, stock?: Market
         <p>${escapeHtml(analysis.ratingSummary || analysis.summary || 'No analysis summary.')}</p>
         ${sentiment}
         ${headlines ? `<ul class="stock-research-news">${headlines}</ul>` : '<p>No headlines.</p>'}
-        <p class="stock-research-backtest">Backtest remains in the Premium Stock Backtest panel.</p>
       `, 'Stock research analysis values are escaped before rendering'),
     );
   } catch {
@@ -272,7 +267,7 @@ export async function openStockResearchOverlay(rawSymbol: string, stock?: Market
     analyzeHost.dataset.analyzeState = 'error';
     analyzeHost.replaceChildren();
     analyzeHost.append(Object.assign(document.createElement('p'), {
-      textContent: 'Premium analysis is unavailable right now.',
+      textContent: 'Analysis is unavailable right now.',
     }));
   }
 }

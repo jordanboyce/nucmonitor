@@ -49,7 +49,6 @@ updates:
       - "/blog-site"
       - "/consumer-prices-core"
       - "/docker/umami/runtime"
-      - "/pro-test"
       - "/scripts"
       - "/workers/api-cors-preflight"
       - "/workers/railway-reconcile-control"

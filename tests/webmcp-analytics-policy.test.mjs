@@ -55,7 +55,6 @@ function createBindings(overrides = {}) {
       rendererKind: 'deck',
       enabledLayers: [],
       liveLayerKeys: ['conflicts', 'weather'],
-      hasPremium: false,
       deckGlActive: true,
     }),
     listDashboardPanels: async () => ({
@@ -246,17 +245,7 @@ function createBindings(overrides = {}) {
     getAccessContext: async () => ({
       accountState: 'signed_out',
       clerk: 'unavailable',
-      productTier: 'anonymous',
-      capabilities: {
-        premiumAccess: false,
-        apiAccess: false,
-        mcpAccess: false,
-        dataExport: false,
-      },
-      limits: {
-        enabledPanels: { used: 1, cap: 40 },
-        dashboardTabs: { used: 1, cap: 3, canCreate: true },
-      },
+      usage: { enabledPanels: 1, dashboardTabs: 1 },
     }),
     openSignIn: async () => ({ ok: false, status: 'denied', reason: 'clerk_unavailable' }),
     ...overrides,
@@ -426,7 +415,7 @@ describe('WebMCP analytics privacy policy', () => {
     }
   });
 
-  it('maps success, validation, entitlement, unavailable, stale, cancellation, and internal outcomes', async () => {
+  it('maps success, validation, unavailable, stale, cancellation, and internal outcomes', async () => {
     const events = [];
     const tools = buildWebMcpTools(createBindings({
       openSearch: async () => { throw new DOMException('cancelled by host', 'AbortError'); },
@@ -437,9 +426,9 @@ describe('WebMCP analytics privacy policy', () => {
         ? ({
             ok: false,
             status: 'denied',
-            reason: 'panel_not_entitled',
+            reason: 'panel_disabled',
             message: 'Denied.',
-            targets: [{ target: 'premium', status: 'denied', reason: 'panel_not_entitled' }],
+            targets: [{ target: 'premium', status: 'denied', reason: 'panel_disabled' }],
           })
         : ({
             ok: false,
@@ -456,8 +445,8 @@ describe('WebMCP analytics privacy policy', () => {
       applyMissionPreset: async () => ({
         ok: false,
         status: 'denied',
-        reason: 'preset_not_entitled',
-        message: 'That mission preset requires a higher plan.',
+        reason: 'preset_incompatible',
+        message: 'That mission preset is not compatible with this monitor.',
       }),
       searchDashboard: async () => { throw new Error('private internal failure'); },
     }), (event, data) => events.push({ event, data }));
@@ -490,11 +479,11 @@ describe('WebMCP analytics privacy policy', () => {
       ['failure', 'validation'],
       ['failure', 'cancelled'],
       ['failure', 'unavailable'],
-      ['denied', 'entitlement'],
+      ['denied', 'unavailable'],
       ['denied', 'unavailable'],
       ['denied', 'stale'],
       ['denied', 'validation'],
-      ['denied', 'entitlement'],
+      ['denied', 'unavailable'],
       ['failure', 'internal'],
     ]);
     assert.deepEqual(
@@ -502,7 +491,7 @@ describe('WebMCP analytics privacy policy', () => {
       ['denied', 'failure', 'success'],
     );
     assert.ok(events.every(({ data }) => (
-      ['completed', 'validation', 'entitlement', 'unavailable', 'stale', 'cancelled', 'internal']
+      ['completed', 'validation', 'unavailable', 'stale', 'cancelled', 'internal']
         .includes(data.reason)
     )));
   });

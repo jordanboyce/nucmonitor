@@ -1,25 +1,24 @@
 /**
  * GET /api/embed/map-frame?layers=…
  *
- * The single endpoint the partner map frame polls, replacing four separate
- * anonymous RPC calls. A credential published in partner HTML has a blast
- * radius equal to the set of paths that accept it, so there is one path and it
- * accepts one parameter.
+ * The single endpoint the embed map frame polls, replacing four separate
+ * anonymous RPC calls. It accepts one parameter.
+ *
+ * NucMonitor has no paid plans: every caller gets every layer at one cadence,
+ * with no key or grant.
  *
  * The URL — never a header — decides what a shared cache may hold, because a
  * CDN hit is answered before this function sees a header. That is #5386:
  *
- *   exact public shape   `layers=<canonical free subset>&public=1`, and
- *                        nothing else. Keyless, hourly, shared-cacheable.
- *                        Attached credentials are IGNORED here, so one cached
- *                        body means the same thing for every caller.
- *   everything else      served `private, no-store`. A valid map-scoped `wmg_`
- *                        grant unlocks all fourteen layers at ten minutes; no
- *                        grant still renders the free tier, just uncached.
+ *   exact public shape   `layers=<canonical subset>&public=1`, and nothing
+ *                        else. Keyless and shared-cacheable.
+ *   everything else      served `private, no-store` with the same content.
  *
  * So a near-miss URL degrades to "correct but uncached" rather than to a
- * shared entry that could answer the wrong caller. The keyless tier is a
- * deliberate growth surface and must keep working with no credential at all.
+ * shared entry keyed on something the URL does not say.
+ *
+ * Partner deployments (docs/partner-access.md) serve no anonymous reads, and an
+ * embed viewer has no session, so the frame is refused there.
  */
 
 export const config = { runtime: 'edge' };
@@ -33,17 +32,12 @@ import {
 import { readRequiredSeed } from '../../server/_shared/required-seed';
 import { drainResponseHeaders } from '../../server/_shared/response-headers';
 import { BOOTSTRAP_CACHE_KEYS } from '../../shared/bootstrap-tier-keys.js';
-import {
-  verifyEmbedGrant,
-  type EmbedGrantClaims,
-} from '../../server/_shared/embed-grant';
 import { isPartnerMode } from '../_partner-access.js';
 import {
   cacheControlForEmbedFrame,
   composeEmbedMapFrame,
   parseRequestedLayers,
   type EmbedMapFrameSources,
-  type EmbedMapFrameTier,
 } from '../../server/_shared/embed-map-frame';
 import {
   classifyPublicEmbedFrameRequest,
@@ -65,7 +59,7 @@ function buildSources(req: Request): EmbedMapFrameSources {
   const ctx = handlerContext(req);
   // Each upstream is called with ITS OWN defaults — zeros mean "handler
   // default" across these generated requests. Forwarding a caller-supplied
-  // window or page size here would hand a stolen credential the knobs this
+  // window or page size here would hand an anonymous caller the knobs this
   // endpoint exists to remove.
   return {
     listEarthquakes: async () =>
@@ -81,14 +75,8 @@ function buildSources(req: Request): EmbedMapFrameSources {
   };
 }
 
-function grantFromHeaders(headers: Headers): string | null {
-  const grant = (headers.get('X-WorldMonitor-Grant') ?? '').trim();
-  return grant || null;
-}
-
 export interface EmbedMapFrameHandlerDeps {
   getCorsHeaders: (req: Request) => Record<string, string>;
-  verifyGrant: (grant: string | null) => Promise<EmbedGrantClaims | null>;
   checkRateLimit: (
     req: Request,
     pathname: string,
@@ -97,16 +85,16 @@ export interface EmbedMapFrameHandlerDeps {
   ) => Promise<Response | null>;
   composeFrame: (
     layers: readonly EmbedLayerId[],
-    tier: EmbedMapFrameTier,
     req: Request,
   ) => Promise<EmbedMapFrameResponse>;
+  isPartnerMode: () => boolean;
 }
 
 const defaultDeps: EmbedMapFrameHandlerDeps = {
   getCorsHeaders,
-  verifyGrant: verifyEmbedGrant,
   checkRateLimit: checkEndpointRateLimit,
-  composeFrame: (layers, tier, req) => composeEmbedMapFrame(layers, tier, buildSources(req)),
+  composeFrame: (layers, req) => composeEmbedMapFrame(layers, buildSources(req)),
+  isPartnerMode,
 };
 
 export async function handleEmbedMapFrame(
@@ -125,57 +113,33 @@ export async function handleEmbedMapFrame(
     });
   }
 
-  // Classify BEFORE reading any credential. This is the only branch that may
-  // produce a shared-cacheable body, and it is decided purely by the URL.
-  const sharedLayers = classifyPublicEmbedFrameRequest(req.url, req.method);
-
-  let tier: EmbedMapFrameTier = 'free';
-  let principalUserId: string | undefined;
-  // Partner deployments have no keyless frame: only a partner's embed grant
-  // renders one (docs/partner-access.md).
-  const partnerMode = isPartnerMode();
-  if (partnerMode || sharedLayers === null) {
-    const claims = await deps.verifyGrant(grantFromHeaders(req.headers));
-    // An absent or expired grant is not an error: it drops to the free tier,
-    // which is what the frame renders while it re-mints. A grant minted for a
-    // different panel does not unlock this one.
-    if (claims && claims.panel === 'map') {
-      tier = 'keyed';
-      principalUserId = claims.accountId;
-    } else if (partnerMode) {
-      return new Response(JSON.stringify({ error: 'embed_grant_required' }), {
-        status: 401,
-        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      });
-    }
+  if (deps.isPartnerMode()) {
+    return new Response(JSON.stringify({ error: 'partner_access_required' }), {
+      status: 403,
+      headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
   }
 
-  const limited = await deps.checkRateLimit(
-    req,
-    EMBED_MAP_FRAME_PATH,
-    cors,
-    principalUserId ? { principalUserId } : {},
-  );
+  // Decided purely by the URL: the only branch that may produce a
+  // shared-cacheable body.
+  const sharedLayers = classifyPublicEmbedFrameRequest(req.url, req.method);
+
+  const limited = await deps.checkRateLimit(req, EMBED_MAP_FRAME_PATH, cors);
   if (limited) return limited;
 
   const url = new URL(req.url);
   const layers = sharedLayers ?? parseRequestedLayers(url.searchParams.get('layers'));
-  const frame = await deps.composeFrame(layers, tier, req);
+  const frame = await deps.composeFrame(layers, req);
 
   const headers: Record<string, string> = {
     ...cors,
     'Content-Type': 'application/json',
-    'Cache-Control': cacheControlForEmbedFrame(sharedLayers !== null && !partnerMode),
+    'Cache-Control': cacheControlForEmbedFrame(sharedLayers !== null),
   };
   if (drainResponseHeaders(req)?.['X-No-Cache']
     || Object.values(frame.layers).some(state => state === 'partial' || state === 'unavailable')) {
     headers['Cache-Control'] = cacheControlForEmbedFrame(false);
   }
-  // Only the uncacheable branch reads the grant header, and only there can the
-  // body depend on it. Declaring Vary on the shared entry would fragment it on
-  // a header that cannot change the answer — the tier is already in the cache
-  // key, because it is in the URL.
-  if (sharedLayers === null || partnerMode) headers.Vary = 'X-WorldMonitor-Grant';
 
   return new Response(JSON.stringify(frame), { status: 200, headers });
 }

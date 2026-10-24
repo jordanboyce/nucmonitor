@@ -59,34 +59,20 @@ export const MONITORED_WORKFLOWS = Object.freeze([
     // #7359 strand a merge behind green badges.
     //
     // `convex/` alone is NOT the bundle. Deployed modules import runtime values
-    // from outside it (e.g. convex/payments/subscriptionHelpers.ts pulls
-    // normalizeCheckoutAttributionSource from shared/mcp-attribution), so
+    // from outside it (e.g. convex/userPreferences.ts pulls
+    // normalizeWebcamPreferences from shared/pinned-webcams), so
     // `convex deploy` bundles those files too. A change to one of them alters
     // what production runs while touching nothing under convex/ — the same
     // silent-staleness class as #7359, through a different door. Pinned by
-    // 'the convex skip proof covers every path the bundle is built from', which
-    // derives the real list from the source rather than trusting this copy.
     // Listed file-by-file rather than as whole directories on purpose: `shared/`
     // holds plenty the bundle never sees (manifests, frontend-only helpers), and
     // a directory filter would deploy production on every unrelated touch —
-    // adding deploy churn to the very monitor this exists to keep quiet. The
-    // derived test is what makes that precision safe: a NEW cross-boundary
-    // import fails CI until it is added here, which is exactly the moment to
-    // think about it.
+    // adding deploy churn to the very monitor this exists to keep quiet. A NEW
+    // cross-boundary import under convex/ must be added here.
     skipProofPaths: Object.freeze([
       'convex/',
-      'shared/checkout-errors.ts',
-      'shared/chokepoint-alert-ids.ts',
       'shared/cloud-preferences-contract.ts',
       'shared/pinned-webcams.ts',
-      'shared/mcp-attribution.ts',
-      'shared/company-monitoring-contract.ts',
-      'shared/company-monitoring-evidence.ts',
-      'shared/embed-access.ts',
-      'shared/legal.ts',
-      'shared/agent-client-source.js',
-      'scripts/lib/company-monitoring-classification.mjs',
-      'src/utils/country-codes.ts',
     ]),
     // The git tag convex-deploy.yml moves after each successful deploy. Reading
     // the workflow's own marker keeps ONE source of truth for "what is live";

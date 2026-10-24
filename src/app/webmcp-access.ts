@@ -1,5 +1,4 @@
 import { WEBMCP_UI_READY_TIMEOUT_MS } from '@/app/webmcp-dashboard';
-import { FREE_MAX_PANELS } from '@/config/panels';
 import { getAuthState } from '@/services/auth-state';
 import {
   initClerk,
@@ -8,9 +7,6 @@ import {
   isClerkSignInOpen,
   openSignInAndWait,
 } from '@/services/clerk';
-import { getEntitlementState } from '@/services/entitlements';
-import { evaluateExportGate, evaluateTabCap } from '@/services/gates/export';
-import { hasPremiumAccess } from '@/services/panel-gating';
 import {
   buildWebMcpAccessContext,
   resolveWebMcpOpenSignIn,
@@ -36,21 +32,13 @@ function currentOpenSignInDecision(loadFailed = false): OpenSignInDecision {
 export function getWebMcpAccessContext(options: {
   enabledPanelUsed: number;
   dashboardTabCount: number;
-  freeTierFallbackActive: boolean;
 }): AccessContextSnapshot {
-  const auth = getAuthState();
   return buildWebMcpAccessContext({
-    auth,
+    auth: getAuthState(),
     clerkEnabled: isClerkAuthEnabled(),
     clerkReady: isClerkReady(),
-    premiumAccess: hasPremiumAccess(auth),
-    entitlement: getEntitlementState(),
-    tabCap: evaluateTabCap(auth, options.dashboardTabCount),
     enabledPanelUsed: options.enabledPanelUsed,
     dashboardTabCount: options.dashboardTabCount,
-    freePanelCap: FREE_MAX_PANELS,
-    freeTierFallbackActive: options.freeTierFallbackActive === true,
-    dataExport: evaluateExportGate(auth).locked === false,
   });
 }
 

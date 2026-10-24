@@ -85,7 +85,6 @@ const installLcpDebug = async (page: Page): Promise<void> => {
   await page.addInitScript(() => {
     localStorage.setItem('wm_lcp_debug', '1');
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
-    localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
   });
 };

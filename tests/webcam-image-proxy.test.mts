@@ -13,7 +13,6 @@ import {
 } from '../server/_shared/rate-limit.ts';
 import { PUBLIC_NO_AUTH_RPC_PATHS, createDomainGateway } from '../server/gateway.ts';
 import { getWebcamImage } from '../server/worldmonitor/webcam/v1/get-webcam-image.ts';
-import { PREMIUM_RPC_PATHS } from '../src/shared/premium-paths.ts';
 import { createRedisFetch } from './helpers/fake-upstash-redis.mts';
 import webcamGateway from '../api/webcam/v1/[rpc].ts';
 
@@ -415,7 +414,6 @@ describe('Windy webcam image proxy access contract', () => {
     }]);
 
     assert.equal(PUBLIC_NO_AUTH_RPC_PATHS.has(WEBCAM_IMAGE_PATH), false);
-    assert.equal(PREMIUM_RPC_PATHS.has(WEBCAM_IMAGE_PATH), false);
 
     const response = await gateway(new Request(`https://worldmonitor.app${WEBCAM_IMAGE_PATH}?webcam_id=camera-123`, {
       headers: {

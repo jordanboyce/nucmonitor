@@ -10,17 +10,11 @@ import { SearchModal } from '@/components/SearchModal';
 import {
   SITE_VARIANT,
   ALL_PANELS,
-  FREE_MAX_PANELS,
-  countFreePanelCapUsage,
   getEffectivePanelConfig,
-  isFreePanelCapCounted,
-  isPanelEntitled,
 } from '@/config';
 import {
   getAllowedLayerKeys,
-  isLayerCommandAllowed,
   isLayerExecutable,
-  isLayerEntitled,
 } from '@/config/map-layer-definitions';
 import type { RendererKind } from '@/config/map-layer-definitions';
 import { LAYER_PRESETS, LAYER_KEY_MAP } from '@/config/commands';
@@ -33,10 +27,7 @@ import { trackSearchResultSelected } from '@/services/analytics';
 import { t } from '@/services/i18n';
 import { saveToStorage, setTheme } from '@/utils';
 import { withTimeout } from '@/utils/with-timeout';
-import { subscribeWidgetAccess } from '@/services/widget-store';
 import { getAuthState, subscribeAuthState } from '@/services/auth-state';
-import { hasPremiumAccess } from '@/services/panel-gating';
-import { onEntitlementChange } from '@/services/entitlements';
 import { subscribeRuntimeConfig } from '@/services/runtime-config';
 import {
   runWithAgentAnalyticsSuppressed,
@@ -54,7 +45,7 @@ import type {
 const LAYER_PRESET_PRIMARY_LAYERS: Record<string, (keyof MapLayers)[]> = {};
 
 export interface SearchManagerCallbacks {
-  /** Enables a currently-disabled panel (CMD+K "Add"). Returns false if blocked (unknown / free-tier cap). */
+  /** Enables a currently-disabled panel (CMD+K "Add"). Returns false if the panel is unknown. */
   enablePanel: (panelId: string, options?: { trackDetailedAnalytics?: boolean }) => boolean;
 }
 
@@ -74,7 +65,6 @@ export class SearchManager implements AppModule {
     this.searchSelection = new SearchSelectionDispatcher({
       ctx,
       getVariant: () => SITE_VARIANT,
-      hasPremiumAccess: () => hasPremiumAccess(getAuthState()),
       enablePanel: (...args) => this.callbacks.enablePanel(...args),
       trackSearchResultSelected,
       runWithAgentAnalyticsSuppressed,
@@ -96,11 +86,10 @@ export class SearchManager implements AppModule {
       isDestroyed: () => this.destroyed,
       refreshIndex: () => this.updateSearchIndex({ updateVisibleMetrics: false }),
       getModal: () => this.ctx.searchModal,
-      hasPremiumAccess: () => hasPremiumAccess(getAuthState()),
       cancelPendingSelection: () => this.searchSelection.cancelPendingProgrammaticSelection(),
       getAuthContext: () => {
         const auth = getAuthState();
-        return `${auth.user ? 'signed-in' : 'anonymous'}:${auth.isPending ? 'pending' : 'settled'}:${hasPremiumAccess(auth) ? 'premium' : 'free'}`;
+        return `${auth.user ? 'signed-in' : 'anonymous'}:${auth.isPending ? 'pending' : 'settled'}`;
       },
       getVariant: () => SITE_VARIANT,
       isMatchExecutable: (match) => this.isSearchMatchExecutable(match),
@@ -111,14 +100,7 @@ export class SearchManager implements AppModule {
         signal,
       ),
       subscribeAuth: subscribeAuthState,
-      subscribeEntitlement: onEntitlementChange,
       subscribeRuntimeConfig,
-      subscribeWidgetAccess,
-      onPremiumAccessChanged: (_premium, premiumRestored) => {
-        if (premiumRestored) {
-          this.ctx.searchModal?.refreshSearch();
-        }
-      },
     });
   }
 
@@ -184,15 +166,10 @@ export class SearchManager implements AppModule {
     })));
 
     this.syncPanelSearchIndex();
-    // Filter CMD+K layer commands by (a) variant-allowed, (b) renderer-kind
+    // Filter CMD+K layer commands by (a) variant-allowed and (b) renderer-kind
     // compatibility (a deck-only layer can't run on the SVG fallback or the
-    // globe), (c) premium entitlement for locked layers. Without (a)–(b), layer
-    // commands surface where they'd silently fail the variant/renderer guard
-    // (e.g. `layer:storageFacilities` on tech/finance/commodity/happy, or globe
-    // / SVG-mobile). Without (c), free users could enable locked layers like
-    // resilienceScore, leaving a checked+disabled checkbox (#6045).
-    // Currently-on locked layers stay visible so free users can turn them off
-    // if stuck state survived from an older session.
+    // globe). Without them, layer commands surface where they'd silently fail
+    // the variant/renderer guard.
     this.ctx.searchModal.setLayerExecutableFn((layerKey) => {
       const key = (LAYER_KEY_MAP[layerKey] || layerKey) as keyof MapLayers;
       if (!(key in this.ctx.mapLayers)) return false;
@@ -201,12 +178,7 @@ export class SearchManager implements AppModule {
       const kind = this.ctx.map?.isGlobeMode?.()
         ? 'globe'
         : (this.ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
-      return isLayerCommandAllowed(
-        key,
-        this.ctx.mapLayers[key],
-        kind,
-        hasPremiumAccess(getAuthState()),
-      );
+      return isLayerExecutable(key, kind);
     });
     this.ctx.searchModal.setCommandVisibleFn((command) => this.isModalCommandVisible(command));
     this.ctx.searchModal.setResultVisibleFn((result) => this.isSearchResultVisible(result));
@@ -281,11 +253,7 @@ export class SearchManager implements AppModule {
       const effective = ALL_PANELS[panelId]
         ? getEffectivePanelConfig(panelId, SITE_VARIANT)
         : undefined;
-      return !!effective && isPanelEntitled(
-        panelId,
-        effective,
-        hasPremiumAccess(getAuthState()),
-      );
+      return !!effective;
     }
     if (category === 'layer') return this.isLayerCommandExecutable(action);
     if (category === 'layers') return this.hasVisibleLayerPreset(action);
@@ -309,14 +277,11 @@ export class SearchManager implements AppModule {
         const effective = ALL_PANELS[panelId]
           ? getEffectivePanelConfig(panelId, SITE_VARIANT)
           : undefined;
-        const premium = hasPremiumAccess(getAuthState());
-        if (!effective || !isPanelEntitled(panelId, effective, premium)) return false;
+        if (!effective) return false;
         if (config.enabled) {
           return allowPendingPanelTarget || this.hasLivePanelTarget(panelId);
         }
-        if (premium) return true;
-        return !isFreePanelCapCounted(panelId)
-          || countFreePanelCapUsage(this.ctx.panelSettings) < FREE_MAX_PANELS;
+        return true;
       }
       case 'layer':
         return this.isLayerCommandExecutable(action);
@@ -371,12 +336,7 @@ export class SearchManager implements AppModule {
     const renderer: RendererKind = this.ctx.map?.isGlobeMode?.()
       ? 'globe'
       : (this.ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
-    return isLayerCommandAllowed(
-      key,
-      this.ctx.mapLayers[key],
-      renderer,
-      hasPremiumAccess(getAuthState()),
-    );
+    return isLayerExecutable(key, renderer);
   }
 
   private hasExecutableLayerPreset(action: string): boolean {
@@ -428,10 +388,7 @@ export class SearchManager implements AppModule {
     const renderer: RendererKind = this.ctx.map?.isGlobeMode?.()
       ? 'globe'
       : (this.ctx.map?.isDeckGLActive?.() ? 'deck' : 'svg');
-    return isLayerExecutable(
-      layer,
-      renderer,
-    ) && isLayerEntitled(layer, hasPremiumAccess(getAuthState()));
+    return isLayerExecutable(layer, renderer);
   }
 
   private resultRequiredLayer(result: SearchResult): keyof MapLayers | null {
@@ -480,7 +437,6 @@ export class SearchManager implements AppModule {
    */
   private syncPanelSearchIndex(options?: { updateVisibleMetrics?: boolean }): void {
     if (!this.ctx.searchModal) return;
-    const hasPremium = hasPremiumAccess(getAuthState());
     this.ctx.searchModal.setActivePanels(
       Object.entries(this.ctx.panelSettings).filter(([, v]) => v.enabled).map(([k]) => k),
       options,
@@ -489,8 +445,7 @@ export class SearchManager implements AppModule {
       Object.keys(this.ctx.panelSettings).filter((k) => {
         // Keep unregistered/dynamic keys out of search; the resolver would
         // otherwise return a disabled synthetic fallback for unknown keys.
-        const cfg = ALL_PANELS[k] ? getEffectivePanelConfig(k, SITE_VARIANT) : undefined;
-        return cfg ? isPanelEntitled(k, cfg, hasPremium) : false;
+        return Boolean(ALL_PANELS[k]);
       }),
       options,
     );

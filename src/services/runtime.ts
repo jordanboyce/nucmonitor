@@ -1,13 +1,29 @@
 import { SITE_VARIANT } from '@/config/variant';
 import { safeStorageGet } from '@/utils/safe-storage';
-import { getClerkToken } from '@/services/clerk';
-import { sleepBeforeRetry, withBillingVerificationRetry } from '@/services/billing-retry';
 import { hasExplicitDesktopSignals, isDesktopRuntime } from './desktop-runtime';
 
 // The detector lives in a dependency-free leaf (#5911) so consumers that need
 // only the boolean do not pull this module's variant/Clerk graph. Re-exported
 // here because every existing caller imports it from `@/services/runtime`.
 export { detectDesktopRuntime, isDesktopRuntime, type RuntimeProbe } from './desktop-runtime';
+
+function sleepBeforeRetry(ms: number, signal: AbortSignal | null): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason ?? new Error('Aborted'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    function onAbort(): void {
+      clearTimeout(timer);
+      reject(signal?.reason ?? new Error('Aborted'));
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
 
 const ENV = (() => {
   try {
@@ -435,16 +451,10 @@ export function installRuntimeFetchPatch(): void {
       return cloudFallback();
     }
   };
-  // Desktop reaches the same cloud gateway through the native proxy, so it sees
-  // the same retryable billing-verification 503. This patch and the web one are
-  // mutually exclusive (each returns early on the other's runtime), so wrapping
-  // both is what makes the contract honored everywhere rather than only on web.
-  window.fetch = withBillingVerificationRetry(dispatch);
+  window.fetch = dispatch;
 
   (window as unknown as Record<string, unknown>).__wmFetchPatched = true;
 }
-
-import { PREMIUM_RPC_PATHS as WEB_PREMIUM_API_PATHS } from '@/shared/premium-paths';
 
 const ALLOWED_REDIRECT_HOSTS = /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*worldmonitor\.app(:\d+)?$/;
 
@@ -473,48 +483,6 @@ export function installWebApiRedirect(): void {
     { ...(init ?? {}), credentials: init?.credentials ?? 'include' }
   );
 
-  /**
-   * For premium API paths, inject auth when the user has premium access but no
-   * existing auth header is present. Priority order:
-   *   1. Existing auth headers — left unchanged (API key users keep their flow)
-   *   2. WORLDMONITOR_API_KEY from runtime config → X-WorldMonitor-Key
-   *   3. Tester session (wm-pro-key / wm-widget-key HttpOnly cookie)
-   *   4. Clerk Pro session → Authorization: Bearer <token>
-   * Runs on every web deployment (with or without API base redirect).
-   * Returns the original init unchanged for non-premium paths (zero overhead).
-   */
-  const enrichInitForPremium = async (pathWithQuery: string, init?: RequestInit): Promise<RequestInit | undefined> => {
-    const path = pathWithQuery.split('?')[0] ?? pathWithQuery;
-    if (!WEB_PREMIUM_API_PATHS.has(path)) return init;
-    const headers = new Headers(init?.headers);
-    // Don't overwrite existing auth headers
-    if (headers.has('Authorization') || headers.has('X-WorldMonitor-Key')) return init;
-    // WORLDMONITOR_API_KEY from env or runtime config
-    try {
-      const { getRuntimeConfigSnapshot } = await import('@/services/runtime-config');
-      const wmKey = getRuntimeConfigSnapshot().secrets['WORLDMONITOR_API_KEY']?.value;
-      if (wmKey) {
-        headers.set('X-WorldMonitor-Key', wmKey);
-        return { ...withCredentials(init), headers };
-      }
-    } catch { /* runtime-config unavailable — fall through */ }
-    // Legacy test seam. In production, tester keys live in HttpOnly cookies
-    // and are sent through credentials: 'include'.
-    const { getBrowserTesterKey } = await import('@/services/widget-store');
-    const testerKey = getBrowserTesterKey();
-    if (testerKey) {
-      headers.set('X-WorldMonitor-Key', testerKey);
-      return { ...withCredentials(init), headers };
-    }
-    // Clerk Pro: inject Bearer token (fallback for users without a tester key)
-    const token = await getClerkToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-      return { ...withCredentials(init), headers };
-    }
-    return init;
-  };
-
   if (hasRedirect) {
     const API_BASE = apiBase;
     const shouldFallbackToOrigin = (status: number): boolean => (
@@ -542,9 +510,8 @@ export function installWebApiRedirect(): void {
     const dispatch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       if (typeof input === 'string') {
         if (shouldRedirectPath(input)) {
-          // Relative /api/... path — redirect to API base and inject auth.
-          const enriched = await enrichInitForPremium(input, init);
-          return fetchWithRedirectFallback(`${API_BASE}${input}`, input, enriched ? withCredentials(enriched) : withCredentials(init));
+          // Relative /api/... path — redirect to API base.
+          return fetchWithRedirectFallback(`${API_BASE}${input}`, input, withCredentials(init));
         }
         // Generated clients construct an absolute API-base URL, so they cannot
         // rely on the relative-path branch above for origin recovery. Keep the
@@ -552,63 +519,53 @@ export function installWebApiRedirect(): void {
         // api.worldmonitor.app while the page's own /api/ route remains usable.
         if (input.startsWith(`${API_BASE}/api/`)) {
           const pathAndSearch = input.slice(API_BASE.length);
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          const initWithCredentials = enriched ? withCredentials(enriched) : withCredentials(init);
-          return fetchWithRedirectFallback(input, pathAndSearch, initWithCredentials);
+          return fetchWithRedirectFallback(input, pathAndSearch, withCredentials(init));
         }
       }
       if (input instanceof URL) {
         const pathAndSearch = `${input.pathname}${input.search}`;
         if (input.origin === window.location.origin && shouldRedirectPath(pathAndSearch)) {
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          return fetchWithRedirectFallback(new URL(`${API_BASE}${pathAndSearch}`), input, enriched ? withCredentials(enriched) : withCredentials(init));
+          return fetchWithRedirectFallback(new URL(`${API_BASE}${pathAndSearch}`), input, withCredentials(init));
         }
         // URL object already targeting the API base.
         if (input.origin === API_BASE && pathAndSearch.startsWith('/api/')) {
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          return nativeFetch(input, enriched ? withCredentials(enriched) : withCredentials(init));
+          return nativeFetch(input, withCredentials(init));
         }
       }
       if (input instanceof Request) {
         const u = new URL(input.url);
         const pathAndSearch = `${u.pathname}${u.search}`;
         if (u.origin === window.location.origin && shouldRedirectPath(pathAndSearch)) {
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
           return fetchWithRedirectFallback(
             new Request(`${API_BASE}${pathAndSearch}`, input),
             input.clone(),
-            enriched ? withCredentials(enriched) : withCredentials(init),
+            withCredentials(init),
           );
         }
         // Request object already targeting the API base.
         if (u.origin === API_BASE && pathAndSearch.startsWith('/api/')) {
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          return nativeFetch(new Request(input, enriched ? withCredentials(enriched) : withCredentials(init)));
+          return nativeFetch(new Request(input, withCredentials(init)));
         }
       }
       return nativeFetch(input, init);
     };
-    window.fetch = withBillingVerificationRetry(dispatch);
+    window.fetch = dispatch;
   } else {
-    // No API base redirect — only inject auth headers for premium paths.
+    // No API base redirect — send same-origin API calls with credentials.
     const dispatch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       if (typeof input === 'string') {
         if (shouldRedirectPath(input)) {
-          const enriched = await enrichInitForPremium(input, init);
-          return nativeFetch(input, enriched ? withCredentials(enriched) : withCredentials(init));
+          return nativeFetch(input, withCredentials(init));
         }
         if (input.startsWith(`${DEFAULT_WEB_API_URL}/api/`)) {
-          const pathAndSearch = input.slice(DEFAULT_WEB_API_URL.length);
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          return nativeFetch(input, enriched ? withCredentials(enriched) : withCredentials(init));
+          return nativeFetch(input, withCredentials(init));
         }
       }
       if (input instanceof URL) {
         const pathAndSearch = `${input.pathname}${input.search}`;
         if ((input.origin === window.location.origin || input.origin === DEFAULT_WEB_API_URL)
             && (shouldRedirectPath(pathAndSearch) || pathAndSearch.startsWith('/api/'))) {
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          return nativeFetch(input, enriched ? withCredentials(enriched) : withCredentials(init));
+          return nativeFetch(input, withCredentials(init));
         }
       }
       if (input instanceof Request) {
@@ -616,13 +573,12 @@ export function installWebApiRedirect(): void {
         const pathAndSearch = `${u.pathname}${u.search}`;
         if ((u.origin === window.location.origin || u.origin === DEFAULT_WEB_API_URL)
             && (shouldRedirectPath(pathAndSearch) || pathAndSearch.startsWith('/api/'))) {
-          const enriched = await enrichInitForPremium(pathAndSearch, init);
-          return nativeFetch(new Request(input, enriched ? withCredentials(enriched) : withCredentials(init)));
+          return nativeFetch(new Request(input, withCredentials(init)));
         }
       }
       return nativeFetch(input, init);
     };
-    window.fetch = withBillingVerificationRetry(dispatch);
+    window.fetch = dispatch;
   }
 
   (window as unknown as Record<string, unknown>).__wmWebRedirectPatched = true;

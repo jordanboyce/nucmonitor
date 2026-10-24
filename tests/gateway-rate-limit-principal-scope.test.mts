@@ -46,26 +46,24 @@ describe('gateway rate-limit principal scoping (WORLDMONITOR-12A)', () => {
     );
   });
 
-  it('stamps the handler-facing principal with the same credential-derived scope', () => {
-    // The batch fan-out charges the caller's budget from this stamp, so a
-    // hardcoded scope here would silently move an API-key caller's sub-requests
-    // into the session bucket — the same starvation, one layer down.
+  it('names only a verified partner account as a principal, scoped as a session', () => {
+    // NucMonitor has no per-user API keys: an enterprise env key is metered per
+    // key by its own layer and otherwise stays on the IP bucket, so the only
+    // principal the gateway names is a partner's verified Clerk account.
     assert.match(
       GATEWAY_SOURCE,
-      /withTrustedRateLimitPrincipal\([\s\S]{0,120}?isUserApiKey\s*\?\s*'api_key'\s*:\s*'session'/,
-      'the trusted principal handed to handlers must carry the credential-derived scope',
+      /rateLimitPrincipalUserId = partner\.userId;/,
+      'the principal must come from verifyPartnerRequest',
     );
-  });
-
-  it('derives the scope from the credential, not from a constant', () => {
-    // A hardcoded 'session' everywhere would satisfy the count check above while
-    // restoring the original bug, so pin that the scope is actually branched on
-    // the API-key signal.
+    assert.doesNotMatch(
+      GATEWAY_SOURCE,
+      /principalScope:\s*'api_key'/,
+      'no gateway call site may claim the api_key scope without a per-user key to back it',
+    );
     assert.match(
       GATEWAY_SOURCE,
-      /principalScope:\s*isUserApiKey\s*\?\s*'api_key'\s*:\s*'session'/,
-      'principalScope must be derived from isUserApiKey so API-key traffic lands '
-      + 'in its own namespace',
+      /withTrustedRateLimitPrincipal\([\s\S]{0,120}?'session'/,
+      'the handler-facing stamp carries the same session scope the limiter charged',
     );
   });
 });

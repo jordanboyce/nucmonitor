@@ -64,17 +64,6 @@ function extractOpen() {
 
   // eslint-disable-next-line no-new-func
   return new Function(
-    'getEntitlementState',
-    'getEntitlementVerificationStatus',
-    'hasFeature',
-    'hasEmbedAccessForAccount',
-    'onEntitlementChange',
-    'onEntitlementVerificationChange',
-    'onSubscriptionChange',
-    'getSubscription',
-    'getAuthState',
-    'setTrustedHtml',
-    'trustedHtml',
     'track',
     'isMobileDevice',
     'overlayHistory',
@@ -83,22 +72,7 @@ function extractOpen() {
   );
 }
 
-let mcpAccess = false;
-let embedAccess = false;
-let accountRole = undefined;
 const Harness = extractOpen()(
-  () => ({ planKey: mcpAccess || embedAccess ? 'pro_monthly' : 'free' }),
-  () => 'ready',
-  (feature) =>
-    (feature === 'mcpAccess' && mcpAccess) || (feature === 'embedAccess' && embedAccess),
-  (role) => role === 'pro' || embedAccess,
-  () => () => {},
-  () => () => {},
-  () => () => {},
-  () => null,
-  () => ({ user: accountRole ? { role: accountRole } : null }),
-  () => {},
-  (value) => value,
   () => {},
   () => false,
   { open() {}, replace() {} },
@@ -134,18 +108,11 @@ function makeInstance(initialTab = 'settings') {
   // missing method rather than on the behavior under test.
   instance.focusTrap = { activate() {}, deactivate() {} };
   instance.escapeHandler = () => {};
-  instance.unsubscribeEntitlement = null;
-  instance.unsubscribeEntitlementVerification = null;
-  instance.unsubscribeSubscription = null;
-  instance.businessSeatsSection = { load() {} };
   return instance;
 }
 
-describe('UnifiedSettings.open active-tab availability (#5611)', () => {
+describe('UnifiedSettings.open active tab and source baseline', () => {
   beforeEach(() => {
-    mcpAccess = false;
-    embedAccess = false;
-    accountRole = undefined;
     globalThis.localStorage = {
       getItem: () => null,
       setItem() {},
@@ -160,75 +127,13 @@ describe('UnifiedSettings.open active-tab availability (#5611)', () => {
     };
   });
 
-  it('preserves MCP Clients when the tab is available', () => {
-    mcpAccess = true;
+  it('opens the requested tab', () => {
     const instance = makeInstance();
 
-    instance.open('mcp-clients');
+    instance.open('sources');
 
-    assert.equal(instance.activeTab, 'mcp-clients');
-    assert.deepEqual(instance.renderedTabs, ['mcp-clients']);
-  });
-
-  // The Embeds tab is gated on embedAccess, not apiAccess: both Pro tiers are
-  // apiAccess:false, so an apiAccess gate would hide embed keys from the
-  // customers who bought embedding. Same clamp as MCP Clients.
-  it('falls back to Settings when opened to Embeds without embedAccess', () => {
-    const instance = makeInstance();
-
-    instance.open('embeds');
-
-    assert.equal(instance.activeTab, 'settings');
-    assert.deepEqual(instance.renderedTabs, ['settings']);
-  });
-
-  it('clears a sticky Embeds tab when embed access was lost between opens', () => {
-    const instance = makeInstance('embeds');
-
-    instance.open();
-
-    assert.equal(instance.activeTab, 'settings');
-    assert.deepEqual(instance.renderedTabs, ['settings']);
-  });
-
-  it('preserves Embeds when embedAccess is present', () => {
-    embedAccess = true;
-    const instance = makeInstance();
-
-    instance.open('embeds');
-
-    assert.equal(instance.activeTab, 'embeds');
-    assert.deepEqual(instance.renderedTabs, ['embeds']);
-  });
-
-  it('preserves Embeds for a verified Clerk PRO role before entitlement hydration', () => {
-    accountRole = 'pro';
-    const instance = makeInstance();
-
-    instance.open('embeds');
-
-    assert.equal(instance.activeTab, 'embeds');
-    assert.deepEqual(instance.renderedTabs, ['embeds']);
-  });
-
-  // The load-bearing half: a Pro account carries embedAccess without mcpAccess
-  // and vice versa. Neither flag may stand in for the other.
-  it('does not open Embeds on mcpAccess alone', () => {
-    mcpAccess = true;
-    const instance = makeInstance();
-
-    instance.open('embeds');
-
-    assert.equal(instance.activeTab, 'settings');
-  });
-
-  it('does not clamp tabs that are always rendered', () => {
-    const instance = makeInstance();
-
-    instance.open('api-keys');
-
-    assert.equal(instance.activeTab, 'api-keys');
-    assert.deepEqual(instance.renderedTabs, ['api-keys']);
+    assert.equal(instance.activeTab, 'sources');
+    assert.deepEqual(instance.renderedTabs, ['sources']);
   });
 
   // Sources apply on click with no Save step, and teardownSettings decides

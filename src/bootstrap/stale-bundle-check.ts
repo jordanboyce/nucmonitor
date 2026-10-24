@@ -42,9 +42,8 @@ interface EventTargetLike {
  * that answers `visibilitychange` but not the modal probe.
  *
  * `querySelectorAll` is required rather than optional on purpose, but note the
- * enforcement is weaker than it looks: `tsconfig.json` includes only `src`, and
- * `tsconfig.contract-tests.json` does not list this module's suite, so no job
- * typechecks the fake. A fake that omits it fails loudly at runtime instead.
+ * enforcement is weaker than it looks: `tsconfig.json` includes only `src`, so
+ * no job typechecks the fake. A fake that omits it fails loudly at runtime instead.
  */
 interface DocumentLike extends ModalDocumentLike {
   addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;

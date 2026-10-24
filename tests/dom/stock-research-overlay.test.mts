@@ -2,25 +2,19 @@
  * Behavioral coverage for the stock research overlay.
  *
  * `tests/stock-workspace-route.test.mts` covers the pure route helpers only.
- * Nothing exercised the overlay itself, so the premium gate, the headline
+ * Nothing exercised the overlay itself, so the headline
  * sanitization, the Back handling and the error branch were all unverified —
  * and the PR's one manual check ("open /stocks/AAPL on a local dashboard") was
  * never run.
  *
  * `sanitizeUrl` is deliberately NOT mocked: whether a hostile headline link
  * reaches the rendered href is the behaviour under test. Only the RPC client
- * and the entitlement lookup are stubbed.
+ * is stubbed.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const hasPremiumAccess = vi.fn<() => boolean>(() => true);
 const analyzeStock = vi.fn();
-
-vi.mock('@/services/panel-gating', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/panel-gating')>()),
-  hasPremiumAccess: () => hasPremiumAccess(),
-}));
 
 vi.mock('@/services/generated-rpc-clients', () => ({
   MarketServiceClient: class {
@@ -30,7 +24,6 @@ vi.mock('@/services/generated-rpc-clients', () => ({
   },
 }));
 
-vi.mock('@/services/premium-fetch', () => ({ premiumFetch: vi.fn() }));
 vi.mock('@/services/rpc-client', () => ({ getRpcBaseUrl: () => 'https://rpc.test' }));
 
 const {
@@ -56,7 +49,6 @@ const overlay = () => document.querySelector('.stock-research-overlay');
 const analyzeSection = () => document.querySelector('.stock-research-analyze') as HTMLElement | null;
 
 beforeEach(() => {
-  hasPremiumAccess.mockReturnValue(true);
   analyzeStock.mockReset();
   analyzeStock.mockResolvedValue(analysis());
   document.body.replaceChildren();
@@ -68,19 +60,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('stock research overlay premium gate', () => {
-  it('renders the locked state and never calls the premium RPC', async () => {
-    hasPremiumAccess.mockReturnValue(false);
-    await openStockResearchOverlay('AAPL');
-
-    expect(analyzeSection()?.dataset.analyzeState).toBe('locked');
-    expect(analyzeStock).not.toHaveBeenCalled();
-    // No analysis value may reach the DOM in the locked state, including via
-    // attributes rather than visible text.
-    expect(document.body.innerHTML).not.toContain('Rating summary');
-  });
-
-  it('drives loading -> ready and renders the analysis for an entitled user', async () => {
+describe('stock research overlay analysis', () => {
+  it('drives loading -> ready and renders the analysis', async () => {
     await openStockResearchOverlay('AAPL');
     expect(analyzeStock).toHaveBeenCalledTimes(1);
     expect(analyzeSection()?.dataset.analyzeState).toBe('ready');
@@ -307,13 +288,7 @@ describe('stock research overlay discloses AI-vs-template provenance (#5498)', (
     expect(analyzeSection()?.textContent).toContain('No analysis is available for AAPL right now.');
   });
 
-  it('renders no provenance line in the locked or error states', async () => {
-    hasPremiumAccess.mockReturnValue(false);
-    await openStockResearchOverlay('AAPL');
-    expect(document.querySelector('[data-analysis-provenance]')).toBeNull();
-    closeStockResearchOverlay();
-
-    hasPremiumAccess.mockReturnValue(true);
+  it('renders no provenance line in the error state', async () => {
     analyzeStock.mockRejectedValue(new Error('boom'));
     await openStockResearchOverlay('AAPL');
     expect(document.querySelector('[data-analysis-provenance]')).toBeNull();

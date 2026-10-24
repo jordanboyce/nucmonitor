@@ -14,7 +14,6 @@
 
 import { PINNED_WEBCAMS_KEY, normalizePinnedWebcamsPreference, normalizeWebcamPreferences } from '../../shared/pinned-webcams';
 import {
-  ACCOUNT_PROVENANCE_SYNC_KEYS,
   CLOUD_SYNC_KEYS,
   resolveCloudBlobKeyAction,
   type CloudSyncKey,
@@ -77,7 +76,6 @@ export interface CloudPrefsSignInOptions {
 const KEY_SYNC_VERSION = 'wm-cloud-sync-version';
 const KEY_LAST_SYNC_AT = 'wm-last-sync-at';
 const KEY_SYNC_STATE = 'wm-cloud-sync-state';
-const KEY_LAST_SIGNED_IN_AS = 'wm-last-signed-in-as';
 const KEY_DIRTY_KEYS = 'wm-cloud-prefs-dirty-keys';
 // Tracks the schema version of the LOCAL blob (i.e. what's in localStorage
 // right now). Distinct from the cloud row's schemaVersion. Required because
@@ -434,31 +432,6 @@ function dispatchCloudPrefsSignInTerminal(
       },
     },
   ));
-}
-
-/**
- * Returns false when prior-account ownership could not be DETERMINED.
- *
- * Absent legitimately means "no prior account, nothing to clear". A failed read
- * degrading to null is indistinguishable from that, and skipping the cleanup on
- * an account transition leaves account A's ownership sidecars in place for B —
- * so tier reconciliation attributes A's gate decisions to B (#7833 review).
- * Provenance is exactly the kind of question to fail closed on.
- */
-function clearForeignOwnershipSidecars(userId: string): boolean {
-  const read = safeStorageGetChecked(KEY_LAST_SIGNED_IN_AS);
-  if (!read.ok) return false;
-  const lastSignedInAs = read.value;
-  if (lastSignedInAs === null || lastSignedInAs === userId) return true;
-
-  // Preferences intentionally survive sign-out, but ownership sidecars are
-  // account provenance. If the next account has a legacy row that omits them,
-  // keeping the prior account's local values attributes A's gate decisions to
-  // B. B's explicit cloud values will still be applied later in this attempt.
-  for (const key of ACCOUNT_PROVENANCE_SYNC_KEYS) {
-    if (!safeStorageRemoveChecked(key)) return false;
-  }
-  return true;
 }
 
 /**
@@ -878,7 +851,6 @@ function completeSignInAttempt(
 
 function runSignInAttempt(attempt: SignInAttempt): Promise<void> {
   const {
-    userId,
     variant,
     authGeneration: myGeneration,
   } = attempt;
@@ -1016,7 +988,6 @@ function runSignInAttempt(attempt: SignInAttempt): Promise<void> {
       }
 
       if (_authGeneration === myGeneration) {
-        safeStorageSet(KEY_LAST_SIGNED_IN_AS, userId);
         completeSignInAttempt(attempt, 'synced');
       }
     } catch (err) {
@@ -1081,23 +1052,6 @@ export function onSignIn(
   clearSignInRetry();
   _authGeneration += 1;
   const myGeneration = _authGeneration;
-
-  // Ownership sidecars describe which changes a particular account's gate
-  // produced. Preserve them for a same-account legacy cloud row, but never
-  // carry them across an observed account transition.
-  if (!clearForeignOwnershipSidecars(userId)) {
-    // Provenance is undeterminable, so proceeding could attribute the previous
-    // account's gate decisions to this one. Report a terminal error rather than
-    // reconcile on a guess.
-    setState('error');
-    dispatchCloudPrefsSignInTerminal(
-      userId,
-      myGeneration,
-      options.handoffGeneration,
-      'error',
-    );
-    return Promise.resolve();
-  }
 
   // Establish dirty-key ownership synchronously. Preference writes may happen
   // while this sign-in waits behind an older queued writer; hydrating inside

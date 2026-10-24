@@ -18,19 +18,11 @@
 import { strict as assert } from 'node:assert';
 import { test, describe } from 'node:test';
 import type { MapLayers } from '../src/types';
-import { persistGateOwnershipTransition } from '../src/services/variant-panel-ownership';
 import {
   LAYER_REGISTRY,
-  isLayerCommandAllowed,
   isLayerExecutable,
-  isLayerEntitled,
-  isLayerToggleAllowed,
   sanitizeLayersForVariant,
-  sanitizeLockedLayers,
-  sanitizeLockedLayersWithOwnership,
-  restoreGateOwnedLockedLayers,
   mapLayerStatesEqual,
-  shouldSanitizeLockedLayers,
 } from '../src/config/map-layer-definitions';
 
 describe('LAYER_REGISTRY — renderer axis', () => {
@@ -104,62 +96,9 @@ describe('isLayerExecutable — renderer gate', () => {
   });
 });
 
-// #6045 — premium entitlement gate for CMD+K / programmatic layer enable.
-// DeckGLMap disables the checkbox for premium === 'locked' only. NucMonitor
-// ships no premium-gated layer (a single partner entitlement covers the
-// whole dashboard), so the gate must admit every registered layer and still
-// reject unknown keys.
-describe('isLayerEntitled — premium locked gate', () => {
-  test('no registered layer is premium-gated', () => {
-    for (const def of Object.values(LAYER_REGISTRY)) {
-      assert.equal(def.premium, undefined, `${def.key} unexpectedly carries premium: ${def.premium}`);
-    }
-  });
-
-  test('non-premium layers are always entitled', () => {
-    for (const key of Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>) {
-      assert.equal(isLayerEntitled(key, false), true, `${key} must be entitled for free users`);
-      assert.equal(isLayerEntitled(key, true), true);
-    }
-  });
-
-  test('unknown layer key returns false', () => {
-    // @ts-expect-error — intentionally passing a key outside the union
-    assert.equal(isLayerEntitled('nonexistentLayer', true), false);
-  });
-});
-
-describe('sanitizeLockedLayers — free-user stuck-state heal', () => {
-  test('leaves non-locked layers alone and returns the input when nothing changed', () => {
-    const input = {
-      usNuclearFacilities: true,
-      radiationWatch: true,
-      fires: false,
-    } as unknown as MapLayers;
-    const out = sanitizeLockedLayers(input, false);
-    assert.equal(out, input, 'no locked layer means no copy and no write');
-    assert.equal(out.usNuclearFacilities, true);
-    assert.equal(out.radiationWatch, true);
-    assert.equal(out.fires, false);
-  });
-
-  test('is a no-op when entitled', () => {
-    const input = {
-      usNuclearFacilities: true,
-      radiationWatch: true,
-    } as unknown as MapLayers;
-    const out = sanitizeLockedLayers(input, true);
-    assert.equal(out, input);
-  });
-});
-
-describe('locked map-layer ownership', () => {
-  // Regression: App.sanitizeMapLayersForTier's premium branch guarded its
-  // storage write with `restored === layers`, where `restored` came out of
-  // sanitizeLayersForVariant. That helper spreads its input, so the identity
-  // check was ALWAYS false and the branch persisted on every pass — which is
-  // how a `?layers=` deep link came to overwrite the saved (cloud-synced)
-  // layer preference. Value comparison is the only correct check here.
+describe('layer snapshot helpers', () => {
+  // `sanitizeLayersForVariant` spreads its input, so an identity check can
+  // never detect "nothing changed"; value comparison is the only correct check.
   test('sanitizeLayersForVariant never returns its input, so identity guards are dead', () => {
     const layers = {
       usNuclearFacilities: true,
@@ -202,96 +141,21 @@ describe('locked map-layer ownership', () => {
       false,
     );
   });
-
-  test('records no ownership for non-locked layers and drops stale ownership keys', () => {
-    const input = {
-      usNuclearFacilities: true,
-      radiationWatch: true,
-    } as unknown as MapLayers;
-
-    const first = sanitizeLockedLayersWithOwnership(input, new Set(['resilienceScore', 'removed-layer']));
-    assert.equal(first.layers.usNuclearFacilities, true);
-    assert.equal(first.layers.radiationWatch, true);
-    assert.deepEqual(first.gateOwned, new Set(), 'ownership of retired or non-locked layers is discarded');
-  });
-
-  test('blocks the durable layer write when ownership persistence fails', () => {
-    const writes: string[] = [];
-
-    const persistence = persistGateOwnershipTransition(
-      'free',
-      () => { writes.push('layers'); },
-      () => { writes.push('ownership'); return false; },
-    );
-
-    assert.deepEqual(writes, ['ownership'], 'destructive durable write is blocked');
-    assert.equal(persistence.complete, false);
-  });
-
-  test('restores only valid locked layers owned by the gate', () => {
-    const input = {
-      usNuclearFacilities: false,
-      radiationWatch: false,
-    } as unknown as MapLayers;
-    const restored = restoreGateOwnedLockedLayers(
-      input,
-      new Set(['usNuclearFacilities', 'resilienceScore', 'removed-layer']),
-    );
-
-    assert.equal(restored, input, 'nothing locked is owned, so nothing is restored');
-    assert.equal(restored.usNuclearFacilities, false, 'ordinary user-disabled layers stay disabled');
-    assert.equal('removed-layer' in restored, false, 'unknown historical keys are ignored');
-    assert.equal('resilienceScore' in restored, false, 'retired locked layers are ignored');
-  });
 });
 
-describe('isLayerToggleAllowed — stale locked-state recovery', () => {
-  test('free and premium users may toggle every registered layer in either direction', () => {
-    for (const key of Object.keys(LAYER_REGISTRY) as Array<keyof MapLayers>) {
-      for (const hasPremium of [false, true]) {
-        assert.equal(isLayerToggleAllowed(key, true, hasPremium), true, `${key} off`);
-        assert.equal(isLayerToggleAllowed(key, false, hasPremium), true, `${key} on`);
-      }
-    }
+describe('isLayerExecutable — CMD+K renderer policy', () => {
+  test('commands run on the renderers that paint the layer', () => {
+    assert.equal(isLayerExecutable('usNuclearFacilities', 'deck'), true);
+    assert.equal(isLayerExecutable('usNuclearFacilities', 'svg'), true);
+    assert.equal(isLayerExecutable('radiationWatch', 'globe'), true);
   });
 
-  test('unknown layers never pass the toggle gate', () => {
-    // @ts-expect-error — intentionally passing a key outside the union
-    assert.equal(isLayerToggleAllowed('nonexistentLayer', true, false), false);
-  });
-});
-
-describe('shouldSanitizeLockedLayers — settled-free policy', () => {
-  test('does not clamp a pending session before the fallback deadline', () => {
-    assert.equal(shouldSanitizeLockedLayers(false, false, false), false);
-  });
-
-  test('clamps a settled anonymous session', () => {
-    assert.equal(shouldSanitizeLockedLayers(false, true, false), true);
-  });
-
-  test('clamps when the bounded fallback is active even if auth stays pending', () => {
-    assert.equal(shouldSanitizeLockedLayers(false, false, true), true);
-  });
-
-  test('never clamps a premium user', () => {
-    assert.equal(shouldSanitizeLockedLayers(true, true, true), false);
-  });
-});
-
-describe('isLayerCommandAllowed — CMD+K toggle policy', () => {
-  test('free users can toggle unlocked layers on the renderers that paint them', () => {
-    assert.equal(isLayerCommandAllowed('usNuclearFacilities', false, 'deck', false), true);
-    assert.equal(isLayerCommandAllowed('usNuclearFacilities', true, 'svg', false), true);
-    assert.equal(isLayerCommandAllowed('radiationWatch', false, 'globe', false), true);
-  });
-
-  test('renderer compatibility still blocks commands independently of entitlement', () => {
+  test('renderer compatibility blocks commands the renderer cannot paint', () => {
     // diseaseOutbreaks is deck-only: the SVG fallback and globe cannot run it.
-    assert.equal(isLayerCommandAllowed('diseaseOutbreaks', false, 'svg', true), false);
-    assert.equal(isLayerCommandAllowed('diseaseOutbreaks', false, 'globe', true), false);
+    assert.equal(isLayerExecutable('diseaseOutbreaks', 'svg'), false);
+    assert.equal(isLayerExecutable('diseaseOutbreaks', 'globe'), false);
     // The facility registry has no globe paint path.
-    assert.equal(isLayerCommandAllowed('usNuclearFacilities', false, 'globe', true), false);
+    assert.equal(isLayerExecutable('usNuclearFacilities', 'globe'), false);
   });
 });
 

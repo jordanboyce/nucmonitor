@@ -98,29 +98,9 @@ Two rules make a shadow comparable rather than merely reassuring. The candidate 
 
 ## Notifications & Alert Delivery
 
-### Alert Rule
-
-A per-user notification subscription that decides which published events reach that user's channels. A rule combines a sensitivity floor, a delivery mode (realtime or a digest cadence), and optional scopes — countries, tickers, and chokepoints (which narrow only chokepoint disruption alerts). Rules are fan-out targets: one published event is tested against every enabled rule independently. See also: Country Scope, Event Attribution.
-
-### Country Scope
-
-An Alert Rule's optional country restriction. Empty means unscoped — every event qualifies. Populated means opt-in narrowing: an event attributed to a country matches only if that country is in the scope, and an *unattributed* event is dropped unless its type is on the explicit news-permissive allowlist (breaking-news origins, whose publishers cannot reliably attribute yet) or it is region-scoped and one of the rule's countries belongs to that region. The default for unknown or unattributed event types is drop, not deliver — the filter fails closed. See also: Event Attribution, Alert Rule.
-
 ### Event Attribution
 
-The country identity a notification publisher attaches to an event at publish time, normalized to ISO-3166 alpha-2 through the shared country-name map. Attribution is the publisher's job, not the dispatcher's: a publisher that knows the country must attach it, because a missing or unresolvable attribution is indistinguishable downstream from a genuinely global event. A name-normalization miss that silently omits the attribution converts "lookup failed" into "field never existed" — the failure mode that lets scoped delivery leak. See also: Country Scope.
-
-### Click Target
-
-The destination a delivered notification opens when its recipient clicks it, carried on the published event's payload beside the title and body. It is untrusted at both of its sources — a subscriber-authored publish call supplies it directly, and feed ingestion copies it verbatim from external publishers — so it is attacker-influenceable on every channel that renders it.
-
-Its trust question is not which destination is permitted but which surface acting on it consumes. An off-origin target is delivered intact, because the linked article is the point of a news alert and the same link already appears in the message body on every text channel; what must never happen is the already-open, authenticated dashboard being navigated to it, since that replaces a trusted surface in place rather than adding one beside it. Off-origin targets therefore open in their own window, and only a target that resolves to the serving origin of the worker handling the click may reuse the open one.
-
-The dispatcher must not encode an origin in a Click Target. The product is served from several first-party hosts — a canonical host plus the themed Variant Hosts — so any absolute first-party URL is right for exactly one of them and cross-origin to all the rest; a strict origin comparison downstream then classifies genuinely first-party traffic as foreign and opens a duplicate tab. Naming one host as canonical inside the target is the defect, not a detail of it. So a target meaning "the dashboard" generically is emitted as a bare path and each worker resolves it against whichever host is serving it: normalization is not removed, it moves to the only party that knows the answer. The worker half is also the only half that can repair a target already displayed, because a shown notification does not expire and its click is dispatched to whichever worker is active by then, long after the dispatcher can reach it. Two kinds of target stay absolute: a Variant Host's own, since the variants are distinct surfaces and relativizing one would let another resolve it onto itself, and the paths the edge serves on the canonical apex, which break if detached from that origin.
-
-Detaching a path from its origin is where this turns dangerous. A target can be first-party by host and still carry an authority-shaped path that resolves straight back off-origin — onto the dashboard tab, the exact outcome the rule exists to prevent — and the laundering spellings collapse together, because a URL parser normalizes a backslash to a slash. Each half therefore re-resolves and compares origins rather than inspecting the string's shape, and each emits the re-resolved path rather than the string it validated.
-
-Scheme is a separate axis, and its ordering is load-bearing: the scheme must be rejected *before* any origin comparison, because a blob URL reports its inner origin and would otherwise satisfy a same-origin test that the opaque schemes fail. Enforcement is asymmetric: the dispatcher refuses to put a target that is not plain https, or that carries embedded credentials, into the *push* payload, and the client independently refuses to act on one, so neither of those layers depends on the other being correct — but the text channels still render the raw target in their message body, where it is equally clickable and unchecked. A scheme guard on the push path is therefore not a guarantee about the target as a whole. See also: Alert Rule, Event Attribution, Variant Host.
+The country identity a notification publisher attaches to an event at publish time, normalized to ISO-3166 alpha-2 through the shared country-name map. Attribution is the publisher's job, not the dispatcher's: a publisher that knows the country must attach it, because a missing or unresolvable attribution is indistinguishable downstream from a genuinely global event. A name-normalization miss that silently omits the attribution converts "lookup failed" into "field never existed" — the failure mode that lets scoped delivery leak.
 
 ### Threshold Event
 
@@ -128,7 +108,7 @@ A push event the webhook worker produces by re-evaluating a condition against a 
 
 ### Occurrence Event
 
-A push event that happened once and has no condition to re-check (a breaking headline, a large market move, a natural hazard). The worker drains a copy of the producer's stream (for natural hazards, diffs the seeded feeds against the ids it has already seen, so a first read only records them), matches each occurrence against every subscription's stored `scope`, and gives each subscription one delivery id per Event Id, from the first copy that matches that subscription's scope: the per-subscriber state remembers the Event Id as pending (with the body as first built, resent unchanged on retry) until it is delivered, then as a day-long tombstone so a replayed or republished copy is a no-op. Delivery stays at-least-once. A pending delivery older than the event's retry window is dropped, not delivered late, and leaves the same tombstone. Per-subscription hour and day caps count every event sent in the bucket, retries included; new events over a cap are dropped and counted rather than queued or batched. Its scope fields travel in the registration body's `scope` object, validated against the event's registry `inputSchema`. See also: Threshold Event, Event Id, Alert Rule.
+A push event that happened once and has no condition to re-check (a breaking headline, a large market move, a natural hazard). The worker drains a copy of the producer's stream (for natural hazards, diffs the seeded feeds against the ids it has already seen, so a first read only records them), matches each occurrence against every subscription's stored `scope`, and gives each subscription one delivery id per Event Id, from the first copy that matches that subscription's scope: the per-subscriber state remembers the Event Id as pending (with the body as first built, resent unchanged on retry) until it is delivered, then as a day-long tombstone so a replayed or republished copy is a no-op. Delivery stays at-least-once. A pending delivery older than the event's retry window is dropped, not delivered late, and leaves the same tombstone. Per-subscription hour and day caps count every event sent in the bucket, retries included; new events over a cap are dropped and counted rather than queued or batched. Its scope fields travel in the registration body's `scope` object, validated against the event's registry `inputSchema`. See also: Threshold Event, Event Id.
 
 ### Event Id
 
@@ -448,12 +428,6 @@ A static JSON discovery document that describes the MCP server: its name, versio
 
 The distinction that lets one URL serve both crawlers and MCP clients. A `GET` carrying neither `Last-Event-ID` nor an `Accept: text/event-stream` is a **discovery read** — a human or crawler opening the endpoint — and receives a document (the markdown server guide at `/mcp`, the JSON card at the well-known aliases). Every other `GET` is a **transport operation**: an SSE stream-open, which must receive the spec-correct `405`, or an authenticated `Last-Event-ID` replay. Request semantics, never user-agent sniffing, decide which. The consequence for caching is load-bearing: because these URLs negotiate on request headers, any cacheable response must declare `Vary: Accept, Last-Event-ID`, or a shared cache keyed on URL alone will replay a stored discovery body to a transport client. The live transport URL goes further and stays `no-store`, so its correctness never depends on an intermediary honoring `Vary`.
 
-### Credential Class
-
-One of the independent doors through which a caller reaches MCP tooling: a pro OAuth token, minted for any entitlement that clears the mint gate (a paid tier with MCP access), or a user API key, available only to plans that include API access. The classes are resolved by different code paths and carry different hardcoded assumptions, but they are not plan boundaries — an API-tier subscriber legitimately holds both.
-
-The load-bearing rule: credential class never determines plan family, so any rule stated per-plan ("API tiers keep the default cap") must discriminate on the plan key, not on which door the request came through — otherwise the other door grants what the rule withheld. Daily metering is per-user, not per-class: every class increments one shared counter because the principal is the key's owner, which means all classes a user can hold must resolve the same limit against that counter. See also: Plan Family, Entitlement.
-
 ### Streamable HTTP Transport
 
 The MCP transport this server implements over HTTP: JSON-RPC 2.0 requests via `POST`, with optional Server-Sent Events when the client advertises `Accept: text/event-stream`. Its `405` on a standalone stream-open is not an error but a contract — MCP SDK clients read it as the graceful "no standalone stream" signal and complete the handshake. Anything that converts that `405` into a `200` (including a CDN replaying a cached discovery response) breaks the handshake.
@@ -468,19 +442,19 @@ The load-bearing rule: each file is partly hand-authored and partly generated, a
 
 The closed set of redirect addresses an MCP client may register for its OAuth sign-in: any plain-http address on the local host name or the IPv4 loopback address, plus the published callbacks of named hosted clients, each matched exactly as that client sends it.
 
-Registration is all-or-nothing. A client registers every callback it might use in one request, and a single unlisted entry rejects the whole registration, so supporting a hosted client means accepting every callback it sends together, not just the one it uses on a given surface. An entry is added on evidence from the client itself — the vendor's documentation, the client's source, or the callback list it publishes — because a callback recalled from a third-party write-up has been wrong. A client that publishes nothing may be admitted as a marked exception when the address is on a host the vendor owns and independent implementations agree on it exactly. Only the Pro sign-in re-checks the list before granting, so removing an entry blocks new Pro sign-ins from clients registered before the removal; the API-key sign-in trusts the callbacks stored at registration. See also: Credential Class, Flow Issuer.
+Registration is all-or-nothing. A client registers every callback it might use in one request, and a single unlisted entry rejects the whole registration, so supporting a hosted client means accepting every callback it sends together, not just the one it uses on a given surface. An entry is added on evidence from the client itself — the vendor's documentation, the client's source, or the callback list it publishes — because a callback recalled from a third-party write-up has been wrong. A client that publishes nothing may be admitted as a marked exception when the address is on a host the vendor owns and independent implementations agree on it exactly. Sign-in trusts the callbacks stored at registration, so removing an entry does not affect clients registered before the removal. See also: Flow Issuer.
 
 ### Flow Issuer
 
 The authorization-server identity one MCP sign-in is bound to: the host whose OAuth metadata the client read, which that metadata names as issuer and which receives the request that starts the sign-in.
 
-Every first-party host describes itself as its own issuer, but a sign-in can finish on a different host — the consent form's non-script submission and the Pro sign-in both complete on the API host. The issuer returned to the client is therefore fixed when the sign-in starts and travels with it, never recomputed from the host that sends the final redirect. Strict clients compare the returned issuer to the one they discovered and abandon the sign-in on a mismatch, so recomputing it breaks clients that otherwise work. See also: Client Callback Allowlist, Variant Host.
+Every first-party host describes itself as its own issuer, but a sign-in can finish on a different host — the consent form's non-script submission completes on the API host. The issuer returned to the client is therefore fixed when the sign-in starts and travels with it, never recomputed from the host that sends the final redirect. Strict clients compare the returned issuer to the one they discovered and abandon the sign-in on a mismatch, so recomputing it breaks clients that otherwise work. See also: Client Callback Allowlist, Variant Host.
 
 ### Connect-Time Challenge
 
 The refusal the MCP transport gives an opening handshake that carries no credentials: an authentication error that names where to sign in and echoes the request's identifier, sent before anything else is served.
 
-Hosted connectors classify a server by how this first request is answered. One that succeeds is recorded as needing no sign-in, and a refusal that arrives later, mid-session, leaves the connector with no authorization server to send the user to, so its sign-in control never works. Only the handshake is challenged. Stateless callers that never send one keep their credential-free catalog reads and the free tool, and the machine-discovery aliases still accept an anonymous handshake for scanners. A refusal without the request's identifier is as harmful as none, because a strict client cannot match it to the pending request and waits out its timeout. See also: Credential Class, Streamable HTTP Transport, MCP Server Card.
+Hosted connectors classify a server by how this first request is answered. One that succeeds is recorded as needing no sign-in, and a refusal that arrives later, mid-session, leaves the connector with no authorization server to send the user to, so its sign-in control never works. Only the handshake is challenged. Stateless callers that never send one keep their credential-free catalog reads and the free tool, and the machine-discovery aliases still accept an anonymous handshake for scanners. A refusal without the request's identifier is as harmful as none, because a strict client cannot match it to the pending request and waits out its timeout. See also: Streamable HTTP Transport, MCP Server Card.
 
 ### MCP Proxy
 
@@ -506,7 +480,7 @@ One of the product-variant subdomains (`tech`, `finance`, `commodity`, `happy`, 
 
 The short-lived, server-signed identity that authorizes a key-less browser to read our public API surface, held in an HttpOnly cookie the client cannot inspect — it can only track the expiry and ask for a new one. It is not a user identity: it is freely mintable by anyone, is not bound to an account, and is deliberately refused by tier-gated routes, so a valid anonymous session and an authorized one are different questions. Clerk bearer tokens and user API keys take precedence wherever both are present. A server-side caller whose requests are steered by untrusted input, such as the widget agent's model-chosen data reads, holds one too, sent as a key header instead of a cookie, precisely because it carries no more than anonymous authority.
 
-Because the cookie is opaque to JavaScript, the client can only infer its health from responses, and that inference is the fragile part. A rejection observed on one route is evidence about *that route*, not about the session. For a caller that can read the response body, the API says which: an invalid session is refused as such, while a route that needs more than anonymous authority answers with a Pro-authentication refusal that says nothing about the session. See also: Session Blackout, Entitlement.
+Because the cookie is opaque to JavaScript, the client can only infer its health from responses, and that inference is the fragile part. A rejection observed on one route is evidence about *that route*, not about the session. For a caller that can read the response body, the API says which: an invalid session is refused as such. See also: Session Blackout.
 
 ### Session Blackout
 
@@ -523,85 +497,6 @@ One consequence is easy to miss: a request already in flight when a blackout is 
 One try at obtaining an anonymous session, and — this is the part that carries the meaning — the verdict of that try, which is not the same as whether a session came back. Four outcomes are distinct and need different responses: the mint succeeded; the mint failed and the *server* rendered that verdict (it refused, or answered something unusable); the mint failed in our own transport or threw client-side, so the server rendered no verdict at all; or **no mint was attempted**, because the session was already blacked out or because the mint succeeded and the browser then refused to keep the cookie.
 
 Only the server-verdict case is session-wide on its own; everything else needs corroboration. The distinction that is easiest to lose is the last one — an attempt that never happened is not a failed attempt, and reporting it as one both misdirects diagnosis and re-arms the blackout it was suppressed by. The verdict therefore travels with the attempt's result rather than being recovered afterwards from module state, which would describe whichever attempt finished last. See also: Session Blackout, Anonymous Session.
-
-## Billing & Entitlements
-
-### Entitlement
-
-The per-user record granting feature access — a plan key, feature flags with a tier, and a validity horizon — derived from subscriptions by the server and replicated to clients as a reactive snapshot. An entitlement is evidence of paid access *now*; it says nothing about why access exists or when it will renew. When its validity horizon passes without a renewal being recorded, readers fall back to free-tier defaults, which is the moment stale local state can misrepresent a still-paying customer.
-
-Feature flags are resolved by merging the plan's catalog defaults under the stored row, so a record written before a flag existed still reports that flag's current default for its plan — "the row predates the field" is therefore never on its own a reason a capability would read as absent.
-
-### Affirmative Denial
-
-The rule governing every client-side premium gate: a surface may be withheld only on positive evidence that the session is unentitled — a settled signed-out session, or a loaded entitlement snapshot that fails the access predicate — never on the mere absence of evidence. Reading "no snapshot yet" as "not entitled" is what locks paying customers out, because a snapshot that has not arrived is indistinguishable from one that never will.
-
-Which way an unknown resolves depends on whether waiting terminates. A *bounded* unknown — one guaranteed to settle on its own within a known window, such as auth hydration — may withhold briefly, since the cost is a delay rather than a lockout; it must not be counted as a denial in funnel metrics, because no user was gated. An *unbounded* unknown — one that may simply never arrive, such as an entitlement subscription that gives up silently when its backend is unreachable or unconfigured — must resolve to access. A corollary follows from that asymmetry: a gate that fails open can revoke access mid-use, so any surface reachable during the open window must define what happens when the verdict flips. A fail-open gate is only safe when losing access has a specified behavior instead of stranding the user in a state whose exit affordance was just hidden. See also: Entitlement, Billing UX State.
-
-A gate is also only as live as the signal it reads. A predicate keyed on a field nothing in the system writes denies every caller forever while looking perfectly reasonable in review, and it raises no error and draws no complaint, because the surface never renders for anyone to miss.
-
-### Plan Family
-
-The grouping of plan keys — pro-family (personal and business dashboard plans), API-family (programmatic-access plans), and enterprise — that billing and quota rules discriminate on. Checkout duplicate-detection, seat licensing, and quota scoping are all stated per-family, and a family is not recoverable from the tier number or from which credential a caller presents: tier gates are thresholds, so a higher-tier API-family plan clears every gate written with the pro family in mind, and an API-family subscriber can hold pro-class credentials. Rules written against any proxy for family (tier, credential class, feature flag) will misfire on the plans where the proxy and the family diverge. See also: Credential Class, Entitlement.
-
-### Capability-Gated Deep Link
-
-A link that jumps a user straight into a surface which only exists when they hold a particular capability, so the entry point must be gated on the *same* predicate the destination renders on — never on the plan or tier believed to imply it.
-
-Two rules follow. Plan-to-capability mappings drift while the destination's own condition does not, so gating on the wrong signal yields either an upsell for something the user already bought, or a navigation into a surface that renders nothing at all. And when the opener outlives the moment it was built — captured into a closure that some later affordance replays — the capability must be re-read at click time, falling back to a surface that always renders. When the capability is genuinely absent the correct behavior is to suppress the entry point entirely; pointing it somewhere degraded is not. See also: Entitlement, Activation Interstitial.
-
-### Covering Subscription
-
-A subscription that currently grants paid coverage. Coverage is decided per status, not by the status name's plain-English reading: an active subscription covers; an on-hold subscription (payment failed, provider retrying) still covers through its retry window; a cancelled subscription covers until the end of the period already paid for; an expired subscription never covers regardless of its recorded period end. The server owns these rules; any client-side derivation must mirror them rather than re-deriving from status-string intuition.
-
-The mirror is exact except at one boundary, and the exception is deliberate: the server treats the paid window as open while `currentPeriodEnd > at`, the client while `currentPeriodEnd >= at`. The client is the more permissive of the two for the single instant they differ, which is safe precisely because a Billing UX State changes copy and actions only and never grants access the server would deny — while the reverse rounding would blink a covered plan into looking lapsed between snapshots. Anything that later deduplicates the two implementations must preserve each side's boundary rather than picking one, since the comparison is load-bearing in opposite directions.
-
-Answering "does this row cover?" is also not the same as answering "does this user have access". An `active` row reports covering on its fields alone whatever its period end, so a row whose renewal webhook was missed still looks covering; `on_hold` and `cancelled` rows cover only through their paid-through end. Only the full Billing UX State derivation combines that row evidence with the current entitlement and renewal-verification verdict. Coverage predicates are therefore safe for choosing copy and never safe as an entitlement gate. See also: Cancelled-But-Paid-Through, Billing UX State, Renewal Verification.
-
-### Cancelled-But-Paid-Through
-
-The state of a subscription whose auto-renew has been turned off but whose paid period has not yet ended. Colloquially "cancelled" reads as terminal; here it is a covering state until period end, and only afterwards does coverage lapse. UI and copy must not treat it as ended while the paid window is open — telling such a customer their subscription "has ended" invites duplicate checkout. See also: Covering Subscription.
-
-### Renewal Verification
-
-The bounded, on-demand re-check against the payment provider that runs when locally-stale paid evidence would otherwise cause a denial — instead of trusting a possibly-missed webhook, the provider is asked directly. It records a verdict (pending while queued or in flight, failed when the provider check errored, lapsed when the provider confirms coverage ended) that both the denial surfaces and the client UI consume. It shares provider-evidence bookkeeping with the scheduled reconciliation sweep but is deliberately independent of it, so one path failing cannot suppress the other. See also: Billing UX State.
-
-### Billing UX State
-
-The single client-derived state that decides what a customer sees when premium access is in question: free (never paid), active (access works), on-hold (payment failed, retry window), renewal-verification pending or failed (paid evidence went stale and the provider re-check is running or errored), or lapsed (coverage confirmed over). Its purpose is to prevent the misleading collapse of every non-paying state into a generic upgrade prompt — a paying customer whose renewal is being verified must be told that, not sold to. Derived purely from the entitlement and subscription snapshots, it changes copy and actions only; it never grants access the server would deny. See also: Covering Subscription, Renewal Verification.
-
-### Referral Capture
-
-The bootstrap-time process that turns an inbound URL param into checkout attribution: `?ref=` or `?wm_referral=` on any dashboard landing is read once at app boot, stripped from the URL, persisted locally with a bounded TTL, and forwarded to the payment provider at checkout to credit the referring sharer. Because the param names are generic-looking, any other use of `ref=` on dashboard-bound links (SEO tags, campaign labels) is silently captured as a fake affiliate code — internal source attribution must use `utm_*` params, which this process ignores. See also: Entitlement.
-
-### Signed Checkout Identity
-
-The account identifier the checkout flow stamps into the payment provider's subscription and payment metadata, alongside a server-issued signature. It is the authoritative answer to "which account bought this" — independent of every email address on the payment record, because it captures who was *signed in* at the moment of purchase rather than what the buyer typed. Consumers trust it only when the signature verifies; an unsigned or tampered value falls back to matching on the provider's stored customer record. Support triage of any "paid but no access" report starts here, never from an email comparison. See also: Entitlement, Checkout Email.
-
-### Checkout Email
-
-The address a buyer types into the payment provider's checkout form. It is unauthenticated, need not match any account, and is best read as "an inbox the buyer can see," never as an identity: the same person can present one address at checkout, another as their sign-in, and a third in support threads. Any message addressed to it can therefore land in an inbox whose address owns no account — and a message that invites sign-in steers the buyer toward an address the auth provider has never seen. "Who bought" is resolved by the Signed Checkout Identity; the checkout email resolves only "where the invoice went." See also: Signed Checkout Identity, Entitlement.
-
-## Activation & Onboarding
-
-### Brief Loop
-
-The composed state in which a paying subscriber receives the daily AI brief off-app without visiting the dashboard: an enabled Alert Rule with the AI digest on a digest cadence, plus at least one verified delivery channel to carry it. The loop is the unit of activation this project measures — "brief loop live" means all parts are wired and delivery will occur on the next digest cycle, not that any single toggle was flipped. Production data (2026-07) showed feature-touching alone does not predict retention; the brief loop is the recurring-delivery wager that replaces toggle-counting as the leading activation metric. See also: Alert Rule, Activation Interstitial.
-
-### Brief URL
-
-The per-recipient link to one issue of the hosted brief magazine, whose signed query token is the whole credential: whoever holds the URL can read that issue, and no session or cookie stands behind it.
-*Avoid:* capability URL, magazine link
-
-The token binds the recipient and the issue slot, so each dispatch gets its own frozen URL, and it travels only over channels that already authenticated the recipient (push, email, the dashboard). Because the URL is the credential, every place the URL is copied is a credential store: an analytics tracker on the page must drop the query, and the response sends no referrer. The signing secret rolls with an overlap secret so in-flight links stay valid; rolling without the overlap invalidates every outstanding link at once, which is the containment move for a suspected leak. See also: Brief Loop.
-
-### Activation Interstitial
-
-The day-0 post-checkout flow shown to a new Pro subscriber once the payment-to-entitlement settling window resolves: a short sequence of one-click, individually-skippable confirms that wire premium features — the Brief Loop first — rather than teach them. Defined against two constraints from production data: activation that does not happen on day 0 essentially never happens, and nothing may activate without an explicit per-item confirm. Distinct from a tour (education, no state change) and from a persistent checklist (dashboard residue; the interstitial leaves at most a dismissible finish-setup affordance). See also: Brief Loop, Activation Step State, Billing UX State.
-
-### Activation Step State
-
-The disposition of one step in the Activation Interstitial, in two layers: a declared state the step opens with — confirmable, already-done, blocked (the platform will refuse), or unavailable (the device cannot do it) — and a transient overlay for the step the user is currently on, in-flight while a confirm runs and failed when it did not work. The load-bearing distinction is terminal versus retryable, because the failed state is what puts a "Try again" button on screen: a refusal no retry can clear — a denied browser notification permission, which browsers never re-prompt for — must resolve to blocked and show the platform's own out-of-app remedy instead. A step that ends blocked resolves as skipped rather than failed, so the summary never claims a failure that was never attempted; the cost is that a platform refusal is otherwise indistinguishable from disinterest and needs its own event to stay countable. See also: Activation Interstitial, Billing UX State.
 
 ## Scheduled Publication
 
@@ -1004,7 +899,7 @@ Graceful Skip, Seed-Owned Key.
 
 ### Tape Claim
 
-The label a market surface is allowed to show for a quote, bar, or stream: unconfigured, delayed, end-of-day, historical, stale, or — only after a separate commercial display/rebroadcast confirmation — licensed live. A configured provider key is not a Tape Claim. `Panel.setDataBadge('live')` means a fresh fetch versus a cache hit, not a licensed tape. Yahoo and seeded Finnhub quotes in this product stay delayed or end-of-day even when their keys exist. See also: Entitlement.
+The label a market surface is allowed to show for a quote, bar, or stream: unconfigured, delayed, end-of-day, historical, stale, or — only after a separate commercial display/rebroadcast confirmation — licensed live. A configured provider key is not a Tape Claim. `Panel.setDataBadge('live')` means a fresh fetch versus a cache hit, not a licensed tape. Yahoo and seeded Finnhub quotes in this product stay delayed or end-of-day even when their keys exist.
 
 ## Forecast Resolution
 
@@ -1163,5 +1058,4 @@ A first draft fails open: if the check cannot run or errors, the draft is served
 - *"Release"* names two unrelated things. A desktop Release Line is a publication sequence addressable by update clients. An error-tracking release is an event grouping label, and the browser and server surfaces choose it differently, which is what decides whether a Resolve Pin is satisfiable. Never reason about one from the other.
 - *"Gate"* had been used for both the local pre-push Tiered Gate and the CI Deploy Gate — these are distinct. The Tiered Gate is a cacheable pre-flight that can be scoped or escalated on one machine; only the Deploy Gate decides mergeability, and only names on its required list count toward it.
 - *"Superseded"* qualifies two unrelated things. A Superseded Run is a change-proposal CI run replaced by a later push, and it is discarded on purpose. A Superseded Failure is a scheduled run's failure that a newer capture, by hand or by a later run, has since made moot, and it is an alarm that resolves itself. The first is about wasted capacity, the second about alert noise; never reason about one from the other.
-- *"Capability"* names two things. A Capability-Gated Deep Link is gated on an entitlement predicate the destination also renders on; a Brief URL is a bearer link where the token itself is the capability. Say "entitlement" for the first sense in prose and "Brief URL" for the second; avoid "capability URL".
 - *"Unknown"* as a vessel class names two different states — a contact that declared military activity but no hull class, and a contact with no class evidence at all. They are currently indistinguishable downstream and fold into the same non-combatant bucket. When it matters which one you mean, say "declared activity, class unestablished" for the first; never read the shared bucket as evidence of either.

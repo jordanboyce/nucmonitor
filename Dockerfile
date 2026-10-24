@@ -37,23 +37,9 @@ RUN node scripts/generate-inventory-facts.mjs
 # Output is api/**/*.js alongside the source .ts files
 RUN node docker/build-handlers.mjs
 
-# public/pro/ is a build product, not committed bytes (#6898), so this image has
-# to build it. Skipping it does NOT 404: this image installs docker/nginx.conf,
-# whose `location /` ends in `try_files $uri $uri/ /dashboard.html`,
-# so /pro would quietly serve the dashboard SPA shell with a 200 — wrong content
-# under a real URL, which is worse than a missing page. (docker/Dockerfile is the
-# one with an explicit `location ^~ /pro` block, in nginx.conf.template.)
-# build:pro installs pro-test's own lockfile.
-RUN npm run build:pro
-
 # Build the Vite frontend (outputs to dist/)
 # Skip blog build — blog-site has its own deps not installed here
 RUN npx tsc && npx vite build
-# Assert the /pro pages survived the public/ -> dist/ copy (#6898). build:pro
-# succeeding proves public/pro/ exists; it does NOT prove Vite copied it, and
-# docker/nginx.conf's SPA fallback would serve the dashboard shell at 200 for a
-# missing /pro rather than failing visibly.
-RUN test -s dist/pro/index.html && test -s dist/pro/welcome.html
 
 # ── Stage 2: Runtime dependencies ───────────────────────────────────────────
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime-deps

@@ -8,8 +8,6 @@ import { load as loadYaml } from 'js-yaml';
 import { discoverProtoServiceNames, loadUnifiedOpenApiSpec } from './_lib/openapi-spec-cache.mjs';
 import {
   readPublicNoAuthPaths,
-  readEndpointEntitlements,
-  readPremiumRpcPaths,
   PUBLIC_FORBIDDEN_GATES,
   TRUST_REVIEW_KEY_PATHS,
 } from '../scripts/lib/openapi-codegen.mjs';
@@ -29,30 +27,15 @@ const protoWorldmonitorDir = resolve(root, 'proto/worldmonitor');
 // injector via a divergent private regex, and asserting the specs against these
 // values catches any regenerate that drops an injection.
 const PUBLIC_PATHS = readPublicNoAuthPaths();
-const ENDPOINT_ENTITLEMENTS = readEndpointEntitlements();
-const BEARER_AUTH_PATHS = new Set([...ENDPOINT_ENTITLEMENTS.keys(), ...readPremiumRpcPaths()]);
-// Legacy-Pro-gated paths NOT covered by the newer ENDPOINT_ENTITLEMENTS tier
-// map. These carry a "Pro subscription required" 403 (gateway
-// needsLegacyProBearerGate). Entitlement paths are subtracted so the stricter
-// entitlement 403 wins for any path in both sets — mirrors PREMIUM_ONLY_PATHS
-// in scripts/openapi-inject-security.mjs.
-const PREMIUM_ONLY_PATHS = new Set(readPremiumRpcPaths().filter((p) => !ENDPOINT_ENTITLEMENTS.has(p)));
-const PREMIUM_FORBIDDEN_NOTE = 'PRO-gated. Requires an active Pro subscription.';
-const GATED_DESCRIPTION_PATHS = new Set([
-  ...ENDPOINT_ENTITLEMENTS.keys(),
-  ...PREMIUM_ONLY_PATHS,
-  ...PUBLIC_FORBIDDEN_GATES.keys(),
-]);
+const GATED_DESCRIPTION_PATHS = new Set(PUBLIC_FORBIDDEN_GATES.keys());
 
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'options', 'head']);
 const API_KEY_SCHEMES = {
   WorldMonitorKey: { type: 'apiKey', in: 'header', name: 'X-WorldMonitor-Key' },
   ApiKeyHeader: { type: 'apiKey', in: 'header', name: 'X-Api-Key' },
 };
-const BEARER_SCHEME = { BearerAuth: { type: 'http', scheme: 'bearer' } };
 const TRUST_REVIEW_SCHEME = { TrustReviewKey: { type: 'apiKey', in: 'header', name: 'X-Trust-Review-Key' } };
 const API_KEY_SECURITY_NAMES = Object.keys(API_KEY_SCHEMES);
-const BEARER_SECURITY_NAMES = [...API_KEY_SECURITY_NAMES, 'BearerAuth'];
 
 const serviceSpecs = readdirSync(apiDir)
   .filter((f) => /Service\.openapi\.json$/.test(f))
@@ -61,11 +44,9 @@ const protoRequiredRequestFields = readProtoRequiredRequestFields();
 
 function expectedSchemesForSpec(spec) {
   const paths = Object.keys(spec.paths ?? {});
-  const hasBearerAuthPath = paths.some((path) => BEARER_AUTH_PATHS.has(path));
   const hasTrustReviewPath = paths.some((path) => TRUST_REVIEW_KEY_PATHS.has(path));
   return {
     ...API_KEY_SCHEMES,
-    ...(hasBearerAuthPath ? BEARER_SCHEME : {}),
     ...(hasTrustReviewPath ? TRUST_REVIEW_SCHEME : {}),
   };
 }
@@ -108,39 +89,6 @@ function assertSchemeFields(schemes, expected, label) {
   }
 }
 
-function assertEntitlementOperationContract(spec, label) {
-  for (const [path, requiredTier] of ENDPOINT_ENTITLEMENTS) {
-    const ops = spec.paths?.[path];
-    if (!ops) continue;
-    for (const [method, op] of Object.entries(ops)) {
-      if (!HTTP_METHODS.has(method) || !op || typeof op !== 'object') continue;
-      const opLabel = `${label}: ${method.toUpperCase()} ${path}`;
-      assert.match(
-        String(op.description ?? ''),
-        /PRO-gated/i,
-        `${opLabel}: description must state that the operation is PRO-gated`,
-      );
-      assert.match(
-        String(op.description ?? ''),
-        new RegExp(`Requires entitlement tier >= ${requiredTier}\\.`),
-        `${opLabel}: description must include required entitlement tier`,
-      );
-      const r403 = op.responses?.['403'];
-      assert.ok(r403, `${opLabel}: missing 403 response`);
-      assert.match(
-        String(r403.description ?? ''),
-        /PRO entitlement access denied/i,
-        `${opLabel}: 403 description must describe the broader entitlement gate`,
-      );
-      assert.equal(
-        r403.content?.['application/json']?.schema?.$ref,
-        '#/components/schemas/ForbiddenError',
-        `${opLabel}: 403 must reference ForbiddenError`,
-      );
-    }
-  }
-}
-
 function assertPublicForbiddenGateContract(spec, label) {
   for (const [path, gate] of PUBLIC_FORBIDDEN_GATES) {
     const ops = spec.paths?.[path];
@@ -165,46 +113,6 @@ function assertPublicForbiddenGateContract(spec, label) {
         opLabel + ': 403 must reference the documented error schema',
       );
     }
-  }
-}
-
-function assertPremiumForbiddenGateContract(spec, label) {
-  let sawPremiumPath = false;
-  for (const path of PREMIUM_ONLY_PATHS) {
-    const ops = spec.paths?.[path];
-    if (!ops) continue;
-    for (const [method, op] of Object.entries(ops)) {
-      if (!HTTP_METHODS.has(method) || !op || typeof op !== 'object') continue;
-      sawPremiumPath = true;
-      const opLabel = label + ': ' + method.toUpperCase() + ' ' + path;
-      assert.ok(
-        String(op.description ?? '').includes(PREMIUM_FORBIDDEN_NOTE),
-        opLabel + ': description must document the legacy Pro-subscription gate',
-      );
-      const r403 = op.responses?.['403'];
-      assert.ok(r403, opLabel + ': missing 403 response');
-      assert.match(
-        String(r403.description ?? ''),
-        /Pro subscription required/i,
-        opLabel + ': 403 description must state Pro subscription required',
-      );
-      assert.equal(
-        r403.content?.['application/json']?.schema?.$ref,
-        '#/components/schemas/ForbiddenError',
-        opLabel + ': 403 must reference ForbiddenError',
-      );
-    }
-  }
-  // A premium-only 403 references ForbiddenError, so the schema must be defined
-  // even in services that carry no ENDPOINT_ENTITLEMENTS path (e.g. Intelligence,
-  // Resilience). Guards the broadened schema-injection trigger.
-  if (sawPremiumPath) {
-    const s = spec.components?.schemas?.ForbiddenError;
-    assert.ok(s, label + ': ForbiddenError schema must be defined for premium 403s');
-    assert.ok(
-      Array.isArray(s.required) && s.required.includes('error'),
-      label + ": ForbiddenError must require 'error'",
-    );
   }
 }
 
@@ -362,9 +270,9 @@ function assertSchemaRequires(spec, schemaName, fields, label) {
 }
 
 // Full auth contract, format-agnostic (works on JSON specs or YAML-loaded
-// specs): securitySchemes (2 or 3 by bearer-path presence), root API-key
-// security, UnauthorizedError schema, and per-operation 401 / public opt-out /
-// bearer stamping. Used to assert the per-service YAML files and the bundle
+// specs): securitySchemes (API key, plus the review key by path presence), root
+// API-key security, UnauthorizedError schema, and per-operation 401 / public
+// opt-out stamping. Used to assert the per-service YAML files and the bundle
 // reach parity with the per-service JSON specs (#4650).
 function assertAuthContract(spec, label) {
   const schemes = spec.components?.securitySchemes;
@@ -386,19 +294,12 @@ function assertAuthContract(spec, label) {
     assert.equal(unauthorized, undefined, `${label}: all-public spec must not carry an orphaned UnauthorizedError`);
   }
 
-  // ForbiddenError backs the per-op 403 every non-public op now carries (the
-  // account-state #4611 403, plus entitlement/premium); present iff a non-public
-  // op exists, absent otherwise (no orphan).
-  const forbidden = spec.components?.schemas?.ForbiddenError;
-  if (hasNonPublicOp) {
-    assert.ok(forbidden, `${label}: ForbiddenError schema missing`);
-  } else {
-    assert.equal(forbidden, undefined, `${label}: all-public spec must not carry an orphaned ForbiddenError`);
-  }
+  // NucMonitor has no paid tier: no entitlement/billing 403 or 503 contract.
+  assert.equal(spec.components?.schemas?.ForbiddenError, undefined, `${label}: ForbiddenError must not be published`);
+  assert.equal(spec.components?.schemas?.BillingVerificationError, undefined, `${label}: BillingVerificationError must not be published`);
 
   for (const [path, ops] of Object.entries(spec.paths ?? {})) {
     const isPublic = PUBLIC_PATHS.has(path);
-    const acceptsBearer = BEARER_AUTH_PATHS.has(path);
     for (const [method, op] of Object.entries(ops)) {
       if (!HTTP_METHODS.has(method) || !op || typeof op !== 'object') continue;
       const opLabel = `${label}: ${method.toUpperCase()} ${path}`;
@@ -424,20 +325,9 @@ function assertAuthContract(spec, label) {
         '#/components/schemas/UnauthorizedError',
         `${opLabel}: 401 must reference UnauthorizedError`,
       );
-      if (acceptsBearer) {
-        assertSecurityNames(op.security, BEARER_SECURITY_NAMES, opLabel);
-      } else {
-        assert.equal(op.security, undefined, `${opLabel}: should inherit API-key root security`);
-      }
-      // Every non-public op carries a 403 (account-state #4611, or the more
-      // specific entitlement/premium gate) — all referencing ForbiddenError.
-      const r403 = op.responses?.['403'];
-      assert.ok(r403, `${opLabel}: missing 403 response`);
-      assert.equal(
-        r403.content?.['application/json']?.schema?.$ref,
-        '#/components/schemas/ForbiddenError',
-        `${opLabel}: 403 must reference ForbiddenError`,
-      );
+      assert.equal(op.security, undefined, `${opLabel}: should inherit API-key root security`);
+      assert.equal(op.responses?.['403'], undefined, `${opLabel}: authenticated op must not carry a 403`);
+      assert.equal(op.responses?.['503'], undefined, `${opLabel}: no billing-verification 503`);
     }
   }
 }
@@ -461,17 +351,19 @@ describe('OpenAPI security contract', () => {
     );
   });
 
-  it('parses the bearer-auth and entitlement path sources from gateway-adjacent code', () => {
-    assert.ok(BEARER_AUTH_PATHS.size > 0, 'expected at least one bearer-auth path');
-    // Re-derived for the trimmed RPC surface: the market/economic tier gates.
-    assert.ok(ENDPOINT_ENTITLEMENTS.size >= 8, 'expected issue-scoped entitlement-gated paths');
-    assert.equal(ENDPOINT_ENTITLEMENTS.get('/api/market/v1/analyze-stock'), 1, 'expected tier-gated market path');
-    assert.equal(ENDPOINT_ENTITLEMENTS.get('/api/economic/v1/list-global-tenders'), 1, 'expected procurement path');
-    assert.ok(!BEARER_AUTH_PATHS.has('/api/sanctions/v1/list-sanctions-pressure'), 'sanctions pressure is free (served by public bootstrap)');
-    assert.equal(ENDPOINT_ENTITLEMENTS.get('/api/market/v1/get-physical-premiums'), 1, 'expected physical-premiums path');
+  it('parses the public 403 gates', () => {
     assert.ok(PUBLIC_FORBIDDEN_GATES.has('/api/leads/v1/submit-contact'), 'expected Leads Turnstile 403 path');
     assert.ok(PUBLIC_FORBIDDEN_GATES.has('/api/leads/v1/register-interest'), 'expected Leads register-interest 403 gate');
-    assert.ok(!PREMIUM_ONLY_PATHS.has('/api/market/v1/analyze-stock'), 'entitlement-gated path must not be treated as premium-only');
+  });
+
+  it('publishes no paid-tier auth contract in any artifact', () => {
+    const banned = ['BearerAuth', 'ForbiddenError', 'BillingVerificationError', 'X-Billing-Verification', 'PRO-gated', 'entitlement tier'];
+    for (const file of readdirSync(apiDir).filter((f) => /\.openapi\.(json|yaml)$/.test(f))) {
+      const text = readFileSync(resolve(apiDir, file), 'utf8');
+      for (const term of banned) {
+        assert.ok(!text.includes(term), `${file} must not mention ${term}`);
+      }
+    }
   });
 
   it('declares the review key on exactly the operations whose handler requires it', () => {
@@ -479,7 +371,6 @@ describe('OpenAPI security contract', () => {
     // could never be the whole credential.
     for (const path of TRUST_REVIEW_KEY_PATHS) {
       assert.ok(PUBLIC_PATHS.has(path), `${path} must be in PUBLIC_NO_AUTH_RPC_PATHS`);
-      assert.ok(!BEARER_AUTH_PATHS.has(path), `${path} must not accept bearer auth`);
       assert.ok(!PUBLIC_FORBIDDEN_GATES.has(path), `${path} must not carry a public 403 gate`);
     }
     // The proto comments name the header on every review-key RPC; a new one
@@ -532,26 +423,9 @@ describe('OpenAPI security contract', () => {
         }
       });
 
-      it('defines ForbiddenError when it has entitlement-gated paths', () => {
-        const hasEntitlementPath = Object.keys(spec.paths ?? {}).some((path) => ENDPOINT_ENTITLEMENTS.has(path));
-        if (!hasEntitlementPath) return;
-        const s = spec.components?.schemas?.ForbiddenError;
-        assert.ok(s, `${file}: components.schemas.ForbiddenError missing`);
-        assert.ok(
-          Array.isArray(s.required) && s.required.includes('error'),
-          `${file}: ForbiddenError must require 'error'`,
-        );
-        assert.match(
-          String(s.description ?? ''),
-          /entitlements cannot be verified/i,
-          `${file}: ForbiddenError must document unable-to-verify entitlement denials`,
-        );
-      });
-
-      it('documents 401s, public opt-outs, and bearer-only-on-bearer-capable ops', () => {
+      it('documents 401s and public opt-outs', () => {
         for (const [path, ops] of Object.entries(spec.paths ?? {})) {
           const isPublic = PUBLIC_PATHS.has(path);
-          const acceptsBearer = BEARER_AUTH_PATHS.has(path);
           for (const [method, op] of Object.entries(ops)) {
             if (!HTTP_METHODS.has(method) || !op || typeof op !== 'object') continue;
             const label = `${method.toUpperCase()} ${path}`;
@@ -576,39 +450,24 @@ describe('OpenAPI security contract', () => {
               `${file}: ${label} 401 must reference UnauthorizedError`,
             );
 
-            if (acceptsBearer) {
-              assertSecurityNames(op.security, BEARER_SECURITY_NAMES, `${file}: ${label}`);
-            } else {
-              assert.equal(op.security, undefined, `${file}: ${label} should inherit API-key root security`);
-            }
+            assert.equal(op.security, undefined, `${file}: ${label} should inherit API-key root security`);
           }
         }
-      });
-
-      it('documents entitlement 403s and PRO notes from ENDPOINT_ENTITLEMENTS', () => {
-        assertEntitlementOperationContract(spec, file);
       });
 
       it('documents public 403 gates', () => {
         assertPublicForbiddenGateContract(spec, file);
       });
 
-      it('documents premium (legacy Pro) 403s from PREMIUM_RPC_PATHS', () => {
-        assertPremiumForbiddenGateContract(spec, file);
-      });
     });
   }
 
   it('service YAML specs and bundled YAML document 403 gate notes', () => {
     for (const file of readdirSync(apiDir).filter((f) => /Service\.openapi\.yaml$/.test(f)).sort()) {
       const spec = loadYaml(readFileSync(resolve(apiDir, file), 'utf8'));
-      assertEntitlementOperationContract(spec, file);
       assertPublicForbiddenGateContract(spec, file);
-      assertPremiumForbiddenGateContract(spec, file);
     }
     const bundle = loadUnifiedOpenApiSpec();
-    assertEntitlementOperationContract(bundle, 'bundle');
-    assertPremiumForbiddenGateContract(bundle, 'bundle');
     assertPublicForbiddenGateContract(bundle, 'bundle');
   });
 

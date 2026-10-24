@@ -51,16 +51,11 @@ function unusedNavigationResult(
 
 const unusedNavigationBindings: Pick<
   WebMcpAppBindings,
-  'openSettings' | 'openAlerts' | 'listMissionPresets' | 'applyMissionPreset'
-    | 'openMissionPicker' | 'listFollowedCountries' | 'setCountryFollowed'
+  'openSettings' | 'listMissionPresets' | 'applyMissionPreset' | 'openMissionPicker'
 > = {
   openSettings: async () => unusedNavigationResult('settings', {
     overlay: 'open',
     tab: 'settings',
-  }),
-  openAlerts: async () => unusedNavigationResult('alerts', {
-    overlay: 'open',
-    tab: 'notifications',
   }),
   listMissionPresets: async () => ({
     ok: true,
@@ -80,21 +75,6 @@ const unusedNavigationBindings: Pick<
   }),
   openMissionPicker: async () => unusedNavigationResult('mission_picker', {
     overlay: 'open',
-  }),
-  listFollowedCountries: async () => ({
-    ok: true,
-    enabled: true,
-    countries: [],
-    count: 0,
-    access: 'free',
-    limit: 3,
-  }),
-  setCountryFollowed: async () => ({
-    ok: true,
-    status: 'unchanged',
-    iso2: 'DE',
-    followed: true,
-    message: 'Unused followed-country binding.',
   }),
 };
 
@@ -179,7 +159,6 @@ function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boo
       unifiedSettings: { open: openSettings },
     } as never,
     getVariant: () => 'nuclear',
-    hasPremiumAccess: () => false,
     enablePanel,
     trackSearchResultSelected: vi.fn(),
     runWithAgentAnalyticsSuppressed: (callback) => callback(),
@@ -195,8 +174,7 @@ function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boo
     isDestroyed: () => false,
     refreshIndex: vi.fn(),
     getModal: () => modal as never,
-    hasPremiumAccess: () => false,
-    getAuthContext: () => 'anonymous:settled:free',
+    getAuthContext: () => 'anonymous:settled',
     getVariant: () => 'nuclear',
     isMatchExecutable: () => true,
     isPanelCurrentlyEnabled: (panelId) => enabledPanels[panelId] === true,
@@ -206,10 +184,7 @@ function createHarness(matches: SearchMatch[], enabledPanels: Record<string, boo
       signal,
     ),
     subscribeAuth: () => () => {},
-    subscribeEntitlement: () => () => {},
     subscribeRuntimeConfig: () => () => {},
-    subscribeWidgetAccess: () => () => {},
-    onPremiumAccessChanged: vi.fn(),
     cancelPendingSelection: () => dispatcher.cancelPendingProgrammaticSelection(),
   });
   return {
@@ -448,7 +423,6 @@ describe('open_search_result rejects a caller-supplied effect class', () => {
         rendererKind: 'deck',
         enabledLayers: [],
         liveLayerKeys: [],
-        hasPremium: false,
         deckGlActive: true,
       }),
       ...unusedNavigationBindings,
@@ -478,17 +452,7 @@ describe('open_search_result rejects a caller-supplied effect class', () => {
       getAccessContext: async () => ({
         accountState: 'signed_out',
         clerk: 'unavailable',
-        productTier: 'anonymous',
-        capabilities: {
-          premiumAccess: false,
-          apiAccess: false,
-          mcpAccess: false,
-          dataExport: false,
-        },
-        limits: {
-          enabledPanels: { used: 1, cap: 40 },
-          dashboardTabs: { used: 1, cap: 3, canCreate: true },
-        },
+        usage: { enabledPanels: 1, dashboardTabs: 1 },
       }),
       openSignIn: async () => ({ ok: false, status: 'denied', reason: 'clerk_unavailable' }),
     }, () => {});

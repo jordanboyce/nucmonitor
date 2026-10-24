@@ -15,6 +15,7 @@ import { VARIANT_META, type VariantMeta } from './src/config/variant-meta';
 // (api/rss-proxy.js) so dev and prod agree on allow/deny. Previously a
 // hand-maintained Set here had drifted ~138 domains from prod.
 import { isAllowedDomain } from './api/_rss-allowed-domain-match.js';
+import { isPublicFeedUrl, looksLikeFeedXml } from './api/_public-feed-host.js';
 import { rssFetchHeadersForHost } from './api/_rss-fetch-headers.js';
 import { validateGeneratedRequest } from './server/request-validator';
 import {
@@ -102,6 +103,7 @@ const PANEL_CLUSTER: Record<string, PanelChunkName> = {
   Market: 'panels-markets',
   // News / feeds
   ClimateNews: 'panels-news',
+  CustomFeed: 'panels-news',
   News: 'panels-news',
   // Monitors
   Monitor: 'panels-intel',
@@ -675,7 +677,16 @@ function rssProxyPlugin(): Plugin {
 
         try {
           const parsed = new URL(feedUrl);
-          if (!isAllowedDomain(parsed.hostname)) {
+          // Mirrors api/rss-proxy.js: `custom=1` (viewer-added feeds) admits
+          // any public host and only relays feed documents.
+          const customMode = url.searchParams.get('custom') === '1' && !isAllowedDomain(parsed.hostname);
+          if (customMode && !isPublicFeedUrl(parsed)) {
+            res.statusCode = 403;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Host not allowed for custom feeds' }));
+            return;
+          }
+          if (!customMode && !isAllowedDomain(parsed.hostname)) {
             res.statusCode = 403;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: `Domain not allowed: ${parsed.hostname}` }));
@@ -694,6 +705,12 @@ function rssProxyPlugin(): Plugin {
           clearTimeout(timer);
 
           const data = await response.text();
+          if (customMode && (!isPublicFeedUrl(new URL(response.url || feedUrl)) || (response.ok && !looksLikeFeedXml(data)))) {
+            res.statusCode = 422;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Not an RSS or Atom feed' }));
+            return;
+          }
           res.statusCode = response.status;
           res.setHeader('Content-Type', 'application/xml');
           res.setHeader('Cache-Control', 'public, max-age=300');

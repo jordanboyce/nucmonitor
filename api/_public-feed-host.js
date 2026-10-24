@@ -82,7 +82,7 @@ export function looksLikeFeedXml(body) {
   if (typeof body !== 'string') return false;
   // Skip a BOM, the XML declaration, comments, processing instructions and
   // a doctype before the root element.
-  // `s` matches U+FEFF too, so a leading BOM is skipped with whitespace.
+  // `\s` matches U+FEFF too, so a leading BOM is skipped with whitespace.
   const head = body.slice(0, 4096);
   const rest = head.replace(/^(?:\s+|<\?[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[^>]*>)*/i, '');
   return /^<(?:rss|feed|rdf:RDF)[\s>/]/i.test(rest);

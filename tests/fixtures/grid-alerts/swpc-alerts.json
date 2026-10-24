@@ -1,0 +1,4 @@
+[{"product_id":"K07W","issue_datetime":"2026-10-20 18:12:00.000","message":"Space Weather Message Code: WARK07\r\nSerial Number: 120\r\nIssue Time: 2026 Oct 20 1812 UTC\r\n\r\nWARNING: Geomagnetic K-index of 7 expected\r\nValid From: 2026 Oct 20 1810 UTC\r\nValid To: 2026 Oct 21 0300 UTC\r\nNOAA Scale: G3 - Strong\r\n"},
+ {"product_id":"A30F","issue_datetime":"2026-10-20 03:00:00.000","message":"Space Weather Message Code: WATA30\r\nIssue Time: 2026 Oct 20 0300 UTC\r\n\r\nWATCH: Geomagnetic Storm Category G4 Predicted\r\n"},
+ {"product_id":"XXX","issue_datetime":"2026-10-20 03:00:00.000","message":"SUMMARY: 10cm Radio Burst\r\n"},
+ {"product_id":"OLD","issue_datetime":"2026-01-01 03:00:00.000","message":"WATCH: Geomagnetic Storm Category G5 Predicted\r\n"}]

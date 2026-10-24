@@ -723,6 +723,35 @@
     "documentedAt": "scripts/seed-radiation-watch.mjs"
   },
   {
+    "entry": "scripts/seed-grid-alerts.mjs",
+    "deployMode": "nixpacks-root-scripts",
+    "service": "seed-grid-alerts",
+    "lifecycle": "planned",
+    "requiredEnv": [
+      "UPSTASH_REDIS_REST_URL",
+      "UPSTASH_REDIS_REST_TOKEN"
+    ],
+    "watchPatterns": [
+      "scripts/_proxy-utils.cjs",
+      "scripts/_seed-contract.mjs",
+      "scripts/_seed-envelope-source.mjs",
+      "scripts/_seed-utils.mjs",
+      "scripts/_upstash-rest.mjs",
+      "scripts/lib/llm-telemetry.cjs",
+      "scripts/lib/grid-alerts/adapters.mjs",
+      "scripts/lib/grid-alerts/assess.mjs",
+      "scripts/lib/grid-alerts/index.mjs",
+      "scripts/lib/grid-alerts/regions.mjs",
+      "scripts/seed-grid-alerts.mjs",
+      "scripts/shared/compare-and-delete-script.cjs",
+      "scripts/package.json",
+      "scripts/package-lock.json",
+      "scripts/nixpacks.toml"
+    ],
+    "cronSchedule": "*/10 * * * *",
+    "documentedAt": "scripts/seed-grid-alerts.mjs"
+  },
+  {
     "entry": "scripts/seed-crypto-sectors.mjs",
     "deployMode": "nixpacks-root-repo",
     "lifecycle": "planned",
@@ -748,7 +777,7 @@
       "scripts/shared/compare-and-delete-script.cjs"
     ],
     "cronSchedule": "*/5 * * * *",
-    "documentedAt": "docs/railway-seed-consolidation-runbook.md#standalone-seed-crons-43-not-bundled"
+    "documentedAt": "docs/railway-seed-consolidation-runbook.md#standalone-seed-crons-44-not-bundled"
   },
   {
     "entry": "scripts/seed-economy.mjs",
@@ -767,7 +796,7 @@
       "scripts/shared/compare-and-delete-script.cjs"
     ],
     "cronSchedule": "*/15 * * * *",
-    "documentedAt": "docs/railway-seed-consolidation-runbook.md#standalone-seed-crons-43-not-bundled"
+    "documentedAt": "docs/railway-seed-consolidation-runbook.md#standalone-seed-crons-44-not-bundled"
   },
   {
     "entry": "scripts/seed-fire-detections.mjs",
@@ -799,7 +828,7 @@
       "scripts/shared/compare-and-delete-script.cjs"
     ],
     "cronSchedule": "*/10 * * * *",
-    "documentedAt": "docs/railway-seed-consolidation-runbook.md#standalone-seed-crons-43-not-bundled"
+    "documentedAt": "docs/railway-seed-consolidation-runbook.md#standalone-seed-crons-44-not-bundled"
   },
   {
     "entry": "scripts/seed-fred-rates.mjs",

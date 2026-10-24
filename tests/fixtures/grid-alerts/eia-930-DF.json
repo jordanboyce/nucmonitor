@@ -1,0 +1,8 @@
+{"response":{"data":[
+ {"period":"2026-10-21T02","respondent":"PJM","type":"DF","value":"104000"},
+ {"period":"2026-10-20T21","respondent":"PJM","type":"DF","value":"102000"},
+ {"period":"2026-10-20T20","respondent":"PJM","type":"DF","value":"92000"},
+ {"period":"2026-10-20T20","respondent":"ERCO","type":"DF","value":"66000"},
+ {"period":"2026-10-20T20","respondent":"BPAT","type":"DF","value":"6150"},
+ {"period":"2026-10-20T20","respondent":"AZPS","type":"DF","value":"4000"}
+]}}

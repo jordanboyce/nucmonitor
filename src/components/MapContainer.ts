@@ -33,6 +33,7 @@ import type { Earthquake } from '@/services/earthquakes';
 import type { ClimateAnomaly } from '@/services/climate';
 import type { WeatherAlert } from '@/services/weather';
 import type { RadiationObservation } from '@/services/radiation';
+import type { GridRegion } from '@/services/grid-alerts';
 import type { WebcamEntry, WebcamCluster } from '@/generated/client/worldmonitor/webcam/v1/service_client';
 import type { TrafficAnomaly as ProtoTrafficAnomaly, DdosLocationHit } from '@/generated/client/worldmonitor/infrastructure/v1/service_client';
 import type { DiseaseOutbreakItem } from '@/services/disease-outbreaks';
@@ -176,6 +177,7 @@ export class MapContainer {
   private cachedFires: FireMarker[] | null = null;
   private cachedClimateAnomalies: ClimateAnomaly[] | null = null;
   private cachedRadiationObservations: RadiationObservation[] | null = null;
+  private cachedGridAlerts: GridRegion[] | null = null;
   private cachedDiseaseOutbreaks: DiseaseOutbreakItem[] | null = null;
   private cachedNewsLocations: NewsLocationMarker[] | null = null;
   private cachedWebcams: Array<WebcamEntry | WebcamCluster> | null = null;
@@ -693,6 +695,7 @@ export class MapContainer {
     if (this.cachedFires) this.setFires(this.cachedFires);
     if (this.cachedClimateAnomalies) this.setClimateAnomalies(this.cachedClimateAnomalies);
     if (this.cachedRadiationObservations) this.setRadiationObservations(this.cachedRadiationObservations);
+    if (this.cachedGridAlerts) this.setGridAlerts(this.cachedGridAlerts);
     if (this.cachedDiseaseOutbreaks) this.setDiseaseOutbreaks(this.cachedDiseaseOutbreaks);
     if (this.cachedNewsLocations) this.setNewsLocations(this.cachedNewsLocations);
     if (this.cachedTrafficAnomalies) this.setTrafficAnomalies(this.cachedTrafficAnomalies);
@@ -1001,6 +1004,12 @@ export class MapContainer {
     if (this.useDeckGL) {
       this.deckGLMap?.setClimateAnomalies(anomalies);
     }
+  }
+
+  /** Grid alert region markers are DeckGL-only (renderers: ['deck']); SVG and globe ignore them. */
+  public setGridAlerts(regions: GridRegion[]): void {
+    this.cachedGridAlerts = regions;
+    if (this.useDeckGL && !this.useGlobe) this.deckGLMap?.setGridAlerts(regions);
   }
 
   public setRadiationObservations(observations: RadiationObservation[]): void {

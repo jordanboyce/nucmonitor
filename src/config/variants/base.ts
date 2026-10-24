@@ -74,6 +74,7 @@ export const REFRESH_INTERVALS = {
   pipelineStatus: 24 * 60 * 60 * 1000, // curated registry reseeds weekly; daily poll keeps long-lived sessions fresh
   storageFacilityMap: 24 * 60 * 60 * 1000, // curated registry reseeds weekly; daily poll keeps long-lived sessions fresh
   fuelShortages: 60 * 60 * 1000, // active shortage alerts can change intra-day
+  gridAlerts: 5 * 60 * 1000, // seeder publishes every 10 min; operator emergencies change on minute scales
   energyDisruptions: 60 * 60 * 1000, // disruption log is low-volume but needs intra-day freshness
   energyRiskOverview: 15 * 60 * 1000, // mixed market + supply-chain overview; refresh more often than the underlying weekly registries
   chokepointStrip: 10 * 60 * 1000, // the status refreshes every 6 min; the 5-min client cache never answers a poll

@@ -1,0 +1,8 @@
+{"response":{"total":"6","dateFormat":"YYYY-MM-DD\"T\"HH24","frequency":"hourly","data":[
+ {"period":"2026-10-20T20","respondent":"ERCO","respondent-name":"ERCOT","type":"D","type-name":"Demand","value":"68200","value-units":"megawatthours"},
+ {"period":"2026-10-20T19","respondent":"ERCO","respondent-name":"ERCOT","type":"D","type-name":"Demand","value":"67900","value-units":"megawatthours"},
+ {"period":"2026-10-20T20","respondent":"PJM","respondent-name":"PJM","type":"D","type-name":"Demand","value":"101500","value-units":"megawatthours"},
+ {"period":"2026-10-20T20","respondent":"BPAT","respondent-name":"BPA","type":"D","type-name":"Demand","value":"6100","value-units":"megawatthours"},
+ {"period":"2026-10-20T20","respondent":"AZPS","respondent-name":"APS","type":"D","type-name":"Demand","value":"4200","value-units":"megawatthours"},
+ {"period":"2026-10-20T20","respondent":"ZZZ","respondent-name":"Unknown BA","type":"D","type-name":"Demand","value":"1","value-units":"megawatthours"}
+]}}

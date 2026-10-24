@@ -40,6 +40,7 @@ import {
   type PipelinePublicBadge,
 } from '@/shared/pipeline-evidence';
 import { getCachedPipelineRegistries } from '@/shared/pipeline-registry-store';
+import { gridBandColor, type GridRegion } from '@/services/grid-alerts';
 import { t } from '@/services/i18n';
 import { debounce, rafSchedule, getCurrentTheme } from '@/utils/index';
 import { isInputPending } from '@/utils/after-paint';
@@ -355,6 +356,7 @@ export class DeckGLMap {
   private newsLocationFirstSeen = new Map<string, number>();
   private climateAnomalies: ClimateAnomaly[] = [];
   private radiationObservations: RadiationObservation[] = [];
+  private gridAlertRegions: GridRegion[] = [];
   private diseaseOutbreaks: DiseaseOutbreakItem[] = [];
   // Guards updateZoomHints() so a repeated updateLayers() pass skips the
   // toggle-DOM scan when zoom, layer flags, and row nodes are unchanged (#7776).
@@ -1259,6 +1261,14 @@ export class DeckGLMap {
       this.layerCache.delete('pipelines-layer');
     }
 
+    // Power grid alert markers: one per ISO/BA region, colored by the seeded
+    // hazard-impact band. Click focuses the region in GridAlertsPanel via event.
+    if (mapLayers.gridAlerts && this.gridAlertRegions.length > 0) {
+      layers.push(this.createGridAlertsLayer());
+    } else {
+      this.layerCache.delete('grid-alerts-layer');
+    }
+
     // Nuclear facilities layer — hidden at low zoom
     if (mapLayers.nuclear && this.isLayerVisible('nuclear')) {
       layers.push(this.createNuclearLayer());
@@ -1965,6 +1975,34 @@ export class DeckGLMap {
     });
   }
 
+  private createGridAlertsLayer(): ScatterplotLayer<GridRegion> {
+    return new ScatterplotLayer<GridRegion>({
+      id: 'grid-alerts-layer',
+      data: this.gridAlertRegions,
+      getPosition: (d) => d.centroid,
+      // ISOs span many states; BAs are smaller. Score lifts the radius so a
+      // critical region is pre-attentively larger than a quiet neighbour.
+      getRadius: (d) => (d.kind === 'iso' ? 90000 : 55000) * (1 + d.impact.score / 150),
+      getFillColor: (d) => gridBandColor(d.impact.band),
+      getLineColor: (d) => (d.status.startsWith('eea') ? [255, 255, 255, 255] : [255, 255, 255, 170]) as [number, number, number, number],
+      stroked: true,
+      lineWidthMinPixels: 1.5,
+      radiusMinPixels: 6,
+      radiusMaxPixels: 30,
+      pickable: true,
+      onClick: (info) => {
+        const region = info?.object as GridRegion | undefined;
+        if (!region?.id) return false;
+        try {
+          window.dispatchEvent(new CustomEvent('grid:focus-region', { detail: { regionId: region.id } }));
+        } catch {
+          // Silent no-op on non-browser runtimes.
+        }
+        return true;
+      },
+    });
+  }
+
   private createRadiationLayer(items: RadiationObservation[]): ScatterplotLayer<RadiationObservation> {
     return new ScatterplotLayer<RadiationObservation>({
       id: 'radiation-watch-layer',
@@ -2275,6 +2313,13 @@ export class DeckGLMap {
           return { html: `<div class="deckgl-tooltip"><strong>${text(obj.name)}</strong><br/>${commodityLabel} · <strong>${text(badge)}</strong></div>` };
         }
         return { html: `<div class="deckgl-tooltip"><strong>${text(obj.name)}</strong><br/>${commodityLabel}</div>` };
+      }
+      case 'grid-alerts-layer': {
+        const region = obj as GridRegion;
+        const band = String(region.impact?.band || 'low').toUpperCase();
+        const demand = region.metrics?.demandMw != null ? `${(region.metrics.demandMw / 1000).toFixed(1)} GW` : '';
+        const driver = region.impact?.drivers?.[0] ? `<br/><span style="opacity:.75">${text(region.impact.drivers[0].slice(0, 110))}</span>` : '';
+        return { html: `<div class="deckgl-tooltip"><strong>${text(region.id)} · ${text(region.name)}</strong><br/>${text(region.statusText)}${demand ? ` · ${demand}` : ''}<br/><strong>${text(band)}</strong> ${text(String(region.impact?.score ?? 0))}/100${driver}</div>` };
       }
       case 'natural-events-layer':
         return { html: `<div class="deckgl-tooltip"><strong>${text(obj.title)}</strong><br/>${text(obj.category || t('components.deckgl.tooltip.naturalEvent'))}</div>` };
@@ -3429,6 +3474,11 @@ export class DeckGLMap {
 
   public setRadiationObservations(observations: RadiationObservation[]): void {
     this.radiationObservations = observations;
+    this.render();
+  }
+
+  public setGridAlerts(regions: GridRegion[]): void {
+    this.gridAlertRegions = regions;
     this.render();
   }
 

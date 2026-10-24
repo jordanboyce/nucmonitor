@@ -170,6 +170,7 @@ export const DEFERRED_PANEL_NATURAL_FOOTPRINTS: Readonly<Record<string, Deferred
   'nuclear-hazards': { rowSpan: 2 },
   'nuclear-facilities': { rowSpan: 2 },
   'nuclear-buildout': { rowSpan: 2 },
+  'grid-alerts': { rowSpan: 2, className: 'panel-wide' },
 };
 
 const DEFERRED_DYNAMIC_PANEL_FOOTPRINTS: Readonly<Record<string, DeferredPanelShellFootprint>> = {
@@ -2026,6 +2027,9 @@ export class PanelLayoutManager implements AppModule {
         });
         return p;
       }),
+    );
+    this.lazyPanel('grid-alerts', () =>
+      this.importPanel('grid-alerts', () => import('@/components/GridAlertsPanel'), 'GridAlertsPanel', (GridAlertsPanel) => new GridAlertsPanel()),
     );
 
     this.lazyPanel('nuclear-buildout', () =>

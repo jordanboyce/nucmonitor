@@ -38,6 +38,10 @@ export const BOOTSTRAP_CACHE_KEYS = Object.freeze({
   weatherAlerts: 'weather:alerts:v1',
   imdCycloneMarine: 'weather:imd-cyclone-marine:v1',
   liveVideoResolved: 'live-video:resolved:v1',
+  // Power grid alerts envelope (scripts/seed-grid-alerts.mjs): ISO/RTO
+  // conditions, EIA-930 demand, NWS hazard alerts mapped to grid regions and
+  // SWPC geomagnetic state. Opt-in panel + map layer read it on demand.
+  gridAlerts: 'energy:grid-alerts:v1',
   nationalDebt: 'economic:national-debt:v1',
   euGasStorage: 'economic:eu-gas-storage:v1',
   eurostatCountryData: 'economic:eurostat-country-data:v1',
@@ -109,6 +113,8 @@ const ON_DEMAND_KEY_NAMES = new Set([
   // payload stays minimal: channel id to video id and timestamps, no titles,
   // enforced by validateResolvedPayload in scripts/seed-live-video-resolved.mjs.
   'liveVideoResolved',
+  // Opt-in Power Grid Alerts panel and map layer: never on a default homepage.
+  'gridAlerts',
 ]);
 
 /**

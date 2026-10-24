@@ -78,6 +78,13 @@ const TIER_CDN_CACHE = {
 // budget guarantees the shield outlives a complete seed cycle.
 // tests/bootstrap-on-demand-cache-budget.test.mts enforces the ceiling.
 const ON_DEMAND_CACHE_PROFILES = {
+  // Power grid alerts publish every 10 minutes against a 30-minute health
+  // budget. Operator emergency states change on minute scales, so the shield
+  // stays inside one seed interval.
+  gridAlerts: {
+    browser: 'max-age=60, stale-while-revalidate=120, stale-if-error=600',
+    cdn: 'public, s-maxage=600, stale-while-revalidate=120, stale-if-error=600',
+  },
   // IMD cyclone/port/coastal/marine seeder on a 15min interval against
   // a 45min health budget (#7005). The public on-demand URL would otherwise
   // inherit the 2h slow shield and outlive health's stale declaration.

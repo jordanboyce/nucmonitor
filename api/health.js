@@ -309,6 +309,9 @@ const STANDALONE_KEYS = {
   // Seeded by seed-live-video-resolved (#8545); read by the live video players
   // through the on-demand bootstrap URL. Strict once activated (SEED_META).
   liveVideoResolved: BOOTSTRAP_CACHE_KEYS.liveVideoResolved,
+  // Seeded by seed-grid-alerts (10-minute cron); read by the opt-in
+  // Power Grid Alerts panel and map layer through the on-demand bootstrap URL.
+  gridAlerts: BOOTSTRAP_CACHE_KEYS.gridAlerts,
   // #4920 completeness measurement (daily GH Actions publishers) — ops
   // keys: health-monitored but NOT bootstrap-hydrated into page loads.
   newsFeedHealth:    'news:feed-health:v1',
@@ -597,6 +600,24 @@ const SEED_META = {
   // a truncated cbr.ru body still parses into a handful of well-formed rows, so
   // a shrunken table must surface as COVERAGE_PARTIAL rather than OK.
   cbrRates:          { key: 'seed-meta:economic:cbr-rates',           maxStaleMin: 4320, minRecordCount: 31 },
+  // Power grid alerts envelope (seed-grid-alerts.mjs, standalone 10-minute
+  // cron). 30 = 3x cadence per project convention. The record floor is the
+  // region table (34 rows) so a snapshot that lost every source reads as
+  // COVERAGE_PARTIAL rather than a healthy quiet grid.
+  gridAlerts: {
+    key: 'seed-meta:energy:grid-alerts',
+    maxStaleMin: 30,
+    minRecordCount: 34,
+    activationKey: 'seed-activated:energy:grid-alerts',
+    cutover: {
+      mode: 'activation-marker',
+      fromKey: null,
+      // Owner reference is the fork PR that lands the probe
+      // (jordanboyce/nucmonitor#1); this repository has issues disabled.
+      issue: 1,
+      activationKey: 'seed-activated:energy:grid-alerts',
+    },
+  },
   bocValet:          {
     key: 'seed-meta:economic:boc-valet',
     maxStaleMin: 4320,
@@ -873,6 +894,9 @@ const ON_DEMAND_KEYS = new Set([
   // marker (ACTIVATION_MARKERS) after its first successful publish, and from
   // then on the key is strict forever.
   'cbrRates',
+  // Same deploy-before-first-tick bridge for the grid alerts envelope; the
+  // panel ships disabled on every variant so it is never on a default homepage.
+  'gridAlerts',
   'bocValet',
   'statcanWds',
   'liveVideoResolved',
@@ -907,6 +931,8 @@ const ACTIVATION_MARKERS = {
   // Written by scripts/seed-cbr-rates.mjs (CBR_ACTIVATION_KEY) in runSeed's
   // afterPublish hook, so it exists only once a real table has been published.
   cbrRates: 'seed-activated:economic:cbr-rates',
+  // Written by scripts/seed-grid-alerts.mjs in runSeed's afterPublish hook.
+  gridAlerts: SEED_META.gridAlerts.activationKey,
   bocValet: 'seed-activated:economic:boc-valet',
   statcanWds: 'seed-activated:economic:statcan-wds',
   // Written by scripts/seed-live-video-resolved.mjs in runSeed's afterPublish hook.

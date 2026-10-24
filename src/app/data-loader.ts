@@ -688,6 +688,9 @@ export class DataLoaderManager implements AppModule {
     if (this.ctx.mapLayers.diseaseOutbreaks || shouldLoad('disease-outbreaks')) tasks.push({ name: 'diseaseOutbreaks', task: () => runGuarded('diseaseOutbreaks', () => this.loadDiseaseOutbreaks()) });
     if (this.ctx.mapLayers.weather) tasks.push({ name: 'weather', task: () => runGuarded('weather', () => this.loadWeatherAlerts()) });
     if (this.ctx.mapLayers.pipelines) tasks.push({ name: 'pipelineRegistries', task: () => runGuarded('pipelineRegistries', () => this.loadPipelineRegistries()) });
+    // Grid alert markers only load when the layer is on: the panel fetches for
+    // itself and both readers share one circuit-breaker cache (#grid-alerts).
+    if (this.ctx.mapLayers.gridAlerts) tasks.push({ name: 'gridAlerts', task: () => runGuarded('gridAlerts', () => this.loadGridAlerts()) });
     if (this.ctx.mapLayers.cables) tasks.push({ name: 'cableHealth', task: () => runGuarded('cableHealth', () => this.loadCableHealth()) });
     if (this.ctx.mapLayers.webcams) tasks.push({ name: 'webcams', task: () => runGuarded('webcams', () => this.loadWebcams()) });
     if ((shouldLoad('radiation-watch') || this.ctx.mapLayers.radiationWatch)) {
@@ -720,6 +723,9 @@ export class DataLoaderManager implements AppModule {
           break;
         case 'pipelines':
           await this.loadPipelineRegistries();
+          break;
+        case 'gridAlerts':
+          await this.loadGridAlerts();
           break;
         case 'outages':
           await this.loadOutages();
@@ -1751,6 +1757,18 @@ export class DataLoaderManager implements AppModule {
       this.ctx.map?.render();
     } catch {
       this.ctx.map?.setLayerReady('pipelines', false);
+    }
+  }
+
+  async loadGridAlerts(): Promise<void> {
+    try {
+      const { fetchGridAlerts } = await import('@/services/grid-alerts');
+      const envelope = await fetchGridAlerts();
+      this.ctx.map?.setGridAlerts(envelope.regions);
+      this.ctx.map?.setLayerReady('gridAlerts', envelope.regions.length > 0);
+    } catch (error) {
+      console.error('[App] Grid alerts fetch failed:', error);
+      this.ctx.map?.setLayerReady('gridAlerts', false);
     }
   }
 
